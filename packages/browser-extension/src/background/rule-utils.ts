@@ -59,7 +59,7 @@ export function listenForRuleIdRequest() {
 
 export function getDefaultRules(): IRuleItem[] {
   const now = Date.now();
-  return DEFAULT_ORIGINS.map((origin, index) => createDefaultRule(origin, now));
+  return DEFAULT_ORIGINS.map((origin) => createDefaultRule(origin, now));
 }
 
 function createDefaultRule(origin: string, createdAt: number): IRuleItem {
