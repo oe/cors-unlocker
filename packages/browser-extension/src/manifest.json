@@ -8,12 +8,10 @@
     "96": "icon/96.png",
     "128": "icon/128.png"
   },
-  "{{chrome}}.action": {
+  "action": {
     "default_popup": "src/popup/index.html"
   },
-  "{{firefox}}.browser_action": {
-    "default_popup": "src/popup/index.html"
-  },
+  
   "options_ui": {
     "page": "src/options/index.html",
     "open_in_tab": true

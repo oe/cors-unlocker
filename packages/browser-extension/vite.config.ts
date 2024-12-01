@@ -16,6 +16,8 @@ function generateManifest() {
 
 const extID = 'knhlkjdfmgkmelcjfnbbhpphkmjjacng';
 
+const browserTarget = process.env.TARGET || 'chrome';
+
 // https://vitejs.dev/config/
 export default defineConfig({
   css: {
@@ -29,11 +31,13 @@ export default defineConfig({
     }
   },
   build: {
-    emptyOutDir: true
+    emptyOutDir: true,
+    outDir: `dist/${browserTarget}`
   },
   plugins: [
     react(),
     webExtension({
+      browser: browserTarget,
       webExtConfig: {
         startUrl: [
           // chrome extension options page

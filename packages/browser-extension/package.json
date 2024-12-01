@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build:chrome": "vite build",
+    "build:firefox": "TARGET=firefox vite build",
+    "build": "pnpm run build:chrome && pnpm run build:firefox",
     "postbuild": "tsx scripts/post-build.ts"
   },
   "dependencies": {
