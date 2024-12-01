@@ -1,7 +1,7 @@
-import React from "react";
-import ReactDOM from "react-dom/client";
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
 import { useEffect } from 'react';
-import "./style.css";
+import "./style.scss";
 
 function App() {
   useEffect(() => {
@@ -13,14 +13,14 @@ function App() {
       <img src="/icon-with-shadow.svg" />
       <h1>vite-plugin-web-extension</h1>
       <p>
-        Templates: <code>react-ts</code>
+        Template: <code>react-ts</code>
       </p>
     </div>
   )
 }
 
-ReactDOM.createRoot(document.body).render(
-  <React.StrictMode>
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
     <App />
-  </React.StrictMode>
+  </StrictMode>
 );
