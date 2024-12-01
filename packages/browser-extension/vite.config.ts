@@ -14,28 +14,35 @@ function generateManifest() {
   };
 }
 
+const extID = 'knhlkjdfmgkmelcjfnbbhpphkmjjacng';
+
 // https://vitejs.dev/config/
 export default defineConfig({
   css: {
     preprocessorOptions: {
       scss: {
-        api: 'modern',
+        api: 'modern'
       }
     },
     postcss: {
-      plugins: [tailwindcss],
-    },
+      plugins: [tailwindcss]
+    }
+  },
+  build: {
+    emptyOutDir: true
   },
   plugins: [
     react(),
     webExtension({
       webExtConfig: {
         startUrl: [
+          // chrome extension options page
+          `chrome-extension://${extID}/src/options/index.html`,
           'https://www.google.com/ncr',
-          'https://forth.ink',
+          'https://forth.ink'
         ]
       },
       manifest: generateManifest
-    }),
+    })
   ]
 });

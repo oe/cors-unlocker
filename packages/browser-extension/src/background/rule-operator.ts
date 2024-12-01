@@ -1,3 +1,4 @@
+import browser from 'webextension-polyfill';
 import type { IRuleItem } from '../types';
 
 const resourceTypes = [
@@ -16,12 +17,11 @@ const resourceTypes = [
   'other'
 ] as chrome.declarativeNetRequest.ResourceType[];
 
-
 export function clearAllRules() {
-  chrome.declarativeNetRequest.getDynamicRules((existingRules) => {
+  browser.declarativeNetRequest.getDynamicRules().then((existingRules) => {
     if (!existingRules.length) return;
     const existingRuleIds = existingRules.map((rule) => rule.id);
-    chrome.declarativeNetRequest.updateDynamicRules({
+    browser.declarativeNetRequest.updateDynamicRules({
       removeRuleIds: existingRuleIds
     });
   });
@@ -31,23 +31,23 @@ export function batchUpdateRules(rules: IRuleItem[]) {
   if (!rules || !rules.length) {
     return;
   }
-  const removedRuleIds = rules.map((rule) => rule.id)
+  const removedRuleIds = rules.map((rule) => rule.id);
   const updatedRules = rules.filter((rule) => !rule.disabled).map(createRule);
   console.log('batchUpdateRules', removedRuleIds, updatedRules);
-  chrome.declarativeNetRequest.getDynamicRules((existingRules) => {
+  browser.declarativeNetRequest.getDynamicRules().then((existingRules) => {
     // only remove rules that are in the existing rules
     const existingRuleIds = existingRules
       .filter((rule) => removedRuleIds.includes(rule.id))
       .map((rule) => rule.id);
 
-    chrome.declarativeNetRequest.updateDynamicRules({
+    browser.declarativeNetRequest.updateDynamicRules({
       removeRuleIds: existingRuleIds,
-      addRules: updatedRules,
+      addRules: updatedRules
     });
   });
 }
 
-function createRule(rule: IRuleItem): chrome.declarativeNetRequest.Rule {
+function createRule(rule: IRuleItem) {
   const domain = new URL(rule.origin).hostname;
   return {
     id: rule.id,
@@ -58,7 +58,7 @@ function createRule(rule: IRuleItem): chrome.declarativeNetRequest.Rule {
         {
           header: 'Access-Control-Allow-Origin',
           operation: 'set' as chrome.declarativeNetRequest.HeaderOperation,
-          value: rule.origin,
+          value: rule.origin
         }
       ]
     },

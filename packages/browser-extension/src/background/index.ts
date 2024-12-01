@@ -1,3 +1,4 @@
+import browser from 'webextension-polyfill';
 import {
   diffRules,
   reorderRules,
@@ -13,14 +14,14 @@ const storageKey = 'allowedOrigins';
 listenForRuleIdRequest();
 
 // Initialize rules on browser startup
-chrome.runtime.onStartup.addListener(() => {
-  chrome.storage.local.get(storageKey, (result) => {
+browser.runtime.onStartup.addListener(() => {
+  browser.storage.local.get(storageKey).then((result) => {
     const rules = result[storageKey];
     if (!rules || !rules.length) return;
     const orderedRules = reorderRules(rules);
     // order changed, update storage then trigger event
     if (orderedRules) {
-      chrome.storage.local.set({ [storageKey]: orderedRules });
+      browser.storage.local.set({ [storageKey]: orderedRules });
     } else {
       batchUpdateRules(rules);
     }
@@ -28,15 +29,15 @@ chrome.runtime.onStartup.addListener(() => {
 });
 
 // Initialize default rules on installation
-chrome.runtime.onInstalled.addListener((e) => {
+browser.runtime.onInstalled.addListener((e) => {
   // only run on install
   if (e.reason !== 'install') return;
   // will trigger events to update rules
-  chrome.storage.local.set({ [storageKey]: getDefaultRules() });
+  browser.storage.local.set({ [storageKey]: getDefaultRules() });
 });
 
 // Update rules when storage changes
-chrome.storage.onChanged.addListener((changes, areaName) => {
+browser.storage.onChanged.addListener((changes, areaName) => {
   console.log('storage changed', changes, areaName);
   const changed = changes[storageKey];
   if (areaName !== 'local' || !changed) return;

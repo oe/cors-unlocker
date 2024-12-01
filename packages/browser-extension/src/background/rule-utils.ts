@@ -1,3 +1,4 @@
+import browser from 'webextension-polyfill';
 import type { IRuleItem } from '../types';
 
 let maxRuleId = 0;
@@ -15,24 +16,26 @@ export function genRuleId(): number {
  * @returns rules that need to be updated
  */
 export function diffRules(newRules: IRuleItem[], oldRules?: IRuleItem[]) {
-  if (!oldRules || !oldRules.length || !newRules || !newRules.length) return newRules || [];
+  if (!oldRules || !oldRules.length || !newRules || !newRules.length)
+    return newRules || [];
 
   const updatedRules = newRules.filter((newRule) => {
     const rule = oldRules.find((oldRule) => newRule.id === oldRule.id);
     return !rule || !isRuleEqual(newRule, rule);
   });
 
-  const removedRules = oldRules.filter((oldRule) => {
-    return !newRules.some((newRule) => newRule.id === oldRule.id);
-  }).map((rule) => ({ ...rule, disabled: true }));
+  const removedRules = oldRules
+    .filter((oldRule) => {
+      return !newRules.some((newRule) => newRule.id === oldRule.id);
+    })
+    .map((rule) => ({ ...rule, disabled: true }));
 
   return updatedRules.concat(removedRules);
 }
 
 function isRuleEqual(newRule: IRuleItem, oldRule: IRuleItem) {
   return (
-    newRule.origin === oldRule.origin &&
-    newRule.disabled === oldRule.disabled
+    newRule.origin === oldRule.origin && newRule.disabled === oldRule.disabled
   );
 }
 
@@ -47,19 +50,16 @@ export function reorderRules(rules: IRuleItem[]) {
 }
 
 export function listenForRuleIdRequest() {
-  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  browser.runtime.onMessage.addListener(async (message) => {
     if (message.action === 'getNewRuleId') {
-      sendResponse({ ruleId: genRuleId() });
+      return { ruleId: genRuleId() };
     }
-    return true; // Keep the message channel open for sendResponse
   });
 }
 
 export function getDefaultRules(): IRuleItem[] {
   const now = Date.now();
-  return DEFAULT_ORIGINS.map((origin, index) =>
-    createDefaultRule(origin, now)
-  );
+  return DEFAULT_ORIGINS.map((origin, index) => createDefaultRule(origin, now));
 }
 
 function createDefaultRule(origin: string, createdAt: number): IRuleItem {
