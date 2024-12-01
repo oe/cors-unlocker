@@ -29,6 +29,12 @@ export default defineConfig({
   plugins: [
     react(),
     webExtension({
+      webExtConfig: {
+        startUrl: [
+          'https://www.google.com/ncr',
+          'https://forth.ink',
+        ]
+      },
       manifest: generateManifest
     }),
   ]

@@ -1,18 +1,29 @@
+import {
+  diffRules,
+  reorderRules,
+  getDefaultRules,
+  listenForRuleIdRequest
+} from './rule-utils';
+import { batchUpdateRules } from './rule-operator';
 /**
  * local storage key for allowed domains
  */
-const storageKey = 'allowedDomains';
+const storageKey = 'allowedOrigins';
 
-/**
- * Default domains to allow
- * * cors.forth.ink is the homepage of this extension
- */
-const DEFAULT_DOMAINS = ['cors.forth.ink', 'www.google.com'];
+listenForRuleIdRequest();
 
 // Initialize rules on browser startup
 chrome.runtime.onStartup.addListener(() => {
   chrome.storage.local.get(storageKey, (result) => {
-    updateRules(result[storageKey]);
+    const rules = result[storageKey];
+    if (!rules || !rules.length) return;
+    const orderedRules = reorderRules(rules);
+    // order changed, update storage then trigger event
+    if (orderedRules) {
+      chrome.storage.local.set({ [storageKey]: orderedRules });
+    } else {
+      batchUpdateRules(rules);
+    }
   });
 });
 
@@ -21,51 +32,13 @@ chrome.runtime.onInstalled.addListener((e) => {
   // only run on install
   if (e.reason !== 'install') return;
   // will trigger events to update rules
-  chrome.storage.local.set({ [storageKey]: DEFAULT_DOMAINS });
+  chrome.storage.local.set({ [storageKey]: getDefaultRules() });
 });
 
 // Update rules when storage changes
 chrome.storage.onChanged.addListener((changes, areaName) => {
   console.log('storage changed', changes, areaName);
-  if (areaName !== 'local' || !changes[storageKey]) return
-  updateRules(changes[storageKey].newValue);
+  const changed = changes[storageKey];
+  if (areaName !== 'local' || !changed) return;
+  batchUpdateRules(diffRules(changed.newValue, changed.oldValue));
 });
-
-function updateRules(domains: string[] = []) {
-  // clear rules if no domains are set
-  if (!domains || !domains.length) {
-    chrome.declarativeNetRequest.updateDynamicRules({
-      removeRuleIds: [1]
-    });
-    return;
-  }
-
-  const rules = [
-    {
-      id: 1,
-      priority: 1,
-      action: {
-        type: 'modifyHeaders',
-        responseHeaders: [
-          {
-            header: 'Access-Control-Allow-Origin',
-            operation: 'set',
-            value: '*'
-          }
-        ]
-      },
-      condition: {
-        urlFilter: '*',
-        initiatorDomains: domains,
-        resourceTypes: ['xmlhttprequest']
-      }
-    }
-  ];
-
-  chrome.declarativeNetRequest.updateDynamicRules({
-    removeRuleIds: [1],
-    // @ts-expect-error ignore for type missing
-    addRules: rules
-  });
-
-}
