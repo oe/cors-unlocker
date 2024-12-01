@@ -1,7 +1,9 @@
+import React from "react";
+import ReactDOM from "react-dom/client";
 import { useEffect } from 'react';
-import "./Popup.css";
+import "./style.css";
 
-export default function() {
+function App() {
   useEffect(() => {
     console.log("Hello from the popup!");
   }, []);
@@ -11,8 +13,14 @@ export default function() {
       <img src="/icon-with-shadow.svg" />
       <h1>vite-plugin-web-extension</h1>
       <p>
-        Template: <code>react-ts</code>
+        Templates: <code>react-ts</code>
       </p>
     </div>
   )
 }
+
+ReactDOM.createRoot(document.body).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);

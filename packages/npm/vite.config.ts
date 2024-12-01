@@ -1,14 +1,15 @@
-
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import dts from 'vite-plugin-dts';
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), dts()],
   build: {
     lib: {
       entry: 'src/index.ts',
-      name: 'MyLibrary',
-      fileName: (format) => `my-library.${format}.js`
+      name: 'browserAppCors',
+      formats: ['es', 'umd'],
+      fileName: (format) => `index.${format}.js`
     },
     rollupOptions: {
       external: ['react', 'react-dom'],

@@ -2,7 +2,9 @@
   "name": "browser-app-cors",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "dist/index.umd.js",
+  "module": "dist/index.es.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
@@ -14,6 +16,7 @@
   "devDependencies": {
     "typescript": "catalog:",
     "vite": "catalog:",
-    "@vitejs/plugin-react": "catalog:"
+    "@vitejs/plugin-react": "catalog:",
+    "vite-plugin-dts": "^4.3.0"
   }
 }

@@ -1,1 +1,3 @@
-console.log('Hello from npm package');
+export function add(a: string, b: string) {
+  return a + b;
+}
