@@ -9,6 +9,10 @@ export interface IRuleItem {
    */
   createdAt: number
   /**
+   * domain of the rule, calculated from origin
+   */
+  domain: string
+  /**
    * origin of the rule
    */
   origin: string

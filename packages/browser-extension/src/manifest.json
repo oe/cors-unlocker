@@ -9,14 +9,11 @@
     "96": "icon/96.png",
     "128": "icon/128.png"
   },
+  "options_page": "src/options/index.html",
   "action": {
     "default_popup": "src/popup/index.html"
   },
   "default_locale": "en",
-  "options_ui": {
-    "page": "src/options/index.html",
-    "open_in_tab": true
-  },
   "background": {
     "{{chrome}}.service_worker": "src/background/index.ts",
     "{{firefox}}.scripts": ["src/background/index.ts"]

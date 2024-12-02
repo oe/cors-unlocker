@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite dev",
     "build:chrome": "vite build",
     "build:firefox": "TARGET=firefox vite build",
     "build": "pnpm run build:chrome && pnpm run build:firefox",

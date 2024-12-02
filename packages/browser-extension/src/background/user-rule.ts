@@ -59,14 +59,20 @@ export function listenForRuleIdRequest() {
 
 export function getDefaultRules(): IRuleItem[] {
   const now = Date.now();
-  return DEFAULT_ORIGINS.map((origin) => createDefaultRule(origin, now));
+  return DEFAULT_ORIGINS.map((origin) => createDefaultRule(origin, now)).filter(Boolean) as IRuleItem[];
 }
 
-function createDefaultRule(origin: string, createdAt: number): IRuleItem {
-  return {
-    id: genRuleId(),
-    createdAt,
-    origin,
-    updatedAt: createdAt
-  };
+function createDefaultRule(origin: string, createdAt: number): IRuleItem | void {
+  try {
+    const domain = new URL(origin).hostname;
+    return {
+      id: genRuleId(),
+      createdAt,
+      domain,
+      origin,
+      updatedAt: createdAt
+    };
+  } catch (error) {
+    console.error('unable to create rule', error);
+  }
 }

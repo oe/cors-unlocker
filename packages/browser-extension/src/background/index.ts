@@ -4,8 +4,8 @@ import {
   reorderRules,
   getDefaultRules,
   listenForRuleIdRequest
-} from './rule-utils';
-import { batchUpdateRules } from './rule-operator';
+} from './user-rule';
+import { batchUpdateRules } from './declarative-rules';
 /**
  * local storage key for allowed domains
  */

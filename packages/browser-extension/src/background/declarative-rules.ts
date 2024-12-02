@@ -48,7 +48,6 @@ export function batchUpdateRules(rules: IRuleItem[]) {
 }
 
 function createRule(rule: IRuleItem) {
-  const domain = new URL(rule.origin).hostname;
   return {
     id: rule.id,
     priority: 1,
@@ -64,7 +63,7 @@ function createRule(rule: IRuleItem) {
     },
     condition: {
       urlFilter: '*',
-      initiatorDomains: [domain],
+      initiatorDomains: [rule.domain],
       resourceTypes
     }
   };
