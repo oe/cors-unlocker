@@ -5,6 +5,7 @@ import {
   getDefaultRules,
 } from './user-rule';
 import { dataStorage } from '@/common/storage';
+import { onTabActiveChange } from './on-tab-change';
 import { batchUpdateRules } from './declarative-rules';
 
 // Initialize rules on browser startup
@@ -32,4 +33,14 @@ browser.runtime.onInstalled.addListener((e) => {
 // Update rules when storage changes
 dataStorage.onRulesChange((newRules, oldRules) => {
   batchUpdateRules(diffRules(newRules, oldRules));
-})
+});
+
+browser.tabs.onActivated.addListener((activeInfo) => {
+  browser.tabs.get(activeInfo.tabId).then(tab => {
+    onTabActiveChange(tab);
+  });
+});
+
+browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  onTabActiveChange(tab);
+});

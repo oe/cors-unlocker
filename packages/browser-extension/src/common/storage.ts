@@ -5,11 +5,17 @@ import browser from 'webextension-polyfill';
  */
 const storageKey = 'allowedOrigins';
 
+let lastRules: IRuleItem[]
+
 export const dataStorage = {
-  getRules(): Promise<IRuleItem[] | void> {
-    return browser.storage.local.get(storageKey).then(res => res[storageKey]);
+  async getRules(): Promise<IRuleItem[] | void> {
+    if (!lastRules) {
+      lastRules = await browser.storage.local.get(storageKey).then(res => res[storageKey]);
+    }
+    return lastRules;
   },
   saveRules(rules: IRuleItem[]) {
+    lastRules = rules;
     return browser.storage.local.set({
       [storageKey]: rules
     });

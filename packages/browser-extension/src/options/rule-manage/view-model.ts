@@ -70,6 +70,16 @@ export function useViewModel() {
     });
   };
 
+  const toggleRule = async (rule: IRuleItem) => {
+    setRules((prevRules) => {
+      const updatedRules = prevRules.map((r) => {
+        return r.id === rule.id ? Object.assign({}, r, { disabled: !r.disabled }) : r;
+      });
+      dataStorage.saveRules(updatedRules);
+      return updatedRules;
+    });
+  };
+
   const updateRule = async (rule: IRuleItem) => {
     setRules((prevRules) => {
       const updatedRules = prevRules.map((r) => {
@@ -80,6 +90,6 @@ export function useViewModel() {
     });
   };
 
-  return { rules, addRule, removeRule, updateRule, validateRule };
+  return { rules, addRule, removeRule, updateRule, validateRule, toggleRule };
 }
 

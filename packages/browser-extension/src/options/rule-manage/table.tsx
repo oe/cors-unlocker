@@ -5,6 +5,7 @@ export interface IRuleTableProps {
   rules: IRuleItem[];
   removeRule: (id: number) => void;
   updateRule: (rule: IRuleItem) => void;
+  toggleRule: (rule: IRuleItem) => void;
 }
 
 export function RuleTable(props: IRuleTableProps) {
@@ -15,6 +16,7 @@ export function RuleTable(props: IRuleTableProps) {
           <tr>
             <th className="py-2">#</th>
             <th className="py-2 text-left">Origin</th>
+            <th className="py-2">Enabled</th>
             <th className="py-2 w-32">Actions</th>
           </tr>
         </thead>
@@ -31,6 +33,13 @@ export function RuleTable(props: IRuleTableProps) {
               {/* <td className="py-2 text-center">
                 <FormattedDate date={rule.createdAt} /> / <FormattedDate date={rule.updatedAt} />
               </td> */}
+              <td className="py-2 text-center">
+                <label className="inline-flex items-center cursor-pointer">
+                  <input type="checkbox" className="sr-only peer" checked={!rule.disabled} onChange={() => props.toggleRule(rule)} />
+                  <div className="relative w-11 h-6 bg-gray-200 rounded-full  dark:bg-gray-400 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                </label>
+
+              </td>
               <td className="py-2 text-center">
                 <button
                   className="text-blue-500 px-2 py-1 mr-2 rounded-sm hover:bg-blue-100"
