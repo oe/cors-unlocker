@@ -1,3 +1,4 @@
+import path from 'path';
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import webExtension, { readJsonFile } from "vite-plugin-web-extension";
@@ -33,6 +34,11 @@ export default defineConfig({
   build: {
     emptyOutDir: true,
     outDir: `dist/${browserTarget}`
+  },
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, 'src')
+    }
   },
   plugins: [
     react(),

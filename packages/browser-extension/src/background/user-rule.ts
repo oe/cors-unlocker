@@ -1,13 +1,8 @@
 import browser from 'webextension-polyfill';
-import type { IRuleItem } from '../types';
-
-let maxRuleId = 0;
+import type { IRuleItem } from '@/types';
+import { createRule } from '@/common/rules';
 
 const DEFAULT_ORIGINS = ['https://cors.forth.ink', 'https://www.google.com'];
-
-export function genRuleId(): number {
-  return ++maxRuleId;
-}
 
 /**
  * diff new rules with old rules
@@ -15,7 +10,7 @@ export function genRuleId(): number {
  * @param oldRules old rules
  * @returns rules that need to be updated
  */
-export function diffRules(newRules: IRuleItem[], oldRules?: IRuleItem[]) {
+export function diffRules(newRules?: IRuleItem[], oldRules?: IRuleItem[]) {
   if (!oldRules || !oldRules.length || !newRules || !newRules.length)
     return newRules || [];
 
@@ -44,35 +39,14 @@ function isRuleEqual(newRule: IRuleItem, oldRule: IRuleItem) {
  */
 export function reorderRules(rules: IRuleItem[]) {
   const newRules = rules.map((rule, index) => ({ ...rule, id: index + 1 }));
-  maxRuleId = newRules.length + 1;
   const updatedRules = diffRules(newRules, rules);
   return updatedRules.length ? newRules : null;
 }
 
-export function listenForRuleIdRequest() {
-  browser.runtime.onMessage.addListener(async (message) => {
-    if (message.action === 'getNewRuleId') {
-      return { ruleId: genRuleId() };
-    }
-  });
-}
 
 export function getDefaultRules(): IRuleItem[] {
   const now = Date.now();
-  return DEFAULT_ORIGINS.map((origin) => createDefaultRule(origin, now)).filter(Boolean) as IRuleItem[];
-}
-
-function createDefaultRule(origin: string, createdAt: number): IRuleItem | void {
-  try {
-    const domain = new URL(origin).hostname;
-    return {
-      id: genRuleId(),
-      createdAt,
-      domain,
-      origin,
-      updatedAt: createdAt
-    };
-  } catch (error) {
-    console.error('unable to create rule', error);
-  }
+  return DEFAULT_ORIGINS.map((origin, index) =>
+    createRule(origin, index + 1, now)
+  ).filter(Boolean) as IRuleItem[];
 }

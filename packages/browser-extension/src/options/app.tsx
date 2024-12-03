@@ -2,11 +2,12 @@ import { StrictMode } from 'react';
 import { createRoot } from "react-dom/client";
 import { Tabs } from './tabs';
 import { RuleManage } from './rule-manage';
+import { Settings } from './settings';
 import './style.scss';
 
 const tabs = [
-  { name: 'tab1', title: 'Rules', content: RuleManage},
-  { name: 'tab2', title: 'Settings', content: () => <div>Settings</div> },
+  { name: 'rules', title: 'Rules', content: RuleManage},
+  { name: 'settings', title: 'Settings', content: Settings },
 ];
 
 function App() {

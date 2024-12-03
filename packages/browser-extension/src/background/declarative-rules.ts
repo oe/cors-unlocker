@@ -31,6 +31,8 @@ export function batchUpdateRules(rules: IRuleItem[]) {
   if (!rules || !rules.length) {
     return;
   }
+  // remove all changed rules, including removed updated, and added
+  //  make sure the rules can be updated
   const removedRuleIds = rules.map((rule) => rule.id);
   const updatedRules = rules.filter((rule) => !rule.disabled).map(createRule);
   console.log('batchUpdateRules', removedRuleIds, updatedRules);

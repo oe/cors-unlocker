@@ -11,6 +11,7 @@
     "postbuild": "tsx scripts/post-build.ts"
   },
   "dependencies": {
+    "lucide-react": "^0.464.0",
     "react": "catalog:",
     "react-dom": "catalog:"
   },
