@@ -13,6 +13,11 @@
   "action": {
     "default_popup": "src/popup/index.html"
   },
+  "externally_connectable": {
+    "matches": [
+      "https://*.forth.ink/*"
+    ]
+  },
   "default_locale": "en",
   "background": {
     "{{chrome}}.service_worker": "src/background/index.ts",

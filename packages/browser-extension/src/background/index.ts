@@ -7,6 +7,7 @@ import {
 import { dataStorage } from '@/common/storage';
 import { onTabActiveChange } from './on-tab-change';
 import { batchUpdateRules } from './declarative-rules';
+import { onExternalMessage } from './external-message';
 
 // Initialize rules on browser startup
 browser.runtime.onStartup.addListener(() => {
@@ -44,3 +45,6 @@ browser.tabs.onActivated.addListener((activeInfo) => {
 browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   onTabActiveChange(tab);
 });
+
+
+browser.runtime.onMessageExternal.addListener(onExternalMessage);
