@@ -47,10 +47,10 @@ export function useViewModel() {
     return origin;
   };
   
-  const addRule = async (url: string) => {
-    const origin = validateRule(url);
+  const addRule = async (v: {origin: string, comment: string}) => {
+    const origin = validateRule(v.origin);
     const ruleId = ++maxId.current;
-    const rule = createRule(origin, ruleId);
+    const rule = createRule(origin, v.comment, ruleId);
     if (!rule) {
       throw new Error('unable to create rule');
     }

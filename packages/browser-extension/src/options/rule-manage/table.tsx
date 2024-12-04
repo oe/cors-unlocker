@@ -16,8 +16,8 @@ export function RuleTable(props: IRuleTableProps) {
           <tr>
             <th className="py-2">#</th>
             <th className="py-2 text-left">Origin</th>
-            <th className="py-2">Enabled</th>
-            <th className="py-2 w-32">Actions</th>
+            <th className="py-2 w-16">Enabled</th>
+            <th className="py-2 w-24">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -56,6 +56,11 @@ export function RuleTable(props: IRuleTableProps) {
               </td>
             </tr>
           ))}
+          {props.rules.length === 0 && (
+            <tr className="border-t">
+              <td colSpan={4} className="py-2 text-center text-slate-400">No rules</td>
+            </tr>
+          )}
         </tbody>
       </table>
     </div>

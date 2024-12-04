@@ -2,6 +2,7 @@ import type { IRuleItem } from '@/types';
 
 export function createRule(
   origin: string,
+  comment: string,
   ruleId: number,
   createdAt: number = Date.now()
 ): IRuleItem | void {
@@ -10,6 +11,7 @@ export function createRule(
     return {
       id: ruleId,
       createdAt,
+      comment,
       domain,
       origin,
       updatedAt: createdAt

@@ -78,19 +78,24 @@ export function RuleInput(props: IRuleInputProps) {
   );
 }
 
-export interface IAddRuleProps {
+export interface IEditRuleProps {
   rule?: IRuleItem;
   validateRule: (url: string) => string;
-  addRule: (url: string) => void;
+  saveRule: (v: {origin: string, comment: string}) => void;
 }
 
-export function AddRuleForm(props: IAddRuleProps) {
+export function EditRuleForm(props: IEditRuleProps) {
   const [formData, setFormData] = useState(() => getDefaultFormData(props.rule));
 
   const handleSave = () => {
     if (!formData.origin) return;
-    setFormData(() => getDefaultFormData());
-    setTimeout(() => props.addRule(formData.origin), 0);
+    props.saveRule({
+      origin: formData.origin, comment: formData.comment || ''
+    });
+    // 
+    setTimeout(() => {
+      setFormData(() => getDefaultFormData());
+    }, 0);
   }
 
   const setFormValue = (val: Record<string, string>) => {
