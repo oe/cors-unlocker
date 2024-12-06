@@ -1,19 +1,18 @@
 import type { IRuleItem } from '@/types';
 
-export function createRule(
-  origin: string,
-  comment: string,
-  ruleId: number,
-  createdAt: number = Date.now()
-): IRuleItem | void {
+export type ICreateRuleOptions = Omit<IRuleItem, 'updatedAt' | 'domain' | 'createdAt' | 'comment'> & {
+  comment?: string;
+  createdAt?: number;
+};
+
+export function createRule(options: ICreateRuleOptions): IRuleItem | void {
   try {
-    const domain = new URL(origin).hostname;
+    const domain = new URL(options.origin).hostname;
+    const createdAt = options.createdAt || Date.now();
     return {
-      id: ruleId,
+      ...options,
       createdAt,
-      comment,
       domain,
-      origin,
       updatedAt: createdAt
     };
   } catch (error) {

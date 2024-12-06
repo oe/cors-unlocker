@@ -1,6 +1,8 @@
 import { IRuleItem } from '@/types';
 import { Link, MessageSquareMore } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Switch } from '@/common/shard';
+
 
 export interface IRuleInputProps {
   value?: string;
@@ -68,6 +70,7 @@ export function RuleInput(props: IRuleInputProps) {
     <div className='flex-grow'>
       <InputWithAddOn
         value={value}
+        autoFocus
         prepend={<Link className='w-4' />}
         onChange={onChange}
         placeholder='Enter an origin or an url'
@@ -79,17 +82,23 @@ export function RuleInput(props: IRuleInputProps) {
 }
 
 export interface IEditRuleProps {
-  rule?: IRuleItem;
-  validateRule: (url: string) => string;
-  saveRule: (v: {origin: string, comment: string}) => void;
+  rule?: IRuleItem | null;
+  validateRule: (url: string, id?: number) => string;
+  saveRule: (v: { origin: string, comment: string, id?: number }) => void;
 }
 
 export function EditRuleForm(props: IEditRuleProps) {
-  const [formData, setFormData] = useState(() => getDefaultFormData(props.rule));
+  const idRef = useRef(props.rule?.id);
+  const [formData, setFormData] = useState<Partial<IRuleItem & { url: string}>>(() => getDefaultFormData(props.rule));
+
+  const validateRule = useCallback((url: string) => {
+    return props.validateRule(url, idRef.current);
+  }, [])
 
   const handleSave = () => {
     if (!formData.origin) return;
     props.saveRule({
+      id: props.rule?.id,
       origin: formData.origin, comment: formData.comment || ''
     });
     // 
@@ -98,7 +107,7 @@ export function EditRuleForm(props: IEditRuleProps) {
     }, 0);
   }
 
-  const setFormValue = (val: Record<string, string>) => {
+  const setFormValue = (val: Record<string, any>) => {
     setFormData((prev) => ({...prev, ...val}));
   }
 
@@ -116,27 +125,44 @@ export function EditRuleForm(props: IEditRuleProps) {
     }
   };
 
+  const authHelpLabel = (
+    <>
+    Off: Block login info (higher privacy); On: Allow login info to be used (full features). <a
+    href="https://cors.forth.ink/faq.html#auth" target="_blank" className='text-blue-400 underline'> Learn more</a>.
+    </>
+  )
+
 
   return (
-    <form className="mt-4 flex flex-col">
+    <form className="flex flex-col">
       <RuleInput
         value={formData.url}
-        validateRule={props.validateRule}
+        validateRule={validateRule}
         onChange={(v, o) => setFormValue({url: v, origin: o})}
         onKeyUp={onKeyUp}
       />
+      <div className="mb-4 flex items-center">
+        <span className='mr-2 text-slate-700 text-sm shrink-0'>Site Auth</span>
+        <Switch
+          value={!!formData.credentials}
+          focusable
+          onChange={(v) => setFormValue({ credentials: v})}
+          label={authHelpLabel} />
+      </div>
 
       <InputWithAddOn
         className='mb-4'
-        value={formData.comment}
+        value={formData.comment || ''}
         prepend={<MessageSquareMore className='w-4'/>}
         onKeyUp={onKeyUp}
         onChange={(e) => setFormValue({ comment: e.target.value })}
         placeholder='comment(optional)' />
+      <div className={'flex ' + (idRef.current ? 'justify-end' : '') }>
+        <button type="button" onClick={handleSave} disabled={!formData.origin} className="bg-blue-500 disabled:bg-blue-300 text-white px-4 py-2 rounded-md self-baseline">
+          { props.rule ? 'Save' : 'Add' }
+        </button>
 
-      <button type="button" onClick={handleSave} disabled={!formData.origin} className="bg-blue-500 disabled:bg-blue-300 text-white px-4 py-2 rounded-md self-baseline">
-        { props.rule ? 'Save' : 'Add' }
-      </button>
+      </div>
     </form>
   )
 }
@@ -149,6 +175,7 @@ interface IInputWithAddOnProps {
   placeholder?: string;
   prepend?: React.ReactNode;
   className?: string;
+  autoFocus?: boolean;
 }
 
 function InputWithAddOn(props: IInputWithAddOnProps) {
@@ -156,6 +183,7 @@ function InputWithAddOn(props: IInputWithAddOnProps) {
     <div className={"flex items-center rounded-md bg-white pl-3 outline outline-1 -outline-offset-1 outline-gray-300 has-[input:focus-within]:outline has-[input:focus-within]:outline-2 has-[input:focus-within]:-outline-offset-2 has-[input:focus-within]:outline-blue-500 " + (props.className || '')}>
       {props.prepend && <div className="shrink-0 select-none text-base text-gray-500 sm:text-sm/6">{props.prepend}</div>}
       <input type="text" value={props.value} onChange={props.onChange}
+      autoFocus={props.autoFocus}
       onKeyUp={props.onKeyUp}
       className="block min-w-0 grow py-1.5 pl-1 pr-3 text-base text-gray-900 placeholder:text-gray-400 focus:outline focus:outline-0 sm:text-sm/6" placeholder={props.placeholder} />
     </div>
@@ -163,7 +191,7 @@ function InputWithAddOn(props: IInputWithAddOnProps) {
   )
 }
 
-function getDefaultFormData(rule?: IRuleItem) {
+function getDefaultFormData(rule?: IRuleItem | null) {
   if (rule) {
     return {
       url: rule.origin,

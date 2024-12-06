@@ -1,21 +1,40 @@
+import { useState } from 'react';
 import { Edit, Trash } from 'lucide-react';
 import type { IRuleItem } from '@/types';
+import { Switch } from '@/common/shard';
+import { Modal } from '@/common/modal';
+import { EditRuleForm } from './rule-form';
 
 export interface IRuleTableProps {
   rules: IRuleItem[];
   removeRule: (id: number) => void;
-  updateRule: (rule: IRuleItem) => void;
+  updateRule: (rule: Partial<IRuleItem>) => void;
+  validateRule: (url: string) => string;
   toggleRule: (rule: IRuleItem) => void;
 }
 
 export function RuleTable(props: IRuleTableProps) {
+  const [currentRule, setCurrentRule] = useState<IRuleItem | null>(null)
+  const onCancel = () => setCurrentRule(null);
+  const onEdit = (rule: IRuleItem) => setCurrentRule(rule);
+  const onSave = (rule: Partial<IRuleItem>) => {
+    props.updateRule(rule);
+    setCurrentRule(null);
+  }
+
   return (
+    <>
+    <EditRuleModal
+      rule={currentRule}
+      updateRule={onSave}
+      validateRule={props.validateRule} onCancel={onCancel} />
     <div className="container mx-auto p-2">
       <table className="min-w-full bg-white table-fixed">
         <thead>
           <tr>
             <th className="py-2">#</th>
             <th className="py-2 text-left">Origin</th>
+            <th className="py-2 w-20 text-xs">Site Auth</th>
             <th className="py-2 w-16">Enabled</th>
             <th className="py-2 w-24">Actions</th>
           </tr>
@@ -34,16 +53,15 @@ export function RuleTable(props: IRuleTableProps) {
                 <FormattedDate date={rule.createdAt} /> / <FormattedDate date={rule.updatedAt} />
               </td> */}
               <td className="py-2 text-center">
-                <label className="inline-flex items-center cursor-pointer">
-                  <input type="checkbox" className="sr-only peer" checked={!rule.disabled} onChange={() => props.toggleRule(rule)} />
-                  <div className="relative w-11 h-6 bg-gray-200 rounded-full  dark:bg-gray-400 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-500"></div>
-                </label>
-
+                {rule.credentials ? 'On' : 'Off'}
+              </td>
+              <td className="py-2 text-center">
+                <Switch value={!rule.disabled} onChange={() => props.toggleRule(rule)} />
               </td>
               <td className="py-2 text-center">
                 <button
                   className="text-blue-500 px-2 py-1 mr-2 rounded-sm hover:bg-blue-100"
-                  onClick={() => props.updateRule(rule)}
+                  onClick={() => onEdit(rule)}
                 >
                   <Edit className='w-4'/>
                 </button>
@@ -64,6 +82,7 @@ export function RuleTable(props: IRuleTableProps) {
         </tbody>
       </table>
     </div>
+    </>
   );
 }
 
@@ -93,4 +112,24 @@ function formatTime(time: number) {
   const days = Math.round(hours / 24);
   return rtl.format(days, 'day');
 
+}
+
+interface IEditRuleFormProps {
+  rule?: IRuleItem | null;
+  updateRule: (rule: Partial<IRuleItem>) => void;
+  validateRule: (url: string) => string;
+  onCancel: () => void;
+}
+
+function EditRuleModal(props: IEditRuleFormProps) {
+  console.log('props.rule', props.rule)
+  return (<Modal
+    maskClosable
+    title='Edit Rule'
+    visible={!!props.rule}
+    footer={false}
+    onClose={props.onCancel}
+  >
+    <EditRuleForm rule={props.rule} saveRule={props.updateRule} validateRule={props.validateRule} />
+  </Modal>)
 }

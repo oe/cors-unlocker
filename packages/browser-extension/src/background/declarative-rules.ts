@@ -65,7 +65,7 @@ function createRule(rule: IRuleItem) {
         {
           header: 'Access-Control-Allow-Origin',
           operation: 'set' as chrome.declarativeNetRequest.HeaderOperation,
-          value: rule.origin
+          value: rule.credentials ? rule.origin : '*'
         }
       ]
     },

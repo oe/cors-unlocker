@@ -47,6 +47,6 @@ export function reorderRules(rules: IRuleItem[]) {
 export function getDefaultRules(): IRuleItem[] {
   const now = Date.now();
   return DEFAULT_ORIGINS.map((origin, index) =>
-    createRule(origin, index + 1, now)
+    createRule({ origin, id: index + 1 })
   ).filter(Boolean) as IRuleItem[];
 }

@@ -50,7 +50,7 @@ export function useViewModel() {
   const addRule = async (v: {origin: string, comment: string}) => {
     const origin = validateRule(v.origin);
     const ruleId = ++maxId.current;
-    const rule = createRule(origin, v.comment, ruleId);
+    const rule = createRule({ origin, comment: v.comment, id: ruleId });
     if (!rule) {
       throw new Error('unable to create rule');
     }
@@ -80,7 +80,7 @@ export function useViewModel() {
     });
   };
 
-  const updateRule = async (rule: IRuleItem) => {
+  const updateRule = async (rule: Partial<IRuleItem>) => {
     setRules((prevRules) => {
       const updatedRules = prevRules.map((r) => {
         return r.id === rule.id ? Object.assign({}, r, rule) : r;
