@@ -76,7 +76,7 @@ export function RuleInput(props: IRuleInputProps) {
         placeholder='Enter an origin or an url'
         onKeyUp={props.onKeyUp}
       />
-      <div className={`${statusClass} text-sm h-6 pl-2`}>{status.message}</div>
+      <div className={`${statusClass} text-sm min-h-6 px-2 break-all`}>{status.message}</div>
     </div>
   );
 }

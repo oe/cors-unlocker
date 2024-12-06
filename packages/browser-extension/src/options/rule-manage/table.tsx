@@ -43,9 +43,9 @@ export function RuleTable(props: IRuleTableProps) {
           {props.rules.map((rule) => (
             <tr key={rule.id} className="border-t hover:bg-slate-100/30">
               <td className="py-2 text-center">{rule.id}</td>
-              <td className="py-2 text-left">
+              <td className="py-2 text-left break-all">
                 {rule.origin}
-                <div className='text-slate-400'>
+                <div className='text-slate-400 break-all'>
                   {rule.comment}
                 </div>
               </td>

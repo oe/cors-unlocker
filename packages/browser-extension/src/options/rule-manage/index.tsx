@@ -7,7 +7,7 @@ export function RuleManage() {
   const { rules, addRule, removeRule, updateRule, validateRule, toggleRule } = useViewModel();
   return (
     <div className="p-4">
-      <h1 className="text-2xl font-bold">Manage Rules</h1>
+      <h1 className="text-2xl font-bold mb-4">Manage Rules</h1>
       <EditRuleForm saveRule={addRule} validateRule={validateRule} />
       <RuleTable
         rules={rules}
