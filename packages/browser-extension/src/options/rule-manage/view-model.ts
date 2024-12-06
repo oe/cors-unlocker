@@ -83,7 +83,9 @@ export function useViewModel() {
   const updateRule = async (rule: Partial<IRuleItem>) => {
     setRules((prevRules) => {
       const updatedRules = prevRules.map((r) => {
-        return r.id === rule.id ? Object.assign({}, r, rule) : r;
+        return r.id === rule.id
+          ? Object.assign({}, r, rule, { updatedAt: Date.now() })
+          : r;
       });
       dataStorage.saveRules(updatedRules);
       return updatedRules;

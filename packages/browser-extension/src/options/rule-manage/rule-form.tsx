@@ -84,7 +84,7 @@ export function RuleInput(props: IRuleInputProps) {
 export interface IEditRuleProps {
   rule?: IRuleItem | null;
   validateRule: (url: string, id?: number) => string;
-  saveRule: (v: { origin: string, comment: string, id?: number }) => void;
+  saveRule: (v: { origin: string, comment: string, id?: number, credentials: boolean }) => void;
 }
 
 export function EditRuleForm(props: IEditRuleProps) {
@@ -93,13 +93,15 @@ export function EditRuleForm(props: IEditRuleProps) {
 
   const validateRule = useCallback((url: string) => {
     return props.validateRule(url, idRef.current);
-  }, [])
+  }, [props.validateRule])
 
   const handleSave = () => {
     if (!formData.origin) return;
     props.saveRule({
       id: props.rule?.id,
-      origin: formData.origin, comment: formData.comment || ''
+      credentials: !!formData.credentials,
+      origin: formData.origin,
+      comment: formData.comment || ''
     });
     // 
     setTimeout(() => {
@@ -196,8 +198,9 @@ function getDefaultFormData(rule?: IRuleItem | null) {
     return {
       url: rule.origin,
       origin: rule.origin,
-      comment: rule.comment
+      comment: rule.comment,
+      credentials: rule.credentials
     }
   }
-  return { url: '', origin: '', comment: ''};
+  return { url: '', origin: '', comment: '', credentials: false};
 }
