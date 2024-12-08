@@ -1,4 +1,3 @@
-import browser from 'webextension-polyfill';
 import type { IRuleItem } from '@/types';
 import { createRule } from '@/common/rules';
 

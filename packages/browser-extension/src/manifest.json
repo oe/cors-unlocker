@@ -26,6 +26,7 @@
   "permissions": [
     "declarativeNetRequest",
     "declarativeNetRequestWithHostAccess",
+    "tabs",
     "storage"
   ],
   "host_permissions": [

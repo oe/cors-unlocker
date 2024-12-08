@@ -7,7 +7,11 @@ import {
 import { dataStorage } from '@/common/storage';
 import { onTabActiveChange } from './on-tab-change';
 import { batchUpdateRules } from './declarative-rules';
-import { onExternalMessage } from './external-message';
+import {
+  onExternalMessage,
+  onRuntimeMessage,
+  onWindowClose
+} from './messaging';
 
 // Initialize rules on browser startup
 browser.runtime.onStartup.addListener(() => {
@@ -34,6 +38,15 @@ browser.runtime.onInstalled.addListener((e) => {
 // Update rules when storage changes
 dataStorage.onRulesChange((newRules, oldRules) => {
   batchUpdateRules(diffRules(newRules, oldRules));
+  dataStorage.updateCachedRules(newRules || []);
+  // update current active tab, in case of rule for current tab changed
+  setTimeout(() => {
+    browser.tabs.query({ active: true }).then((tabs) => {
+      tabs.forEach((tab) => {
+        onTabActiveChange(tab)
+      })
+    });
+  }, 100);
 });
 
 browser.tabs.onActivated.addListener((activeInfo) => {
@@ -48,3 +61,6 @@ browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 
 
 browser.runtime.onMessageExternal.addListener(onExternalMessage);
+browser.runtime.onMessage.addListener(onRuntimeMessage);
+// clear cached currentTabRule after window closed
+browser.windows.onRemoved.addListener(onWindowClose);

@@ -44,16 +44,23 @@ export function RuleTable(props: IRuleTableProps) {
             <tr key={rule.id} className="border-t hover:bg-slate-100/30">
               <td className="py-2 text-center">{rule.id}</td>
               <td className="py-2 text-left break-all">
-                {rule.origin}
-                <div className='text-slate-400 break-all'>
-                  {rule.comment}
-                </div>
+                {/* <div className='group relative'> */}
+                  {rule.origin}
+                  <div className='text-slate-400 break-all'>
+                    {rule.comment}
+                  </div>
+                  {/* <div className="bg-zinc-800 p-2 rounded-md group-hover:flex hidden absolute -top-2 -translate-y-full left-12 -translate-x-1/2">
+                    <div className="text-zinc-400 whitespace-nowrap">
+                      <div className="text-xs">created At <FormattedDate date={rule.createdAt} /></div>
+                      <div className="text-xs">updated At <FormattedDate date={rule.updatedAt} /></div>
+                      
+                    </div>
+                    <div className="bg-inherit rotate-45 p-1 absolute bottom-0 translate-y-1/2 left-1/2 -translate-x-1/2"></div>
+                  </div> */}
+                {/* </div> */}
               </td>
-              {/* <td className="py-2 text-center">
-                <FormattedDate date={rule.createdAt} /> / <FormattedDate date={rule.updatedAt} />
-              </td> */}
               <td className="py-2 text-center">
-                {rule.credentials ? 'On' : 'Off'}
+                {rule.credentials ? 'Yes' : 'No'}
               </td>
               <td className="py-2 text-center">
                 <Switch value={!rule.disabled} onChange={() => props.toggleRule(rule)} />
@@ -89,8 +96,10 @@ export function RuleTable(props: IRuleTableProps) {
 const rtl = new Intl.RelativeTimeFormat()
 
 function FormattedDate({ date, className }: { date: number, className?: string }) {
-  return (<span title={new Date(date).toLocaleString()} className={className}>
-    {formatTime(date)}
+  return (
+    <span className={className}>
+      {new Date(date).toLocaleString()}
+    ({formatTime(date)})
   </span>);
 }
 
@@ -99,7 +108,7 @@ function formatTime(time: number) {
   const diff = time - Date.now();
   const seconds = Math.round(diff / 1000);
   if (Math.abs(seconds) < 60) {
-    return rtl.format(seconds, 'second');
+    return 'just now';
   }
   const minutes = Math.round(seconds / 60);
   if (Math.abs(minutes) < 60) {

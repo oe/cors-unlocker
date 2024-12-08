@@ -99,5 +99,4 @@ export function toggleRule(activeRule: IRuleItem, sameDomainRules: IRuleItem[]) 
       addRules: updatedRules
     });
   });
-
 }
