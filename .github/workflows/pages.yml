@@ -35,6 +35,13 @@ jobs:
     - name: build site
       run: pnpm build
 
+    - name: Upload extension
+      uses: actions/upload-artifact@v3
+      with:
+        # Name of the artifact
+        name: browser-extension
+        path: packages/browser-extension/dist
+
     - name: Deploy to GitHub Pages
       uses: Cecilapp/GitHub-Pages-deploy@3.1.0
       # skip deployment for now
