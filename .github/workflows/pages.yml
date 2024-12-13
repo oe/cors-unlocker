@@ -41,6 +41,7 @@ jobs:
         # Name of the artifact
         name: browser-extension
         path: packages/browser-extension/dist
+        retention-days: 10
 
     - name: Deploy to GitHub Pages
       uses: Cecilapp/GitHub-Pages-deploy@3.1.0
