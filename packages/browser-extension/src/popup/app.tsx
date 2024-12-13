@@ -12,8 +12,8 @@ function App() {
   return (
     <>
     { !isSupported && (
-      <div className='fixed inset-0 flex items-center justify-center text-center text-slate-200 z-20'>
-        Only http/https website are supported
+      <div className='fixed inset-0 flex items-center justify-center text-center text-slate-200 z-10'>
+        Only http/https websites are supported
       </div>) }
     <Settings className='w-4 h-4 fixed top-2 right-2 cursor-pointer text-slate-200 z-10' onClick={gotoOptionsPage} />
     <div className={'relative p-4 divide-slate-400 ' + containerExtraClass}>
