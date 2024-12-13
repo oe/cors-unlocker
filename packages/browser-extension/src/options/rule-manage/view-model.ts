@@ -20,16 +20,12 @@ export function getOrigin(url: string) {
 export function useViewModel() {
   const [rules, setRules] = useState<IRuleItem[]>([]);
 
-  console.log('vvvvv', rules);
-
   useEffect(() => {
     dataStorage.getRules().then(r => {
-      console.log('dataStorage.getRules', r);
       if (!r) return;
       setRules(r);
     });
     dataStorage.onRulesChange((newRules) => {
-      console.log('onRuleChange', newRules)
       setRules(newRules || []);
     })
   }, []);

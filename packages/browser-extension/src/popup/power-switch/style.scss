@@ -63,3 +63,17 @@
   box-shadow: 0.2em 0.2em 0.3em rgba(0, 0, 0, 0.3);
   transform: translate(0em, 0.1em);
 }
+
+.site-auth-switch {
+  box-shadow: inset 0 0 0 1px #787878;
+  transition: all 0.3s ease;
+  background-image: linear-gradient(to right, #434343 0%, black 100%);
+  .is-disabled & {
+    opacity: 0.5;
+  }
+
+  &.checked {
+    color: #fff;
+    background-image: linear-gradient(-225deg, #2CD8D5 0%, #C5C1FF 56%, #FFBAC3 100%);
+  }
+}

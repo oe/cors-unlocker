@@ -6,7 +6,6 @@ export interface IPowerSwitchProps {
 }
 
 export function PowerSwitch(props: IPowerSwitchProps) {
-  console.log('power-switch', props);
   return (
     <div>
       <label className="power-switch-label">
@@ -27,5 +26,18 @@ export function PowerSwitch(props: IPowerSwitchProps) {
       </label>
     </div>
 
+  )
+}
+
+export function SiteAuthSwitch(props: IPowerSwitchProps) {
+  const className = props.value ? 'checked' : '';
+  return (
+    <div
+      className={'site-auth-switch relative rounded-full cursor-pointer w-28 px-2 py-1 bg-blue-300 flex items-center justify-between ' + className}
+      onClick={() => props.onChange?.(!props.value)}
+      >
+      <span>Site Auth</span>
+      <span>{props.value ? 'On' : 'Off'}</span>
+    </div>
   )
 }

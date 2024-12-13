@@ -28,7 +28,6 @@ export const dataStorage = {
   },
   saveRules(rules: IRuleItem[]) {
     lastRules = rules;
-    console.log('saveRules', rules);
     return browser.storage.local.set({
       [storageKey]: rules
     });
@@ -60,7 +59,6 @@ export const dataStorage = {
     callback: (newRules?: IRuleItem[], oldRules?: IRuleItem[]) => void
   ) {
     browser.storage.onChanged.addListener((changes, areaName) => {
-      console.log('onRuleChange', changes)
       const changed = changes[storageKey];
       if (areaName !== 'local' || !changed) return;
       callback(changed.newValue, changed.oldValue);
@@ -76,16 +74,16 @@ export function genRuleId() {
   return ++maxId;
 }
 
-const currentTabRule: Record<number, IRuleItem | null > = {};
+const currentTabRule: Record<number, IRuleItem | undefined > = {};
 
 export function setCurrentTabRule(winId: number | undefined, rule?: IRuleItem | null) {
-  const newRule = rule || null;
+  const newRule = rule || undefined;
   const targetWinId = winId || 0;
   if (currentTabRule[targetWinId] === newRule) return;
-  console.warn('setCurrentTabRule', rule);
+  console.log('setCurrentTabRule', targetWinId, newRule);
   currentTabRule[targetWinId] = newRule;
   browser.runtime.sendMessage({ type: 'activeTabRuleChange' }).catch((error) => {
-    console.warn('sendMessage "activeTabRuleChange" error', error);
+    // ignore error, it's ok if no options page is open
   });
 }
 

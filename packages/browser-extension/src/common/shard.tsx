@@ -32,20 +32,23 @@ export function Switch(props: ISwitchProps) {
   )
 }
 
-export function SiteAuthSwitch(props: Omit<ISwitchProps, 'label'>) {
-  const authHelpLabel = (
+export function AuthHelp() {
+  return (
     <>
     Off: Block login info (higher privacy); On: Allow login info to be used (full features). <a
     href="https://cors.forth.ink/faq.html#auth" target="_blank" className='text-blue-400 underline'> Learn more</a>.
     </>
   )
+}
+
+export function SiteAuthSwitch(props: Omit<ISwitchProps, 'label'>) {
   return (
     <Switch
       value={props.value}
       focusable
       compact={props.compact}
       onChange={props.onChange}
-      label={authHelpLabel} />
+      label={<AuthHelp />} />
   )
 }
 

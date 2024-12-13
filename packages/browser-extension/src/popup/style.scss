@@ -11,5 +11,6 @@ body {
 }
 
 body {
-  background-color: #000;
+  background-image: radial-gradient(circle at center center, hsla(166, 0%, 10%, 1) 0%, hsla(181, 0%, 10%, 1) 29%, transparent 65%), linear-gradient(90deg, rgb(35, 35, 35) 0%, rgb(35, 35, 35) 50%, rgb(35, 35, 35) 50%, rgb(35, 35, 35) 100%);
+    background-size: 7px 7px;
 }
