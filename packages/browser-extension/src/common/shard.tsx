@@ -51,7 +51,7 @@ export function SiteAuthSwitch(props: Omit<ISwitchProps, 'label'>) {
 
 export function SiteAuthInput(props: Omit<ISwitchProps, 'label'>) {
   const className = props.compact ? 'mb-4 text-xs' : 'mb-4 flex items-center text-sm';
-  const labelClassName = props.compact ? 'inline mr-2 text-slate-700 shrink-0' : 'mr-2 text-slate-700 shrink-0';
+  const labelClassName = props.compact ? 'inline mr-2 text-slate-200 shrink-0' : 'mr-2 text-slate-600 shrink-0';
   return (
     <div className={className}>
       <span className={labelClassName}>Site Auth</span>

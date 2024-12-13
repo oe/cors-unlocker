@@ -62,9 +62,14 @@ export function useViewModel() {
     []
   );
 
+  const gotoOptionsPage = useCallback(() => {
+    browser.runtime.openOptionsPage();
+  }, []);
+
   return {
     rule,
     isSupported,
     toggleRule,
+    gotoOptionsPage,
   };
 }

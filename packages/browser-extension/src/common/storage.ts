@@ -98,7 +98,9 @@ export function removeCurrentTabRule(winId: number) {
 }
 
 export async function toggleRuleViaOrigin(rule: Partial<IRuleItem>) {
-  const existRule = lastRules.find(r => r.origin === rule.origin);
+  const rules = await dataStorage.getRules();
+  if (!rules) return;
+  const existRule = rules.find((r) => r.origin === rule.origin);
   if (existRule) {
     dataStorage.updateRule(Object.assign({}, existRule, rule));
   } else {
