@@ -1,6 +1,7 @@
 import type { IRuleItem } from '@/types';
+import { genRuleId } from './storage';
 
-export type ICreateRuleOptions = Omit<IRuleItem, 'updatedAt' | 'domain' | 'createdAt' | 'comment'> & {
+export type ICreateRuleOptions = Omit<IRuleItem, 'id' | 'updatedAt' | 'domain' | 'createdAt' | 'comment'> & {
   comment?: string;
   createdAt?: number;
 };
@@ -11,6 +12,7 @@ export function createRule(options: ICreateRuleOptions): IRuleItem | void {
     const createdAt = options.createdAt || Date.now();
     return {
       ...options,
+      id: genRuleId(),
       createdAt,
       domain,
       updatedAt: createdAt

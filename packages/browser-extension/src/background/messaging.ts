@@ -1,5 +1,9 @@
 import browser from 'webextension-polyfill';
-import { getCurrentTabRule, removeCurrentTabRule } from '@/common/storage';
+import {
+  getCurrentTabRule,
+  removeCurrentTabRule,
+  toggleRuleViaOrigin
+} from '@/common/storage';
 
 /**
  * listen message from web pages
@@ -27,6 +31,9 @@ export async function onRuntimeMessage(
   if (!message) return
   if (message.type === 'getCurrentTabRule') {
     return getCurrentTabRule(message.windowId);
+  }
+  if (message.type === 'toggleRuleViaAction') {
+    toggleRuleViaOrigin(message.payload)
   }
 }
 

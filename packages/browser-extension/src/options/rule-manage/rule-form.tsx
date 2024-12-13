@@ -1,7 +1,7 @@
 import { IRuleItem } from '@/types';
 import { Link, MessageSquareMore } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Switch } from '@/common/shard';
+import { SiteAuthInput } from '@/common/shard';
 
 
 export interface IRuleInputProps {
@@ -113,11 +113,11 @@ export function EditRuleForm(props: IEditRuleProps) {
     setFormData((prev) => ({...prev, ...val}));
   }
 
-  const onKeyUp = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const onKeyUp = (e: React.KeyboardEvent<HTMLFormElement>) => {
     if (e.key !== 'Enter') return;
-    const current = e.currentTarget;
-    const form = current.form;
-    if (!form) return;
+    const current = e.target as HTMLInputElement;
+    const form = e.currentTarget;
+    if (!form || current.tagName !== 'INPUT') return;
     const index = Array.prototype.indexOf.call(form.elements, current);
     const nextInput = form.elements[index + 1];
     if (nextInput && nextInput.tagName === 'INPUT') {
@@ -127,36 +127,24 @@ export function EditRuleForm(props: IEditRuleProps) {
     }
   };
 
-  const authHelpLabel = (
-    <>
-    Off: Block login info (higher privacy); On: Allow login info to be used (full features). <a
-    href="https://cors.forth.ink/faq.html#auth" target="_blank" className='text-blue-400 underline'> Learn more</a>.
-    </>
-  )
-
-
   return (
-    <form className="flex flex-col">
+    <form className="flex flex-col" onKeyUp={onKeyUp}>
       <RuleInput
         value={formData.url}
         validateRule={validateRule}
         onChange={(v, o) => setFormValue({url: v, origin: o})}
-        onKeyUp={onKeyUp}
       />
-      <div className="mb-4 flex items-center">
-        <span className='mr-2 text-slate-700 text-sm shrink-0'>Site Auth</span>
-        <Switch
-          value={!!formData.credentials}
-          focusable
-          onChange={(v) => setFormValue({ credentials: v})}
-          label={authHelpLabel} />
-      </div>
+      
+      <SiteAuthInput
+        value={!!formData.credentials}
+        focusable
+        onChange={(v) => setFormValue({ credentials: v})}
+        />
 
       <InputWithAddOn
         className='mb-4'
         value={formData.comment || ''}
         prepend={<MessageSquareMore className='w-4'/>}
-        onKeyUp={onKeyUp}
         onChange={(e) => setFormValue({ comment: e.target.value })}
         placeholder='comment(optional)' />
       <div className={'flex ' + (idRef.current ? 'justify-end' : '') }>

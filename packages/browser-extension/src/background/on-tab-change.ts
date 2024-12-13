@@ -1,5 +1,6 @@
 import browser from 'webextension-polyfill';
 import { toggleRule } from './declarative-rules';
+import { isSupportedProtocol } from '@/common/utils';
 import { dataStorage, setCurrentTabRule } from '@/common/storage';
 
 export async function onTabActiveChange(tab: browser.Tabs.Tab) {
@@ -9,7 +10,7 @@ export async function onTabActiveChange(tab: browser.Tabs.Tab) {
     return;
   }
   const url = new URL(tab.url);
-  const rules = await dataStorage.getRules()
+  const rules = isSupportedProtocol(url.protocol) && await dataStorage.getRules()
   if (!rules || !rules.length) {
     setCurrentTabRule(tab.windowId, null);
     toggleIconStatus(tab, false);

@@ -1,43 +1,33 @@
-import browser from 'webextension-polyfill';
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { useEffect, useState, useCallback } from 'react';
-import type { IRuleItem } from '@/types';
+import { useViewModel } from './view-model';
+import { SiteAuthInput } from '@/common/shard';
+import { PowerSwitch } from './power-switch';
 import "./style.scss";
 
 function App() {
-  const [rule, setRule] = useState<IRuleItem | null>(null)
-  const updateRule = useCallback(() => {
-    browser.windows.getCurrent().then((win) => {
-      browser.runtime.sendMessage({
-        type: 'getCurrentTabRule',
-        windowId: win.id,
-      }).then(setRule)
-    })
-  }, []);
-  useEffect(() => {
-    updateRule();
-    // listen to rule change and get the latest rule
-    const onRuntimeMessage = (message: any, sender: browser.Runtime.MessageSender) => {
-      if (!message || message.type !== 'activeTabRuleChange') return
-      updateRule();
-    }
-    browser.runtime.onMessage.addListener(onRuntimeMessage);
-
-    return () => {
-      browser.runtime.onMessage.removeListener(onRuntimeMessage);
-    }
-  }, []);
-
+  const { rule, toggleRule, isSupported } = useViewModel();
   return (
-    <div>
-      <img src="/icon-with-shadow.svg" />
-      <h1>vite-plugin-web-extension</h1>
-      <div className='text-slate-300 break-all'>{JSON.stringify(rule)}</div>
-      <p>
-        Template: <code>react-ts</code>
-      </p>
+    <>
+    { !isSupported && (
+      <div className='fixed inset-0 flex items-center justify-center text-center text-slate-200 z-10'>
+        Only http/https website are supported
+      </div>) }
+    <div className={'relative p-2 ' + (!isSupported ? 'blur-sm' : '')}>
+      <div className='relative w-full py-4 flex justify-center'>
+        <PowerSwitch value={!rule ? false : !rule?.disabled} onChange={(enabled) => {
+          toggleRule({ disabled: !enabled })
+        }} />
+      </div>
+      <div className='text-slate-300 break-all'>
+        <SiteAuthInput
+          compact
+          value={!!rule?.credentials}
+          onChange={(v) => toggleRule({credentials: v})}
+        />
+      </div>
     </div>
+    </>
   )
 }
 

@@ -3,6 +3,7 @@ export interface ISwitchProps {
   onChange: (value: boolean) => void;
   focusable?: boolean;
   label?: React.ReactNode;
+  compact?: boolean;
 }
 
 export function Switch(props: ISwitchProps) {
@@ -19,12 +20,47 @@ export function Switch(props: ISwitchProps) {
     props.onChange(e.target.checked);
   }
 
+  const className = props.compact ? 'text-xs inline' : 'inline-flex items-center text-sm';
+  const switchSizeClass = props.compact ? ' inline-block w-5 h-3 after:h-2 after:w-2' : ' w-11 h-6 after:h-5 after:w-5';
   return (
-    <label className="inline-flex items-center cursor-pointer">
+    <label className={className}>
       <input type="checkbox" className="sr-only peer" checked={!!props.value} onChange={onChange} />
-      <div className={"relative w-11 h-6 bg-gray-200 shrink-0 rounded-full  dark:bg-gray-400 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-500 " + focusClass}></div>
+      <div className={"relative bg-gray-200 shrink-0 rounded-full  dark:bg-gray-400 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:transition-all dark:border-gray-600 peer-checked:bg-blue-500 " + focusClass + switchSizeClass}></div>
 
-      {props.label && <span className="ml-2 text-sm text-gray-400" onClick={onClickLabel}>{props.label}</span>}
+      {props.label && <span className="ml-2 text-gray-400" onClick={onClickLabel}>{props.label}</span>}
     </label>
+  )
+}
+
+export function SiteAuthSwitch(props: Omit<ISwitchProps, 'label'>) {
+  const authHelpLabel = (
+    <>
+    Off: Block login info (higher privacy); On: Allow login info to be used (full features). <a
+    href="https://cors.forth.ink/faq.html#auth" target="_blank" className='text-blue-400 underline'> Learn more</a>.
+    </>
+  )
+  return (
+    <Switch
+      value={props.value}
+      focusable
+      compact={props.compact}
+      onChange={props.onChange}
+      label={authHelpLabel} />
+  )
+}
+
+export function SiteAuthInput(props: Omit<ISwitchProps, 'label'>) {
+  const className = props.compact ? 'mb-4 text-xs' : 'mb-4 flex items-center text-sm';
+  const labelClassName = props.compact ? 'inline mr-2 text-slate-700 shrink-0' : 'mr-2 text-slate-700 shrink-0';
+  return (
+    <div className={className}>
+      <span className={labelClassName}>Site Auth</span>
+      <SiteAuthSwitch
+        value={props.value}
+        focusable
+        compact={props.compact}
+        onChange={props.onChange}
+        />
+    </div>
   )
 }

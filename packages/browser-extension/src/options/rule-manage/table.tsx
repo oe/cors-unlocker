@@ -131,7 +131,6 @@ interface IEditRuleFormProps {
 }
 
 function EditRuleModal(props: IEditRuleFormProps) {
-  console.log('props.rule', props.rule)
   return (<Modal
     maskClosable
     title='Edit Rule'

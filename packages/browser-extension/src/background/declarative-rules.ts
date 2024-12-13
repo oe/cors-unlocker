@@ -17,16 +17,6 @@ const resourceTypes = [
   'other'
 ] as chrome.declarativeNetRequest.ResourceType[];
 
-export function clearAllRules() {
-  browser.declarativeNetRequest.getDynamicRules().then((existingRules) => {
-    if (!existingRules.length) return;
-    const existingRuleIds = existingRules.map((rule) => rule.id);
-    browser.declarativeNetRequest.updateDynamicRules({
-      removeRuleIds: existingRuleIds
-    });
-  });
-}
-
 export function batchUpdateRules(rules: IRuleItem[]) {
   if (!rules || !rules.length) {
     return;

@@ -1,7 +1,6 @@
 import type { IRuleItem, } from '@/types';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { dataStorage } from '@/common/storage';
-import { createRule } from '@/common/rules';
 
 export function getOrigin(url: string) {
   try {
@@ -20,14 +19,19 @@ export function getOrigin(url: string) {
 
 export function useViewModel() {
   const [rules, setRules] = useState<IRuleItem[]>([]);
-  const maxId = useRef(0)
+
+  console.log('vvvvv', rules);
 
   useEffect(() => {
     dataStorage.getRules().then(r => {
+      console.log('dataStorage.getRules', r);
       if (!r) return;
-      maxId.current = Math.max(...r.map(rule => rule.id));
       setRules(r);
     });
+    dataStorage.onRulesChange((newRules) => {
+      console.log('onRuleChange', newRules)
+      setRules(newRules || []);
+    })
   }, []);
 
   /**
@@ -49,47 +53,28 @@ export function useViewModel() {
   
   const addRule = async (v: {origin: string, comment: string}) => {
     const origin = validateRule(v.origin);
-    const ruleId = ++maxId.current;
-    const rule = createRule({ origin, comment: v.comment, id: ruleId });
-    if (!rule) {
+    const isSuccess = dataStorage.addRule({
+      origin,
+      comment: v.comment,
+    })
+    if (!isSuccess) {
       throw new Error('unable to create rule');
     }
-
-    setRules((prevRules) => {
-      const updatedRules = [...prevRules, rule];
-      dataStorage.saveRules(updatedRules);
-      return updatedRules;
-    })
   };
 
-  const removeRule = async (ruleId: number) => {
-    setRules((prevRules) => {
-      const updatedRules = prevRules.filter(rule => rule.id !== ruleId);
-      dataStorage.saveRules(updatedRules);
-      return updatedRules;
-    });
+  const removeRule = (ruleId: number) => {
+    dataStorage.removeRule(ruleId)
   };
 
   const toggleRule = async (rule: IRuleItem) => {
-    setRules((prevRules) => {
-      const updatedRules = prevRules.map((r) => {
-        return r.id === rule.id ? Object.assign({}, r, { disabled: !r.disabled }) : r;
-      });
-      dataStorage.saveRules(updatedRules);
-      return updatedRules;
-    });
+    dataStorage.updateRule({
+      ...rule,
+      disabled: !rule.disabled,
+    })
   };
 
   const updateRule = async (rule: Partial<IRuleItem>) => {
-    setRules((prevRules) => {
-      const updatedRules = prevRules.map((r) => {
-        return r.id === rule.id
-          ? Object.assign({}, r, rule, { updatedAt: Date.now() })
-          : r;
-      });
-      dataStorage.saveRules(updatedRules);
-      return updatedRules;
-    });
+    dataStorage.updateRule(rule);
   };
 
   return { rules, addRule, removeRule, updateRule, validateRule, toggleRule };
