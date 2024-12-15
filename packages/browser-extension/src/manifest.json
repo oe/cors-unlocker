@@ -1,5 +1,6 @@
 {
   "name": "__MSG_extName__",
+  "description": "__MSG_extDescription__",
   "manifest_version": 3,
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3AFld2MMvgmzzV1BKbE5gAYR5zJup89WLE0Em0oQcGxRoAn6Ul45unRJq/+AqmCnwvZGt2hPyRDvX9DdWW8e1DvvhfKHGbaGvdA0NzhKsoWjKAW/zqje92kQcvRj+Pv/ER0JkmMYocjTBGIsvX19dDOf54BikCrMbfkiD13oqRk3iv0NqffoNratj1Rvz0CTb75IZYE/rx2dbBbTC9PK2RhNCrgbpU0Y9y2NV++prUq5eh7ysfzT36M/fi8eMWRwxyRIRp3U87K/ftJlEHAOKIr9+B4KoDWI01DXkQQaBeTMHNnC89Zkbq42OE+iIS+1iNXZy2VnF1gpyUuvovUFcQIDAQAB",
   "icons": {

@@ -11,12 +11,13 @@
   },
   "license": "ISC",
   "devDependencies": {
-    "astro": "catalog:",
     "@astrojs/react": "catalog:",
-    "typescript": "catalog:",
+    "@astrojs/mdx": "catalog:",
     "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "astro": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "@types/react-dom": "catalog:"
+    "typescript": "catalog:"
   }
 }

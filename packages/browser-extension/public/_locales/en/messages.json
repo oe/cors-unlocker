@@ -1,5 +1,8 @@
 {
   "extName": {
     "message": "WebApp CORS Enabler"
+  },
+  "extDescription": {
+    "message": "Grant cross-origin request permissions for websites and open doors to boundless potential"
   }
 }
