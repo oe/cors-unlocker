@@ -1,0 +1,31 @@
+---
+const { frontmatter } = Astro.props;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>{frontmatter.title}</title>
+    <style>
+      summary {
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="container mx-auto px-4 prose py-16">
+      <slot />
+    </main>
+    <script type="module">
+      (function () {
+        const hash = window.location.hash;
+        if (!hash) return;
+        const el = document.querySelector(hash);
+        if (!el || el.tagName !== 'DETAILS') return;
+        // @ts-expect-error el is a details element
+        el.open = true;
+      })();
+    </script>
+  </body>
+</html>

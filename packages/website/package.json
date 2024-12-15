@@ -11,13 +11,18 @@
   },
   "license": "ISC",
   "devDependencies": {
-    "@astrojs/react": "catalog:",
     "@astrojs/mdx": "catalog:",
+    "@astrojs/react": "catalog:",
+    "@tailwindcss/typography": "^0.5.15",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "astro": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "typescript": "catalog:"
+  },
+  "dependencies": {
+    "@astrojs/tailwind": "^5.1.3",
+    "tailwindcss": "^3.4.16"
   }
 }

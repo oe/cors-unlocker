@@ -1,5 +1,5 @@
 
-const EXT_FRAME_URL = 'https://cors.forth.ink/message.html';
+const EXT_FRAME_URL = 'https://cors.forth.ink/message/index.html';
 
 const EXTENSION_ID_MAP = {
   chrome: 'knhlkjdfmgkmelcjfnbbhpphkmjjacng',
