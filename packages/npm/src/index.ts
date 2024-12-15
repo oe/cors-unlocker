@@ -6,7 +6,9 @@ const EXTENSION_ID_MAP = {
   firefox: 'my-firefox-extension-id',
 }
 
-const EXTENSION_ID = navigator.userAgent.includes('firefox')
+const IS_FIREFOX = navigator.userAgent.includes('firefox')
+
+const EXTENSION_ID = IS_FIREFOX
   ? EXTENSION_ID_MAP.firefox
   : EXTENSION_ID_MAP.chrome;
 
@@ -84,6 +86,18 @@ export async function isExtInstalled() {
 export async function openExtOptions() {
   await initFrame();
   return sendMessage({ method: 'openOptions' });
+}
+
+/**
+ * open the extension store page
+ * * use it when the extension isn't installed
+ */
+export function openStorePage() {
+  const url = IS_FIREFOX
+    ? `https://addons.mozilla.org/en-US/firefox/addon/browser-app-cors/`
+    : `https://chromewebstore.google.com/detail/${EXTENSION_ID}`;
+
+  window.open(url, '_blank')
 }
 
 /**

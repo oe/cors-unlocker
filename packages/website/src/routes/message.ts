@@ -23,8 +23,6 @@ interface IMessageData {
 // @ts-expect-error chrome / browser is browser extension related object
 const extObject = typeof chrome !== 'undefined' ? chrome : typeof browser !== 'undefined' ? browser : null;
 
-console.log('xxx', extObject);
-
 if (parent === window) {
   document.body.innerHTML =
     '<p>This page is intended to be embedded in an extension popup or options page.</p>';
