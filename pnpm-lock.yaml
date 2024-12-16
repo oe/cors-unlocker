@@ -108,6 +108,9 @@ importers:
 
   packages/npm:
     devDependencies:
+      '@types/node':
+        specifier: ^22.10.1
+        version: 22.10.1
       '@vitejs/plugin-react':
         specifier: 'catalog:'
         version: 4.3.4(vite@6.0.3(@types/node@22.10.1)(jiti@1.21.6)(sass@1.81.0)(tsx@4.19.2)(yaml@2.6.1))
@@ -148,6 +151,9 @@ importers:
       astro:
         specifier: 'catalog:'
         version: 5.0.5(@types/node@22.10.1)(jiti@1.21.6)(rollup@4.28.0)(sass@1.81.0)(tsx@4.19.2)(typescript@5.7.2)(yaml@2.6.1)
+      browser-app-cors:
+        specifier: workspace:*
+        version: link:../npm
       react:
         specifier: 'catalog:'
         version: 18.3.1

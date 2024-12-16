@@ -7,9 +7,12 @@ const { frontmatter } = Astro.props;
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width" />
     <title>{frontmatter.title}</title>
-    <style>
+    <style is:global>
       summary {
         cursor: pointer;
+      }
+      body {
+        /* background: linear-gradient(90deg, #4b6cb7 0%, #182848 100%); */
       }
     </style>
   </head>

@@ -1,7 +1,7 @@
 {
   "name": "browser-app-cors",
   "version": "1.0.0",
-  "description": "",
+  "description": "Grant cross-origin request permissions for websites and open doors to boundless potential",
   "main": "dist/index.umd.js",
   "module": "dist/index.es.js",
   "types": "dist/index.d.ts",
@@ -11,12 +11,13 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "Saiya",
+  "license": "MIT",
   "devDependencies": {
+    "@types/node": "^22.10.1",
+    "@vitejs/plugin-react": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
-    "@vitejs/plugin-react": "catalog:",
     "vite-plugin-dts": "^4.3.0"
   }
 }

@@ -4,6 +4,9 @@ import dts from 'vite-plugin-dts';
 
 export default defineConfig({
   plugins: [react(), dts()],
+  define: {
+    'process.env.NODE_ENV': JSON.stringify("production"),
+  },
   build: {
     lib: {
       entry: 'src/index.ts',

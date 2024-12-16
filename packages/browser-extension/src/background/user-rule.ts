@@ -29,7 +29,7 @@ export function diffRules(newRules?: IRuleItem[], oldRules?: IRuleItem[]) {
 
 function isRuleEqual(newRule: IRuleItem, oldRule: IRuleItem) {
   return (
-    newRule.origin === oldRule.origin && newRule.disabled === oldRule.disabled
+    newRule.origin === oldRule.origin && newRule.disabled === oldRule.disabled && newRule.credentials === oldRule.credentials
   );
 }
 
@@ -44,7 +44,7 @@ export function reorderRules(rules: IRuleItem[]) {
 
 
 export function getDefaultRules(): IRuleItem[] {
-  return DEFAULT_ORIGINS.map((origin, index) =>
-    createRule({ origin, id: index + 1 })
+  return DEFAULT_ORIGINS.map((origin) =>
+    createRule({ origin })
   ).filter(Boolean) as IRuleItem[];
 }
