@@ -4,7 +4,7 @@ const extObject = typeof chrome !== 'undefined' ? chrome : typeof browser !== 'u
 
 if (parent === window) {
   document.body.innerHTML =
-    '<p>This page is intended to be embedded in an extension popup or options page.</p>';
+    '<p>This page is intended to be embedded for internal communication.</p>';
 } else {
   // tell the parent window that the extension is ready
   parent.postMessage({ type: 'ext', method: 'init' }, '*');
