@@ -200,9 +200,18 @@ export function openStorePage() {
  */
 export async function isEnabled() {
   await initFrame();
-  return sendMessage({ method: 'isEnabled' }) as Promise<
-    false | { enabled: true; credentials: boolean }
-  >;
+  try {
+    const result = await sendMessage({ method: 'isEnabled' }) as Promise<
+      false | { enabled: true; credentials: boolean }
+    >;
+    return result;
+  } catch (error) {
+    // if the extension is not installed, return false instead of throwing an error
+    if (error instanceof AppCorsError && error.type === 'not-installed') {
+      return false;
+    }
+    throw error;
+  }
 }
 
 export interface IEnableOptions {
