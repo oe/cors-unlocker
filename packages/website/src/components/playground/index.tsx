@@ -3,7 +3,7 @@ import { useViewModel } from './view-model';
 
 export const PlaygroundPage: React.FC = () => {
   const {
-    status, setFormValue, requestForm, errorRef,
+    status, setFormValue, requestForm, errorRef, corsStatus,
     isCurlMode, setIsCurlMode, doRequest, responseRef,
   } = useViewModel();
 
@@ -74,14 +74,18 @@ export const PlaygroundPage: React.FC = () => {
           </div>
         )}
 
-
-        <button
-          disabled={status === 'loading'}
-          onClick={doRequest}
-          className="mt-4 px-4 py-2 bg-blue-600 text-white font-semibold rounded hover:bg-blue-700 disabled:opacity-50"
-        >
-          Send Request
-        </button>
+        <div className='mt-4'>
+          <button
+            disabled={status === 'loading'}
+            onClick={doRequest}
+            className="px-4 py-2 bg-blue-600 text-white font-semibold rounded hover:bg-blue-700 disabled:opacity-50"
+          >
+            Send Request
+          </button>
+          <span>
+            CORS: {corsStatus.enabled ? 'Enabled' : 'Disabled'}({corsStatus.credentials ? '🟢' : '🔴'})
+          </span>
+        </div>
       </div>
 
       {/* Response Area */}

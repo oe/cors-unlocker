@@ -14,6 +14,7 @@
     "@astrojs/mdx": "catalog:",
     "@astrojs/react": "catalog:",
     "@tailwindcss/typography": "^0.5.15",
+    "@types/chrome": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "astro": "catalog:",

@@ -50,7 +50,6 @@ export function useViewModel() {
   const toggleRule = useCallback(
     (payload: { disabled?: boolean; credentials?: boolean }) => {
       if (!tabOrigin.current) return;
-      console.log('toggleRule', payload, tabOrigin)
       browser.runtime.sendMessage({
         type: 'toggleRuleViaAction',
         payload: {

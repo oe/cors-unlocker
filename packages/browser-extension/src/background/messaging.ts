@@ -6,6 +6,7 @@ import {
   toggleRuleViaOrigin,
   dataStorage,
 } from '@/common/storage';
+import { diffRules } from './user-rule';
 import { isSupportedProtocol } from '@/common/utils';
 
 /**
@@ -57,7 +58,11 @@ async function isOriginEnabled(origin: string) {
   const rules = await dataStorage.getRules();
   if (!rules) return false;
   const rule = rules.find((rule) => rule.origin === origin);
-  return !!rule && !rule.disabled;
+  if (!rule || rule.disabled) return false;
+  return {
+    enabled: !rule.disabled,
+    credentials: !!rule.credentials,
+  }
 }
 
 /**
@@ -69,6 +74,7 @@ export async function onRuntimeMessage(
   sender: browser.Runtime.MessageSender
 ) {
   if (!message) return
+  console.log('onRuntimeMessage', message)
   if (message.type === 'getCurrentTabRule') {
     return getCurrentTabRule(message.windowId);
   }
@@ -84,3 +90,39 @@ export async function onRuntimeMessage(
 export function onWindowClose(windowId: number) {
   removeCurrentTabRule(windowId);
 }
+
+/**
+ * port map to origin
+ */
+const portMap = new Map<browser.Runtime.Port, string>();
+/**
+ * on external connect from web pages
+ */
+export function onExternalConnect(port: browser.Runtime.Port) {
+  console.log('port connected', port);
+  const url = port.sender?.url;
+  if (!url) return;
+  const origin = new URL(url).origin;
+  portMap.set(port, origin);
+  port.onDisconnect.addListener(() => {
+    console.log('port disconnected', origin);
+    portMap.delete(port);
+  });
+}
+
+/**
+ * notify pages when rules changed via ports
+ */
+dataStorage.onRulesChange((newRules, oldRules) => {
+  if (!portMap.size) return;
+  const updatedRules = diffRules(newRules, oldRules);
+  if (!updatedRules.length) return;
+  portMap.forEach((origin, port) => {
+    const rule = updatedRules.find((rule) => rule.origin === origin);
+    if (!rule) return;
+    port.postMessage({
+      credentials: rule.credentials,
+      enabled: !rule.disabled,
+    });
+  });
+});

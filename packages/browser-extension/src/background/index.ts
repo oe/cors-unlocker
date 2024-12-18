@@ -10,7 +10,8 @@ import { batchUpdateRules } from './declarative-rules';
 import {
   onExternalMessage,
   onRuntimeMessage,
-  onWindowClose
+  onWindowClose,
+  onExternalConnect,
 } from './messaging';
 
 // Initialize rules on browser startup
@@ -59,8 +60,11 @@ browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   onTabActiveChange(tab);
 });
 
-
+// external message listener from web pages
 browser.runtime.onMessageExternal.addListener(onExternalMessage);
+// internal message listener from options and popup pages
 browser.runtime.onMessage.addListener(onRuntimeMessage);
 // clear cached currentTabRule after window closed
 browser.windows.onRemoved.addListener(onWindowClose);
+// external connect listener from web pages
+browser.runtime.onConnectExternal.addListener(onExternalConnect);

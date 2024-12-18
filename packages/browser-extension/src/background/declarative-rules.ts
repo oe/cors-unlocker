@@ -31,7 +31,7 @@ export function batchUpdateRules(rules: IRuleItem[]) {
     // remove the rules with the same domain, except the first one
     .filter((rule, index, self) => self.findIndex((r) => r.domain === rule.domain) === index)
     .map(createRule);
-  console.log('batchUpdateRules', removedRuleIds, updatedRules);
+
   browser.declarativeNetRequest.getDynamicRules().then((existingRules) => {
     // only remove rules that are in the existing rules
     const existingRuleIds = existingRules

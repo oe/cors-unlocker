@@ -4,6 +4,7 @@
     "target": "ESNext",
     "module": "ESNext",
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "types": ["@types/chrome", "@types/node"],
     "jsx": "react-jsx",
     "strict": true,
     "moduleResolution": "Node",

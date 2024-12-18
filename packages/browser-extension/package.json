@@ -16,7 +16,7 @@
     "react-dom": "catalog:"
   },
   "devDependencies": {
-    "@types/chrome": "^0.0.287",
+    "@types/chrome": "catalog:",
     "@types/node": "^22.10.1",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",

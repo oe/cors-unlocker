@@ -1,8 +1,17 @@
-import { useState, useRef } from 'react';
+import appCors from 'browser-app-cors/src';
+import { useState, useRef, useEffect } from 'react';
+
+// @ts-expect-error exposed to window object for debugging
+globalThis.appCors = appCors;
+
+console.log('%cuse `appCors` in console to test the API of "browser-app-cors"', 'color: #0a0; font-size: 1.5em');
 
 export function useViewModel() {
   const [isCurlMode, setIsCurlMode] = useState(false);
   const [status, setStatus] = useState('idle');
+
+  const [corsStatus, setCorsStatus] = useState({ enabled: false, credentials: false });
+
   const [requestForm, setRequestForm] = useState({
     method: 'GET',
     url: '',
@@ -17,6 +26,19 @@ export function useViewModel() {
 
   const errorRef = useRef<Error|null>(null)
 
+  useEffect(() => {
+    appCors.isEnabled().then((status) => {
+      if (status) {
+        setCorsStatus(status);
+      } else {
+        setCorsStatus({ enabled: false, credentials: false });
+      }
+    });
+    // appCors.onChange.addListener(setCorsStatus);
+    // return () => {
+    //   appCors.onChange.removeListener(setCorsStatus);
+    // }
+  }, []);
 
   const doRequest = async () => {
     if (status === 'loading') return;
@@ -58,6 +80,7 @@ export function useViewModel() {
     setFormValue,
     responseRef,
     errorRef,
+    corsStatus,
   };
 
 }

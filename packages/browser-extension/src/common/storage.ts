@@ -59,6 +59,7 @@ export const dataStorage = {
     callback: (newRules?: IRuleItem[], oldRules?: IRuleItem[]) => void
   ) {
     browser.storage.onChanged.addListener((changes, areaName) => {
+      console.log('browser.storage.onChanged', changes, areaName);
       const changed = changes[storageKey];
       if (areaName !== 'local' || !changed) return;
       callback(changed.newValue, changed.oldValue);
@@ -80,7 +81,6 @@ export function setCurrentTabRule(winId: number | undefined, rule?: IRuleItem | 
   const newRule = rule || undefined;
   const targetWinId = winId || 0;
   if (currentTabRule[targetWinId] === newRule) return;
-  console.log('setCurrentTabRule', targetWinId, newRule);
   currentTabRule[targetWinId] = newRule;
   browser.runtime.sendMessage({ type: 'activeTabRuleChange' }).catch((error) => {
     // ignore error, it's ok if no options page is open

@@ -1,4 +1,3 @@
-
 export interface IMessageData {
   /**
    * The type of message.
@@ -23,8 +22,14 @@ export interface IMessageData {
 }
 
 export type IMessageResponse =
-  | { id: string; data?: any; error?: undefined }
-  | { id: string; error: { message: string; type: string }; data?: undefined };
+  | { id: string; type: 'response'; data?: any; error?: undefined }
+  | { id: string; type: 'onChange'; data?: any; error?: undefined }
+  | {
+      id: string;
+      type: 'response';
+      error: { message: string; type: string };
+      data?: undefined;
+    };
 
 const EXT_FRAME_URL =
   process.env.NODE_ENV === 'development'
@@ -62,20 +67,51 @@ async function initFrame() {
     frame.src = EXT_FRAME_URL;
     const onInit = (event: MessageEvent) => {
       if (event.source !== frame.contentWindow) return;
+      frameWin = frame.contentWindow;
       window.removeEventListener('message', onInit);
       resolve(frame);
     };
     window.addEventListener('message', onInit);
-    frame.onload = () => {
-      console.log('frame loaded');
-      frameWin = frame.contentWindow;
-    };
     frame.onerror = reject;
     frame.style.display = 'none';
     document.body.appendChild(frame);
-    return frame;
   });
   return framePromise;
+}
+
+
+
+export type IOnChangeListener = (changed: { enabled: boolean, credentials: boolean }) => void;
+
+const onChangeCallbacks = new Set<IOnChangeListener>();
+
+/**
+ * Listen the change of CORS status
+ */
+export const onChange = {
+  addListener(callback: IOnChangeListener) {
+    if (!onChangeCallbacks.size) {
+      initFrame().then(() => toggleChangeListener(true));
+    }
+    onChangeCallbacks.add(callback);
+  },
+  removeListener(callback?: IOnChangeListener) {
+    if (!callback) {
+      onChangeCallbacks.clear();
+    } else {
+      onChangeCallbacks.delete(callback);
+    }
+    if (onChangeCallbacks.size === 0) {
+      initFrame().then(() => toggleChangeListener(false));
+    }
+  }
+};
+
+function toggleChangeListener(enabled: boolean) {
+  sendMessage({
+    method: 'toggleChangeListener',
+    payload: { enabled, extID: EXTENSION_ID }
+  });
 }
 
 let isEventInited = false;
@@ -87,6 +123,13 @@ function initEventMessage() {
   window.addEventListener('message', (event) => {
     const data = event.data as IMessageResponse;
     if (event.source !== frameWin) return;
+    console.log('npm message event', data);
+    if (data.type === 'onChange') {
+      onChangeCallbacks.forEach((callback) => {
+        callback(data.data);
+      });
+      return;
+    }
     const callbacks = listenerMap[data.id];
     if (!callbacks) return;
     delete listenerMap[data.id];
@@ -157,7 +200,9 @@ export function openStorePage() {
  */
 export async function isEnabled() {
   await initFrame();
-  return sendMessage({ method: 'isEnabled' });
+  return sendMessage({ method: 'isEnabled' }) as Promise<
+    false | { enabled: true; credentials: boolean }
+  >;
 }
 
 export interface IEnableOptions {
@@ -197,12 +242,16 @@ export async function enable(options?: IEnableOptions) {
         if (options.reason) {
           message += `\nMessage from current Page:\n\n${options.reason}\n\n`;
         }
+      } else {
+        message += '\n\n';
       }
       message += 'Please only enable CORS if you trust the current page.\nDo you want to enable CORS?';
     } else {
       message = 'Current page is requesting to enable CORS with credentials.';
       if (options?.reason) {
         message += `\nMessage from current Page:\n\n${options.reason}\n\n`;
+      } else {
+        message += '\n\n';
       }
       message += 'Please only enable CORS with credentials if you trust the current page. Do you want to continue?';
     }
@@ -226,6 +275,7 @@ export default {
   openExtOptions,
   openStorePage,
   isEnabled,
+  onChange,
   enable,
   disable
 }
