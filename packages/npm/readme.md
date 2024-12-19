@@ -1,0 +1,109 @@
+# browser-app-cors
+
+`browser-app-cors` is a utility to manage Cross-Origin Resource Sharing (CORS) settings for your browser. It allows you to enable or disable CORS for specific websites, making API testing and development easier.
+
+## Installation
+
+To install the package, use npm or yarn:
+
+```sh
+npm install browser-app-cors -S
+# or
+yarn add browser-app-cors
+```
+
+## How it works
+
+This npm package provides a series of methods that communicate with the browser extension "Browser App CORS" through the webpage "https://cors.forth.ink/message/index.html". When CORS is enabled, this extension modifies all responses to requests sent from the current page by adding the header `Access-Control-Allow-Origin` (default value is `*`). By setting `credentials` to `true`, the header value will be the origin of the current page, allowing CORS with credentials (e.g., fetch with `credentials: include`).
+
+## Usage & API
+
+### Check if the Extension is Installed
+
+```typescript
+import appCors from 'browser-app-cors';
+
+appCors.isExtInstalled().then((isInstalled) => {
+  console.log('Extension installed:', isInstalled);
+});
+```
+
+**Returns:** `Promise<boolean>`
+
+### Check if CORS is Enabled
+
+```typescript
+appCors.isEnabled().then((status) => {
+  console.log('CORS status:', status);
+}).catch((error) => {
+  console.error('Failed to check CORS status:', error);
+});
+```
+
+**Returns:** `Promise<{ enabled: true, credentials: boolean } | false>`
+
+### Enable CORS
+
+```typescript
+appCors.enable({ credentials: true, reason: 'Testing API' }).then(() => {
+  console.log('CORS enabled');
+}).catch((error) => {
+  console.error('Failed to enable CORS:', error);
+});
+```
+
+**Parameters:**
+- `options` (optional): `{ credentials?: boolean, reason?: string }`
+
+**Returns:** `Promise<void>`
+
+### Disable CORS
+
+```typescript
+appCors.disable().then(() => {
+  console.log('CORS disabled');
+}).catch((error) => {
+  console.error('Failed to disable CORS:', error);
+});
+```
+
+**Returns:** `Promise<void>`
+
+### Listen for CORS Status Changes
+
+```typescript
+const onChangeListener = (status) => {
+  console.log('CORS status changed:', status);
+};
+
+appCors.onChange.addListener(onChangeListener);
+
+// To remove the listener
+appCors.onChange.removeListener(onChangeListener);
+```
+
+**onChange:**
+- `addListener(callback: (status: { enabled: boolean, credentials: boolean }) => void): void`
+- `removeListener(callback?: (status: { enabled: boolean, credentials: boolean }) => void): void`
+
+### Open Extension Options Page
+
+```typescript
+appCors.openExtOptions().then(() => {
+  console.log('Options page opened');
+});
+```
+
+**Returns:** `Promise<void>`
+
+### Open Extension Store Page
+
+```typescript
+appCors.openStorePage();
+```
+
+**Returns:** `void`
+
+## License
+
+MIT

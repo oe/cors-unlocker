@@ -23,21 +23,29 @@ export async function onExternalMessage(
     browser.runtime.openOptionsPage();
     return true
   }
-  if (!sender.url) {
-    throw new Error('unknown sender');
+  if (!payload?.origin) {
+    throw new Error(
+      JSON.stringify({
+        message: 'unknown sender(missing origin)',
+        type: 'missing-origin',
+      })
+    );
   }
-  const url = new URL(sender.url);
+  const url = new URL(payload.origin);
   if (!isSupportedProtocol(url.protocol)) {
-    throw new Error(`unsupported protocol ${url.protocol}`);
+    throw new Error(
+      JSON.stringify({
+        message: `unsupported protocol "${url.protocol}"`,
+        type: 'unsupported-origin',
+      })
+    );
   }
   const origin = url.origin;
   if (method === 'getRule') {
     const rules = await dataStorage.getRules();
-    if (!rules) return {
-      origin,
-    }
+    if (!rules) return null;
     const rule = rules.find((rule) => rule.origin === origin);
-    return rule || { origin };
+    return rule || null;
   }
   if (method === 'isEnabled') {
     return isOriginEnabled(origin);
@@ -51,7 +59,12 @@ export async function onExternalMessage(
     return true;
   }
 
-  throw new Error(`unknown message method ${method}`);
+  throw new Error(
+    JSON.stringify({
+      message: `unknown message method ${method}`,
+      type: 'supported-method'
+    })
+  );
 }
 
 async function isOriginEnabled(origin: string) {

@@ -8,10 +8,6 @@ export interface IMessageData {
    */
   id: string;
   /**
-   * The extension id.
-   */
-  extId: string;
-  /**
    * The method to call on the extension.
    */
   method: string;
@@ -60,11 +56,13 @@ class AppCorsError extends Error {
 let framePromise: Promise<HTMLIFrameElement> | null = null;
 let frameWin: Window | null = null;
 
-async function initFrame() {
+function initFrame() {
   if (framePromise) return framePromise;
   framePromise = new Promise((resolve, reject) => {
     const frame = document.createElement('iframe');
-    frame.src = EXT_FRAME_URL;
+    frame.src = `${EXT_FRAME_URL}?origin=${encodeURIComponent(
+      location.origin
+    )}&extID=${encodeURIComponent(EXTENSION_ID)}`;
     const onInit = (event: MessageEvent) => {
       if (event.source !== frame.contentWindow) return;
       frameWin = frame.contentWindow;
@@ -91,7 +89,9 @@ const onChangeCallbacks = new Set<IOnChangeListener>();
 export const onChange = {
   addListener(callback: IOnChangeListener) {
     if (!onChangeCallbacks.size) {
-      initFrame().then(() => toggleChangeListener(true));
+      initFrame()
+        .then(() => toggleChangeListener(true))
+        .catch(console.error);;
     }
     onChangeCallbacks.add(callback);
   },
@@ -102,15 +102,17 @@ export const onChange = {
       onChangeCallbacks.delete(callback);
     }
     if (onChangeCallbacks.size === 0) {
-      initFrame().then(() => toggleChangeListener(false));
+      initFrame()
+        .then(() => toggleChangeListener(false))
+        .catch(console.error);
     }
   }
 };
 
 function toggleChangeListener(enabled: boolean) {
-  sendMessage({
+  return sendMessage({
     method: 'toggleChangeListener',
-    payload: { enabled, extID: EXTENSION_ID }
+    payload: { enabled }
   });
 }
 
@@ -148,6 +150,7 @@ interface ISendMessageParams {
 }
 
 async function sendMessage(params: ISendMessageParams) {
+  await initFrame();
   return new Promise((resolve, reject) => {
     if (!frameWin) {
       reject(new Error('frameWin is not ready'));
@@ -157,7 +160,6 @@ async function sendMessage(params: ISendMessageParams) {
       id,
       ...params,
       type: 'ext',
-      extId: EXTENSION_ID
     };
     initEventMessage();
     listenerMap[id] = [resolve, reject];
@@ -169,17 +171,15 @@ async function sendMessage(params: ISendMessageParams) {
  * Check whether the extension is installed
  * @returns Promise<boolean>
  */
-export async function isExtInstalled() {
-  await initFrame();
-  return sendMessage({ method: 'isInstalled' });
+export function isExtInstalled() {
+  return sendMessage({ method: 'isInstalled' }) as Promise<boolean>;
 }
 
 /**
  * Open the extension's options page
  */
-export async function openExtOptions() {
-  await initFrame();
-  return sendMessage({ method: 'openOptions' });
+export function openExtOptions() {
+  return sendMessage({ method: 'openOptions' }) as Promise<void>;
 }
 
 /**
@@ -199,7 +199,6 @@ export function openStorePage() {
  * @returns Promise<{ enabled: boolean, credentials: boolean }>
  */
 export async function isEnabled() {
-  await initFrame();
   try {
     const result = await sendMessage({ method: 'isEnabled' }) as Promise<
       false | { enabled: true; credentials: boolean }
@@ -228,55 +227,15 @@ export interface IEnableOptions {
 /**
  * Enable CORS for the current page(tab)
  */
-export async function enable(options?: IEnableOptions) {
-  await initFrame();
-  const rule: any = await sendMessage({ method: 'getRule'});
-  if (rule && !rule.disabled) {
-    // already enabled, nothing to do
-    if (!options || typeof options.credentials === 'undefined') return true;
-    if (rule.credentials === options.credentials) return true;
-  }
-  // if the rule is disabled or 
-  //  or want to enable with different credentials
-  if (rule.disabled || (!rule.credentials && options?.credentials)) {
-    let message = ''
-    if (rule.disabled) {
-      message = `Current page(${origin}) is requesting to enable CORS`;
-      if (options) {
-        if (options.credentials) {
-          message += ' with credentials.';
-        } else {
-          message += '.';
-        }
-        if (options.reason) {
-          message += `\nMessage from current Page:\n\n${options.reason}\n\n`;
-        }
-      } else {
-        message += '\n\n';
-      }
-      message += 'Please only enable CORS if you trust the current page.\nDo you want to enable CORS?';
-    } else {
-      message = 'Current page is requesting to enable CORS with credentials.';
-      if (options?.reason) {
-        message += `\nMessage from current Page:\n\n${options.reason}\n\n`;
-      } else {
-        message += '\n\n';
-      }
-      message += 'Please only enable CORS with credentials if you trust the current page. Do you want to continue?';
-    }
-    if (!confirm(message)) {
-      throw new AppCorsError({ type: 'user-cancel', message: 'User canceled' });
-    }
-  }
-  return sendMessage({ method: 'enable', payload: options });
+export function enable(options?: IEnableOptions) {
+  return sendMessage({ method: 'enable', payload: options }) as Promise<boolean>;
 }
 
 /**
  * Disable CORS for the current page(tab)
  */
-export async function disable() {
-  await initFrame();
-  return sendMessage({ method: 'disable' });
+export function disable() {
+  return sendMessage({ method: 'disable' }) as Promise<boolean>;
 }
 
 export default {

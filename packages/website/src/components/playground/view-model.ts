@@ -34,10 +34,10 @@ export function useViewModel() {
         setCorsStatus({ enabled: false, credentials: false });
       }
     });
-    // appCors.onChange.addListener(setCorsStatus);
-    // return () => {
-    //   appCors.onChange.removeListener(setCorsStatus);
-    // }
+    appCors.onChange.addListener(setCorsStatus);
+    return () => {
+      appCors.onChange.removeListener(setCorsStatus);
+    }
   }, []);
 
   const doRequest = async () => {

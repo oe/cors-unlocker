@@ -11,8 +11,23 @@ const { frontmatter } = Astro.props;
       summary {
         cursor: pointer;
       }
+      details > p:first-child:empty {
+        display: none;
+      }
+
+      details + details {
+        margin-top: 0.8rem;
+      }
+
+      summary {
+        font-weight: 500;
+      }
       body {
-        /* background: linear-gradient(90deg, #4b6cb7 0%, #182848 100%); */
+        background: linear-gradient(135deg, #a8edea, #fed6e3);
+      }
+
+      body .prose {
+        --tw-prose-bullets: #666;
       }
     </style>
   </head>
