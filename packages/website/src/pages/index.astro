@@ -1,11 +1,20 @@
 ---
-import { App } from '../components/landing';
+import Header from '../components/header.astro';
+import Hero from '../components/hero.astro';
 ---
+
 <html>
   <head>
-    <title>Astro + React + TypeScript</title>
+    <title>Browser App CORS</title>
+    <meta
+      name="description"
+      content="An Browser extension that can open doors for web apps to boundless potential"
+    />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
   </head>
   <body>
-    <App />
+    <Header />
+    <Hero />
   </body>
 </html>

@@ -1,4 +1,5 @@
 ---
+import Header from './header.astro';
 const { frontmatter } = Astro.props;
 ---
 
@@ -32,6 +33,7 @@ const { frontmatter } = Astro.props;
     </style>
   </head>
   <body>
+    <Header />
     <main class="container mx-auto px-4 prose py-16">
       <slot />
     </main>
