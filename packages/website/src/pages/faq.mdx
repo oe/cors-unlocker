@@ -1,6 +1,7 @@
 ---
 layout: '../components/doc-layout.astro'
-title: 'FAQ'
+title: Frequently Asked Questions
+description: Find answers to common questions about the BrowserAppCors extension and npm package. Resolve issues with cross-origin request management and get quick technical
 ---
 ## Frequently Asked Questions
 
@@ -35,4 +36,25 @@ This setting lets you choose how your browser shares information with websites. 
 For more details, visit these helpful resources:  
 - [Mozilla’s Guide to Privacy Basics](https://foundation.mozilla.org/en/privacynotincluded/)  
 - [Google Safety Center: Understanding Privacy](https://safety.google/privacy/understanding/)
+</details>
+
+<details id="why-not-working">
+  <summary>Why is the extension not enabling cross-origin requests?</summary>
+There are a few reasons why the extension might not be working as expected. Here are some common issues and how to fix them:
+1. **Extension Not Installed**: Make sure the extension is installed and enabled in your browser. You can check this by looking for the extension icon in your browser toolbar.
+2. **Websites not supported**: only http/https websites are supported. If you are trying to enable the extension on a different protocol, it may not work.
+3. **Request not sent from the enabled origin**: The extension only works for requests sent from the origin you enabled it for. If you are testing on a different origin, you will need to enable the extension for that origin as well.
+4. **Extension Conflicts**: If you have other extensions that modify headers or block requests, they may interfere with this extension. Try disabling other extensions to see if that helps.
+</details>
+
+<details id="npm-concerns">
+  <summary>Is it secure that you allow websites to integrate with this extension?</summary>
+Despite web provide a way for developers to integrate with the extension, but the choice is at your hands: when websites try to enable CORS requests, you will be prompted to approve or deny the request. This way, you can control which websites have access to cross-origin requests and ensure your privacy and security.
+
+Beside, you can always disable the extension or revoke permissions for specific websites if you no longer want them to have access to cross-origin requests via extension's options page.
+</details>
+
+<details id="privacy-concerns">
+  <summary>How does the extension handle my privacy?</summary>
+We take your privacy seriously and have implemented several measures to protect your data. check [our privacy policy](/privacy/) for more information.
 </details>

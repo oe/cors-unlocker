@@ -1,5 +1,12 @@
 ---
+import { ClientRouter } from 'astro:transitions';
 import Header from './header.astro';
+interface Props {
+  frontmatter: {
+    title: string;
+    description?: string;
+  };
+}
 const { frontmatter } = Astro.props;
 ---
 
@@ -7,7 +14,13 @@ const { frontmatter } = Astro.props;
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width" />
-    <title>{frontmatter.title}</title>
+    <title>{frontmatter.title} - Browser App CORS</title>
+    {
+      frontmatter.description && (
+        <meta name="description" content={frontmatter.description} />
+      )
+    }
+    <ClientRouter />
     <style is:global>
       summary {
         cursor: pointer;
@@ -23,8 +36,10 @@ const { frontmatter } = Astro.props;
       summary {
         font-weight: 500;
       }
-      body {
+      html {
         background: linear-gradient(135deg, #a8edea, #fed6e3);
+        background-attachment: fixed;
+        height: 100%;
       }
 
       body .prose {

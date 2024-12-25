@@ -1,4 +1,4 @@
-<header class="bg-slate-100/30">
+<header class="bg-slate-100/30" transition:persist>
   <div class="px-4 mx-auto sm:px-6 lg:px-8">
     <div class="flex items-center justify-between h-16 lg:h-20">
       <div class="flex-shrink-0">
@@ -12,16 +12,22 @@
       </div>
 
       <div
-        class="flex items-center justify-center text-sm md:text-base text-black space-x-10"
+        class="flex items-center justify-center space-x-6 text-sm md:text-base text-black"
       >
         <a
           href="/docs/"
           title="integrate with your app"
           class="transition-all duration-200 hover:text-opacity-80"
         >
-          Integrations
+          Integration
         </a>
 
+        <a
+          href="/playground/"
+          class="hidden sm:inline transition-all duration-200 hover:text-opacity-80"
+        >
+          Playground
+        </a>
         <a
           href="/faq/"
           class="transition-all duration-200 hover:text-opacity-80"
@@ -39,7 +45,7 @@
 
       <a
         href="/#download"
-        class="hidden md:inline-flex items-center justify-center px-5 py-2.5 text-base transition-all duration-200 hover:bg-yellow-300 hover:text-black focus:text-black focus:bg-yellow-300 font-semibold text-white bg-black rounded-full"
+        class="hidden sm:inline-flex items-center justify-center px-5 py-2.5 text-base transition-all duration-200 hover:bg-yellow-300 hover:text-black focus:text-black focus:bg-yellow-300 font-semibold text-white bg-black rounded-full"
         role="button"
       >
         Install
