@@ -21,7 +21,7 @@ export function useViewModel() {
     // listen to rule change and get the latest rule
     const onRuntimeMessage = (
       message: any,
-      sender: browser.Runtime.MessageSender
+      _: browser.Runtime.MessageSender
     ) => {
       if (!message || message.type !== 'activeTabRuleChange') return;
       syncRule();

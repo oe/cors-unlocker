@@ -13,7 +13,7 @@ const tabs = [
 function App() {
 
   return (
-    <div className="container mx-auto mt-16">
+    <div className="container max-w-4xl mx-auto mt-16">
       <Tabs
         tabs={tabs}
       />

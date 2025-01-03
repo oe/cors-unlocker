@@ -25,7 +25,7 @@ export function RuleInput(props: IRuleInputProps) {
    * @param url url user input
    * @returns origin if valid, or an empty string
    */
-  const validateRule = (url: string) => {
+  const validateRule = useCallback((url: string) => {
     let origin = '';
     try {
       if (!url.trim()) {
@@ -34,11 +34,11 @@ export function RuleInput(props: IRuleInputProps) {
       }
       origin = props.validateRule(url);
       setStatus({status: 'valid', message: `origin "${origin}" is valid`});
-    } catch (error: any) {
-      setStatus({status: 'invalid', message: error.message});
+    } catch (error: unknown) {
+      setStatus({status: 'invalid', message: (error as Error).message});
     }
     return origin
-  }
+  }, []);
 
   /**
    * make it a controlled input
@@ -54,7 +54,7 @@ export function RuleInput(props: IRuleInputProps) {
    * * validateRule changes(when the rule is updated / removed)
    */
   useEffect(() => {
-    let origin = validateRule(value);
+    const origin = validateRule(value);
     props.onChange(value, origin);
   }, [value, props.validateRule]);
   
@@ -109,7 +109,7 @@ export function EditRuleForm(props: IEditRuleProps) {
     }, 0);
   }
 
-  const setFormValue = (val: Record<string, any>) => {
+  const setFormValue = (val: Record<string, string | boolean>) => {
     setFormData((prev) => ({...prev, ...val}));
   }
 

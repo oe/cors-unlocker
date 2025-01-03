@@ -1,5 +1,5 @@
+import { useState, useEffect, useCallback } from 'react';
 import type { IRuleItem, } from '@/types';
-import { useState, useEffect } from 'react';
 import { dataStorage } from '@/common/storage';
 
 export function getOrigin(url: string) {
@@ -9,7 +9,7 @@ export function getOrigin(url: string) {
       throw new Error('only support http / https protocol');
     }
     return origin;
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof TypeError) {
       throw new Error('invalid url');
     }
@@ -35,7 +35,7 @@ export function useViewModel() {
    * @param url rule url
    * @param id rule id, if provided and the existing rule id is the same, it will be ignored
    */
-  const validateRule = (url: string, id?: number) => {
+  const validateRule = useCallback((url: string, id?: number) => {
     const origin = getOrigin(url);
     if (!origin) {
       throw new Error('invalid url');
@@ -45,7 +45,7 @@ export function useViewModel() {
       throw new Error(`origin "${origin}" already exists`);
     }
     return origin;
-  };
+  }, [rules]);
   
   const addRule = async (v: {origin: string, comment: string}) => {
     const origin = validateRule(v.origin);

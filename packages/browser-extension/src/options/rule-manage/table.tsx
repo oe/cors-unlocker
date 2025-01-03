@@ -95,7 +95,7 @@ export function RuleTable(props: IRuleTableProps) {
 
 const rtl = new Intl.RelativeTimeFormat()
 
-function FormattedDate({ date, className }: { date: number, className?: string }) {
+export function FormattedDate({ date, className }: { date: number, className?: string }) {
   return (
     <span className={className}>
       {new Date(date).toLocaleString()}

@@ -84,7 +84,7 @@ async function isOriginEnabled(origin: string) {
  */
 export async function onRuntimeMessage(
   message: any,
-  sender: browser.Runtime.MessageSender
+  _: browser.Runtime.MessageSender
 ) {
   if (!message) return
   console.log('onRuntimeMessage', message)

@@ -82,7 +82,7 @@ export function setCurrentTabRule(winId: number | undefined, rule?: IRuleItem | 
   const targetWinId = winId || 0;
   if (currentTabRule[targetWinId] === newRule) return;
   currentTabRule[targetWinId] = newRule;
-  browser.runtime.sendMessage({ type: 'activeTabRuleChange' }).catch((error) => {
+  browser.runtime.sendMessage({ type: 'activeTabRuleChange' }).catch((_error) => {
     // ignore error, it's ok if no options page is open
   });
 }

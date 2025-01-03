@@ -1,6 +1,7 @@
 import path from 'path';
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import eslint from 'vite-plugin-eslint';
 import webExtension, { readJsonFile } from "vite-plugin-web-extension";
 import tailwindcss from 'tailwindcss';
 
@@ -42,6 +43,8 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    eslint(),
+    // @ts-expect-error webExtension is not in the vite plugin list
     webExtension({
       browser: browserTarget,
       webExtConfig: {

@@ -16,6 +16,7 @@
     "react-dom": "catalog:"
   },
   "devDependencies": {
+    "@eslint/js": "catalog:",
     "@types/chrome": "catalog:",
     "@types/node": "^22.10.1",
     "@types/react": "catalog:",
@@ -23,12 +24,17 @@
     "@types/webextension-polyfill": "^0.10.0",
     "@vitejs/plugin-react": "catalog:",
     "autoprefixer": "^10.4.20",
+    "eslint": "catalog:",
+    "eslint-plugin-react": "catalog:",
+    "globals": "^15.14.0",
     "postcss": "^8.4.49",
     "sass": "^1.81.0",
     "tailwindcss": "^3.4.15",
     "tsx": "^4.19.2",
     "typescript": "catalog:",
+    "typescript-eslint": "catalog:",
     "vite": "catalog:",
+    "vite-plugin-eslint": "catalog:",
     "vite-plugin-web-extension": "^4.0.0",
     "webextension-polyfill": "^0.10.0",
     "zip-a-folder": "^3.1.8"

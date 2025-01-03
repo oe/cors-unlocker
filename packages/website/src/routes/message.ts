@@ -28,6 +28,7 @@ let port: chrome.runtime.Port | null = null;
 
 const disconnectPort = () => {
   if (!port) return
+  console.warn('disconnect port');
   port.disconnect();
   port = null;
 }
@@ -129,7 +130,7 @@ window.addEventListener('message', async (event) => {
     }
     try {
       new URL(BASIC_CONFIG.origin);
-    } catch (error) {
+    } catch {
       throw {
         type: 'invalid-origin',
         message: 'invalid origin'
@@ -174,7 +175,7 @@ function sendMessage2ext(method: string, payload?: any) {
       ) {
         try {
           return reject(JSON.parse(response.message));
-        } catch (error) {
+        } catch {
           return reject(response.message);  
         }
         

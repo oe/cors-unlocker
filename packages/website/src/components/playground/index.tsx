@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useViewModel } from './view-model';
 
 export const PlaygroundPage: React.FC = () => {
@@ -82,7 +82,7 @@ export const PlaygroundPage: React.FC = () => {
           >
             Send Request
           </button>
-          <span>
+          <span className='ml-4 text-sm'>
             CORS: {corsStatus.enabled ? 'Enabled' : 'Disabled'}({corsStatus.credentials ? '🟢' : '🔴'})
           </span>
         </div>
