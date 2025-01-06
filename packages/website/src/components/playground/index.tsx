@@ -5,6 +5,7 @@ export const PlaygroundPage: React.FC = () => {
   const {
     status, setFormValue, requestForm, errorRef, corsStatus,
     isCurlMode, setIsCurlMode, doRequest, responseRef,
+    toggleCors, toggleCorsCredentials
   } = useViewModel();
 
 
@@ -74,7 +75,7 @@ export const PlaygroundPage: React.FC = () => {
           </div>
         )}
 
-        <div className='mt-4'>
+        <div className='mt-4 flex items-center'>
           <button
             disabled={status === 'loading'}
             onClick={doRequest}
@@ -82,9 +83,26 @@ export const PlaygroundPage: React.FC = () => {
           >
             Send Request
           </button>
-          <span className='ml-4 text-sm'>
-            CORS: {corsStatus.enabled ? 'Enabled' : 'Disabled'}({corsStatus.credentials ? '🟢' : '🔴'})
-          </span>
+          <div className='ml-4 text-sm'>
+            CORS Manage
+          </div>
+          <div className='ml-4'>
+            <input type="checkbox" id="toggle-cors" readOnly hidden className='peer' checked={corsStatus.enabled} />
+            <label
+              htmlFor="toggle-cors"
+              className='px-2 py-1 transition-all bg-gray-200 text-gray-800 rounded hover:bg-gray-300 bg-gradient-to-r opacity-80 peer-checked:from-cyan-500 peer-checked:to-blue-500 peer-checked:text-white'
+              onClick={toggleCors}
+              >CORS</label>
+          </div>
+          <div className='ml-4'>
+            <input type="checkbox" id="toggle-credentials" readOnly hidden className='peer' checked={corsStatus.credentials} />
+            <label
+              htmlFor="toggle-credentials"
+              aria-disabled={!corsStatus.enabled}
+              className='px-2 py-1 transition-all bg-gray-200 text-gray-800 rounded hover:bg-gray-300 bg-gradient-to-r opacity-80 aria-disabled:opacity-50  peer-checked:from-cyan-500 peer-checked:to-blue-500 peer-checked:text-white'
+              onClick={toggleCorsCredentials}
+              >with credentials</label>
+          </div>
         </div>
       </div>
 

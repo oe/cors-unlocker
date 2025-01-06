@@ -70,6 +70,28 @@ export function useViewModel() {
     setRequestForm((prev) => ({ ...prev, [key]: value }));
   }
 
+  const toggleCors = async () => {
+    if (corsStatus.enabled) {
+      await appCors.disable();
+    } else {
+      await appCors.enable({
+        reason: 'Enable for demonstration',
+      });
+    }
+  }
+
+  const toggleCorsCredentials = async () => {
+    if (!corsStatus.enabled) return;
+    if (corsStatus.credentials) {
+      await appCors.enable({ credentials: false });
+    } else {
+      await appCors.enable({
+        credentials: true,
+        reason: 'Enable for demonstration',
+      });
+    }
+  }
+
   return {
     isCurlMode,
     setIsCurlMode,
@@ -81,6 +103,8 @@ export function useViewModel() {
     responseRef,
     errorRef,
     corsStatus,
+    toggleCors,
+    toggleCorsCredentials,
   };
 
 }
