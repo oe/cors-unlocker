@@ -1,0 +1,23 @@
+---
+import { featureItems } from './config';
+---
+
+<section class="py-10 bg-slate-100/60 sm:py-16 lg:py-24">
+  <div class="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
+    <div
+      class="grid grid-cols-1 gap-12 text-center sm:grid-cols-2 md:grid-cols-3 lg:gap-y-16"
+    >
+      {
+        featureItems.map((item) => (
+          <div>
+            <div class="relative flex items-center justify-center mx-auto">
+              <item.icon className={'w-12 h-12 text-primary ' + item.color} />
+            </div>
+            <h3 class="mt-8 text-lg font-semibold text-black">{item.title}</h3>
+            <p class="mt-4 text-base text-gray-600">{item.description}</p>
+          </div>
+        ))
+      }
+    </div>
+  </div>
+</section>
