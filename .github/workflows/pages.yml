@@ -48,8 +48,6 @@ jobs:
 
     - name: Deploy to GitHub Pages
       uses: Cecilapp/GitHub-Pages-deploy@3.1.0
-      # skip deployment for now
-      if: 0 == 1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
