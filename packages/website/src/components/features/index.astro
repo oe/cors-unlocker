@@ -1,5 +1,5 @@
 ---
-import { featureItems } from './config';
+import { featureItems, RenderNode } from './config';
 ---
 
 <section class="py-10 bg-slate-100/60 sm:py-16 lg:py-24">
@@ -13,8 +13,13 @@ import { featureItems } from './config';
             <div class="relative flex items-center justify-center mx-auto">
               <item.icon className={'w-12 h-12 text-primary ' + item.color} />
             </div>
-            <h3 class="mt-8 text-lg font-semibold text-black">{item.title}</h3>
-            <p class="mt-4 text-base text-gray-600">{item.description}</p>
+            <h3 class="mt-8 text-lg font-semibold text-black">
+              <RenderNode node={item.title} />
+              {/* <RenderNode>{item.title}</RenderNode> */}
+            </h3>
+            <div class="mt-4 text-base text-gray-600">
+              <RenderNode node={item.description} />
+            </div>
           </div>
         ))
       }

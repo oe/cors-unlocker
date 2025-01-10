@@ -1,6 +1,6 @@
 import {
   Handshake,
-  Cable,
+  CodeXml,
   Fingerprint,
   Package,
   Chrome,
@@ -16,11 +16,11 @@ export const featureItems = [
       'Enable or disable CORS for specific websites easily via the extension or npm package.'
   },
   {
-    icon: Cable,
+    icon: CodeXml,
     color: 'text-green-500',
-    title: 'Seamless Browser Integration',
+    title: 'Open Source',
     description:
-      'Manage CORS settings directly in your browser without modifying your code.'
+      <>Fully open source for transparency and community contributions on <a className="text-slate-400" target="_blank" rel="noreferrer" href="https://github.com/oe/browser-app-cors">GitHub</a>.</>
   },
   {
     icon: Package,
@@ -50,3 +50,7 @@ export const featureItems = [
       'Works seamlessly with Chrome, Firefox, Edge, and other major browsers.'
   },
 ];
+
+export function RenderNode({node}: {node: any}) {
+  return <>{node}</>
+}
