@@ -1,0 +1,92 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Developer Integration Guide - Browser App CORS</title><meta name="description" content="Learn how to use the BrowserAppCors npm package to integrate browser extension capabilities, enabling, disabling, and querying cross-origin requests. Get started with code samples and best practices."><meta name="astro-view-transitions-enabled" content="true"><meta name="astro-view-transitions-fallback" content="animate"><script type="module" src="/_astro/ClientRouter.astro_astro_type_script_index_0_lang.BScVxmeO.js"></script><link rel="stylesheet" href="/_astro/docs.B866ehMr.css">
+<style>.astro-route-announcer{position:absolute;left:0;top:0;clip:rect(0 0 0 0);clip-path:inset(50%);overflow:hidden;white-space:nowrap;width:1px;height:1px}
+@keyframes astroFadeInOut{0%{opacity:1}to{opacity:0}}@keyframes astroFadeIn{0%{opacity:0;mix-blend-mode:plus-lighter}to{opacity:1;mix-blend-mode:plus-lighter}}@keyframes astroFadeOut{0%{opacity:1;mix-blend-mode:plus-lighter}to{opacity:0;mix-blend-mode:plus-lighter}}@keyframes astroSlideFromRight{0%{transform:translate(100%)}}@keyframes astroSlideFromLeft{0%{transform:translate(-100%)}}@keyframes astroSlideToRight{to{transform:translate(100%)}}@keyframes astroSlideToLeft{to{transform:translate(-100%)}}@media (prefers-reduced-motion){::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none!important}[data-astro-transition-scope]{animation:none!important}}
+summary{cursor:pointer}details>p:first-child:empty{display:none}details+details{margin-top:.8rem}summary{font-weight:500}html{background:linear-gradient(135deg,#a8edea,#fed6e3);background-attachment:fixed;height:100%}body .prose{--tw-prose-bullets: #666}[data-astro-image]{width:100%;height:auto;-o-object-fit:var(--fit);object-fit:var(--fit);-o-object-position:var(--pos);object-position:var(--pos);aspect-ratio:var(--w) / var(--h)}[data-astro-image=responsive]{max-width:calc(var(--w) * 1px);max-height:calc(var(--h) * 1px)}[data-astro-image=fixed]{width:calc(var(--w) * 1px);height:calc(var(--h) * 1px)}
+</style></head> <body> <header class="bg-slate-100/30" data-astro-transition-persist="astro-3si54kmc-1"> <div class="px-4 mx-auto sm:px-6 lg:px-8"> <div class="flex items-center justify-between h-16 lg:h-20"> <div class="flex-shrink-0"> <a href="/" title="" class="flex"> <img class="w-auto h-8" src="https://cdn.rareblocks.xyz/collection/celebration/images/logo.svg" alt=""> </a> </div> <div class="flex items-center justify-center space-x-6 text-sm md:text-base text-black"> <a href="/docs/" title="integrate with your app" class="transition-all duration-200 hover:text-opacity-80">
+Integration
+</a> <a href="/playground/" class="hidden sm:inline transition-all duration-200 hover:text-opacity-80">
+Playground
+</a> <a href="/faq/" class="transition-all duration-200 hover:text-opacity-80">
+FAQ
+</a> <a href="/privacy/" class="transition-all duration-200 hover:text-opacity-80">
+Privacy
+</a> <a href="https://forth.ink/" target="_blank" class="transition-all duration-200 hover:text-opacity-80 hidden sm:inline">
+More Apps
+</a> </div> <a href="/#download" class="hidden sm:inline-flex items-center justify-center px-5 py-2.5 text-base transition-all duration-200 hover:bg-yellow-300 hover:text-black focus:text-black focus:bg-yellow-300 font-semibold text-white bg-black rounded-full" role="button">
+Install
+</a> </div> </div> </header> <main class="container mx-auto px-4 prose py-16"> <h1 id="browser-app-cors">browser-app-cors</h1>
+<p><code>browser-app-cors</code> is a utility to manage Cross-Origin Resource Sharing (CORS) settings for your browser. It allows you to enable or disable CORS for specific websites, making API testing and development easier.</p>
+<h2 id="installation">Installation</h2>
+<p>To install the package, use npm or yarn:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8;overflow-x:auto" tabindex="0" data-language="sh"><code><span class="line"><span style="color:#B392F0">npm</span><span style="color:#9ECBFF"> install</span><span style="color:#9ECBFF"> browser-app-cors</span><span style="color:#79B8FF"> -S</span></span>
+<span class="line"><span style="color:#6A737D"># or</span></span>
+<span class="line"><span style="color:#B392F0">yarn</span><span style="color:#9ECBFF"> add</span><span style="color:#9ECBFF"> browser-app-cors</span></span></code></pre>
+<h2 id="how-it-works">How it works</h2>
+<p>This npm package provides a series of methods that communicate with the browser extension “Browser App CORS” through the webpage “<a href="https://cors.forth.ink/message/index.html">https://cors.forth.ink/message/index.html</a>”.</p>
+<p>When CORS is enabled, this extension modifies all responses to requests sent from the current page by adding the header <code>Access-Control-Allow-Origin</code> (default value is <code>*</code>). By setting <code>credentials</code> to <code>true</code>, the header value will be the origin of the current page, allowing CORS with credentials (e.g., fetch with <code>credentials: include</code>).</p>
+<h2 id="usage--api">Usage &amp; API</h2>
+<h3 id="check-if-the-extension-is-installed">Check if the Extension is Installed</h3>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8;overflow-x:auto" tabindex="0" data-language="typescript"><code><span class="line"><span style="color:#F97583">import</span><span style="color:#E1E4E8"> appCors </span><span style="color:#F97583">from</span><span style="color:#9ECBFF"> &#39;browser-app-cors&#39;</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">appCors.</span><span style="color:#B392F0">isExtInstalled</span><span style="color:#E1E4E8">().</span><span style="color:#B392F0">then</span><span style="color:#E1E4E8">((</span><span style="color:#FFAB70">isInstalled</span><span style="color:#E1E4E8">) </span><span style="color:#F97583">=&gt;</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#E1E4E8">  console.</span><span style="color:#B392F0">log</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">&#39;Extension installed:&#39;</span><span style="color:#E1E4E8">, isInstalled);</span></span>
+<span class="line"><span style="color:#E1E4E8">});</span></span></code></pre>
+<p><strong>Returns:</strong> <code>Promise&lt;boolean&gt;</code></p>
+<h3 id="check-if-cors-is-enabled">Check if CORS is Enabled</h3>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8;overflow-x:auto" tabindex="0" data-language="typescript"><code><span class="line"><span style="color:#E1E4E8">appCors.</span><span style="color:#B392F0">isEnabled</span><span style="color:#E1E4E8">().</span><span style="color:#B392F0">then</span><span style="color:#E1E4E8">((</span><span style="color:#FFAB70">status</span><span style="color:#E1E4E8">) </span><span style="color:#F97583">=&gt;</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#E1E4E8">  console.</span><span style="color:#B392F0">log</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">&#39;CORS status:&#39;</span><span style="color:#E1E4E8">, status);</span></span>
+<span class="line"><span style="color:#E1E4E8">}).</span><span style="color:#B392F0">catch</span><span style="color:#E1E4E8">((</span><span style="color:#FFAB70">error</span><span style="color:#E1E4E8">) </span><span style="color:#F97583">=&gt;</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#E1E4E8">  console.</span><span style="color:#B392F0">error</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">&#39;Failed to check CORS status:&#39;</span><span style="color:#E1E4E8">, error);</span></span>
+<span class="line"><span style="color:#E1E4E8">});</span></span></code></pre>
+<p><strong>Returns:</strong> <code>Promise&lt;{ enabled: true, credentials: boolean } | false&gt;</code></p>
+<h3 id="enable-cors">Enable CORS</h3>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8;overflow-x:auto" tabindex="0" data-language="typescript"><code><span class="line"><span style="color:#E1E4E8">appCors.</span><span style="color:#B392F0">enable</span><span style="color:#E1E4E8">({ credentials: </span><span style="color:#79B8FF">true</span><span style="color:#E1E4E8">, reason: </span><span style="color:#9ECBFF">&#39;Testing API&#39;</span><span style="color:#E1E4E8"> }).</span><span style="color:#B392F0">then</span><span style="color:#E1E4E8">(() </span><span style="color:#F97583">=&gt;</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#E1E4E8">  console.</span><span style="color:#B392F0">log</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">&#39;CORS enabled&#39;</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8">}).</span><span style="color:#B392F0">catch</span><span style="color:#E1E4E8">((</span><span style="color:#FFAB70">error</span><span style="color:#E1E4E8">) </span><span style="color:#F97583">=&gt;</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#E1E4E8">  console.</span><span style="color:#B392F0">error</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">&#39;Failed to enable CORS:&#39;</span><span style="color:#E1E4E8">, error);</span></span>
+<span class="line"><span style="color:#E1E4E8">});</span></span></code></pre>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>options</code> (optional): <code>{ credentials?: boolean, reason?: string }</code></li>
+</ul>
+<p><strong>Returns:</strong> <code>Promise&lt;void&gt;</code></p>
+<h3 id="disable-cors">Disable CORS</h3>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8;overflow-x:auto" tabindex="0" data-language="typescript"><code><span class="line"><span style="color:#E1E4E8">appCors.</span><span style="color:#B392F0">disable</span><span style="color:#E1E4E8">().</span><span style="color:#B392F0">then</span><span style="color:#E1E4E8">(() </span><span style="color:#F97583">=&gt;</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#E1E4E8">  console.</span><span style="color:#B392F0">log</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">&#39;CORS disabled&#39;</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8">}).</span><span style="color:#B392F0">catch</span><span style="color:#E1E4E8">((</span><span style="color:#FFAB70">error</span><span style="color:#E1E4E8">) </span><span style="color:#F97583">=&gt;</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#E1E4E8">  console.</span><span style="color:#B392F0">error</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">&#39;Failed to disable CORS:&#39;</span><span style="color:#E1E4E8">, error);</span></span>
+<span class="line"><span style="color:#E1E4E8">});</span></span></code></pre>
+<p><strong>Returns:</strong> <code>Promise&lt;void&gt;</code></p>
+<h3 id="listen-for-cors-status-changes">Listen for CORS Status Changes</h3>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8;overflow-x:auto" tabindex="0" data-language="typescript"><code><span class="line"><span style="color:#F97583">const</span><span style="color:#B392F0"> onChangeListener</span><span style="color:#F97583"> =</span><span style="color:#E1E4E8"> (</span><span style="color:#FFAB70">status</span><span style="color:#E1E4E8">) </span><span style="color:#F97583">=&gt;</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#E1E4E8">  console.</span><span style="color:#B392F0">log</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">&#39;CORS status changed:&#39;</span><span style="color:#E1E4E8">, status);</span></span>
+<span class="line"><span style="color:#E1E4E8">};</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">appCors.onChange.</span><span style="color:#B392F0">addListener</span><span style="color:#E1E4E8">(onChangeListener);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">// To remove the listener</span></span>
+<span class="line"><span style="color:#E1E4E8">appCors.onChange.</span><span style="color:#B392F0">removeListener</span><span style="color:#E1E4E8">(onChangeListener);</span></span></code></pre>
+<p><strong>onChange:</strong></p>
+<ul>
+<li><code>addListener(callback: (status: { enabled: boolean, credentials: boolean }) =&gt; void): void</code></li>
+<li><code>removeListener(callback?: (status: { enabled: boolean, credentials: boolean }) =&gt; void): void</code></li>
+</ul>
+<h3 id="open-extension-options-page">Open Extension Options Page</h3>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8;overflow-x:auto" tabindex="0" data-language="typescript"><code><span class="line"><span style="color:#E1E4E8">appCors.</span><span style="color:#B392F0">openExtOptions</span><span style="color:#E1E4E8">().</span><span style="color:#B392F0">then</span><span style="color:#E1E4E8">(() </span><span style="color:#F97583">=&gt;</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#E1E4E8">  console.</span><span style="color:#B392F0">log</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">&#39;Options page opened&#39;</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8">});</span></span></code></pre>
+<p><strong>Returns:</strong> <code>Promise&lt;void&gt;</code></p>
+<h3 id="open-extension-store-page">Open Extension Store Page</h3>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8;overflow-x:auto" tabindex="0" data-language="typescript"><code><span class="line"><span style="color:#E1E4E8">appCors.</span><span style="color:#B392F0">openStorePage</span><span style="color:#E1E4E8">();</span></span></code></pre>
+<p><strong>Returns:</strong> <code>void</code></p>
+<h2 id="license">License</h2>
+<p>MIT</p> </main> <script type="module">
+      (function () {
+        const hash = window.location.hash;
+        if (!hash) return;
+        const el = document.querySelector(hash);
+        if (!el || el.tagName !== 'DETAILS') return;
+        // @ts-expect-error el is a details element
+        el.open = true;
+      })();
+    </script> </body> </html>

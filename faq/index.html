@@ -1,0 +1,60 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Frequently Asked Questions - Browser App CORS</title><meta name="description" content="Find answers to common questions about the BrowserAppCors extension and npm package. Resolve issues with cross-origin request management and get quick technical"><meta name="astro-view-transitions-enabled" content="true"><meta name="astro-view-transitions-fallback" content="animate"><script type="module" src="/_astro/ClientRouter.astro_astro_type_script_index_0_lang.BScVxmeO.js"></script><link rel="stylesheet" href="/_astro/docs.B866ehMr.css">
+<style>.astro-route-announcer{position:absolute;left:0;top:0;clip:rect(0 0 0 0);clip-path:inset(50%);overflow:hidden;white-space:nowrap;width:1px;height:1px}
+@keyframes astroFadeInOut{0%{opacity:1}to{opacity:0}}@keyframes astroFadeIn{0%{opacity:0;mix-blend-mode:plus-lighter}to{opacity:1;mix-blend-mode:plus-lighter}}@keyframes astroFadeOut{0%{opacity:1;mix-blend-mode:plus-lighter}to{opacity:0;mix-blend-mode:plus-lighter}}@keyframes astroSlideFromRight{0%{transform:translate(100%)}}@keyframes astroSlideFromLeft{0%{transform:translate(-100%)}}@keyframes astroSlideToRight{to{transform:translate(100%)}}@keyframes astroSlideToLeft{to{transform:translate(-100%)}}@media (prefers-reduced-motion){::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none!important}[data-astro-transition-scope]{animation:none!important}}
+summary{cursor:pointer}details>p:first-child:empty{display:none}details+details{margin-top:.8rem}summary{font-weight:500}html{background:linear-gradient(135deg,#a8edea,#fed6e3);background-attachment:fixed;height:100%}body .prose{--tw-prose-bullets: #666}[data-astro-image]{width:100%;height:auto;-o-object-fit:var(--fit);object-fit:var(--fit);-o-object-position:var(--pos);object-position:var(--pos);aspect-ratio:var(--w) / var(--h)}[data-astro-image=responsive]{max-width:calc(var(--w) * 1px);max-height:calc(var(--h) * 1px)}[data-astro-image=fixed]{width:calc(var(--w) * 1px);height:calc(var(--h) * 1px)}
+</style></head> <body> <header class="bg-slate-100/30" data-astro-transition-persist="astro-3si54kmc-1"> <div class="px-4 mx-auto sm:px-6 lg:px-8"> <div class="flex items-center justify-between h-16 lg:h-20"> <div class="flex-shrink-0"> <a href="/" title="" class="flex"> <img class="w-auto h-8" src="https://cdn.rareblocks.xyz/collection/celebration/images/logo.svg" alt=""> </a> </div> <div class="flex items-center justify-center space-x-6 text-sm md:text-base text-black"> <a href="/docs/" title="integrate with your app" class="transition-all duration-200 hover:text-opacity-80">
+Integration
+</a> <a href="/playground/" class="hidden sm:inline transition-all duration-200 hover:text-opacity-80">
+Playground
+</a> <a href="/faq/" class="transition-all duration-200 hover:text-opacity-80">
+FAQ
+</a> <a href="/privacy/" class="transition-all duration-200 hover:text-opacity-80">
+Privacy
+</a> <a href="https://forth.ink/" target="_blank" class="transition-all duration-200 hover:text-opacity-80 hidden sm:inline">
+More Apps
+</a> </div> <a href="/#download" class="hidden sm:inline-flex items-center justify-center px-5 py-2.5 text-base transition-all duration-200 hover:bg-yellow-300 hover:text-black focus:text-black focus:bg-yellow-300 font-semibold text-white bg-black rounded-full" role="button">
+Install
+</a> </div> </div> </header> <main class="container mx-auto px-4 prose py-16"> <h2 id="frequently-asked-questions">Frequently Asked Questions</h2>
+<details id="how-it-works"><summary>How this extension works</summary><p>This extension helps you enable cross-origin requests for websites you specify. Here’s how it works:</p><ul>
+<li>
+<p><strong>Enables Data Loading</strong>: The extension adds a special header called <code>Access-Control-Allow-Origin</code> (default value is <code>*</code>) to server responses, allowing your website to load data from other websites (even those that would normally block such requests).</p>
+</li>
+<li>
+<p><strong>Supports Authentication</strong>: By turning on <strong>Site Auth</strong>, the extension also allows cross-origin requests that include login information, such as those required to stay logged in or access personal data.</p>
+</li>
+</ul></details>
+<details id="site-auth"><p><summary>What’s Site Auth</summary>
+<strong>What does this setting do?</strong>
+This setting lets you choose how your browser shares information with websites. When enabled, the browser shares your login data (like cookies) with websites to help them recognize you and provide a more personalized experience. When disabled, your browser won’t share this data, keeping your activity more private.</p><p><strong>When should I turn this on?</strong></p><ul>
+<li>Turn it on if you need to log into a website or access features that require authentication.</li>
+<li>For example, this is useful for online shopping, social media, or accessing member-only areas of websites.</li>
+</ul><p><strong>When should I turn this off?</strong></p><ul>
+<li>Turn it off if you’re browsing sensitive websites and want to avoid sharing login or personal data.</li>
+<li>This is a safer option when visiting unfamiliar or untrusted websites.</li>
+</ul><p><strong>How does this affect my privacy?</strong></p><ul>
+<li><strong>Enabled:</strong> Websites can recognize you and provide full features, but this may also share more of your personal data with them.</li>
+<li><strong>Disabled:</strong> Your privacy is better protected, but some websites may not work properly or require additional logins.</li>
+</ul><p>For more details, visit these helpful resources:</p><ul>
+<li><a href="https://foundation.mozilla.org/en/privacynotincluded/">Mozilla’s Guide to Privacy Basics</a></li>
+<li><a href="https://safety.google/privacy/understanding/">Google Safety Center: Understanding Privacy</a></li>
+</ul></details>
+<details id="why-not-working"><p><summary>Why is the extension not enabling cross-origin requests?</summary>
+There are a few reasons why the extension might not be working as expected. Here are some common issues and how to fix them:</p><ol>
+<li><strong>Extension Not Installed</strong>: Make sure the extension is installed and enabled in your browser. You can check this by looking for the extension icon in your browser toolbar.</li>
+<li><strong>Websites not supported</strong>: only http/https websites are supported. If you are trying to enable the extension on a different protocol, it may not work.</li>
+<li><strong>Request not sent from the enabled origin</strong>: The extension only works for requests sent from the origin you enabled it for. If you are testing on a different origin, you will need to enable the extension for that origin as well.</li>
+<li><strong>Extension Conflicts</strong>: If you have other extensions that modify headers or block requests, they may interfere with this extension. Try disabling other extensions to see if that helps.</li>
+</ol></details>
+<details id="npm-concerns"><p><summary>Is it secure that you allow websites to integrate with this extension?</summary>
+Despite web provide a way for developers to integrate with the extension, but the choice is at your hands: when websites try to enable CORS requests, you will be prompted to approve or deny the request. This way, you can control which websites have access to cross-origin requests and ensure your privacy and security.</p><p>Beside, you can always disable the extension or revoke permissions for specific websites if you no longer want them to have access to cross-origin requests via extension’s options page.</p></details>
+<details id="privacy-concerns"><p><summary>How does the extension handle my privacy?</summary>
+We take your privacy seriously and have implemented several measures to protect your data. check <a href="/privacy/">our privacy policy</a> for more information.</p></details> </main> <script type="module">
+      (function () {
+        const hash = window.location.hash;
+        if (!hash) return;
+        const el = document.querySelector(hash);
+        if (!el || el.tagName !== 'DETAILS') return;
+        // @ts-expect-error el is a details element
+        el.open = true;
+      })();
+    </script> </body> </html>
