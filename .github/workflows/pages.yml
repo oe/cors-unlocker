@@ -39,7 +39,7 @@ jobs:
       run: pnpm build
 
     - name: Upload extension
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         # Name of the artifact
         name: browser-extension
