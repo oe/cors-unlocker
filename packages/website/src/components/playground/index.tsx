@@ -5,7 +5,7 @@ export const PlaygroundPage: React.FC = () => {
   const {
     status, setFormValue, requestForm, errorRef, corsStatus,
     isCurlMode, setIsCurlMode, doRequest, responseRef,
-    toggleCors, toggleCorsCredentials
+    toggleCors, toggleCorsCredentials, isInstalled,
   } = useViewModel();
 
 
@@ -83,26 +83,36 @@ export const PlaygroundPage: React.FC = () => {
           >
             Send Request
           </button>
-          <div className='ml-4 text-sm'>
-            CORS Manage
-          </div>
-          <div className='ml-4'>
-            <input type="checkbox" id="toggle-cors" readOnly hidden className='peer' checked={corsStatus.enabled} />
-            <label
-              htmlFor="toggle-cors"
-              className='px-2 py-1 transition-all bg-gray-200 text-gray-800 rounded hover:bg-gray-300 bg-gradient-to-r opacity-80 peer-checked:from-cyan-500 peer-checked:to-blue-500 peer-checked:text-white'
-              onClick={toggleCors}
-              >CORS</label>
-          </div>
-          <div className='ml-4'>
-            <input type="checkbox" id="toggle-credentials" readOnly hidden className='peer' checked={corsStatus.credentials} />
-            <label
-              htmlFor="toggle-credentials"
-              aria-disabled={!corsStatus.enabled}
-              className='px-2 py-1 transition-all bg-gray-200 text-gray-800 rounded hover:bg-gray-300 bg-gradient-to-r opacity-80 aria-disabled:opacity-50  peer-checked:from-cyan-500 peer-checked:to-blue-500 peer-checked:text-white'
-              onClick={toggleCorsCredentials}
-              >with credentials</label>
-          </div>
+          {
+            isInstalled
+            ? (<>
+              <div className='ml-4 text-sm'>
+                CORS Manage
+              </div>
+              <div className='ml-4'>
+                <input type="checkbox" id="toggle-cors" readOnly hidden className='peer' checked={corsStatus.enabled} />
+                <label
+                  htmlFor="toggle-cors"
+                  className='px-2 py-1 transition-all bg-gray-200 text-gray-800 rounded hover:bg-gray-300 bg-gradient-to-r opacity-80  peer-checked:from-cyan-500 peer-checked:to-blue-500 peer-checked:text-white'
+                  onClick={toggleCors}
+                  >CORS</label>
+              </div>
+              <div className='ml-4'>
+                <input type="checkbox" id="toggle-credentials" readOnly hidden className='peer' checked={corsStatus.credentials} />
+                <label
+                  htmlFor="toggle-credentials"
+                  aria-disabled={!corsStatus.enabled}
+                  className='px-2 py-1 transition-all bg-gray-200 text-gray-800 rounded hover:bg-gray-300 bg-gradient-to-r opacity-80 aria-disabled:opacity-50  peer-checked:from-cyan-500 peer-checked:to-blue-500 peer-checked:text-white'
+                  onClick={toggleCorsCredentials}
+                  >with credentials</label>
+              </div>
+            </>)
+            : (
+              <div className='ml-2 text-sm text-red-500'>
+                You need to <a href="/" className='text-blue-400'>install the extension</a> to manage CORS
+              </div>
+            )
+          }
         </div>
       </div>
 
@@ -119,13 +129,13 @@ export const PlaygroundPage: React.FC = () => {
 
 
 function ResponseContent(props: { content: string, mediaType: string, contentType: string }) {
-  const responseType = <div className='mb-2'>Response Type: {props.mediaType}({props.contentType})</div>;
+  const responseType = <div className='mb-2 text-gray-400'>Response Type: {props.mediaType}({props.contentType})</div>;
   switch (props.mediaType) {
     case 'text':
       return (
         <>
           {responseType}
-          <pre className="whitespace-pre-line">{props.content}</pre>
+          <pre className="whitespace-pre-line break-words">{props.content}</pre>
         </>
       )
     case 'audio':

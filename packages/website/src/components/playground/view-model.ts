@@ -9,7 +9,7 @@ console.log('%cuse `appCors` in console to test the API of "browser-app-cors"', 
 export function useViewModel() {
   const [isCurlMode, setIsCurlMode] = useState(false);
   const [status, setStatus] = useState('idle');
-
+  const [isInstalled, setIsInstalled] = useState(false)
   const [corsStatus, setCorsStatus] = useState({ enabled: false, credentials: false });
 
   const [requestForm, setRequestForm] = useState({
@@ -34,6 +34,7 @@ export function useViewModel() {
         setCorsStatus({ enabled: false, credentials: false });
       }
     });
+    appCors.isExtInstalled().then(setIsInstalled);
     appCors.onChange.addListener(setCorsStatus);
     return () => {
       appCors.onChange.removeListener(setCorsStatus);
@@ -71,6 +72,7 @@ export function useViewModel() {
   }
 
   const toggleCors = async () => {
+    if (!isInstalled) return;
     if (corsStatus.enabled) {
       await appCors.disable();
     } else {
@@ -94,6 +96,7 @@ export function useViewModel() {
 
   return {
     isCurlMode,
+    isInstalled,
     setIsCurlMode,
     status,
     requestForm,
