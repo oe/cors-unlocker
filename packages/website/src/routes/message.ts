@@ -2,7 +2,7 @@ import type {
   IMessageData,
   IMessageResponse,
   IEnableOptions,
-} from 'browser-app-cors';
+} from 'cors-unlocker';
 // @ts-expect-error chrome / browser is browser extension related object
 const extObject: typeof chrome = typeof chrome !== 'undefined' ? chrome : typeof browser !== 'undefined' ? browser : null;
 

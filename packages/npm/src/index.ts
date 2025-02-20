@@ -188,7 +188,7 @@ export function openExtOptions() {
  */
 export function openStorePage() {
   const url = IS_FIREFOX
-    ? `https://addons.mozilla.org/en-US/firefox/addon/browser-app-cors/`
+    ? `https://addons.mozilla.org/en-US/firefox/addon/cors-unlocker/`
     : `https://chromewebstore.google.com/detail/${EXTENSION_ID}`;
 
   window.open(url, '_blank');

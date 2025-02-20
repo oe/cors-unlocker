@@ -1,5 +1,5 @@
 {
-  "name": "browser-app-cors",
+  "name": "cors-unlocker",
   "version": "1.0.0",
   "description": "Grant cross-origin request permissions for websites and open doors to boundless potential",
   "main": "dist/index.umd.js",

@@ -1,15 +1,15 @@
-# browser-app-cors
+# cors-unlocker
 
-`browser-app-cors` is a utility to manage Cross-Origin Resource Sharing (CORS) settings for your browser. It allows you to enable or disable CORS for specific websites, making API testing and development easier.
+`cors-unlocker` is a utility to manage Cross-Origin Resource Sharing (CORS) settings for your browser. It allows you to enable or disable CORS for specific websites, making API testing and development easier.
 
 ## Installation
 
 To install the package, use npm or yarn:
 
 ```sh
-npm install browser-app-cors -S
+npm install cors-unlocker -S
 # or
-yarn add browser-app-cors
+yarn add cors-unlocker
 ```
 
 ## How it works
@@ -21,7 +21,7 @@ This npm package provides a series of methods that communicate with the browser 
 ### Check if the Extension is Installed
 
 ```typescript
-import appCors from 'browser-app-cors';
+import appCors from 'cors-unlocker';
 
 appCors.isExtInstalled().then((isInstalled) => {
   console.log('Extension installed:', isInstalled);

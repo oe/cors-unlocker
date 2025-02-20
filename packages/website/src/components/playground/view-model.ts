@@ -1,10 +1,10 @@
-import appCors from 'browser-app-cors/src';
+import appCors from 'cors-unlocker/src';
 import { useState, useRef, useEffect } from 'react';
 
 // @ts-expect-error exposed to window object for debugging
 globalThis.appCors = appCors;
 
-console.log('%cuse `appCors` in console to test the API of "browser-app-cors"', 'color: #0a0; font-size: 1.5em');
+console.log('%cuse `appCors` in console to test the API of "cors-unlocker"', 'color: #0a0; font-size: 1.5em');
 
 export function useViewModel() {
   const [isCurlMode, setIsCurlMode] = useState(false);
