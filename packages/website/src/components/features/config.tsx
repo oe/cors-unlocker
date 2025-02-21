@@ -20,7 +20,7 @@ export const featureItems = [
     color: 'text-green-500',
     title: 'Open Source',
     description:
-      <>Fully open source for transparency and community contributions on <a className="text-slate-400" target="_blank" rel="noreferrer" href="https://github.com/oe/browser-app-cors">GitHub</a>.</>
+      <>Fully open source for transparency and community contributions on <a className="text-slate-400" target="_blank" rel="noreferrer" href="https://github.com/oe/cors-unlocker">GitHub</a>.</>
   },
   {
     icon: Package,
