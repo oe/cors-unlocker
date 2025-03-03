@@ -14,6 +14,7 @@
     "@astrojs/mdx": "catalog:",
     "@astrojs/react": "catalog:",
     "@eslint/js": "catalog:",
+    "@tailwindcss/postcss": "^4.0.8",
     "@tailwindcss/typography": "^0.5.15",
     "@types/chrome": "catalog:",
     "@types/react": "catalog:",
@@ -22,7 +23,7 @@
     "cors-unlocker": "workspace:*",
     "eslint": "catalog:",
     "eslint-plugin-react": "catalog:",
-    "globals": "^15.14.0",
+    "globals": "^16.0.0",
     "react": "catalog:",
     "react-dom": "catalog:",
     "typescript": "catalog:",
@@ -30,8 +31,8 @@
     "vite-plugin-eslint": "catalog:"
   },
   "dependencies": {
-    "@astrojs/tailwind": "^5.1.3",
-    "lucide-react": "^0.464.0",
+    "@astrojs/tailwind": "^6.0.0",
+    "lucide-react": "^0.475.0",
     "react-random-shapes": "^0.6.2",
     "tailwindcss": "^3.4.16"
   }

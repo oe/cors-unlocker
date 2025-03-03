@@ -10,11 +10,16 @@ const tabs = [
   { name: 'settings', title: 'Settings', content: Settings },
 ];
 
-function App() {
+const defaultActiveTab = (() => {
+  const hash = window.location.hash.slice(1);
+  return tabs.find(tab => tab.name === hash)?.name || tabs[0].name;
+})();
 
+function App() {
   return (
     <div className="container max-w-4xl mx-auto mt-16">
       <Tabs
+        activeTab={defaultActiveTab}
         tabs={tabs}
       />
     </div>

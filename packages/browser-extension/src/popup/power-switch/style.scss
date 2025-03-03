@@ -7,16 +7,24 @@
   position: relative;
   width: 70px;
   height: 70px;
-  background-color: rgb(99, 99, 99);
   border-radius: 50%;
   z-index: 1;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid rgb(126, 126, 126);
-  box-shadow: 0px 0px 3px rgb(2, 2, 2) inset;
+  
   transition: 0.5s;
+  background-color: rgb(233, 233, 233);
+  border: 2px solid rgb(186, 186, 186);
+  box-shadow: 0px 0px 3px rgb(253, 253, 253) inset, 0px 0px 3px 4px rgba(2, 2, 2, .06);
+
+  @media screen and (prefers-color-scheme: dark) {
+    background-color: rgb(99, 99, 99);
+    border: 2px solid rgb(126, 126, 126);
+    box-shadow: 0px 0px 3px rgb(2, 2, 2) inset;
+  }
+
 }
 
 .power-switch-label svg {
@@ -65,15 +73,24 @@
 }
 
 .site-auth-switch {
-  box-shadow: inset 0 0 0 1px #787878;
+  box-shadow: inset 0 0 0 1px #bbb;
   transition: all 0.3s ease;
-  background-image: linear-gradient(to right, #434343 0%, black 100%);
+  background-image: linear-gradient(to right, #898989 0%, white 100%);
   .is-disabled & {
     opacity: 0.5;
   }
 
+  color: #333;
+
   &.checked {
-    color: #fff;
     background-image: linear-gradient(-225deg, #2CD8D5 0%, #C5C1FF 56%, #FFBAC3 100%);
+
+  }
+  @media screen and (prefers-color-scheme: dark) {
+    box-shadow: inset 0 0 0 1px #787878;
+    background-image: linear-gradient(to right, #434343 0%, black 100%);
+    &.checked {
+      color: #fff;
+    }
   }
 }
