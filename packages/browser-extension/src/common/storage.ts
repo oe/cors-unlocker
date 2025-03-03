@@ -2,6 +2,8 @@ import { IRuleItem } from '@/types';
 import { type ICreateRuleOptions, createRule } from './rules';
 import { isSameRule } from './utils';
 import browser from 'webextension-polyfill';
+
+import { extConfig } from './ext-config';
 /**
  * local storage key for allowed domains
  */
@@ -87,8 +89,12 @@ export function setCurrentTabRule(winId: number | undefined, rule?: IRuleItem | 
   });
 }
 
+/**
+ * get current active tab rule
+ * @param winId window id
+ */
 export function getCurrentTabRule(winId: number) {
-  return currentTabRule[winId];
+  return currentTabRule[winId] || { credentials: extConfig.get().dftEnableCredentials || false };
 }
 
 export function removeCurrentTabRule(winId: number) {

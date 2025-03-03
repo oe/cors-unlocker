@@ -2,6 +2,7 @@ import { IRuleItem } from '@/types';
 import { Link, MessageSquareMore } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { SiteAuthInput } from '@/common/shard';
+import { extConfig } from '@/common/ext-config';
 
 
 export interface IRuleInputProps {
@@ -190,5 +191,5 @@ function getDefaultFormData(rule?: IRuleItem | null) {
       credentials: rule.credentials
     }
   }
-  return { url: '', origin: '', comment: '', credentials: false};
+  return { url: '', origin: '', comment: '', credentials: extConfig.get().dftEnableCredentials };
 }

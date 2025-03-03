@@ -7,8 +7,8 @@ import { Settings } from 'lucide-react';
 import "./style.scss";
 
 function App() {
-  const { rule, toggleRule, isSupported, gotoOptionsPage } = useViewModel();
-  const containerExtraClass = (isSupported ? '' : 'blur-sm') + ' ' + ((!rule || rule.disabled) ? 'is-disabled' : '');
+  const { rule, ruleEnabled, toggleRule, isSupported, gotoOptionsPage } = useViewModel();
+  const containerExtraClass = (isSupported ? '' : 'blur-sm') + ' ' + ((!ruleEnabled) ? 'is-disabled' : '');
   return (
     <>
     { !isSupported && (
@@ -22,7 +22,7 @@ function App() {
       </div>
       <div className='divide-y'>
         <div className='relative w-full py-4 flex justify-center'>
-          <PowerSwitch value={!rule ? false : !rule?.disabled} onChange={(enabled) => {
+          <PowerSwitch value={ruleEnabled} onChange={(enabled) => {
             toggleRule({ disabled: !enabled })
           }} />
         </div>

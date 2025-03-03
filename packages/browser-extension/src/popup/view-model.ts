@@ -65,8 +65,12 @@ export function useViewModel() {
     browser.runtime.openOptionsPage();
   }, []);
 
+  // rule is enabled when it's not disabled and has an id
+  const ruleEnabled = !!rule && !rule.disabled && !!rule.id;
+
   return {
     rule,
+    ruleEnabled,
     isSupported,
     toggleRule,
     gotoOptionsPage,
