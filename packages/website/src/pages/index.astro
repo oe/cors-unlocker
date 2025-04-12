@@ -1,28 +1,15 @@
 ---
-import { ClientRouter } from 'astro:transitions';
-import Header from '../components/header.astro';
+import BaseLayout from '../components/base-layout.astro';
 import Hero from '../components/hero.astro';
 import Features from '../components/features/index.astro';
-import Footer from '../components/footer.astro';
+import '../components/tailwind.css';
 ---
 
-<html>
-  <head>
-    <title>
-      CORS Unlocker - The Ultimate Cross-Origin Solution for Web Apps
-    </title>
-    <meta
-      name="description"
-      content="Browser App Cors simplifies cross-origin request management with powerful tools for users and developers, combining a browser extension and an npm package. Secure, efficient, and easy to use."
-    />
-    <meta charset="utf-8" />
-    <ClientRouter />
-    <meta name="viewport" content="width=device-width" />
-  </head>
-  <body>
-    <Header />
-    <Hero />
-    <Features />
-    <Footer />
-  </body>
-</html>
+<BaseLayout
+  title="The Ultimate Cross-Origin Solution for Web Apps"
+  description="Browser App Cors simplifies cross-origin request management with powerful tools for users and developers, combining a browser extension and an npm package. Secure, efficient, and easy to use."
+  isHomepage
+>
+  <Hero />
+  <Features />
+</BaseLayout>

@@ -3,11 +3,17 @@ import react from '@astrojs/react';
 import eslint from 'vite-plugin-eslint';
 import mdx from '@astrojs/mdx';
 
-import tailwind from '@astrojs/tailwind';
+import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
-  integrations: [react(), mdx(), tailwind()],
-  vite: {
-    plugins: [eslint()],
+  integrations: [react(), mdx()],
+  markdown: {
+    syntaxHighlight: 'shiki', // or 'prism' if preferred
+    shikiConfig: {
+      theme: 'github-dark' // or 'nord', 'dracula', etc.
+    }
   },
+  vite: {
+    plugins: [eslint(), tailwindcss()]
+  }
 });

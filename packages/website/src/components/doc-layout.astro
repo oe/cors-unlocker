@@ -1,6 +1,5 @@
 ---
-import { ClientRouter } from 'astro:transitions';
-import Header from './header.astro';
+import BaseLayout from './base-layout.astro';
 interface Props {
   frontmatter: {
     title: string;
@@ -10,58 +9,42 @@ interface Props {
 const { frontmatter } = Astro.props;
 ---
 
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width" />
-    <title>{frontmatter.title} - CORS Unlocker</title>
-    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
-    {
-      frontmatter.description && (
-        <meta name="description" content={frontmatter.description} />
-      )
+<BaseLayout frontmatter={frontmatter}>
+  <style is:global>
+    summary {
+      cursor: pointer;
     }
-    <ClientRouter />
-    <style is:global>
-      summary {
-        cursor: pointer;
-      }
-      details > p:first-child:empty {
-        display: none;
-      }
+    details > p:first-child:empty {
+      display: none;
+    }
 
-      details + details {
-        margin-top: 0.8rem;
-      }
+    details + details {
+      margin-top: 0.8rem;
+    }
 
-      summary {
-        font-weight: 500;
-      }
-      html {
-        background: linear-gradient(135deg, #a8edea, #fed6e3);
-        background-attachment: fixed;
-        height: 100%;
-      }
+    summary {
+      font-weight: 500;
+    }
+    html {
+      background: linear-gradient(135deg, #a8edea, #fed6e3);
+      background-attachment: fixed;
+    }
 
-      body .prose {
-        --tw-prose-bullets: #666;
-      }
-    </style>
-  </head>
-  <body>
-    <Header />
-    <main class="container mx-auto px-4 prose py-16">
-      <slot />
-    </main>
-    <script type="module">
-      (function () {
-        const hash = window.location.hash;
-        if (!hash) return;
-        const el = document.querySelector(hash);
-        if (!el || el.tagName !== 'DETAILS') return;
-        // @ts-expect-error el is a details element
-        el.open = true;
-      })();
-    </script>
-  </body>
-</html>
+    body .prose {
+      --tw-prose-bullets: #666;
+    }
+  </style>
+  <main class="container mx-auto px-4 prose py-16">
+    <slot />
+  </main>
+  <script type="module">
+    (function () {
+      const hash = window.location.hash;
+      if (!hash) return;
+      const el = document.querySelector(hash);
+      if (!el || el.tagName !== 'DETAILS') return;
+      // @ts-expect-error el is a details element
+      el.open = true;
+    })();
+  </script>
+</BaseLayout>

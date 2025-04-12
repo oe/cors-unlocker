@@ -1,0 +1,44 @@
+---
+import { ClientRouter } from 'astro:transitions';
+import Header from './header.astro';
+import Footer from './footer.astro';
+import './tailwind.css';
+interface Props {
+  isHomepage?: boolean;
+  title?: string;
+  description?: string;
+  frontmatter?: {
+    title?: string;
+    description?: string;
+  };
+}
+const { frontmatter = {} } = Astro.props;
+
+const SITE_NAME = 'CORS Unlocker';
+
+const title = frontmatter.title || Astro.props.title;
+
+const pageTitle = title
+  ? Astro.props.isHomepage ? `${SITE_NAME} - ${title}` : `${title} - ${SITE_NAME}`
+  : SITE_NAME;
+
+const description = frontmatter.description || Astro.props.description;
+---
+
+<html lang="en" class="h-full">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{pageTitle}</title>
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
+    {description && <meta name="description" content={description} />}
+    <ClientRouter />
+  </head>
+  <body class="flex flex-col h-full">
+    <Header />
+    <div class="flex-1">
+      <slot />
+    </div>
+    <Footer />
+  </body>
+</html>

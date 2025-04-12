@@ -20,11 +20,10 @@ export const PlaygroundPage: React.FC = () => {
   };
 
   return (
-    <div className="p-4 max-w-4xl mx-auto">
+    <div className="p-4 max-w-4xl mx-auto" >
       <h1 className="text-2xl font-bold mb-4">Cross-Origin Request Playground</h1>
-
       {/* Request Area */}
-      <div className="mb-6 border-b pb-4 relative">
+      <div className="mb-6 border-b pb-4 relative border-gray-200">
         <label className="text-lg font-medium absolute top-0 right-0">
           cURL
           <input
@@ -43,7 +42,7 @@ export const PlaygroundPage: React.FC = () => {
               placeholder="Enter a valid cURL command"
               value={requestForm.curlCommand}
               onChange={(e) => setFormValue('curlCommand', e.target.value)}
-              className="border rounded p-2 w-full h-32"
+              className="border border-gray-200 rounded p-2 w-full h-32"
             />
           </div>
         ) : (
@@ -53,7 +52,7 @@ export const PlaygroundPage: React.FC = () => {
               <select
                 value={requestForm.method}
                 onChange={(e) => setFormValue('method', e.target.value)}
-                className="border rounded p-2 h-10 w-full"
+                className="border border-gray-200 rounded p-2 h-10 w-full"
               >
                 <option value="GET">GET</option>
                 <option value="POST">POST</option>
@@ -69,7 +68,7 @@ export const PlaygroundPage: React.FC = () => {
                 placeholder="Enter a valid URL"
                 value={requestForm.url}
                 onChange={(e) => setFormValue('url', e.target.value)}
-                className="border rounded p-2 h-10 w-full"
+                className="border border-gray-200 rounded p-2 h-10 w-full"
               />
             </div>
           </div>
@@ -119,7 +118,7 @@ export const PlaygroundPage: React.FC = () => {
       {/* Response Area */}
       <div>
         <h2 className="text-xl font-semibold mb-2">Response</h2>
-        <div className="border p-4 rounded bg-gray-50">
+        <div className="border border-gray-200 p-4 rounded bg-gray-50">
           {renderResponse()}
         </div>
       </div>
