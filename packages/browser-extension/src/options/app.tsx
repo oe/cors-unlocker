@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { Tabs } from './tabs';
 import { RuleManage } from './rule-manage';
 import { Settings } from './settings';
+import '@/common/tailwind.css';
 import './style.scss';
 
 const tabs = [

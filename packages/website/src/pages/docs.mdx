@@ -5,6 +5,23 @@ description: Learn how to use the BrowserAppCors npm package to integrate browse
 ---
 # cors-unlocker
 
+You can enable CORS for your website using the `cors-unlocker` npm package.
+
+<p className='text-center space-x-1'>
+ <a href="https://github.com/oe/cors-unlocker/actions">
+    <img className='not-prose inline' src="https://github.com/oe/cors-unlocker/actions/workflows/main.yml/badge.svg" alt="github actions"/>
+  </a>
+  <a href="#readme">
+    <img className='inline' src="https://img.shields.io/badge/%3C%2F%3E-typescript-blue" alt="code with typescript" height="20"/>
+  </a>
+  <a href="#readme">
+    <img className='not-prose inline' src="https://badge.fury.io/js/cors-unlocker.svg" alt="npm version" height="20" />
+  </a>
+  <a href="https://www.npmjs.com/package/cors-unlocker">
+    <img className='not-prose inline' src="https://img.shields.io/npm/dm/cors-unlocker.svg" alt="npm downloads" height="20"/>
+  </a>
+</p>
+
 `cors-unlocker` is a utility to manage Cross-Origin Resource Sharing (CORS) settings for your browser. It allows you to enable or disable CORS for specific websites, making API testing and development easier.
 
 ## Installation
@@ -19,7 +36,7 @@ yarn add cors-unlocker
 
 ## How it works
 
-This npm package provides a series of methods that communicate with the browser extension "Browser App CORS" through the webpage "https://cors.forth.ink/message/index.html". 
+This npm package provides a series of methods that communicate with the browser extension "Browser App CORS" through the webpage "https://cors.forth.ink/message/index.html". *Why can't it communicate directly with your site? It's possible, but it requires extending the browser extension's permissions, which will increase privacy concerns.*
 
 When CORS is enabled, this extension modifies all responses to requests sent from the current page by adding the header `Access-Control-Allow-Origin` (default value is `*`). By setting `credentials` to `true`, the header value will be the origin of the current page, allowing CORS with credentials (e.g., fetch with `credentials: include`).
 

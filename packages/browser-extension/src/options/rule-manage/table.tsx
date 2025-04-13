@@ -41,7 +41,7 @@ export function RuleTable(props: IRuleTableProps) {
         </thead>
         <tbody>
           {props.rules.map((rule) => (
-            <tr key={rule.id} className="border-t hover:bg-slate-100/30">
+            <tr key={rule.id} className="border-t border-gray-200 hover:bg-slate-100/30">
               <td className="py-2 text-center">{rule.id}</td>
               <td className="py-2 text-left break-all">
                 {/* <div className='group relative'> */}

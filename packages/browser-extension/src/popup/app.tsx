@@ -4,7 +4,8 @@ import { useViewModel } from './view-model';
 import { AuthHelp } from '@/common/shard';
 import { SiteAuthSwitch, PowerSwitch } from './power-switch';
 import { Settings } from 'lucide-react';
-import "./style.scss";
+import '@/common/tailwind.css';
+import './style.scss';
 
 function App() {
   const { rule, ruleEnabled, toggleRule, isSupported, gotoOptionsPage } = useViewModel();

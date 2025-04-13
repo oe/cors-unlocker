@@ -3,7 +3,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import eslint from 'vite-plugin-eslint';
 import webExtension, { readJsonFile } from "vite-plugin-web-extension";
-import tailwindcss from 'tailwindcss';
+import tailwindcss from '@tailwindcss/vite';
 
 function generateManifest() {
   const manifest = readJsonFile("src/manifest.json");
@@ -22,16 +22,6 @@ const browserTarget = process.env.TARGET || 'chrome';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  css: {
-    preprocessorOptions: {
-      scss: {
-        api: 'modern'
-      }
-    },
-    postcss: {
-      plugins: [tailwindcss]
-    }
-  },
   build: {
     emptyOutDir: true,
     outDir: `dist/${browserTarget}`
@@ -44,10 +34,11 @@ export default defineConfig({
   plugins: [
     react(),
     eslint(),
-    // @ts-expect-error webExtension is not in the vite plugin list
+    tailwindcss(),
     webExtension({
       browser: browserTarget,
       webExtConfig: {
+        target: 'chromium',
         startUrl: [
           // chrome extension options page
           `chrome-extension://${extID}/src/options/index.html`,

@@ -35,8 +35,9 @@ export async function onTabActiveChange(tab: browser.Tabs.Tab) {
 }
 
 function toggleIconStatus(tab: browser.Tabs.Tab, active: boolean) {
-  browser.action.setBadgeText({
+  console.log('toggleIconStatus', tab.url, active);
+  browser.action.setIcon({
     tabId: tab.id,
-    text: active ? 'ON' : 'OFF'
+    path: '/icon/' + (active ? '32.png' : 'gray-32.png')
   });
 }
