@@ -80,7 +80,7 @@ function App() {
         
         <div className='border-t border-slate-200 dark:border-slate-600 my-2'></div>
         
-        <div className='flex items-center justify-center py-2'>
+        <div className='flex items-center justify-center py-2 dark:text-white'>
           <SiteAuthSwitch 
             value={!!rule?.credentials}
             onChange={(value) => toggleRule({ 
@@ -89,8 +89,9 @@ function App() {
             disabled={!isSupported || !ruleEnabled}
           />
         </div>
-        
-        <AuthHelp />
+        <div className='dark:text-white'>
+          <AuthHelp />
+        </div>
       </div>
     </>
   );
