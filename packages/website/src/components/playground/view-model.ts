@@ -92,19 +92,6 @@ export function useViewModel() {
           isCheckingExtension: false,
         }));
 
-        // Listen for CORS status changes
-        if (installed) {
-          try {
-            appCors.onChange.addListener((status: any) => {
-              // Guard check: ensure status is not null
-              if (status && typeof status === 'object' && 'enabled' in status) {
-                setState(prev => ({ ...prev, corsStatus: status }));
-              }
-            });
-          } catch (error) {
-            console.warn('Failed to set up change listener:', error);
-          }
-        }
       } catch (error) {
         console.error('Failed to initialize extension status:', error);
         setState(prev => ({
@@ -119,9 +106,7 @@ export function useViewModel() {
     initializeExtensionStatus();
 
     return () => {
-      if (state.isInstalled) {
-        appCors.onChange.removeListener();
-      }
+      // Cleanup if needed
     };
   }, []);
 
@@ -194,6 +179,10 @@ export function useViewModel() {
           reason: 'Testing cross-origin requests in playground',
         });
       }
+      
+      // Update status after operation
+      const newStatus = await appCors.isEnabled();
+      setState(prev => ({ ...prev, corsStatus: newStatus }));
     } catch (error: any) {
       setState(prev => ({ ...prev, errorMessage: error?.message || 'Failed to toggle CORS' }));
     } finally {
@@ -211,6 +200,10 @@ export function useViewModel() {
         credentials: !state.corsStatus.credentials,
         reason: 'Toggling credentials support in playground',
       });
+      
+      // Update status after operation
+      const newStatus = await appCors.isEnabled();
+      setState(prev => ({ ...prev, corsStatus: newStatus }));
     } catch (error: any) {
       setState(prev => ({ ...prev, errorMessage: error?.message || 'Failed to toggle credentials' }));
     } finally {

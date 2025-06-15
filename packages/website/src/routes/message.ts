@@ -26,11 +26,26 @@ const BASIC_CONFIG = (()=> {
 // browser auto disconnect the port when the page is unloaded
 let port: chrome.runtime.Port | null = null;
 
-const disconnectPort = () => {
-  if (!port) return
-  console.warn('disconnect port');
-  port.disconnect();
-  port = null;
+const connectToExtension = () => {
+  if (!BASIC_CONFIG.extID || port) return;
+  
+  try {
+    port = extObject.runtime.connect(BASIC_CONFIG.extID);
+    port.onDisconnect.addListener(() => {
+      console.warn('[cors-unlocker]Port disconnected, ready for reconnection');
+      port = null;
+    });
+  } catch (error) {
+    console.error('[cors-unlocker]Failed to connect to extension:', error);
+    port = null;
+  }
+}
+
+const ensureConnection = async () => {
+  if (!port) {
+    connectToExtension();
+  }
+  return port;
 }
 
 const messageCallbacks = {
@@ -84,7 +99,7 @@ const messageCallbacks = {
       
       return true;
     } catch (error) {
-      console.warn('Extension verification failed:', error);
+      console.warn('[cors-unlocker]Extension verification failed:', error);
       if (payload?.throw) {
         throw {
           type: 'not-installed',
@@ -96,7 +111,7 @@ const messageCallbacks = {
   },
   enable: async (options?: IEnableOptions) => {
     const rule: any = await sendMessage2ext('getRule');
-    console.log('rule', rule);
+    if(process.env.NODE_ENV === 'development') console.log('rule', rule);
     if (rule && !rule.disabled) {
       // already enabled, nothing to do
       if (!options || typeof options.credentials === 'undefined') return { success: true };
@@ -140,27 +155,12 @@ const messageCallbacks = {
       }
     }
     return sendMessage2ext('enable', options);
-  },
-  toggleChangeListener: async (payload) => {
-    disconnectPort();
-    if (payload?.enabled) {
-      port = extObject.runtime.connect(BASIC_CONFIG.extID!);
-      port.onDisconnect.addListener(disconnectPort);
-      port.onMessage.addListener((message) => {
-        sendMessage2frame({
-          id: Math.random().toString(36).slice(2),
-          type: 'onChange',
-          data: message
-        });
-      });
-    }
-    return;
   }
 } satisfies Record<string, (payload?: any) => Promise<any>>;
 
 window.addEventListener('message', async (event) => {
   const data = event.data;
-  console.log('frame message', data);
+  if (process.env.NODE_ENV === 'development') console.log('frame message', data);
   // not the designated message
   if (!isMessageData(data)) return;
   // message type not supported yet
@@ -211,6 +211,9 @@ window.addEventListener('message', async (event) => {
 
 function sendMessage2ext(method: string, payload?: any) {
   return new Promise((resolve, reject) => {
+    // Ensure connection before sending message
+    ensureConnection();
+    
     extObject.runtime.sendMessage(BASIC_CONFIG.extID, {
       method,
       payload: {
@@ -218,7 +221,7 @@ function sendMessage2ext(method: string, payload?: any) {
         origin: BASIC_CONFIG.origin
       }
     }, (response: any) => {
-      console.log('ext response', response);
+      if (process.env.NODE_ENV === 'development') console.log('ext response', response);
       if (
         (response && typeof response === 'object') &&
         response.__mozWebExtensionPolyfillReject__
@@ -228,8 +231,18 @@ function sendMessage2ext(method: string, payload?: any) {
         } catch {
           return reject(response.message);  
         }
-        
       }
+      
+      // Check for runtime errors (connection issues)
+      if (extObject.runtime.lastError) {
+        // Reset port on connection error to allow retry
+        port = null;
+        return reject({
+          type: 'communication-failed',
+          message: extObject.runtime.lastError.message || 'Connection failed'
+        });
+      }
+      
       resolve(response);
     })
   })

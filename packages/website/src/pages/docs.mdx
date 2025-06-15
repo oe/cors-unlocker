@@ -116,23 +116,6 @@ await appCors.enable({
 }`}
 />
 
-### Real-time Status Monitoring
-
-Stay synchronized with CORS state changes:
-
-```typescript
-// Listen for status changes
-const handleStatusChange = (status) => {
-  console.log('CORS status updated:', status)
-  // status: { enabled: boolean, credentials: boolean }
-}
-
-appCors.onChange.addListener(handleStatusChange)
-
-// Clean up when done
-appCors.onChange.removeListener(handleStatusChange)
-```
-
 ### Extension Management
 
 Quick access to extension settings and installation:
@@ -186,11 +169,8 @@ function CORSManager() {
     // Check installation status
     appCors.isExtInstalled().then(setIsInstalled)
     
-    // Monitor CORS changes
-    const handleChange = (status) => setCorsStatus(status)
-    appCors.onChange.addListener(handleChange)
-    
-    return () => appCors.onChange.removeListener(handleChange)
+    // Check initial CORS status
+    appCors.isEnabled().then(setCorsStatus)
   }, [])
 
   const toggleCORS = async () => {

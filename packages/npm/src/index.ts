@@ -19,7 +19,6 @@ export interface IMessageData {
 
 export type IMessageResponse =
   | { id: string; type: 'response'; data?: any; error?: undefined }
-  | { id: string; type: 'onChange'; data?: any; error?: undefined }
   | {
       id: string;
       type: 'response';
@@ -78,37 +77,40 @@ export class AppCorsError extends Error {
 
 let framePromise: Promise<HTMLIFrameElement> | null = null;
 let frameWin: Window | null = null;
+let frameDom: HTMLIFrameElement | null = null;
 
 function initFrame() {
-  if (framePromise) return framePromise;
+  // if frameDom.isConnected is false, it means the frame is not in the document, need to reinitialize
+  if (framePromise && (!frameDom || frameDom.isConnected)) return framePromise;
+
   framePromise = new Promise((resolve, reject) => {
-    console.log('Initializing frame with URL:', EXT_FRAME_URL);
-    console.log('Extension ID:', EXTENSION_ID);
-    console.log('Current origin:', location.origin);
+    if (process.env.NODE_ENV === 'development') console.log('Initializing frame with URL:', EXT_FRAME_URL);
+    if (process.env.NODE_ENV === 'development') console.log('Extension ID:', EXTENSION_ID);
+    if (process.env.NODE_ENV === 'development') console.log('Current origin:', location.origin);
     
-    const frame = document.createElement('iframe');
-    frame.src = `${EXT_FRAME_URL}?origin=${encodeURIComponent(
+    frameDom = document.createElement('iframe');
+    frameDom.src = `${EXT_FRAME_URL}?origin=${encodeURIComponent(
       location.origin
     )}&extID=${encodeURIComponent(EXTENSION_ID)}`;
     
-    console.log('Frame src:', frame.src);
+    if (process.env.NODE_ENV === 'development') console.log('Frame src:', frameDom.src);
     
     let timeoutId: NodeJS.Timeout;
     
     const onInit = (event: MessageEvent) => {
-      console.log('Frame message received:', event.data, 'from:', event.origin);
-      if (event.source !== frame.contentWindow) return;
+      if (process.env.NODE_ENV === 'development') console.log('Frame message received:', event.data, 'from:', event.origin);
+      if (event.source !== frameDom!.contentWindow) return;
       if (event.data?.type === 'ext' && event.data?.method === 'init') {
-        console.log('Frame initialized successfully');
-        frameWin = frame.contentWindow;
+        if (process.env.NODE_ENV === 'development') console.log('Frame initialized successfully');
+        frameWin = frameDom!.contentWindow;
         window.removeEventListener('message', onInit);
         clearTimeout(timeoutId);
-        resolve(frame);
+        resolve(frameDom!);
       }
     };
     
     window.addEventListener('message', onInit);
-    frame.onerror = (error) => {
+    frameDom!.onerror = (error) => {
       clearTimeout(timeoutId);
       reject(error);
     };
@@ -123,49 +125,10 @@ function initFrame() {
       }));
     }, 10000); // 10 second timeout
     
-    frame.style.display = 'none';
-    document.body.appendChild(frame);
+    frameDom!.style.display = 'none';
+    document.body.appendChild(frameDom!);
   });
   return framePromise;
-}
-
-
-
-export type IOnChangeListener = (changed: { enabled: boolean, credentials: boolean }) => void;
-
-const onChangeCallbacks = new Set<IOnChangeListener>();
-
-/**
- * Listen the change of CORS status
- */
-export const onChange = {
-  addListener(callback: IOnChangeListener) {
-    if (!onChangeCallbacks.size) {
-      initFrame()
-        .then(() => toggleChangeListener(true))
-        .catch(console.error);;
-    }
-    onChangeCallbacks.add(callback);
-  },
-  removeListener(callback?: IOnChangeListener) {
-    if (!callback) {
-      onChangeCallbacks.clear();
-    } else {
-      onChangeCallbacks.delete(callback);
-    }
-    if (onChangeCallbacks.size === 0) {
-      initFrame()
-        .then(() => toggleChangeListener(false))
-        .catch(console.error);
-    }
-  }
-};
-
-function toggleChangeListener(enabled: boolean) {
-  return sendMessage({
-    method: 'toggleChangeListener',
-    payload: { enabled }
-  });
 }
 
 let isEventInited = false;
@@ -177,13 +140,7 @@ function initEventMessage() {
   window.addEventListener('message', (event) => {
     const data = event.data as IMessageResponse;
     if (event.source !== frameWin) return;
-    console.log('npm message event', data);
-    if (data.type === 'onChange') {
-      onChangeCallbacks.forEach((callback) => {
-        callback(data.data);
-      });
-      return;
-    }
+    
     const callbacks = listenerMap[data.id];
     if (!callbacks) return;
     delete listenerMap[data.id];
@@ -205,12 +162,24 @@ interface ISendMessageParams {
 }
 
 async function sendMessage(params: ISendMessageParams) {
-  await initFrame();
+  try {
+    await initFrame();
+  } catch (error) {
+    // Reset frame promise to allow retry
+    framePromise = null;
+    frameWin = null;
+    throw error;
+  }
+  
   return new Promise((resolve, reject) => {
     if (!frameWin) {
-      reject(new Error('frameWin is not ready'));
+      reject(new AppCorsError({ 
+        type: 'communication-failed', 
+        message: 'Frame window is not ready' 
+      }));
       return;
     }
+    
     const id = Math.random().toString(36).slice(2);
     const message: IMessageData = {
       id,
@@ -223,7 +192,10 @@ async function sendMessage(params: ISendMessageParams) {
     const timeoutId = setTimeout(() => {
       if (listenerMap[id]) {
         delete listenerMap[id];
-        reject(new Error(`Message timeout: ${params.method}`));
+        reject(new AppCorsError({ 
+          type: 'communication-failed', 
+          message: `Message timeout: ${params.method}` 
+        }));
       }
     }, 5000); // 5 second timeout for individual messages
     
@@ -237,7 +209,20 @@ async function sendMessage(params: ISendMessageParams) {
         reject(error);
       }
     ];
-    frameWin!.postMessage(message, '*');
+    
+    try {
+      frameWin!.postMessage(message, '*');
+    } catch (error) {
+      clearTimeout(timeoutId);
+      delete listenerMap[id];
+      // Reset frame for retry
+      framePromise = null;
+      frameWin = null;
+      reject(new AppCorsError({ 
+        type: 'communication-failed', 
+        message: 'Failed to send message to frame' 
+      }));
+    }
   });
 }
 
@@ -330,7 +315,6 @@ export default {
   openExtOptions,
   openStorePage,
   isEnabled,
-  onChange,
   enable,
   disable
 }
