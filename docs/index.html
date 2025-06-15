@@ -12,7 +12,7 @@ Privacy
 More Apps
 </a> </div> <a href="/#download" class="hidden sm:inline-flex items-center justify-center px-5 py-2.5 text-base transition-all duration-200 hover:bg-yellow-300 hover:text-black focus:text-black focus:bg-yellow-300 font-semibold text-white bg-black rounded-full" role="button">
 Install
-</a> </div> </div> </header> <div class="flex-1">    <div class="relative overflow-hidden bg-gradient-to-br from-gray-50 via-white to-gray-100"> <div class="absolute inset-0 bg-gradient-to-br from-blue-50/30 via-purple-50/20 to-indigo-50/30"></div> <!-- Background decoration --> <div class="absolute inset-0"> <div class="absolute top-1/4 left-1/4 w-32 h-32 bg-gradient-to-br from-blue-200/20 to-purple-200/20 rounded-full blur-2xl"></div> <div class="absolute bottom-1/4 right-1/4 w-48 h-48 bg-gradient-to-br from-purple-200/20 to-indigo-200/20 rounded-full blur-2xl"></div> </div> <div class="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center"> <h1 class="text-4xl sm:text-5xl font-semibold text-gray-900 mb-4 tracking-tight"> Developer Integration Guide </h1> <p class="text-xl text-gray-600 max-w-3xl mx-auto font-light leading-relaxed"> Seamlessly integrate CORS management into your web application with our powerful npm package. Enable, disable, and monitor cross-origin requests with just a few lines of code. </p> </div> </div>  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16"> <article class="doc-container rounded-3xl shadow-2xl p-8 sm:p-12"> <main class="prose prose-lg max-w-none"> <h2 id="getting-started">Getting Started</h2>
+</a> </div> </div> </header> <div class="flex-1">    <div class="relative overflow-hidden bg-gradient-to-br from-gray-50 via-white to-gray-100"> <div class="absolute inset-0 bg-gradient-to-br from-blue-50/30 via-purple-50/20 to-indigo-50/30"></div> <!-- Background decoration --> <div class="absolute inset-0"> <div class="absolute top-1/4 left-1/4 w-32 h-32 bg-gradient-to-br from-blue-200/20 to-purple-200/20 rounded-full blur-2xl"></div> <div class="absolute bottom-1/4 right-1/4 w-48 h-48 bg-gradient-to-br from-purple-200/20 to-indigo-200/20 rounded-full blur-2xl"></div> </div> <div class="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center"> <h1 class="text-4xl sm:text-5xl font-semibold text-gray-900 mb-4 tracking-tight"> Developer Integration Guide </h1> <p class="text-xl text-gray-600 max-w-3xl mx-auto font-light leading-relaxed"> Seamlessly integrate CORS management into your web application with our powerful npm package. Enable, disable, and monitor cross-origin requests with just a few lines of code. </p> </div> </div>  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4"> <article class="doc-container rounded-3xl shadow-2xl p-8 sm:p-12"> <main class="prose prose-lg max-w-none"> <h2 id="getting-started">Getting Started</h2>
 <p>Transform your web development experience with the <code>cors-unlocker</code> npm package. Designed for developers who need reliable CORS management without the complexity.</p>
 <div class="flex flex-wrap gap-2 justify-center my-8"><img src="https://github.com/oe/cors-unlocker/actions/workflows/main.yml/badge.svg" alt="GitHub Actions" class="not-prose"/><img src="https://img.shields.io/badge/%3C%2F%3E-typescript-blue" alt="TypeScript" class="not-prose"/><img src="https://badge.fury.io/js/cors-unlocker.svg" alt="npm version" class="not-prose"/><img src="https://img.shields.io/npm/dm/cors-unlocker.svg" alt="npm downloads" class="not-prose"/></div>
 <h2 id="quick-installation">Quick Installation</h2>
@@ -61,18 +61,6 @@ Install
 <span class="line"><span style="color:#E1E4E8">} </span><span style="color:#F97583">catch</span><span style="color:#E1E4E8"> (error) {</span></span>
 <span class="line"><span style="color:#E1E4E8">  console.</span><span style="color:#B392F0">error</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">'Failed to disable CORS:'</span><span style="color:#E1E4E8">, error)</span></span>
 <span class="line"><span style="color:#E1E4E8">}</span></span></code></pre> </div> </div> </div>
-<h3 id="real-time-status-monitoring">Real-time Status Monitoring</h3>
-<p>Stay synchronized with CORS state changes:</p>
-<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8;overflow-x:auto" tabindex="0" data-language="typescript"><code><span class="line"><span style="color:#6A737D">// Listen for status changes</span></span>
-<span class="line"><span style="color:#F97583">const</span><span style="color:#B392F0"> handleStatusChange</span><span style="color:#F97583"> =</span><span style="color:#E1E4E8"> (</span><span style="color:#FFAB70">status</span><span style="color:#E1E4E8">) </span><span style="color:#F97583">=&gt;</span><span style="color:#E1E4E8"> {</span></span>
-<span class="line"><span style="color:#E1E4E8">  console.</span><span style="color:#B392F0">log</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">&#39;CORS status updated:&#39;</span><span style="color:#E1E4E8">, status)</span></span>
-<span class="line"><span style="color:#6A737D">  // status: { enabled: boolean, credentials: boolean }</span></span>
-<span class="line"><span style="color:#E1E4E8">}</span></span>
-<span class="line"></span>
-<span class="line"><span style="color:#E1E4E8">appCors.onChange.</span><span style="color:#B392F0">addListener</span><span style="color:#E1E4E8">(handleStatusChange)</span></span>
-<span class="line"></span>
-<span class="line"><span style="color:#6A737D">// Clean up when done</span></span>
-<span class="line"><span style="color:#E1E4E8">appCors.onChange.</span><span style="color:#B392F0">removeListener</span><span style="color:#E1E4E8">(handleStatusChange)</span></span></code></pre>
 <h3 id="extension-management">Extension Management</h3>
 <p>Quick access to extension settings and installation:</p>
 <pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8;overflow-x:auto" tabindex="0" data-language="typescript"><code><span class="line"><span style="color:#6A737D">// Open extension settings</span></span>
@@ -114,11 +102,8 @@ Install
 <span class="line"><span style="color:#6A737D">    // Check installation status</span></span>
 <span class="line"><span style="color:#E1E4E8">    appCors.</span><span style="color:#B392F0">isExtInstalled</span><span style="color:#E1E4E8">().</span><span style="color:#B392F0">then</span><span style="color:#E1E4E8">(setIsInstalled)</span></span>
 <span class="line"><span style="color:#E1E4E8">    </span></span>
-<span class="line"><span style="color:#6A737D">    // Monitor CORS changes</span></span>
-<span class="line"><span style="color:#F97583">    const</span><span style="color:#B392F0"> handleChange</span><span style="color:#F97583"> =</span><span style="color:#E1E4E8"> (</span><span style="color:#FFAB70">status</span><span style="color:#E1E4E8">) </span><span style="color:#F97583">=&gt;</span><span style="color:#B392F0"> setCorsStatus</span><span style="color:#E1E4E8">(status)</span></span>
-<span class="line"><span style="color:#E1E4E8">    appCors.onChange.</span><span style="color:#B392F0">addListener</span><span style="color:#E1E4E8">(handleChange)</span></span>
-<span class="line"><span style="color:#E1E4E8">    </span></span>
-<span class="line"><span style="color:#F97583">    return</span><span style="color:#E1E4E8"> () </span><span style="color:#F97583">=&gt;</span><span style="color:#E1E4E8"> appCors.onChange.</span><span style="color:#B392F0">removeListener</span><span style="color:#E1E4E8">(handleChange)</span></span>
+<span class="line"><span style="color:#6A737D">    // Check initial CORS status</span></span>
+<span class="line"><span style="color:#E1E4E8">    appCors.</span><span style="color:#B392F0">isEnabled</span><span style="color:#E1E4E8">().</span><span style="color:#B392F0">then</span><span style="color:#E1E4E8">(setCorsStatus)</span></span>
 <span class="line"><span style="color:#E1E4E8">  }, [])</span></span>
 <span class="line"></span>
 <span class="line"><span style="color:#F97583">  const</span><span style="color:#B392F0"> toggleCORS</span><span style="color:#F97583"> =</span><span style="color:#F97583"> async</span><span style="color:#E1E4E8"> () </span><span style="color:#F97583">=&gt;</span><span style="color:#E1E4E8"> {</span></span>
