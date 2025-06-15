@@ -285,25 +285,43 @@ export interface IEnableOptions {
 }
 
 /**
- * Enable CORS for the current page(tab)
- * @param options Configuration options for enabling CORS
- * @throws {AppCorsError} When the extension is not installed, user cancels, or operation fails
+ * Get extension configuration (internal use only)
+ * @internal
  */
+async function getExtConfig() {
+  return await sendMessage({ method: 'getExtConfig' }) as { dftEnableCredentials: boolean };
+}
+
 /**
  * Enable CORS for the current page(tab)
  * @param options Configuration options for enabling CORS
+ * @returns Promise<{ enabled: boolean, credentials: boolean }> The resulting CORS status
  * @throws {AppCorsError} When the extension is not installed, user cancels, or operation fails
  */
-export async function enable(options?: IEnableOptions): Promise<void> {
-  await sendMessage({ method: 'enable', payload: options });
+export async function enable(options?: IEnableOptions): Promise<{ enabled: boolean, credentials: boolean }> {
+  let finalOptions = options;
+  
+  // If credentials is not explicitly set, use extension default
+  if (!options || typeof options.credentials === 'undefined') {
+    try {
+      const config = await getExtConfig();
+      finalOptions = {
+        ...options,
+        credentials: config.dftEnableCredentials
+      };
+    } catch (error) {
+      // If config fetch fails, proceed with original options
+      console.warn('Failed to get extension config, using provided options:', error);
+    }
+  }
+  
+  const result = await sendMessage({ method: 'enable', payload: finalOptions }) as { enabled: boolean; credentials: boolean };
+  return result;
 }
 
 /**
  * Disable CORS for the current page(tab)
- * @throws {AppCorsError} When the extension is not installed or operation fails
- */
-/**
- * Disable CORS for the current page(tab)
+ * @returns Promise<void>
  * @throws {AppCorsError} When the extension is not installed or operation fails
  */
 export async function disable(): Promise<void> {

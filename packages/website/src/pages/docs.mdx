@@ -86,20 +86,22 @@ try {
 
 <ApiMethod
   name="appCors.enable(options?)"
-  description="Activate CORS with optional credential support"
+  description="Activate CORS with optional credential support. Returns the current status after operation."
   parameters={[
-    { name: "credentials", type: "boolean", required: false, description: "Enable credential-based requests" },
+    { name: "credentials", type: "boolean", required: false, description: "Enable credential-based requests (uses extension default if not specified)" },
     { name: "reason", type: "string", required: false, description: "Description for user consent" }
   ]}
-  returnType="Promise<void>"
-  example={`// Basic CORS activation
-await appCors.enable()
+  returnType="Promise<{ enabled: boolean, credentials: boolean }>"
+  example={`// Basic CORS activation (uses default credentials setting)
+const status = await appCors.enable()
+console.log('CORS enabled:', status.enabled, 'Credentials:', status.credentials)
 
-// Enable with credentials for authenticated requests
-await appCors.enable({ 
+// Enable with explicit credentials for authenticated requests
+const authStatus = await appCors.enable({ 
   credentials: true,
   reason: 'Testing authenticated API endpoints'
-})`}
+})
+console.log('Auth enabled:', authStatus.credentials)`}
 />
 
 ### Disable CORS Protection
@@ -177,8 +179,11 @@ function CORSManager() {
     try {
       if (corsStatus?.enabled) {
         await appCors.disable()
+        // After disable, check the current status
+        setCorsStatus(await appCors.isEnabled())
       } else {
-        await appCors.enable({ credentials: true })
+        const newStatus = await appCors.enable({ credentials: true })
+        setCorsStatus(newStatus)
       }
     } catch (error) {
       console.error('Failed to toggle CORS:', error)

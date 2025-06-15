@@ -2,6 +2,7 @@ import browser from 'webextension-polyfill';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { isSupportedProtocol } from '@/common/utils';
 import { logger } from '@/common/logger';
+import { extConfig } from '@/common/ext-config';
 import type { IRuleItem } from '@/types';
 
 interface ViewModelState {
@@ -129,11 +130,19 @@ export function useViewModel() {
       try {
         setState(prev => ({ ...prev, error: null }));
         
+        // If enabling CORS (disabled: false) and no explicit credentials setting,
+        // apply default credentials configuration
+        const finalPayload = { ...payload };
+        if (payload.disabled === false && typeof payload.credentials === 'undefined') {
+          const config = extConfig.get();
+          finalPayload.credentials = config.dftEnableCredentials;
+        }
+        
         const result = await browser.runtime.sendMessage({
           type: 'toggleRuleViaAction',
           payload: {
             origin: tabOrigin.current,
-            ...payload,
+            ...finalPayload,
           }
         });
 

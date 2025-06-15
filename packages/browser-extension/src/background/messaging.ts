@@ -6,6 +6,7 @@ import {
   toggleRuleViaOrigin,
   dataStorage,
 } from '@/common/storage';
+import { extConfig } from '@/common/ext-config';
 import { diffRules } from './user-rule';
 import { isSupportedProtocol } from '@/common/utils';
 import { logger } from '@/common/logger';
@@ -134,6 +135,9 @@ export async function onExternalMessage(
       case 'isEnabled':
         return await isOriginEnabled(origin);
       
+      case 'getExtConfig':
+        return await handleGetExtConfig();
+      
       case 'enable':
       case 'disable':
         return await handleToggleRule(origin, method, payload);
@@ -150,6 +154,11 @@ export async function onExternalMessage(
   }
 }
 
+async function handleGetExtConfig() {
+  const config = extConfig.get();
+  return config;
+}
+
 async function handleGetRule(origin: string): Promise<IRuleItem | null> {
   const rules = await dataStorage.getRules();
   const rule = rules.find((rule) => rule.origin === origin);
@@ -160,7 +169,7 @@ async function handleToggleRule(
   origin: string, 
   method: 'enable' | 'disable', 
   payload: any
-): Promise<void> {
+): Promise<{ enabled: boolean; credentials: boolean }> {
   const params: Partial<IRuleItem> = { 
     origin, 
     disabled: method === 'disable' 
@@ -177,6 +186,9 @@ async function handleToggleRule(
       type: 'inner-error',
     }));
   }
+  
+  // Return current status after the operation
+  return await isOriginEnabled(origin);
 }
 
 async function isOriginEnabled(origin: string) {

@@ -174,15 +174,15 @@ export function useViewModel() {
       console.log('Toggling CORS status...', state.corsStatus);
       if (state.corsStatus.enabled) {
         await appCors.disable();
+        // After disable, get the current status
+        const newStatus = await appCors.isEnabled();
+        setState(prev => ({ ...prev, corsStatus: newStatus }));
       } else {
-        await appCors.enable({
+        const newStatus = await appCors.enable({
           reason: 'Testing cross-origin requests in playground',
         });
+        setState(prev => ({ ...prev, corsStatus: newStatus }));
       }
-      
-      // Update status after operation
-      const newStatus = await appCors.isEnabled();
-      setState(prev => ({ ...prev, corsStatus: newStatus }));
     } catch (error: any) {
       setState(prev => ({ ...prev, errorMessage: error?.message || 'Failed to toggle CORS' }));
     } finally {
@@ -196,13 +196,11 @@ export function useViewModel() {
     setState(prev => ({ ...prev, isTogglingCors: true, errorMessage: null }));
     
     try {
-      await appCors.enable({
+      const newStatus = await appCors.enable({
         credentials: !state.corsStatus.credentials,
         reason: 'Toggling credentials support in playground',
       });
       
-      // Update status after operation
-      const newStatus = await appCors.isEnabled();
       setState(prev => ({ ...prev, corsStatus: newStatus }));
     } catch (error: any) {
       setState(prev => ({ ...prev, errorMessage: error?.message || 'Failed to toggle credentials' }));
