@@ -109,25 +109,29 @@ const messageCallbacks = {
     const rule: any = await sendMessage2ext('getRule');
     if (rule && !rule.disabled) {
       // already enabled, nothing to do
-      if (!options || typeof options.credentials === 'undefined') return { success: true };
-      if (rule.credentials === options.credentials) return { success: true };
+      if (!options || typeof options.credentials === 'undefined') return { enable: true, credentials: rule.credentials };
+      if (rule.credentials === options.credentials) return { enabled: true, credentials: rule.credentials };
     }
 
     const origin = BASIC_CONFIG.origin;
-    
-    let message = `Current page("${origin}") is requesting to enable CORS`
-    message += options?.credentials ? ' **with credentials**.' : '.';
-    message += options?.reason
-      ? `\n\nMessage from current Page:\n${options.reason}\n\n`
-      : '\n\n';
-    
-    message += 'Please only enable CORS with credentials if you trust the current page. Do you want to continue?';
+    // oly confirm when rule is not found or disabled or no credentials set
+    // if downgrade from credentials to no credentials, there is no need to confirm
+    if (!rule || rule.disabled || !rule.credentials) {
+      let message = `Current page("${origin}") is requesting to enable CORS`;
+      message += options?.credentials ? ' **with credentials**.' : '.';
+      message += options?.reason
+        ? `\n\nMessage from current Page:\n${options.reason}\n\n`
+        : '\n\n';
 
-    if (!confirm(message)) {
-      throw {
-        type: 'user-cancel',
-        message: 'User canceled'
-      };
+      message +=
+        'Please only enable CORS with credentials if you trust the current page. Do you want to continue?';
+
+      if (!confirm(message)) {
+        throw {
+          type: 'user-cancel',
+          message: 'User canceled'
+        };
+      }
     }
 
     return sendMessage2ext('enable', options);
