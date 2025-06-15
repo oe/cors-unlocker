@@ -2,27 +2,69 @@
 import { featureItems, RenderNode } from './config';
 ---
 
-<section class="py-10 bg-slate-100/60 sm:py-16 lg:py-24">
-  <div class="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
-    <div
-      class="grid grid-cols-1 gap-12 text-center sm:grid-cols-2 md:grid-cols-3 lg:gap-y-16"
-    >
+<!-- Features Section - Apple Style -->
+<section class="py-20 bg-white">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <!-- Section Header -->
+    <div class="text-center mb-20">
+      <h2 class="text-4xl sm:text-5xl font-semibold text-gray-900 mb-6 tracking-tight">
+        Why Choose 
+        <span class="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          CORS Unlocker
+        </span>
+      </h2>
+      <p class="text-xl text-gray-600 max-w-3xl mx-auto font-light">
+        Powerful tools for seamless cross-origin request management, designed for both developers and users.
+      </p>
+    </div>
+
+    <!-- Features Grid -->
+    <div class="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
       {
-        featureItems.map((item) => (
-          <div>
-            <div class="relative flex items-center justify-center mx-auto">
-              <item.icon className={'w-12 h-12 text-primary ' + item.color} />
-            </div>
-            <h3 class="mt-8 text-lg font-semibold text-black">
-              <RenderNode node={item.title} />
-              {/* <RenderNode>{item.title}</RenderNode> */}
-            </h3>
-            <div class="mt-4 text-base text-gray-600">
-              <RenderNode node={item.description} />
+        featureItems.map((item, index) => (
+          <div class="group relative">
+            <div class="bg-white/80 backdrop-blur-xl rounded-3xl border border-gray-200/50 p-8 shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-105 h-full">
+              <div class="flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl mb-6">
+                <item.icon className={'w-8 h-8 ' + item.color} />
+              </div>
+              
+              <h3 class="text-xl font-semibold text-gray-900 mb-4 group-hover:text-blue-600 transition-colors">
+                <RenderNode node={item.title} />
+              </h3>
+              
+              <div class="text-gray-600 leading-relaxed">
+                <RenderNode node={item.description} />
+              </div>
             </div>
           </div>
         ))
       }
+    </div>
+
+    <!-- CTA Section -->
+    <div class="mt-20 text-center">
+      <div class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-3xl p-12 border border-gray-200/50">
+        <h3 class="text-3xl font-semibold text-gray-900 mb-4">
+          Ready to unlock the web?
+        </h3>
+        <p class="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+          Join thousands of developers who trust CORS Unlocker for seamless cross-origin request management.
+        </p>
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+          <a
+            href="/playground"
+            class="inline-flex items-center px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-2xl transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-xl"
+          >
+            Try Playground
+          </a>
+          <a
+            href="/docs"
+            class="inline-flex items-center px-8 py-4 bg-white hover:bg-gray-50 text-gray-700 font-semibold rounded-2xl border border-gray-200 hover:border-gray-300 transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-xl"
+          >
+            View Documentation
+          </a>
+        </div>
+      </div>
     </div>
   </div>
 </section>

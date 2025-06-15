@@ -4,7 +4,7 @@ export interface IMessageData {
    */
   type: 'ext';
   /**
-   * The message id
+   * The message id for tracking requests
    */
   id: string;
   /**
@@ -29,7 +29,7 @@ export type IMessageResponse =
 
 const EXT_FRAME_URL =
   process.env.NODE_ENV === 'development'
-    ? '/message/index.html'
+    ? `/message`
     : 'https://cors.forth.ink/message/index.html';
 
 const EXTENSION_ID_MAP = {
@@ -44,9 +44,32 @@ const EXTENSION_ID = IS_FIREFOX
   : EXTENSION_ID_MAP.chrome;
 
 
-class AppCorsError extends Error {
-  readonly type: string;
-  constructor(options: { type: string, message: string }) {
+/**
+ * Error types that can be thrown by the CORS Unlocker API
+ */
+export type CorsErrorType = 
+  | 'not-installed'           // Extension is not installed
+  | 'forbidden-origin'        // Origin is not allowed to use the extension
+  | 'rate-limit'              // Too many requests from this origin
+  | 'user-cancel'             // User cancelled the operation
+  | 'invalid-sender'          // Invalid message sender
+  | 'missing-method'          // Missing method in message
+  | 'missing-origin'          // Missing origin in payload
+  | 'unsupported-origin'      // Unsupported origin protocol (only http/https allowed)
+  | 'unsupported-method'      // Unsupported method
+  | 'config-error'            // Extension configuration error
+  | 'invalid-origin'          // Origin format is invalid
+  | 'inner-error'             // Internal extension error
+  | 'communication-failed'    // Failed to communicate with extension
+  | 'unknown-error';          // Fallback for unexpected errors
+
+/**
+ * Custom error class for CORS Unlocker operations
+ */
+export class AppCorsError extends Error {
+  readonly type: CorsErrorType;
+  
+  constructor(options: { type: CorsErrorType, message: string }) {
     super(options.message);
     this.type = options.type;
     this.name = 'AppCorsError';
@@ -59,18 +82,47 @@ let frameWin: Window | null = null;
 function initFrame() {
   if (framePromise) return framePromise;
   framePromise = new Promise((resolve, reject) => {
+    console.log('Initializing frame with URL:', EXT_FRAME_URL);
+    console.log('Extension ID:', EXTENSION_ID);
+    console.log('Current origin:', location.origin);
+    
     const frame = document.createElement('iframe');
     frame.src = `${EXT_FRAME_URL}?origin=${encodeURIComponent(
       location.origin
     )}&extID=${encodeURIComponent(EXTENSION_ID)}`;
+    
+    console.log('Frame src:', frame.src);
+    
+    let timeoutId: NodeJS.Timeout;
+    
     const onInit = (event: MessageEvent) => {
+      console.log('Frame message received:', event.data, 'from:', event.origin);
       if (event.source !== frame.contentWindow) return;
-      frameWin = frame.contentWindow;
-      window.removeEventListener('message', onInit);
-      resolve(frame);
+      if (event.data?.type === 'ext' && event.data?.method === 'init') {
+        console.log('Frame initialized successfully');
+        frameWin = frame.contentWindow;
+        window.removeEventListener('message', onInit);
+        clearTimeout(timeoutId);
+        resolve(frame);
+      }
     };
+    
     window.addEventListener('message', onInit);
-    frame.onerror = reject;
+    frame.onerror = (error) => {
+      clearTimeout(timeoutId);
+      reject(error);
+    };
+    
+    // Add timeout to prevent infinite waiting
+    timeoutId = setTimeout(() => {
+      console.error('Frame initialization timeout');
+      window.removeEventListener('message', onInit);
+      reject(new AppCorsError({ 
+        type: 'communication-failed', 
+        message: 'Frame initialization timeout - extension may not be installed or may not have permission to communicate with this origin' 
+      }));
+    }, 10000); // 10 second timeout
+    
     frame.style.display = 'none';
     document.body.appendChild(frame);
   });
@@ -137,7 +189,10 @@ function initEventMessage() {
     delete listenerMap[data.id];
     const [resolve, reject] = callbacks;
     if (data.error) {
-      reject(new AppCorsError(data.error));
+      reject(new AppCorsError({
+        type: data.error.type as CorsErrorType,
+        message: data.error.message
+      }));
     } else {
       resolve(data.data);
     }
@@ -154,6 +209,7 @@ async function sendMessage(params: ISendMessageParams) {
   return new Promise((resolve, reject) => {
     if (!frameWin) {
       reject(new Error('frameWin is not ready'));
+      return;
     }
     const id = Math.random().toString(36).slice(2);
     const message: IMessageData = {
@@ -162,7 +218,25 @@ async function sendMessage(params: ISendMessageParams) {
       type: 'ext',
     };
     initEventMessage();
-    listenerMap[id] = [resolve, reject];
+    
+    // Add timeout for individual messages
+    const timeoutId = setTimeout(() => {
+      if (listenerMap[id]) {
+        delete listenerMap[id];
+        reject(new Error(`Message timeout: ${params.method}`));
+      }
+    }, 5000); // 5 second timeout for individual messages
+    
+    listenerMap[id] = [
+      (data: any) => {
+        clearTimeout(timeoutId);
+        resolve(data);
+      }, 
+      (error: any) => {
+        clearTimeout(timeoutId);
+        reject(error);
+      }
+    ];
     frameWin!.postMessage(message, '*');
   });
 }
@@ -170,16 +244,18 @@ async function sendMessage(params: ISendMessageParams) {
 /**
  * Check whether the extension is installed
  * @returns Promise<boolean>
+ * @throws {AppCorsError} When there's an error communicating with the extension infrastructure
  */
-export function isExtInstalled() {
+export function isExtInstalled(): Promise<boolean> {
   return sendMessage({ method: 'isInstalled' }) as Promise<boolean>;
 }
 
 /**
  * Open the extension's options page
+ * @throws {AppCorsError} When the extension is not installed or fails to open options
  */
-export function openExtOptions() {
-  return sendMessage({ method: 'openOptions' }) as Promise<void>;
+export async function openExtOptions(): Promise<void> {
+  await sendMessage({ method: 'openOptions' });
 }
 
 /**
@@ -197,17 +273,16 @@ export function openStorePage() {
 /**
  * Check whether CORS is enabled for the current page(tab)
  * @returns Promise<{ enabled: boolean, credentials: boolean }>
+ * @throws {AppCorsError} When there's an error checking CORS status (except when extension is not installed)
  */
-export async function isEnabled() {
+export async function isEnabled(): Promise<{ enabled: boolean, credentials: boolean }> {
   try {
-    const result = await sendMessage({ method: 'isEnabled' }) as Promise<
-      false | { enabled: true; credentials: boolean }
-    >;
+    const result = await sendMessage({ method: 'isEnabled' }) as { enabled: boolean; credentials: boolean };
     return result;
   } catch (error) {
     // if the extension is not installed, return false instead of throwing an error
     if (error instanceof AppCorsError && error.type === 'not-installed') {
-      return false;
+      return { enabled: false, credentials: false };
     }
     throw error;
   }
@@ -226,16 +301,28 @@ export interface IEnableOptions {
 
 /**
  * Enable CORS for the current page(tab)
+ * @param options Configuration options for enabling CORS
+ * @throws {AppCorsError} When the extension is not installed, user cancels, or operation fails
  */
-export function enable(options?: IEnableOptions) {
-  return sendMessage({ method: 'enable', payload: options }) as Promise<boolean>;
+/**
+ * Enable CORS for the current page(tab)
+ * @param options Configuration options for enabling CORS
+ * @throws {AppCorsError} When the extension is not installed, user cancels, or operation fails
+ */
+export async function enable(options?: IEnableOptions): Promise<void> {
+  await sendMessage({ method: 'enable', payload: options });
 }
 
 /**
  * Disable CORS for the current page(tab)
+ * @throws {AppCorsError} When the extension is not installed or operation fails
  */
-export function disable() {
-  return sendMessage({ method: 'disable' }) as Promise<boolean>;
+/**
+ * Disable CORS for the current page(tab)
+ * @throws {AppCorsError} When the extension is not installed or operation fails
+ */
+export async function disable(): Promise<void> {
+  await sendMessage({ method: 'disable' });
 }
 
 export default {

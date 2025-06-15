@@ -1,5 +1,6 @@
 import type { IRuleItem } from '@/types';
 import { genRuleId } from './storage';
+import { logger } from './logger';
 
 export type ICreateRuleOptions = Omit<IRuleItem, 'id' | 'updatedAt' | 'domain' | 'createdAt' | 'comment'> & {
   comment?: string;
@@ -18,6 +19,6 @@ export function createRule(options: ICreateRuleOptions): IRuleItem | void {
       updatedAt: createdAt
     };
   } catch (error) {
-    console.error('unable to create rule', error);
+    logger.error('unable to create rule', error);
   }
 }

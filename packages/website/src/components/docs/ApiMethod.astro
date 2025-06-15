@@ -1,0 +1,119 @@
+---
+import { Code } from 'astro:components';
+
+export interface Props {
+  name: string;
+  description?: string;
+  returnType?: string;
+  parameters?: Array<{
+    name: string;
+    type: string;
+    required?: boolean;
+    description: string;
+  }>;
+  example?: string;
+  language?: string;
+  className?: string;
+}
+
+const { name, description, returnType, parameters = [], example, language = 'typescript', className = '' } = Astro.props;
+
+// Handle MDX's whitespace normalization by reconstructing proper indentation
+const formatCode = (code: string) => {
+  if (!code) return '';
+  
+  // Split by lines and handle MDX's aggressive whitespace normalization
+  const lines = code.split('\n');
+  
+  // Remove leading/trailing empty lines
+  while (lines.length > 0 && lines[0].trim() === '') lines.shift();
+  while (lines.length > 0 && lines[lines.length - 1].trim() === '') lines.pop();
+  
+  if (lines.length === 0) return '';
+  
+  // Check if all lines start without indentation (MDX normalized them)
+  const hasNoIndentation = lines.every(line => line.trim() === '' || !line.startsWith(' '));
+  
+  if (hasNoIndentation) {
+    // Reconstruct proper indentation based on code structure
+    const indentedLines = [];
+    let indentLevel = 0;
+    
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed === '') {
+        indentedLines.push('');
+        continue;
+      }
+      
+      // Decrease indent for closing braces, 'catch', 'finally', etc.
+      if (trimmed.startsWith('}') || trimmed.startsWith('catch') || trimmed.startsWith('finally')) {
+        indentLevel = Math.max(0, indentLevel - 1);
+      }
+      
+      // Add the line with current indentation
+      indentedLines.push('  '.repeat(indentLevel) + trimmed);
+      
+      // Increase indent for opening braces, 'try', 'if', etc.
+      if (trimmed.endsWith('{') || trimmed.startsWith('try') || 
+          (trimmed.startsWith('if') && trimmed.endsWith(')'))) {
+        indentLevel++;
+      }
+    }
+    
+    return indentedLines.join('\n');
+  }
+  
+  return lines.join('\n');
+};
+
+
+const formattedExample = example ? formatCode(example) : '';
+---
+
+<div class={`not-prose bg-white border border-gray-200 rounded-lg p-6 my-6 shadow-sm ${className}`}>
+  <div class="mb-4">
+    <h3 class="text-lg font-semibold text-gray-900 mb-2 font-mono !mt-0">
+      {name}
+    </h3>
+    {description && (
+      <p class="text-gray-600 text-sm leading-relaxed !mt-0">{description}</p>
+    )}
+  </div>
+
+  {parameters.length > 0 && (
+    <div class="mb-4">
+      <h4 class="text-sm font-semibold text-gray-800 mb-3">Parameters</h4>
+      <div class="space-y-2">
+        {parameters.map((param) => (
+          <div class="bg-gray-50 p-3 rounded border-l-3 border-blue-400">
+            <div class="flex items-center gap-2 mb-1">
+              <code class="text-sm font-mono text-blue-700">{param.name}</code>
+              <span class="text-xs text-gray-500">{param.type}</span>
+              {param.required && (
+                <span class="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded">required</span>
+              )}
+            </div>
+            <p class="text-sm text-gray-600">{param.description}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  )}
+
+  {returnType && (
+    <div class="mb-4">
+      <h4 class="text-sm font-semibold text-gray-800 mb-2">Returns</h4>
+      <code class="text-sm bg-gray-100 text-gray-800 px-2 py-1 rounded">{returnType}</code>
+    </div>
+  )}
+
+  {formattedExample && (
+    <div>
+      <h4 class="text-sm font-semibold text-gray-800 mb-2">Example</h4>
+      <div class="rounded overflow-hidden">
+        <Code code={formattedExample} lang={language as any} theme="github-dark" />
+      </div>
+    </div>
+  )}
+</div>

@@ -11,32 +11,426 @@ const { frontmatter } = Astro.props;
 
 <BaseLayout frontmatter={frontmatter}>
   <style is:global>
-    summary {
-      cursor: pointer;
-    }
-    details > p:first-child:empty {
-      display: none;
-    }
-
-    details + details {
-      margin-top: 0.8rem;
-    }
-
-    summary {
-      font-weight: 500;
-    }
-    html {
-      background: linear-gradient(135deg, #a8edea, #fed6e3);
+    @import './tailwind.css';
+    /* Apple-style documentation styles */
+    body {
+      background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
       background-attachment: fixed;
     }
 
-    body .prose {
-      --tw-prose-bullets: #666;
+    .doc-container {
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    /* Custom prose styles for Apple look */
+    .prose {
+      --tw-prose-body: #374151;
+      --tw-prose-headings: #111827;
+      --tw-prose-links: #2563eb;
+      --tw-prose-bold: #111827;
+      --tw-prose-counters: #6b7280;
+      --tw-prose-bullets: #6b7280;
+      --tw-prose-hr: #e5e7eb;
+      --tw-prose-quotes: #111827;
+      --tw-prose-quote-borders: #e5e7eb;
+      --tw-prose-captions: #6b7280;
+      --tw-prose-code: #111827;
+      --tw-prose-pre-code: #e5e7eb;
+      --tw-prose-pre-bg: #1f2937;
+      --tw-prose-th-borders: #d1d5db;
+      --tw-prose-td-borders: #e5e7eb;
+    }
+
+    .prose h1 {
+      @apply text-4xl font-semibold text-gray-900 mb-8 tracking-tight;
+      margin-top: 0 !important; /* Remove top margin */
+    }
+
+    .prose h2 {
+      @apply text-2xl font-semibold text-gray-900 mt-12 mb-6 tracking-tight;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 0.5rem;
+    }
+
+    .prose h3 {
+      @apply text-xl font-semibold text-gray-900 mt-8 mb-4;
+    }
+
+    .prose h4 {
+      @apply text-lg font-semibold text-gray-900 mt-6 mb-3;
+    }
+
+    .prose h5 {
+      @apply text-base font-semibold text-gray-900 mt-4 mb-2;
+    }
+
+    .prose h6 {
+      @apply text-sm font-semibold text-gray-900 mt-4 mb-2;
+    }
+
+    /* Fix margin issues for component headers */
+    .prose :is(h1, h2, h3, h4, h5, h6):first-child {
+      margin-top: 0 !important;
+    }
+
+    /* Global fix for all component header margins */
+    .not-prose :is(h1, h2, h3, h4, h5, h6) {
+      margin-top: 0 !important;
+    }
+
+    .not-prose :is(h1, h2, h3, h4, h5, h6):first-child {
+      margin-top: 0 !important;
+    }
+
+    /* Fix first and last element margins in component content areas */
+    .prose-sm > *:first-child,
+    .prose-sm :first-child {
+      margin-top: 0 !important;
+    }
+
+    .prose-sm > *:last-child,
+    .prose-sm :last-child {
+      margin-bottom: 0 !important;
+    }
+
+    .prose p {
+      @apply text-gray-700 leading-7 mb-6;
+    }
+
+    .prose a {
+      @apply text-blue-600 hover:text-blue-700 font-medium no-underline;
+      transition: color 0.2s ease;
+    }
+
+    .prose a:hover {
+      text-decoration: underline;
+    }
+
+    .prose code {
+      @apply bg-gray-100 text-gray-800 px-2 py-1 rounded-lg text-sm font-mono;
+      font-weight: 500;
+    }
+
+    .prose pre {
+      @apply bg-gray-900 text-gray-100 p-6 rounded-2xl overflow-x-auto;
+      font-size: 0.875rem;
+      line-height: 1.6;
+    }
+
+    .prose pre code {
+      @apply bg-transparent text-gray-100 p-0;
+    }
+
+    .prose blockquote {
+      @apply border-l-4 border-blue-200 bg-blue-50/50 backdrop-blur pl-6 py-4 rounded-r-2xl;
+      font-style: normal;
+    }
+
+    .prose ul,
+    .prose ol {
+      @apply space-y-2;
+    }
+
+    .prose li {
+      @apply text-gray-700;
+    }
+
+    /* Custom details/summary styling for FAQ */
+    details {
+      @apply bg-white/60 backdrop-blur-xl border border-gray-200/50 rounded-2xl mb-4 shadow-lg;
+      transition: all 0.3s ease;
+      padding: 0;
+    }
+
+    details:hover {
+      @apply shadow-xl;
+      transform: translateY(-2px);
+    }
+
+    details[open] {
+      @apply bg-blue-50/60;
+    }
+
+    summary {
+      @apply text-lg font-semibold text-gray-900 cursor-pointer;
+      list-style: none;
+      position: relative;
+      padding: 1.5rem;
+      border-radius: 1rem;
+    }
+
+    /* Separator line when expanded */
+    details[open] summary {
+      border-bottom: 1px solid rgba(203, 213, 225, 0.3);
+      border-radius: 1rem 1rem 0 0;
+      margin-bottom: 0;
+    }
+
+    summary::-webkit-details-marker {
+      display: none;
+    }
+
+    summary::before {
+      content: '▶';
+      position: absolute;
+      right: 1.5rem;
+      top: 50%;
+      transform: translateY(-50%);
+      transition: transform 0.2s ease;
+      color: #6366f1;
+      font-size: 0.875rem;
+    }
+
+    details[open] summary::before {
+      transform: translateY(-50%) rotate(90deg);
+    }
+
+    summary:hover::before {
+      color: #4f46e5;
+    }
+
+    /* Content area styles */
+    details > *:not(summary) {
+      padding: 1.5rem;
+      margin-top: 0;
+    }
+
+    /* Fix paragraph spacing in collapsible panels - remove padding-top from adjacent paragraphs */
+    details p {
+      margin-bottom: 0 !important;
+    }
+    details p + p,
+    details p + ul {
+      padding-top: 0 !important;
+    }
+
+    details p:last-child {
+      margin-bottom: 0 !important;
+    }
+
+    /* Adjust left spacing for lists */
+    details > ul,
+    details > ol {
+      padding-left: 2.5rem;
+      margin-left: 0;
+    }
+
+    details li {
+      margin-bottom: 0.5rem;
+      padding-left: 0.5rem;
+    }
+
+    /* Fix list styles inside CompareCards */
+    details .not-prose ul,
+    details .not-prose ol {
+      padding-left: 1.5rem; /* Restore normal spacing for lists inside CompareCards */
+    }
+
+    details .not-prose li {
+      padding-left: 0; /* Remove extra padding from list items inside CompareCards */
+    }
+
+    /* Fix width of Callout and other components inside collapsible panels */
+    details .not-prose {
+      margin-left: 0;
+      margin-right: 0;
+      max-width: 100%;
+    }
+
+    details > p:first-of-type {
+      margin-top: 0;
+    }
+
+    details > p:last-of-type {
+      margin-bottom: 0;
+    }
+
+    /* Badge styles */
+    .prose img[alt*='badge'] {
+      @apply inline-block rounded-lg;
+    }
+
+    /* Table styles */
+    .prose table {
+      @apply bg-white/80 backdrop-blur rounded-2xl overflow-hidden shadow-lg;
+    }
+
+    .prose th {
+      @apply bg-gray-50/80 font-semibold text-gray-900;
+    }
+
+    .prose td {
+      @apply border-gray-200;
+    }
+
+    /* Button styles override prose styles */
+    .prose .inline-flex.items-center.px-4.py-2,
+    .prose .inline-flex.items-center.px-6.py-3 {
+      text-decoration: none !important;
+    }
+
+    .prose .inline-flex.items-center.px-4.py-2:hover,
+    .prose .inline-flex.items-center.px-6.py-3:hover {
+      text-decoration: none !important;
+    }
+
+    /* Specific button color overrides */
+    .prose a.bg-purple-700 {
+      color: white !important;
+    }
+
+    .prose a.bg-purple-700:hover {
+      color: white !important;
+      background-color: rgb(109 40 217) !important; /* purple-800 */
+    }
+
+    .prose a.bg-blue-700 {
+      color: white !important;
+    }
+
+    .prose a.bg-blue-700:hover {
+      color: white !important;
+      background-color: rgb(29 78 216) !important; /* blue-800 */
+    }
+
+    .prose a.text-purple-700 {
+      color: rgb(109 40 217) !important; /* purple-700 */
+    }
+
+    .prose a.text-blue-700 {
+      color: rgb(29 78 216) !important; /* blue-700 */
+    }
+
+    /* Additional button overrides with maximum specificity */
+    .prose div a[class*='bg-purple-700'],
+    .prose div a[class*='bg-blue-700'] {
+      color: white !important;
+      text-decoration: none !important;
+    }
+
+    .prose div a[class*='bg-purple-700']:hover {
+      color: white !important;
+      background-color: rgb(109 40 217) !important;
+      text-decoration: none !important;
+    }
+
+    .prose div a[class*='bg-blue-700']:hover {
+      color: white !important;
+      background-color: rgb(29 78 216) !important;
+      text-decoration: none !important;
+    }
+
+    .prose div a[class*='text-purple-700'] {
+      color: rgb(109 40 217) !important;
+      text-decoration: none !important;
+    }
+
+    .prose div a[class*='text-blue-700'] {
+      color: rgb(29 78 216) !important;
+      text-decoration: none !important;
+    }
+
+    /* Button classes to override prose styles completely - handle p tag wrapping */
+    .prose .btn-primary,
+    .prose p .btn-primary {
+      color: white !important;
+      text-decoration: none !important;
+    }
+
+    .prose .btn-primary:hover,
+    .prose p .btn-primary:hover {
+      color: white !important;
+      text-decoration: none !important;
+    }
+
+    .prose .btn-secondary,
+    .prose p .btn-secondary {
+      text-decoration: none !important;
+    }
+
+    .prose .btn-secondary:hover,
+    .prose p .btn-secondary:hover {
+      text-decoration: none !important;
+    }
+
+    /* Handle any inline-flex button in prose */
+    .prose a[class*='inline-flex'],
+    .prose p a[class*='inline-flex'] {
+      text-decoration: none !important;
+    }
+
+    .prose a[class*='bg-purple-7'],
+    .prose p a[class*='bg-purple-7'],
+    .prose a[class*='bg-blue-7'],
+    .prose p a[class*='bg-blue-7'] {
+      color: white !important;
+      text-decoration: none !important;
+    }
+
+    /* Style for simplified button section */
+    .prose p:has(.btn-primary),
+    .prose p:has(.btn-secondary) {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      background: linear-gradient(135deg, #fdf4ff 0%, #fce7f3 100%);
+      padding: 1.5rem;
+      border-radius: 1rem;
+      border: 1px solid #e879f9;
+      margin-top: 2rem;
     }
   </style>
-  <main class="container mx-auto px-4 prose py-16">
-    <slot />
-  </main>
+
+  <!-- Hero Section for Documentation -->
+  <div
+    class="relative overflow-hidden bg-gradient-to-br from-gray-50 via-white to-gray-100"
+  >
+    <div
+      class="absolute inset-0 bg-gradient-to-br from-blue-50/30 via-purple-50/20 to-indigo-50/30"
+    >
+    </div>
+
+    <!-- Background decoration -->
+    <div class="absolute inset-0">
+      <div
+        class="absolute top-1/4 left-1/4 w-32 h-32 bg-gradient-to-br from-blue-200/20 to-purple-200/20 rounded-full blur-2xl"
+      >
+      </div>
+      <div
+        class="absolute bottom-1/4 right-1/4 w-48 h-48 bg-gradient-to-br from-purple-200/20 to-indigo-200/20 rounded-full blur-2xl"
+      >
+      </div>
+    </div>
+
+    <div
+      class="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center"
+    >
+      <h1
+        class="text-4xl sm:text-5xl font-semibold text-gray-900 mb-4 tracking-tight"
+      >
+        {frontmatter.title}
+      </h1>
+      {
+        frontmatter.description && (
+          <p class="text-xl text-gray-600 max-w-3xl mx-auto font-light leading-relaxed">
+            {frontmatter.description}
+          </p>
+        )
+      }
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+    <article class="doc-container rounded-3xl shadow-2xl p-8 sm:p-12">
+      <main class="prose prose-lg max-w-none">
+        <slot />
+      </main>
+    </article>
+  </div>
+
   <script type="module">
     (function () {
       const hash = window.location.hash;

@@ -4,7 +4,11 @@
   "private": true,
   "main": "index.js",
   "scripts": {
-    "build": "turbo build"
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "dev:extension": "turbo dev --filter=browser-extension-cors-unlocker",
+    "dev:cors-unlocker": "turbo dev --filter=cors-unlocker",
+    "dev:website": "turbo dev --filter=website"
   },
   "keywords": [],
   "author": "",

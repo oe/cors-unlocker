@@ -35,29 +35,79 @@ const disconnectPort = () => {
 
 const messageCallbacks = {
   isInstalled: async (payload?: { throw?: boolean}) => {
-    const installed = !!extObject && !!extObject.runtime;
-    if (!installed && payload?.throw) {
-      throw {
-        type: 'not-installed',
-        message: 'extension not installed'
-      };
+    // Basic check: whether browser extension API is available
+    const hasExtAPI = !!extObject && !!extObject.runtime;
+    if (!hasExtAPI) {
+      if (payload?.throw) {
+        throw {
+          type: 'not-installed',
+          message: 'browser extension API not available'
+        };
+      }
+      return false;
     }
-    return installed;
+
+    // If extID is not provided, can only do basic check
+    if (!BASIC_CONFIG.extID) {
+      if (payload?.throw) {
+        throw {
+          type: 'config-error',
+          message: 'extID not provided'
+        };
+      }
+      return false;
+    }
+
+    // Verify if the specific extension ID is installed and available
+    try {
+      await new Promise<void>((resolve, reject) => {
+        // Try to send a simple ping message to the specified extension
+        extObject.runtime.sendMessage(BASIC_CONFIG.extID, {
+          method: 'ping',
+          payload: {}
+        }, (_response: any) => {
+          // Check for runtime errors
+          if (extObject.runtime.lastError) {
+            reject(new Error(extObject.runtime.lastError.message || 'Extension communication failed'));
+            return;
+          }
+          
+          // If response received, extension is installed and available
+          resolve();
+        });
+        
+        // Set timeout to avoid infinite waiting
+        setTimeout(() => {
+          reject(new Error('Extension communication timeout'));
+        }, 2000);
+      });
+      
+      return true;
+    } catch (error) {
+      console.warn('Extension verification failed:', error);
+      if (payload?.throw) {
+        throw {
+          type: 'not-installed',
+          message: `extension with ID ${BASIC_CONFIG.extID} not installed or not responding`
+        };
+      }
+      return false;
+    }
   },
   enable: async (options?: IEnableOptions) => {
     const rule: any = await sendMessage2ext('getRule');
     console.log('rule', rule);
     if (rule && !rule.disabled) {
       // already enabled, nothing to do
-      if (!options || typeof options.credentials === 'undefined') return true;
-      if (rule.credentials === options.credentials) return true;
+      if (!options || typeof options.credentials === 'undefined') return { success: true };
+      if (rule.credentials === options.credentials) return { success: true };
     }
     // if the rule is disabled or
     //  or want to enable with different credentials
     if (!rule || rule.disabled || (!rule.credentials && options?.credentials)) {
       let message = '';
       if (!rule || rule.disabled) {
-        message = `Current page("${origin}") is requesting to enable CORS`;
+        message = `Current page("${BASIC_CONFIG.origin}") is requesting to enable CORS`;
         if (options) {
           if (options.credentials) {
             message += ' with credentials.';

@@ -3,43 +3,97 @@ import { createRoot } from "react-dom/client";
 import { useViewModel } from './view-model';
 import { AuthHelp } from '@/common/shard';
 import { SiteAuthSwitch, PowerSwitch } from './power-switch';
-import { Settings } from 'lucide-react';
+import { Settings, AlertCircle } from 'lucide-react';
 import '@/common/tailwind.css';
 import './style.scss';
 
 function App() {
-  const { rule, ruleEnabled, toggleRule, isSupported, gotoOptionsPage } = useViewModel();
+  const { 
+    rule, 
+    ruleEnabled, 
+    toggleRule, 
+    isSupported,
+    error,
+    errorType,
+    gotoOptionsPage,
+    clearError
+  } = useViewModel();
+
   const containerExtraClass = (isSupported ? '' : 'blur-sm') + ' ' + ((!ruleEnabled) ? 'is-disabled' : '');
+
   return (
     <>
-    { !isSupported && (
-      <div className='fixed inset-0 flex items-center justify-center text-center text-slate-200 z-10'>
-        Only http/https websites are supported
-      </div>) }
-    <Settings className='w-4 h-4 fixed top-2 right-2 cursor-pointer dark:text-slate-200 z-10' onClick={gotoOptionsPage} />
-    <div className={'relative p-4 divide-slate-400 ' + containerExtraClass}>
-      <div className='text-center text-slate-900 dark:text-slate-50 text-sm font-medium'>
-        CORS Unlocker
-      </div>
-      <div className='divide-y'>
-        <div className='relative w-full py-4 flex justify-center'>
-          <PowerSwitch value={ruleEnabled} onChange={(enabled) => {
-            toggleRule({ disabled: !enabled })
-          }} />
-        </div>
-        <div className='text-slate-800 dark:text-slate-300 mt-2 flex flex-col items-center gap-2 pt-4'>
-          <div>
-            <AuthHelp />
+      {/* Error overlay for fatal errors only */}
+      {error && errorType === 'fatal' && (
+        <div className='fixed inset-0 bg-black/50 flex items-center justify-center text-center z-20'>
+          <div className="bg-white dark:bg-slate-800 rounded-lg p-4 mx-4 max-w-sm">
+            <div className="flex items-center gap-2 text-red-600 dark:text-red-400 mb-2">
+              <AlertCircle className="w-4 h-4" />
+              <span className="font-medium">Error</span>
+            </div>
+            <p className="text-sm text-slate-700 dark:text-slate-300">{error}</p>
           </div>
-          <SiteAuthSwitch
-            value={!!rule?.credentials}
-            onChange={(v) => toggleRule({credentials: v})}
+        </div>
+      )}
+
+      {/* Recoverable error banner */}
+      {error && errorType === 'recoverable' && (
+        <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-400 p-3 text-sm text-red-700 dark:text-red-400">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4" />
+            <span>{error}</span>
+            <button 
+              onClick={clearError}
+              className="ml-auto text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Unsupported protocol overlay */}
+      {!isSupported && (
+        <div className='fixed inset-0 flex items-center justify-center text-center text-slate-200 z-10'>
+          <div className="flex flex-col items-center gap-2">
+            <AlertCircle className="w-8 h-8 text-yellow-500" />
+            <span>Only http/https websites are supported</span>
+          </div>
+        </div>
+      )}
+
+      <Settings 
+        className='w-4 h-4 fixed top-2 right-2 cursor-pointer dark:text-slate-200 z-10 hover:text-blue-500 dark:hover:text-blue-400' 
+        onClick={gotoOptionsPage} 
+      />
+
+      <div className={'relative p-4 divide-slate-400 ' + containerExtraClass}>
+        <div className='flex items-center justify-center py-2'>
+          <PowerSwitch 
+            value={ruleEnabled}
+            onChange={(value) => toggleRule({ 
+              disabled: !value 
+            })}
+            disabled={!isSupported}
           />
         </div>
+        
+        <div className='border-t border-slate-200 dark:border-slate-600 my-2'></div>
+        
+        <div className='flex items-center justify-center py-2'>
+          <SiteAuthSwitch 
+            value={!!rule?.credentials}
+            onChange={(value) => toggleRule({ 
+              credentials: value 
+            })}
+            disabled={!isSupported || !ruleEnabled}
+          />
+        </div>
+        
+        <AuthHelp />
       </div>
-    </div>
     </>
-  )
+  );
 }
 
 createRoot(document.getElementById('root')!).render(

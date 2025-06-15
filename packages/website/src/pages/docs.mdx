@@ -1,133 +1,300 @@
 ---
 layout: '../components/doc-layout.astro'
 title: Developer Integration Guide
-description: Learn how to use the BrowserAppCors npm package to integrate browser extension capabilities, enabling, disabling, and querying cross-origin requests. Get started with code samples and best practices.
+description: Seamlessly integrate CORS management into your web application with our powerful npm package. Enable, disable, and monitor cross-origin requests with just a few lines of code.
 ---
-# cors-unlocker
 
-You can enable CORS for your website using the `cors-unlocker` npm package.
+import InfoCard from '../components/docs/InfoCard.astro';
+import Callout from '../components/docs/Callout.astro';
+import Quote from '../components/docs/Quote.astro';
+import CompareCards from '../components/docs/CompareCards.astro';
+import FeatureGrid from '../components/docs/FeatureGrid.astro';
+import ApiMethod from '../components/docs/ApiMethod.astro';
+import Badge from '../components/docs/Badge.astro';
+import CodeBlock from '../components/docs/CodeBlock.astro';
+import StepCards from '../components/docs/StepCards.astro';
+import ButtonGroup from '../components/docs/ButtonGroup.astro';
 
-<p className='text-center space-x-1'>
- <a href="https://github.com/oe/cors-unlocker/actions">
-    <img className='not-prose inline' src="https://github.com/oe/cors-unlocker/actions/workflows/main.yml/badge.svg" alt="github actions"/>
-  </a>
-  <a href="#readme">
-    <img className='inline' src="https://img.shields.io/badge/%3C%2F%3E-typescript-blue" alt="code with typescript" height="20"/>
-  </a>
-  <a href="#readme">
-    <img className='not-prose inline' src="https://badge.fury.io/js/cors-unlocker.svg" alt="npm version" height="20" />
-  </a>
-  <a href="https://www.npmjs.com/package/cors-unlocker">
-    <img className='not-prose inline' src="https://img.shields.io/npm/dm/cors-unlocker.svg" alt="npm downloads" height="20"/>
-  </a>
-</p>
+## Getting Started
 
-`cors-unlocker` is a utility to manage Cross-Origin Resource Sharing (CORS) settings for your browser. It allows you to enable or disable CORS for specific websites, making API testing and development easier.
+Transform your web development experience with the `cors-unlocker` npm package. Designed for developers who need reliable CORS management without the complexity.
 
-## Installation
+<div className="flex flex-wrap gap-2 justify-center my-8">
+  <img src="https://github.com/oe/cors-unlocker/actions/workflows/main.yml/badge.svg" alt="GitHub Actions" className="not-prose" />
+  <img src="https://img.shields.io/badge/%3C%2F%3E-typescript-blue" alt="TypeScript" className="not-prose" />
+  <img src="https://badge.fury.io/js/cors-unlocker.svg" alt="npm version" className="not-prose" />
+  <img src="https://img.shields.io/npm/dm/cors-unlocker.svg" alt="npm downloads" className="not-prose" />
+</div>
 
-To install the package, use npm or yarn:
+## Quick Installation
 
-```sh
-npm install cors-unlocker -S
-# or
+Get up and running in seconds with your preferred package manager:
+
+```bash
+# Using npm
+npm install cors-unlocker
+
+# Using yarn
 yarn add cors-unlocker
+
+# Using pnpm
+pnpm add cors-unlocker
 ```
 
-## How it works
+## How It Works
 
-This npm package provides a series of methods that communicate with the browser extension "Browser App CORS" through the webpage "https://cors.forth.ink/message/index.html". *Why can't it communicate directly with your site? It's possible, but it requires extending the browser extension's permissions, which will increase privacy concerns.*
+The `cors-unlocker` package provides a seamless bridge between your web application and the CORS Unlocker browser extension. Here's the magic behind it:
 
-When CORS is enabled, this extension modifies all responses to requests sent from the current page by adding the header `Access-Control-Allow-Origin` (default value is `*`). By setting `credentials` to `true`, the header value will be the origin of the current page, allowing CORS with credentials (e.g., fetch with `credentials: include`).
+<Quote type="note">
+**Secure Communication**: Our package communicates with the browser extension through a secure iframe bridge, ensuring your website's integrity while providing powerful CORS management capabilities.
+</Quote>
 
-## Usage & API
+When CORS is enabled, the extension intelligently modifies HTTP responses by adding the necessary `Access-Control-Allow-Origin` headers, making cross-origin requests possible without server-side changes.
 
-### Check if the Extension is Installed
+## Core API Reference
+
+### Extension Detection
+
+<ApiMethod
+  name="appCors.isExtInstalled()"
+  description="Check if the CORS Unlocker extension is available"
+  returnType="Promise<boolean>"
+  example={`import appCors from 'cors-unlocker';
+
+// Check if the extension is installed
+const isInstalled = await appCors.isExtInstalled()
+console.log('Extension available:', isInstalled)`}
+/>
+
+### CORS Status Management
+
+<ApiMethod
+  name="appCors.isEnabled()"
+  description="Monitor and control CORS settings with precision"
+  returnType="Promise<{ enabled: boolean, credentials: boolean } | false>"
+  example={`// Check current CORS status
+try {
+  const status = await appCors.isEnabled()
+  console.log('CORS status:', status)
+  // Returns: { enabled: boolean, credentials: boolean } or false
+} catch (error) {
+  console.error('Extension not available:', error)
+}`}
+/>
+
+### Enable CORS Protection
+
+<ApiMethod
+  name="appCors.enable(options?)"
+  description="Activate CORS with optional credential support"
+  parameters={[
+    { name: "credentials", type: "boolean", required: false, description: "Enable credential-based requests" },
+    { name: "reason", type: "string", required: false, description: "Description for user consent" }
+  ]}
+  returnType="Promise<void>"
+  example={`// Basic CORS activation
+await appCors.enable()
+
+// Enable with credentials for authenticated requests
+await appCors.enable({ 
+  credentials: true,
+  reason: 'Testing authenticated API endpoints'
+})`}
+/>
+
+### Disable CORS Protection
+
+<ApiMethod
+  name="appCors.disable()"
+  description="Safely disable CORS when no longer needed"
+  returnType="Promise<void>"
+  example={`try {
+  await appCors.disable()
+  console.log('CORS protection disabled')
+} catch (error) {
+  console.error('Failed to disable CORS:', error)
+}`}
+/>
+
+### Real-time Status Monitoring
+
+Stay synchronized with CORS state changes:
 
 ```typescript
-import appCors from 'cors-unlocker';
+// Listen for status changes
+const handleStatusChange = (status) => {
+  console.log('CORS status updated:', status)
+  // status: { enabled: boolean, credentials: boolean }
+}
 
-appCors.isExtInstalled().then((isInstalled) => {
-  console.log('Extension installed:', isInstalled);
-});
+appCors.onChange.addListener(handleStatusChange)
+
+// Clean up when done
+appCors.onChange.removeListener(handleStatusChange)
 ```
 
-**Returns:** `Promise<boolean>`
+### Extension Management
 
-### Check if CORS is Enabled
+Quick access to extension settings and installation:
 
 ```typescript
-appCors.isEnabled().then((status) => {
-  console.log('CORS status:', status);
-}).catch((error) => {
-  console.error('Failed to check CORS status:', error);
-});
+// Open extension settings
+await appCors.openExtOptions()
+
+// Direct users to extension store
+appCors.openStorePage()
 ```
 
-**Returns:** `Promise<{ enabled: true, credentials: boolean } | false>`
+## Advanced Usage Patterns
 
-### Enable CORS
+### Error Handling Best Practices
 
 ```typescript
-appCors.enable({ credentials: true, reason: 'Testing API' }).then(() => {
-  console.log('CORS enabled');
-}).catch((error) => {
-  console.error('Failed to enable CORS:', error);
-});
+import appCors, { AppCorsError } from 'cors-unlocker'
+
+try {
+  await appCors.enable({ credentials: true })
+} catch (error) {
+  if (error instanceof AppCorsError) {
+    switch (error.type) {
+      case 'not-installed':
+        // Guide user to install extension
+        appCors.openStorePage()
+        break
+      case 'user-cancel':
+        // User declined the request
+        console.log('User cancelled CORS activation')
+        break
+      default:
+        console.error('CORS error:', error.message)
+    }
+  }
+}
 ```
 
-**Parameters:**
-- `options` (optional): `{ credentials?: boolean, reason?: string }`
-
-**Returns:** `Promise<void>`
-
-### Disable CORS
+### React Integration Example
 
 ```typescript
-appCors.disable().then(() => {
-  console.log('CORS disabled');
-}).catch((error) => {
-  console.error('Failed to disable CORS:', error);
-});
+import { useState, useEffect } from 'react'
+import appCors from 'cors-unlocker'
+
+function CORSManager() {
+  const [corsStatus, setCorsStatus] = useState(null)
+  const [isInstalled, setIsInstalled] = useState(false)
+
+  useEffect(() => {
+    // Check installation status
+    appCors.isExtInstalled().then(setIsInstalled)
+    
+    // Monitor CORS changes
+    const handleChange = (status) => setCorsStatus(status)
+    appCors.onChange.addListener(handleChange)
+    
+    return () => appCors.onChange.removeListener(handleChange)
+  }, [])
+
+  const toggleCORS = async () => {
+    try {
+      if (corsStatus?.enabled) {
+        await appCors.disable()
+      } else {
+        await appCors.enable({ credentials: true })
+      }
+    } catch (error) {
+      console.error('Failed to toggle CORS:', error)
+    }
+  }
+
+  if (!isInstalled) {
+    return (
+      <button onClick={() => appCors.openStorePage()}>
+        Install CORS Unlocker
+      </button>
+    )
+  }
+
+  return (
+    <button onClick={toggleCORS}>
+      {corsStatus?.enabled ? 'Disable' : 'Enable'} CORS
+    </button>
+  )
+}
 ```
 
-**Returns:** `Promise<void>`
+## Browser Compatibility
 
-### Listen for CORS Status Changes
+<FeatureGrid columns={2} title="Supported Browsers">
+<div class="feature-item">
+  <span class="feature-item-icon">🌐</span>
+  <h4 class="feature-item-title">Chrome 88+ <Badge variant="success" size="sm">Popular</Badge></h4>
+  <p class="feature-item-desc">Full support with Manifest V3</p>
+</div>
 
-```typescript
-const onChangeListener = (status) => {
-  console.log('CORS status changed:', status);
-};
+<div class="feature-item">
+  <span class="feature-item-icon">🦊</span>
+  <h4 class="feature-item-title">Firefox 85+ <Badge variant="success" size="sm">Stable</Badge></h4>
+  <p class="feature-item-desc">WebExtensions API support</p>
+</div>
 
-appCors.onChange.addListener(onChangeListener);
+<div class="feature-item">
+  <span class="feature-item-icon">🧭</span>
+  <h4 class="feature-item-title">Safari 14+ <Badge variant="warning" size="sm">New</Badge></h4>
+  <p class="feature-item-desc">Safari Web Extensions</p>
+</div>
 
-// To remove the listener
-appCors.onChange.removeListener(onChangeListener);
-```
+<div class="feature-item">
+  <span class="feature-item-icon">💎</span>
+  <h4 class="feature-item-title">Edge 88+ <Badge variant="info" size="sm">Chromium</Badge></h4>
+  <p class="feature-item-desc">Chromium-based support</p>
+</div>
+</FeatureGrid>
 
-**onChange:**
-- `addListener(callback: (status: { enabled: boolean, credentials: boolean }) => void): void`
-- `removeListener(callback?: (status: { enabled: boolean, credentials: boolean }) => void): void`
+## Support & Community
 
-### Open Extension Options Page
+<FeatureGrid columns={2} title="Get Help & Connect">
+<div class="feature-item">
+  <span class="feature-item-icon">📚</span>
+  <h4 class="feature-item-title">Documentation</h4>
+  <p class="feature-item-desc">Complete API reference and guides</p>
+  <a href="https://cors.forth.ink/docs" class="text-blue-600 hover:text-blue-800 text-sm">View Docs →</a>
+</div>
 
-```typescript
-appCors.openExtOptions().then(() => {
-  console.log('Options page opened');
-});
-```
+<div class="feature-item">
+  <span class="feature-item-icon">🐛</span>
+  <h4 class="feature-item-title">Report Issues</h4>
+  <p class="feature-item-desc">Found a bug or have suggestions?</p>
+  <a href="https://github.com/oe/cors-unlocker/issues" class="text-blue-600 hover:text-blue-800 text-sm">GitHub Issues →</a>
+</div>
 
-**Returns:** `Promise<void>`
+<div class="feature-item">
+  <span class="feature-item-icon">💬</span>
+  <h4 class="feature-item-title">Discussions</h4>
+  <p class="feature-item-desc">Community support and ideas</p>
+  <a href="https://github.com/oe/cors-unlocker/discussions" class="text-blue-600 hover:text-blue-800 text-sm">Join Discussion →</a>
+</div>
 
-### Open Extension Store Page
+<div class="feature-item">
+  <span class="feature-item-icon">🚀</span>
+  <h4 class="feature-item-title">Try Playground</h4>
+  <p class="feature-item-desc">Test CORS functionality live</p>
+  <a href="https://cors.forth.ink/playground" class="text-blue-600 hover:text-blue-800 text-sm">Open Playground →</a>
+</div>
+</FeatureGrid>
 
-```typescript
-appCors.openStorePage();
-```
+---
 
-**Returns:** `void`
+*Built with ❤️ for developers who need reliable CORS management*
 
-## License
+## Support Our Work
 
-MIT
+CORS Unlocker is completely free and open source. If it saves you time and makes your development easier, consider supporting our continued development!
+
+<ButtonGroup 
+  title="Show Your Appreciation" 
+  subtitle="Help us keep this tool free and continuously improving"
+  variant="purple"
+  buttons={[
+    { text: "Buy us a coffee", href: "https://forth.ink/donate/", type: "primary", icon: "☕" },
+    { text: "Star on GitHub", href: "https://github.com/oe/cors-unlocker", type: "secondary", icon: "⭐" }
+  ]} 
+/>

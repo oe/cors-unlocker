@@ -1,31 +1,110 @@
 ---
 layout: '../components/doc-layout.astro'
 title: Privacy Policy
-description: Browser App Cors respects your privacy and complies with all data protection regulations. Learn how we collect, store, and use data, and how you can control your privacy
+description: Unlocker respects your privacy and complies with all data protection regulations. Learn how we collect, store, and use data, and how you can control your privacy settings.
 ---
-## Privacy Policy of *Browser App CORS*
 
+import InfoCard from '../components/docs/InfoCard.astro';
+import Callout from '../components/docs/Callout.astro';
+import CompareCards from '../components/docs/CompareCards.astro';
+import ButtonGroup from '../components/docs/ButtonGroup.astro';
 
-Thank you for using our browser extension! This privacy policy explains how the extension works and important information you need to know about its usage.
+## Our Commitment to Your Privacy
 
-### 1. No Data Collection
-This extension does not collect, store, or share any of your personal data. All configuration settings are stored locally on your browser and are never sent to external servers.
+At CORS Unlocker, your privacy is our top priority. This policy explains how our browser extension operates and the important privacy considerations you should know about.
 
-### 2. Free, Ad-Free and Open Source
-Our extension is completely free to use and contains no advertisements. We are committed to providing a simple and distraction-free experience. The extension's source code is open and available for review on [GitHub](https://github.com/oe/cors-unlocker).
+<InfoCard type="success" title="Zero Data Collection" icon="🔒">
+We do not collect, store, transmit, or share any of your personal data. All extension settings are stored locally on your device and never leave your browser.
+</InfoCard>
 
-### 3. Privacy Risks of Enabling the extension
-When you enable this extension for a specific website, that website will be able to access resources from other websites. This cross-origin functionality could lead to potential privacy risks. To ensure your privacy and security, only enable the extension for websites that you fully trust.
+## How We Protect Your Privacy
 
-### 4. "Site Auth" Feature
-If you enable the "Site Auth" option for a website, it will have the ability to access your logged-in data from other websites. This could expose sensitive information, so please use this feature cautiously and only enable it for websites you trust. Check the [FAQ](/faq/#site-auth) for more information.
+### 📱 Local Storage Only
+All configuration settings, website permissions, and preferences are stored exclusively in your browser's local storage. No data is ever transmitted to external servers or third parties.
 
-### Your Responsibility
-By using this extension, you agree to take full responsibility for deciding which websites to enable the extension for. Always exercise caution and prioritize your privacy and security.
+### 🔓 Open Source Transparency
+Our extension is completely open source and available for review on [GitHub](https://github.com/oe/cors-unlocker). You can inspect every line of code to verify our privacy claims.
 
-### Contact Us
-If you have any questions or concerns, please [contact us for assistance](mailto:apps@forth.ink?subject=Browser%20App%20CORS%20Privacy%20Concerns). Thank you for using our extension!
+### 🚫 No Ads, No Tracking
+CORS Unlocker is completely free and contains no advertisements, tracking scripts, or analytics. We're committed to providing a clean, distraction-free experience.
 
+## Important Security Considerations
 
-If this extension do help you, please consider [❤️ buying me a coffee](https://forth.ink/donate/).
+<Callout type="warning" title="Understanding Cross-Origin Risks">
+When you enable CORS Unlocker for a website, that site gains the ability to access resources from other domains. This powerful capability comes with important privacy and security implications:
+</Callout>
 
+**🌐 Cross-Origin Access**
+Enabled websites can fetch data from other domains that would normally be blocked by browser security policies.
+
+**🔑 Authentication Sharing**
+With "Site Auth" enabled, websites can access your logged-in sessions and authentication data from other sites.
+
+### 🛡️ Best Practices for Safe Usage
+
+<CompareCards leftTitle="Safe Practices" rightTitle="Avoid These Risks">
+<div slot="left">
+
+- Only enable for websites you trust completely
+- Regularly review and clean up active permissions
+- Use "Site Auth" sparingly and only when necessary
+- Monitor extension activity in developer tools
+
+</div>
+<div slot="right">
+
+- Enabling for untrusted or suspicious websites
+- Using "Site Auth" on public or shared computers
+- Leaving permissions active for unused sites
+- Ignoring browser security warnings
+
+</div>
+</CompareCards>
+
+## Your Rights and Controls
+
+### 🎛️ Complete Control
+You maintain full control over which websites can access cross-origin resources. Every request for CORS access requires your explicit approval through our permission system.
+
+### 🗑️ Easy Management
+- **Revoke Access**: Remove permissions for any website at any time through the extension options
+- **Granular Control**: Manage permissions individually for each domain
+- **Real-time Monitoring**: View active permissions and recent activity
+
+### 📧 Contact and Support
+
+💬 **Questions or Concerns?**
+We're here to help with any privacy-related questions or technical support needs.
+
+<ButtonGroup 
+  title="Contact & Support" 
+  buttons={[
+    { text: "📧 Email Support", href: "mailto:apps@forth.ink?subject=CORS%20Unlocker%20Privacy%20Concerns", type: "primary" },
+    { text: "� Report Issues", href: "https://github.com/oe/cors-unlocker/issues", type: "secondary" }
+  ]} 
+/>
+
+## Your Responsibility
+
+By using CORS Unlocker, you acknowledge that you understand the risks involved with cross-origin requests and agree to:
+
+- **Exercise Judgment**: Only enable the extension for websites you trust
+- **Monitor Usage**: Regularly review your active permissions
+- **Stay Informed**: Keep up with security best practices
+- **Report Issues**: Contact us if you discover any privacy or security concerns
+
+---
+
+💖 **Support Our Work**
+CORS Unlocker is free and open source. If it helps you, consider supporting our development efforts!
+
+<ButtonGroup 
+  title="Support Development" 
+  subtitle="Help us continue improving CORS Unlocker for everyone"
+  variant="purple"
+  buttons={[
+    { text: "Buy us a coffee", href: "https://forth.ink/donate/", type: "primary", icon: "☕" }
+  ]} 
+/>
+
+*Last updated: {new Date().toLocaleDateString()}*

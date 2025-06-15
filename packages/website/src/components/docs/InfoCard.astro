@@ -1,0 +1,62 @@
+---
+export interface Props {
+  type?: 'info' | 'warning' | 'success' | 'error' | 'tip';
+  title?: string;
+  icon?: string;
+}
+
+const { type = 'info', title, icon } = Astro.props;
+
+const typeStyles = {
+  info: {
+    bg: 'from-blue-50 to-indigo-50',
+    border: 'border-blue-200',
+    title: 'text-blue-900',
+    text: 'text-blue-800',
+    icon: '🔷'
+  },
+  warning: {
+    bg: 'from-amber-50 to-orange-50',
+    border: 'border-amber-200',
+    title: 'text-amber-900',
+    text: 'text-amber-800',
+    icon: '⚠️'
+  },
+  success: {
+    bg: 'from-green-50 to-emerald-50',
+    border: 'border-green-200',
+    title: 'text-green-900',
+    text: 'text-green-800',
+    icon: '✅'
+  },
+  error: {
+    bg: 'from-red-50 to-pink-50',
+    border: 'border-red-200',
+    title: 'text-red-900',
+    text: 'text-red-800',
+    icon: '❌'
+  },
+  tip: {
+    bg: 'from-purple-50 to-pink-50',
+    border: 'border-purple-200',
+    title: 'text-purple-900',
+    text: 'text-purple-800',
+    icon: '💡'
+  }
+};
+
+const styles = typeStyles[type];
+const displayIcon = icon || styles.icon;
+---
+
+<div class={`bg-gradient-to-r ${styles.bg} p-4 rounded-lg border ${styles.border} mb-6`}>
+  {title && (
+    <h4 class={`font-semibold ${styles.title} mb-2 flex items-center gap-2 !mt-0`}>
+      <span class="text-lg">{displayIcon}</span>
+      {title}
+    </h4>
+  )}
+  <div class={`${styles.text} prose-sm [&>*:first-child]:!mt-0 [&>*:last-child]:!mb-0`}>
+    <slot />
+  </div>
+</div>

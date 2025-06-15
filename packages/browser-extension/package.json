@@ -4,9 +4,10 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite dev",
-    "build:chrome": "vite build",
-    "build:firefox": "TARGET=firefox vite build",
+    "dev": "vite build --watch --mode development",
+    "dev:serve": "vite dev",
+    "build:chrome": "vite build --mode production",
+    "build:firefox": "TARGET=firefox vite build --mode production",
     "build": "pnpm run build:chrome && pnpm run build:firefox",
     "postbuild": "tsx scripts/post-build.ts"
   },
@@ -24,11 +25,9 @@
     "@types/react-dom": "catalog:",
     "@types/webextension-polyfill": "^0.10.0",
     "@vitejs/plugin-react": "catalog:",
-    "autoprefixer": "^10.4.20",
     "eslint": "catalog:",
     "eslint-plugin-react": "catalog:",
     "globals": "^15.14.0",
-    "postcss": "^8.4.49",
     "sass": "^1.81.0",
     "tailwindcss": "catalog:",
     "tsx": "^4.19.2",
@@ -36,7 +35,7 @@
     "typescript-eslint": "catalog:",
     "vite": "catalog:",
     "vite-plugin-eslint": "catalog:",
-    "vite-plugin-web-extension": "^4.0.0",
+    "vite-plugin-web-extension": "^4.4.4",
     "webextension-polyfill": "^0.10.0",
     "zip-a-folder": "^3.1.8"
   }

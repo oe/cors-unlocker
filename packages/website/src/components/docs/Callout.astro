@@ -1,0 +1,53 @@
+---
+export interface Props {
+  type?: 'info' | 'warning' | 'danger' | 'success' | 'tip';
+  title?: string;
+  icon?: string;
+  className?: string;
+}
+
+const { type = 'info', title, icon, className = '' } = Astro.props;
+
+const typeStyles = {
+  info: {
+    container: 'bg-blue-50 border-l-4 border-blue-400 text-blue-800',
+    icon: '💡',
+    title: 'text-blue-900'
+  },
+  warning: {
+    container: 'bg-amber-50 border-l-4 border-amber-400 text-amber-800',
+    icon: '⚠️',
+    title: 'text-amber-900'
+  },
+  danger: {
+    container: 'bg-red-50 border-l-4 border-red-400 text-red-800',
+    icon: '🚨',
+    title: 'text-red-900'
+  },
+  success: {
+    container: 'bg-green-50 border-l-4 border-green-400 text-green-800',
+    icon: '✅',
+    title: 'text-green-900'
+  },
+  tip: {
+    container: 'bg-purple-50 border-l-4 border-purple-400 text-purple-800',
+    icon: '💭',
+    title: 'text-purple-900'
+  }
+};
+
+const styles = typeStyles[type];
+const displayIcon = icon || styles.icon;
+---
+
+<div class={`not-prose p-4 rounded-r-lg my-6 ${styles.container} ${className}`}>
+  {title && (
+    <div class={`font-semibold ${styles.title} mb-2 flex items-center gap-2`}>
+      <span class="text-lg">{displayIcon}</span>
+      {title}
+    </div>
+  )}
+  <div class="prose prose-sm max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+    <slot />
+  </div>
+</div>

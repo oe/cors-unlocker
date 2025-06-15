@@ -12,7 +12,8 @@
       "outputs": ["coverage/**"]
     },
     "dev": {
-      "cache": false
+      "cache": false,
+      "persistent": true
     }
   }
 }

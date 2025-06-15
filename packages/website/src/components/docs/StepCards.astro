@@ -1,0 +1,23 @@
+---
+export interface Props {
+  steps: Array<{
+    number: string;
+    title: string;
+    description: string;
+  }>;
+}
+
+const { steps } = Astro.props;
+---
+
+<div class="space-y-3 mb-6">
+  {steps.map((step) => (
+    <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+      <span class="text-xl font-bold text-blue-600 flex-shrink-0">{step.number}</span>
+      <div>
+        <h4 class="font-semibold text-gray-900 !mt-0 !mb-1">{step.title}</h4>
+        <p class="text-gray-600 text-sm !mt-0 !mb-0">{step.description}</p>
+      </div>
+    </div>
+  ))}
+</div>

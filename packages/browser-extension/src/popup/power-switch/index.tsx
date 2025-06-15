@@ -3,17 +3,18 @@ import './style.scss';
 export interface IPowerSwitchProps {
   value?: boolean;
   onChange?: (value: boolean) => void;
+  disabled?: boolean;
 }
 
 export function PowerSwitch(props: IPowerSwitchProps) {
   return (
-    <div>
+    <div className={props.disabled ? 'opacity-50 pointer-events-none' : ''}>
       <label className="power-switch-label">
         <input
           className="power-switch"
           type="checkbox"
-
           checked={props.value}
+          disabled={props.disabled}
           onChange={(e) => {
             props.onChange?.(e.target.checked)
           }}
@@ -25,16 +26,16 @@ export function PowerSwitch(props: IPowerSwitchProps) {
         </svg>
       </label>
     </div>
-
   )
 }
 
 export function SiteAuthSwitch(props: IPowerSwitchProps) {
   const className = props.value ? 'checked' : '';
+  const disabledClass = props.disabled ? 'opacity-50 pointer-events-none' : '';
   return (
     <div
-      className={'site-auth-switch relative rounded-full cursor-pointer w-28 px-2 py-1 bg-blue-300 flex items-center justify-between ' + className}
-      onClick={() => props.onChange?.(!props.value)}
+      className={`site-auth-switch relative rounded-full cursor-pointer w-28 px-2 py-1 bg-blue-300 flex items-center justify-between ${className} ${disabledClass}`}
+      onClick={() => !props.disabled && props.onChange?.(!props.value)}
       >
       <span>Site Auth</span>
       <span>{props.value ? 'On' : 'Off'}</span>

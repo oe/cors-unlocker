@@ -1,0 +1,45 @@
+---
+export interface Props {
+  title?: string;
+  columns?: 1 | 2 | 3;
+  className?: string;
+}
+
+const { title, columns = 2, className = '' } = Astro.props;
+
+const gridClasses = {
+  1: 'grid-cols-1',
+  2: 'grid-cols-1 md:grid-cols-2',
+  3: 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
+};
+---
+
+<div class={`not-prose my-8 ${className}`}>
+  {title && (
+    <h3 class="text-xl font-semibold text-gray-900 mb-6 text-center !mt-0">{title}</h3>
+  )}
+  <div class={`grid gap-4 ${gridClasses[columns]}`}>
+    <slot />
+  </div>
+</div>
+
+<!-- Feature item style component -->
+<style>
+  @import '../tailwind.css';
+  :global(.feature-item) {
+    @apply p-4 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow;
+    background-color: white;
+  }
+  
+  :global(.feature-item-icon) {
+    @apply text-2xl mb-2 block;
+  }
+  
+  :global(.feature-item-title) {
+    @apply font-semibold text-gray-900 mb-2;
+  }
+  
+  :global(.feature-item-desc) {
+    @apply text-gray-600 text-sm;
+  }
+</style>

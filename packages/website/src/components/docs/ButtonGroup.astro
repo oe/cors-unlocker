@@ -1,0 +1,68 @@
+---
+export interface Props {
+  title?: string;
+  subtitle?: string;
+  buttons: Array<{
+    text: string;
+    href: string;
+    type?: 'primary' | 'secondary';
+    icon?: string;
+  }>;
+  variant?: 'purple' | 'blue' | 'green';
+}
+
+const { title, subtitle, buttons = [], variant = 'purple' } = Astro.props;
+
+const variants = {
+  purple: {
+    bg: 'from-purple-50 to-pink-50',
+    border: 'border-purple-200',
+    title: 'text-purple-900',
+    subtitle: 'text-purple-800',
+    primary: 'bg-purple-700 hover:bg-purple-800 text-white',
+    secondary: 'bg-white text-purple-700 border-purple-300 hover:bg-purple-50'
+  },
+  blue: {
+    bg: 'from-blue-50 to-indigo-50',
+    border: 'border-blue-200',
+    title: 'text-blue-900',
+    subtitle: 'text-blue-800',
+    primary: 'bg-blue-700 hover:bg-blue-800 text-white',
+    secondary: 'bg-white text-blue-700 border-blue-300 hover:bg-blue-50'
+  },
+  green: {
+    bg: 'from-green-50 to-emerald-50',
+    border: 'border-green-200',
+    title: 'text-green-900',
+    subtitle: 'text-green-800',
+    primary: 'bg-green-700 hover:bg-green-800 text-white',
+    secondary: 'bg-white text-green-700 border-green-300 hover:bg-green-50'
+  }
+};
+
+const styles = variants[variant];
+---
+
+<div class={`bg-gradient-to-r ${styles.bg} p-6 rounded-lg border ${styles.border} mt-8`}>
+  {title && (
+    <h3 class={`text-lg font-semibold ${styles.title} mb-2 !mt-0`}>{title}</h3>
+  )}
+  {subtitle && (
+    <p class={`${styles.subtitle} mb-4`}>{subtitle}</p>
+  )}
+  <div class="flex flex-wrap gap-3">
+    {buttons.map((button) => (
+      <a 
+        href={button.href} 
+        class={`btn-${button.type || 'primary'} inline-flex items-center px-4 py-2 rounded-lg transition-colors font-medium ${
+          button.type === 'secondary' 
+            ? `${styles.secondary} border` 
+            : styles.primary
+        }`}
+      >
+        {button.icon && <span class="mr-1">{button.icon}</span>}
+        {button.text}
+      </a>
+    ))}
+  </div>
+</div>

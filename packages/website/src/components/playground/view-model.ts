@@ -1,115 +1,245 @@
-import appCors from 'cors-unlocker/src';
-import { useState, useRef, useEffect } from 'react';
+import appCors from 'cors-unlocker';
+import { useState, useEffect } from 'react';
 
 // @ts-expect-error exposed to window object for debugging
 globalThis.appCors = appCors;
 
 console.log('%cuse `appCors` in console to test the API of "cors-unlocker"', 'color: #0a0; font-size: 1.5em');
 
-export function useViewModel() {
-  const [isCurlMode, setIsCurlMode] = useState(false);
-  const [status, setStatus] = useState('idle');
-  const [isInstalled, setIsInstalled] = useState(false)
-  const [corsStatus, setCorsStatus] = useState({ enabled: false, credentials: false });
+interface PlaygroundState {
+  // Extension status
+  isInstalled: boolean;
+  corsStatus: { enabled: boolean; credentials: boolean };
+  
+  // Request state
+  status: 'idle' | 'loading' | 'success' | 'error' | 'partial';
+  isCurlMode: boolean;
+  requestForm: {
+    method: string;
+    url: string;
+    curlCommand: string;
+  };
+  
+  // Response state
+  response: {
+    contentType: string;
+    mediaType: string;
+    content: string;
+  } | null;
+  error: Error | null;
+  
+  // UI state
+  isCheckingExtension: boolean;
+  isTogglingCors: boolean;
+  errorMessage: string | null;
+}
 
-  const [requestForm, setRequestForm] = useState({
-    method: 'GET',
-    url: '',
-    curlCommand: '',
+export function useViewModel() {
+  const [state, setState] = useState<PlaygroundState>({
+    isInstalled: false,
+    corsStatus: { enabled: false, credentials: false },
+    status: 'idle',
+    isCurlMode: false,
+    requestForm: {
+      method: 'GET',
+      url: 'https://www.google.com/search?q=cors',
+      curlCommand: 'curl -X GET https://www.google.com/search?q=cors',
+    },
+    response: null,
+    error: null,
+    isCheckingExtension: true,
+    isTogglingCors: false,
+    errorMessage: null,
   });
 
-  const responseRef = useRef({
-    contentType: '',
-    mediaType: '',
-    content: '',
-  })
-
-  const errorRef = useRef<Error|null>(null)
-
+  // Initialize extension status
   useEffect(() => {
-    appCors.isEnabled().then((status) => {
-      if (status) {
-        setCorsStatus(status);
-      } else {
-        setCorsStatus({ enabled: false, credentials: false });
+    const initializeExtensionStatus = async () => {
+      try {
+        console.log('Checking extension status...');
+        
+        // Check if extension is installed with timeout
+        const installed = await Promise.race([
+          appCors.isExtInstalled().catch(() => false), // If detection fails, default to not installed
+          new Promise<boolean>((resolve) => 
+            setTimeout(() => resolve(false), 3000) // Shortened timeout and default to not installed
+          )
+        ]);
+        
+        console.log('Extension installed:', installed);
+        
+        let corsStatus = { enabled: false, credentials: false };
+        if (installed) {
+          try {
+            corsStatus = await appCors.isEnabled();
+          } catch (error) {
+            console.warn('Failed to get CORS status:', error);
+            // If getting status fails, the plugin may not actually be installed
+            setState(prev => ({
+              ...prev,
+              isInstalled: false,
+              corsStatus: { enabled: false, credentials: false },
+              isCheckingExtension: false,
+            }));
+            return;
+          }
+        }
+        
+        setState(prev => ({
+          ...prev,
+          isInstalled: installed,
+          corsStatus,
+          isCheckingExtension: false,
+        }));
+
+        // Listen for CORS status changes
+        if (installed) {
+          try {
+            appCors.onChange.addListener((status: any) => {
+              // Guard check: ensure status is not null
+              if (status && typeof status === 'object' && 'enabled' in status) {
+                setState(prev => ({ ...prev, corsStatus: status }));
+              }
+            });
+          } catch (error) {
+            console.warn('Failed to set up change listener:', error);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to initialize extension status:', error);
+        setState(prev => ({
+          ...prev,
+          isInstalled: false,
+          isCheckingExtension: false,
+          errorMessage: error instanceof Error ? error.message : 'Failed to check extension status'
+        }));
       }
-    });
-    appCors.isExtInstalled().then(setIsInstalled);
-    appCors.onChange.addListener(setCorsStatus);
+    };
+
+    initializeExtensionStatus();
+
     return () => {
-      appCors.onChange.removeListener(setCorsStatus);
-    }
+      if (state.isInstalled) {
+        appCors.onChange.removeListener();
+      }
+    };
   }, []);
 
+  const setFormValue = (key: keyof typeof state.requestForm, value: string) => {
+    setState(prev => ({
+      ...prev,
+      requestForm: { ...prev.requestForm, [key]: value }
+    }));
+  };
+
   const doRequest = async () => {
-    if (status === 'loading') return;
+    if (state.status === 'loading') return;
+    
     try {
-      setStatus('loading');
+      setState(prev => ({ ...prev, status: 'loading', error: null, response: null }));
+      
       let generator: AsyncGenerator<any, boolean, unknown>;
-      if (isCurlMode) {
-        generator = sendRequest(...parseCurlCommand(requestForm.curlCommand));
+      if (state.isCurlMode) {
+        const [url, options] = parseCurlCommand(state.requestForm.curlCommand);
+        if (!url) {
+          throw new Error('Invalid cURL command: URL not found');
+        }
+        generator = sendRequest(url, options);
       } else {
-        generator = sendRequest(requestForm.url, { method: requestForm.method });
+        if (!state.requestForm.url) {
+          throw new Error('URL is required');
+        }
+        generator = sendRequest(state.requestForm.url, { method: state.requestForm.method });
       }
+      
       const response = await generator.next();
       if (response.done) return;
-      responseRef.current = response.value;
-      setStatus('partial');
+      
+      setState(prev => ({
+        ...prev,
+        response: response.value,
+        status: 'partial'
+      }));
+      
       const content = await generator.next();
-      responseRef.current.content =
-        typeof content.value === 'string'
-          ? content.value
-          : URL.createObjectURL(content.value);
-      setStatus('success');
+      const finalContent = typeof content.value === 'string'
+        ? content.value
+        : URL.createObjectURL(content.value);
+      
+      setState(prev => ({
+        ...prev,
+        response: prev.response ? { ...prev.response, content: finalContent } : null,
+        status: 'success'
+      }));
     } catch (error: any) {
-      errorRef.current = error;
-      setStatus('error');
+      setState(prev => ({
+        ...prev,
+        error,
+        status: 'error'
+      }));
     }
   };
-
-  const setFormValue = (key: keyof typeof requestForm, value: string) => {
-    setRequestForm((prev) => ({ ...prev, [key]: value }));
-  }
 
   const toggleCors = async () => {
-    if (!isInstalled) return;
-    if (corsStatus.enabled) {
-      await appCors.disable();
-    } else {
-      await appCors.enable({
-        reason: 'Enable for demonstration',
-      });
+    if (!state.isInstalled || state.isTogglingCors) return;
+    
+    setState(prev => ({ ...prev, isTogglingCors: true, errorMessage: null }));
+    
+    try {
+      console.log('Toggling CORS status...', state.corsStatus);
+      if (state.corsStatus.enabled) {
+        await appCors.disable();
+      } else {
+        await appCors.enable({
+          reason: 'Testing cross-origin requests in playground',
+        });
+      }
+    } catch (error: any) {
+      setState(prev => ({ ...prev, errorMessage: error?.message || 'Failed to toggle CORS' }));
+    } finally {
+      setState(prev => ({ ...prev, isTogglingCors: false }));
     }
-  }
-
-  const toggleCorsCredentials = async () => {
-    if (!corsStatus.enabled) return;
-    if (corsStatus.credentials) {
-      await appCors.enable({ credentials: false });
-    } else {
-      await appCors.enable({
-        credentials: true,
-        reason: 'Enable for demonstration',
-      });
-    }
-  }
-
-  return {
-    isCurlMode,
-    isInstalled,
-    setIsCurlMode,
-    status,
-    requestForm,
-    setRequestForm,
-    doRequest,
-    setFormValue,
-    responseRef,
-    errorRef,
-    corsStatus,
-    toggleCors,
-    toggleCorsCredentials,
   };
 
+  const toggleCorsCredentials = async () => {
+    if (!state.isInstalled || !state.corsStatus.enabled || state.isTogglingCors) return;
+    
+    setState(prev => ({ ...prev, isTogglingCors: true, errorMessage: null }));
+    
+    try {
+      await appCors.enable({
+        credentials: !state.corsStatus.credentials,
+        reason: 'Toggling credentials support in playground',
+      });
+    } catch (error: any) {
+      setState(prev => ({ ...prev, errorMessage: error?.message || 'Failed to toggle credentials' }));
+    } finally {
+      setState(prev => ({ ...prev, isTogglingCors: false }));
+    }
+  };
+
+  const openExtensionStore = () => {
+    appCors.openStorePage();
+  };
+
+  const clearError = () => {
+    setState(prev => ({ ...prev, errorMessage: null }));
+  };
+
+  const setIsCurlMode = (isCurlMode: boolean) => {
+    setState(prev => ({ ...prev, isCurlMode }));
+  };
+
+  return {
+    ...state,
+    setFormValue,
+    doRequest,
+    toggleCors,
+    toggleCorsCredentials,
+    openExtensionStore,
+    clearError,
+    setIsCurlMode,
+  };
 }
 
 async function* sendRequest(url: string, options: RequestInit): AsyncGenerator<any, boolean, unknown> {

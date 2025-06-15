@@ -2,6 +2,7 @@ import browser from 'webextension-polyfill';
 import { toggleRule } from './declarative-rules';
 import { isSupportedProtocol } from '@/common/utils';
 import { dataStorage, setCurrentTabRule } from '@/common/storage';
+import { logger } from '@/common/logger';
 
 export async function onTabActiveChange(tab: browser.Tabs.Tab) {
   if (!tab.url) {
@@ -35,7 +36,7 @@ export async function onTabActiveChange(tab: browser.Tabs.Tab) {
 }
 
 function toggleIconStatus(tab: browser.Tabs.Tab, active: boolean) {
-  console.log('toggleIconStatus', tab.url, active);
+  logger.debug('toggleIconStatus', tab.url, active);
   browser.action.setIcon({
     tabId: tab.id,
     path: '/icon/' + (active ? '32.png' : 'gray-32.png')

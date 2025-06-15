@@ -1,0 +1,50 @@
+---
+export interface Props {
+  cite?: string;
+  author?: string;
+  source?: string;
+  type?: 'quote' | 'note' | 'reference';
+  className?: string;
+}
+
+const { cite, author, source, type = 'quote', className = '' } = Astro.props;
+
+const typeStyles = {
+  quote: {
+    container: 'border-l-4 border-purple-400 bg-purple-50 italic',
+    icon: '💬'
+  },
+  note: {
+    container: 'border-l-4 border-blue-400 bg-blue-50',
+    icon: '📝'
+  },
+  reference: {
+    container: 'border-l-4 border-gray-400 bg-gray-50',
+    icon: '📖'
+  }
+};
+
+const styles = typeStyles[type];
+---
+
+<blockquote class={`not-prose p-4 my-6 rounded-r-lg ${styles.container} ${className}`}>
+  <div class="flex items-start gap-3">
+    <span class="text-xl flex-shrink-0 mt-1">{styles.icon}</span>
+    <div class="flex-1">
+      <div class="prose prose-sm max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+        <slot />
+      </div>
+      {(author || source || cite) && (
+        <footer class="mt-3 text-sm text-gray-600 not-italic">
+          {author && <span>— {author}</span>}
+          {source && <span class="ml-2 text-gray-500">({source})</span>}
+          {cite && (
+            <a href={cite} class="ml-2 text-blue-600 hover:text-blue-800 underline" target="_blank" rel="noopener">
+              Source
+            </a>
+          )}
+        </footer>
+      )}
+    </div>
+  </div>
+</blockquote>

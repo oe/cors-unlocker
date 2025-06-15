@@ -1,39 +1,185 @@
 export interface IRuleItem {
   /**
-   * id of the rule, auto increment
+   * Unique identifier of the rule, auto increment
    */
   id: number;
   /**
-   * timestamp of when rule been created
-   * * will be used as the id of the rule
+   * Timestamp of when rule was created
+   * Used for sorting and identification
    */
   createdAt: number;
   /**
-   * domain of the rule, calculated from origin
+   * Domain extracted from the origin
+   * Used for grouping rules by domain
    */
   domain: string;
   /**
-   * origin of the rule
+   * Full origin URL (protocol + hostname + port)
+   * The target origin for CORS rules
    */
   origin: string;
   /**
-   * whether allow cors with credentials
-   * * if `true`, the Access-Control-Allow-Origin will be set to the origin
-   * * > which will allow cors with credentials(cookie, authorization header),
-   * * > may increase privacy concerns
-   * * if `false`, the Access-Control-Allow-Origin will be set to '*', cors with credentials will failed
+   * Whether to allow CORS requests with credentials
+   * - If true: Access-Control-Allow-Origin will be set to the origin (allows cookies/auth headers)
+   * - If false: Access-Control-Allow-Origin will be set to '*' (no credentials)
+   * Note: Enabling credentials may increase privacy concerns
    */
   credentials?: boolean;
   /**
-   * user comment of the rule
+   * User-provided comment or description for this rule
+   * Optional field for documentation purposes
    */
   comment?: string;
   /**
-   * whether the rule is disabled, the rule is enabled by default
+   * Whether the rule is currently disabled
+   * Rules are enabled by default (disabled = false)
    */
   disabled?: boolean;
   /**
-   * timestamp of when rule been updated
+   * Timestamp of when the rule was last updated
+   * Used for conflict resolution and sorting
    */
   updatedAt: number;
+}
+
+/**
+ * Message types for communication between different parts of the extension
+ */
+export interface IExtensionMessage {
+  /**
+   * Type identifier for the message
+   */
+  type: string;
+  /**
+   * Optional payload data for the message
+   */
+  payload?: any;
+  /**
+   * Window ID for tab-specific messages
+   */
+  windowId?: number;
+}
+
+/**
+ * External API message types from web pages
+ */
+export interface IExternalMessage {
+  /**
+   * Method name for the API call
+   */
+  method: 'getRule' | 'isEnabled' | 'enable' | 'disable' | 'openOptions';
+  /**
+   * Payload containing method-specific data
+   */
+  payload?: {
+    /**
+     * Target origin for the operation
+     */
+    origin: string;
+    /**
+     * Whether to enable credentials for this origin
+     */
+    credentials?: boolean;
+  };
+}
+
+/**
+ * Extension configuration interface
+ */
+export interface IExtConfig {
+  /**
+   * Whether to enable credentials by default for new rules
+   */
+  dftEnableCredentials: boolean;
+  /**
+   * Enable debug logging mode
+   */
+  debugMode: boolean;
+  /**
+   * Maximum number of rules allowed (1-1000)
+   */
+  maxRules: number;
+  /**
+   * Auto-cleanup disabled rules after X days (0 to disable)
+   */
+  autoCleanupDays: number;
+}
+
+/**
+ * Performance metrics interface
+ */
+export interface IPerformanceMetrics {
+  /**
+   * Performance data for each labeled operation
+   */
+  [label: string]: {
+    /**
+     * Number of times this operation was executed
+     */
+    count: number;
+    /**
+     * Average execution time in milliseconds
+     */
+    averageTime: number;
+    /**
+     * Total execution time in milliseconds
+     */
+    totalTime: number;
+  };
+}
+
+/**
+ * Export/Import data structure for rules
+ */
+export interface IExportData {
+  /**
+   * Export format version
+   */
+  version: string;
+  /**
+   * Timestamp when export was created
+   */
+  timestamp: number;
+  /**
+   * Array of exported rules
+   */
+  rules: IRuleItem[];
+}
+
+/**
+ * Error response interface for API calls
+ */
+export interface IErrorResponse {
+  /**
+   * Human-readable error message
+   */
+  message: string;
+  /**
+   * Error type for programmatic handling
+   */
+  type: 'missing-origin' | 'unsupported-origin' | 'missing-method' | 'unsupported-method' | 'rate-limit' | 'forbidden-origin' | 'invalid-sender';
+}
+
+/**
+ * API response for checking if origin is enabled
+ */
+export interface IEnabledResponse {
+  /**
+   * Whether CORS is enabled for the origin
+   */
+  enabled: boolean;
+  /**
+   * Whether credentials are allowed for the origin
+   */
+  credentials: boolean;
+}
+
+/**
+ * Generic success response for API operations
+ */
+export interface ISuccessResponse {
+  /**
+   * Whether the operation was successful
+   */
+  success: boolean;
 }

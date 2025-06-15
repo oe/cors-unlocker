@@ -1,0 +1,36 @@
+---
+import { Code } from 'astro:components';
+
+export interface Props {
+  title?: string;
+  language?: string;
+  fileName?: string;
+  code?: string;
+  className?: string;
+}
+
+const { title, language = 'typescript', fileName, code, className = '' } = Astro.props;
+---
+
+<div class={`not-prose my-6 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm ${className}`}>
+  {(title || fileName) && (
+    <div class="flex items-center justify-between bg-gray-50 px-4 py-2 border-b border-gray-200">
+      <div class="flex items-center gap-2">
+        {title && <h4 class="text-sm font-medium text-gray-900 m-0">{title}</h4>}
+        {fileName && (
+          <span class="text-xs text-gray-600 font-mono bg-gray-100 px-2 py-1 rounded">
+            {fileName}
+          </span>
+        )}
+      </div>
+      <span class="text-xs text-gray-500 font-mono uppercase">{language}</span>
+    </div>
+  )}
+  <div class="relative">
+    {code ? (
+      <Code code={code} lang={language as any} theme="github-dark" />
+    ) : (
+      <pre class="p-4 overflow-x-auto text-sm bg-gray-900 text-gray-100 m-0"><code><slot /></code></pre>
+    )}
+  </div>
+</div>

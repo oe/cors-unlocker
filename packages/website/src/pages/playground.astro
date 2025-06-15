@@ -7,7 +7,18 @@ import { PlaygroundPage } from '../components/playground';
   title="Playground"
   description="Experience Browser App Cors in action with our interactive playground. Test cross-origin requests, see how Browser App Cors can help you, and learn how to use it in your projects."
 >
-  <div class="container mx-auto">
-    <PlaygroundPage client:visible />
+  <!-- Main Content with Background -->
+  <div class="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100">
+    <div class="absolute inset-0 bg-gradient-to-br from-blue-50/30 via-purple-50/20 to-indigo-50/30 pointer-events-none"></div>
+    
+    <!-- Background decoration -->
+    <div class="absolute inset-0 pointer-events-none">
+      <div class="absolute top-1/4 left-1/4 w-32 h-32 bg-gradient-to-br from-blue-200/20 to-purple-200/20 rounded-full blur-2xl"></div>
+      <div class="absolute bottom-1/4 right-1/4 w-48 h-48 bg-gradient-to-br from-purple-200/20 to-indigo-200/20 rounded-full blur-2xl"></div>
+    </div>
+    
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <PlaygroundPage client:visible />
+    </div>
   </div>
 </BaseLayout>
