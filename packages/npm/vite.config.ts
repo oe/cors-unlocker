@@ -18,5 +18,14 @@ export default defineConfig(({ mode }) => ({
     minify: mode !== 'development',
     // Watch for changes in development mode
     watch: mode === 'development' ? {} : null,
+    // Optimize bundle size
+    rollupOptions: {
+      output: {
+        // Enable tree shaking
+        exports: 'named',
+      }
+    },
+    // Enable aggressive tree shaking
+    treeshake: true,
   }
 }));

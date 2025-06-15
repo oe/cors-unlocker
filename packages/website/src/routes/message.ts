@@ -7,15 +7,14 @@ import type {
 const extObject: typeof chrome = typeof chrome !== 'undefined' ? chrome : typeof browser !== 'undefined' ? browser : null;
 
 if (parent === window) {
-  document.body.innerHTML =
-    '<p>This page is intended to be embedded for internal communication.</p>';
+  document.body.innerHTML = '<p>This page is intended to be embedded for internal communication.</p>';
 } else {
   // tell the parent window that the extension is ready
   parent.postMessage({ type: 'ext', method: 'init' }, '*');
 }
 
 // get the basic config from the query string
-const BASIC_CONFIG = (()=> {
+const BASIC_CONFIG = (() => {
   const query = new URLSearchParams(location.search);
   return {
     extID: query.get('extID'),
@@ -32,11 +31,9 @@ const connectToExtension = () => {
   try {
     port = extObject.runtime.connect(BASIC_CONFIG.extID);
     port.onDisconnect.addListener(() => {
-      console.warn('[cors-unlocker]Port disconnected, ready for reconnection');
       port = null;
     });
-  } catch (error) {
-    console.error('[cors-unlocker]Failed to connect to extension:', error);
+  } catch {
     port = null;
   }
 }
@@ -98,8 +95,7 @@ const messageCallbacks = {
       });
       
       return true;
-    } catch (error) {
-      console.warn('[cors-unlocker]Extension verification failed:', error);
+    } catch {
       if (payload?.throw) {
         throw {
           type: 'not-installed',
@@ -111,60 +107,38 @@ const messageCallbacks = {
   },
   enable: async (options?: IEnableOptions) => {
     const rule: any = await sendMessage2ext('getRule');
-    if(process.env.NODE_ENV === 'development') console.log('rule', rule);
     if (rule && !rule.disabled) {
       // already enabled, nothing to do
       if (!options || typeof options.credentials === 'undefined') return { success: true };
       if (rule.credentials === options.credentials) return { success: true };
     }
-    // if the rule is disabled or
-    //  or want to enable with different credentials
-    if (!rule || rule.disabled || (!rule.credentials && options?.credentials)) {
-      let message = '';
-      if (!rule || rule.disabled) {
-        message = `Current page("${BASIC_CONFIG.origin}") is requesting to enable CORS`;
-        if (options) {
-          if (options.credentials) {
-            message += ' with credentials.';
-          } else {
-            message += '.';
-          }
-          if (options.reason) {
-            message += `\nMessage from current Page:\n\n${options.reason}\n\n`;
-          }
-        } else {
-          message += '\n\n';
-        }
-        message +=
-          'Please only enable CORS if you trust the current page.\nDo you want to enable CORS?';
-      } else {
-        message = 'Current page is requesting to enable CORS with credentials.';
-        if (options?.reason) {
-          message += `\nMessage from current Page:\n\n${options.reason}\n\n`;
-        } else {
-          message += '\n\n';
-        }
-        message +=
-          'Please only enable CORS with credentials if you trust the current page. Do you want to continue?';
-      }
-      if (!confirm(message)) {
-        throw {
-          type: 'user-cancel',
-          message: 'User canceled'
-        };
-      }
+
+    const origin = BASIC_CONFIG.origin;
+    
+    let message = `Current page("${origin}") is requesting to enable CORS`
+    message += options?.credentials ? ' **with credentials**.' : '.';
+    message += options?.reason
+      ? `\n\nMessage from current Page:\n${options.reason}\n\n`
+      : '\n\n';
+    
+    message += 'Please only enable CORS with credentials if you trust the current page. Do you want to continue?';
+
+    if (!confirm(message)) {
+      throw {
+        type: 'user-cancel',
+        message: 'User canceled'
+      };
     }
+
     return sendMessage2ext('enable', options);
   }
 } satisfies Record<string, (payload?: any) => Promise<any>>;
 
 window.addEventListener('message', async (event) => {
   const data = event.data;
-  if (process.env.NODE_ENV === 'development') console.log('frame message', data);
   // not the designated message
-  if (!isMessageData(data)) return;
-  // message type not supported yet
-  if (data.type !== 'ext') return;
+  if (!isMessageData(data) || data.type !== 'ext') return;
+  
   const { method, payload } = data;
   try {
     // @ts-expect-error ignore type issues
@@ -186,12 +160,9 @@ window.addEventListener('message', async (event) => {
         message: 'invalid origin'
       }
     }
-    let response: any
-    if (callback) {
-      response = await callback(payload);
-    } else {
-      response = await sendMessage2ext(data.method, data.payload);
-    }
+    
+    const response = callback ? await callback(payload) : await sendMessage2ext(method, payload);
+    
     sendMessage2frame({
       id: data.id,
       type: 'response',
@@ -221,7 +192,6 @@ function sendMessage2ext(method: string, payload?: any) {
         origin: BASIC_CONFIG.origin
       }
     }, (response: any) => {
-      if (process.env.NODE_ENV === 'development') console.log('ext response', response);
       if (
         (response && typeof response === 'object') &&
         response.__mozWebExtensionPolyfillReject__

@@ -36,7 +36,7 @@ const EXTENSION_ID_MAP = {
   firefox: 'my-firefox-extension-id'
 };
 
-const IS_FIREFOX = navigator.userAgent.includes('firefox');
+const IS_FIREFOX = /firefox/i.test(navigator.userAgent);
 
 const EXTENSION_ID = IS_FIREFOX
   ? EXTENSION_ID_MAP.firefox
@@ -79,60 +79,64 @@ let framePromise: Promise<HTMLIFrameElement> | null = null;
 let frameWin: Window | null = null;
 let frameDom: HTMLIFrameElement | null = null;
 
-function initFrame() {
+function initFrame(): Promise<HTMLIFrameElement> {
   // if frameDom.isConnected is false, it means the frame is not in the document, need to reinitialize
   if (framePromise && (!frameDom || frameDom.isConnected)) return framePromise;
 
   framePromise = new Promise((resolve, reject) => {
-    if (process.env.NODE_ENV === 'development') console.log('Initializing frame with URL:', EXT_FRAME_URL);
-    if (process.env.NODE_ENV === 'development') console.log('Extension ID:', EXTENSION_ID);
-    if (process.env.NODE_ENV === 'development') console.log('Current origin:', location.origin);
-    
     frameDom = document.createElement('iframe');
     frameDom.src = `${EXT_FRAME_URL}?origin=${encodeURIComponent(
       location.origin
     )}&extID=${encodeURIComponent(EXTENSION_ID)}`;
-    
-    if (process.env.NODE_ENV === 'development') console.log('Frame src:', frameDom.src);
-    
-    let timeoutId: NodeJS.Timeout;
-    
-    const onInit = (event: MessageEvent) => {
-      if (process.env.NODE_ENV === 'development') console.log('Frame message received:', event.data, 'from:', event.origin);
-      if (event.source !== frameDom!.contentWindow) return;
-      if (event.data?.type === 'ext' && event.data?.method === 'init') {
-        if (process.env.NODE_ENV === 'development') console.log('Frame initialized successfully');
-        frameWin = frameDom!.contentWindow;
-        window.removeEventListener('message', onInit);
-        clearTimeout(timeoutId);
-        resolve(frameDom!);
-      }
-    };
-    
-    window.addEventListener('message', onInit);
-    frameDom!.onerror = (error) => {
-      clearTimeout(timeoutId);
-      reject(error);
-    };
-    
-    // Add timeout to prevent infinite waiting
-    timeoutId = setTimeout(() => {
-      console.error('Frame initialization timeout');
+    frameDom.style.display = 'none';
+    frameDom.className = 'cors-unlocker-frame';
+
+    const cleanup = () => {
       window.removeEventListener('message', onInit);
-      reject(new AppCorsError({ 
-        type: 'communication-failed', 
-        message: 'Frame initialization timeout - extension may not be installed or may not have permission to communicate with this origin' 
-      }));
-    }, 10000); // 10 second timeout
-    
-    frameDom!.style.display = 'none';
-    document.body.appendChild(frameDom!);
+      clearTimeout(timeoutId);
+    };
+
+    const onInit = (event: MessageEvent) => {
+      if (event.source !== frameDom!.contentWindow ||
+        !event.data ||
+        event.data.type !== 'ext' ||
+        event.data.method !== 'init'
+      ) return;
+
+      frameWin = frameDom!.contentWindow;
+      cleanup();
+      resolve(frameDom!);
+    };
+
+    const timeoutId = setTimeout(() => {
+      cleanup();
+      reject(
+        new AppCorsError({
+          type: 'communication-failed',
+          message:
+            'Frame initialization timeout - extension may not be installed or may not have permission to communicate with this origin'
+        })
+      );
+    }, 10000);
+
+    window.addEventListener('message', onInit);
+    frameDom.onerror = () => {
+      cleanup();
+      reject(
+        new AppCorsError({
+          type: 'communication-failed',
+          message: 'Frame failed to load'
+        })
+      );
+    };
+
+    document.body.appendChild(frameDom);
   });
   return framePromise;
 }
 
 let isEventInited = false;
-const listenerMap: Record<string, [Function, Function]> = {};
+const listenerMap: Record<string, [(data: any) => void, (error: AppCorsError) => void, NodeJS.Timeout]> = {};
 
 function initEventMessage() {
   if (isEventInited) return;
@@ -143,8 +147,11 @@ function initEventMessage() {
     
     const callbacks = listenerMap[data.id];
     if (!callbacks) return;
+    
+    const [resolve, reject, timeoutId] = callbacks;
     delete listenerMap[data.id];
-    const [resolve, reject] = callbacks;
+    clearTimeout(timeoutId);
+    
     if (data.error) {
       reject(new AppCorsError({
         type: data.error.type as CorsErrorType,
@@ -190,7 +197,8 @@ async function sendMessage(params: ISendMessageParams) {
     
     // Add timeout for individual messages
     const timeoutId = setTimeout(() => {
-      if (listenerMap[id]) {
+      const callbacks = listenerMap[id];
+      if (callbacks) {
         delete listenerMap[id];
         reject(new AppCorsError({ 
           type: 'communication-failed', 
@@ -200,21 +208,19 @@ async function sendMessage(params: ISendMessageParams) {
     }, 5000); // 5 second timeout for individual messages
     
     listenerMap[id] = [
-      (data: any) => {
-        clearTimeout(timeoutId);
-        resolve(data);
-      }, 
-      (error: any) => {
-        clearTimeout(timeoutId);
-        reject(error);
-      }
+      (data: any) => resolve(data), 
+      (error: AppCorsError) => reject(error),
+      timeoutId
     ];
     
     try {
-      frameWin!.postMessage(message, '*');
+      frameWin.postMessage(message, '*');
     } catch (error) {
-      clearTimeout(timeoutId);
-      delete listenerMap[id];
+      const callbacks = listenerMap[id];
+      if (callbacks) {
+        clearTimeout(callbacks[2]);
+        delete listenerMap[id];
+      }
       // Reset frame for retry
       framePromise = null;
       frameWin = null;
