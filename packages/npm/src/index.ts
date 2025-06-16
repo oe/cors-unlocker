@@ -34,14 +34,22 @@ const EXT_FRAME_URL =
 const EXTENSION_ID_MAP = {
   chrome: 'knhlkjdfmgkmelcjfnbbhpphkmjjacng',
   // Firefox development ID (will be replaced by Mozilla after publishing)
-  firefox: 'cors-unlocker@forth.ink'
+  firefox: 'cors-unlocker@forth.ink',
+  // Edge will use the same ID as Chrome (same store)
+  edge: 'knhlkjdfmgkmelcjfnbbhpphkmjjacng'
 };
 
+// Browser detection
 const IS_FIREFOX = /firefox/i.test(navigator.userAgent);
+const IS_EDGE = /edg/i.test(navigator.userAgent); // Edge uses "Edg" in user agent
 
-const EXTENSION_ID = IS_FIREFOX
-  ? EXTENSION_ID_MAP.firefox
-  : EXTENSION_ID_MAP.chrome;
+function getBrowserExtensionId(): string {
+  if (IS_FIREFOX) return EXTENSION_ID_MAP.firefox;
+  if (IS_EDGE) return EXTENSION_ID_MAP.edge;
+  return EXTENSION_ID_MAP.chrome; // Default to Chrome
+}
+
+const EXTENSION_ID = getBrowserExtensionId();
 
 
 /**
@@ -260,9 +268,16 @@ export async function openExtOptions(): Promise<void> {
  * * use it when the extension isn't installed
  */
 export function openStorePage() {
-  const url = IS_FIREFOX
-    ? `https://addons.mozilla.org/en-US/firefox/addon/cors-unlocker/`
-    : `https://chromewebstore.google.com/detail/${EXTENSION_ID}`;
+  let url: string;
+  
+  if (IS_FIREFOX) {
+    url = `https://addons.mozilla.org/en-US/firefox/addon/cors-unlocker/`;
+  } else if (IS_EDGE) {
+    url = `https://microsoftedge.microsoft.com/addons/detail/${EXTENSION_ID}`;
+  } else {
+    // Chrome or Chrome-based browsers
+    url = `https://chromewebstore.google.com/detail/${EXTENSION_ID}`;
+  }
 
   window.open(url, '_blank');
 }
