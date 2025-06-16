@@ -33,7 +33,7 @@ const EXT_FRAME_URL =
 
 const EXTENSION_ID_MAP = {
   chrome: 'knhlkjdfmgkmelcjfnbbhpphkmjjacng',
-  firefox: 'my-firefox-extension-id'
+  firefox: '1822d040-5dac-4ce7-b1fe-003d686a541b'
 };
 
 const IS_FIREFOX = /firefox/i.test(navigator.userAgent);

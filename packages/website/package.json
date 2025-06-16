@@ -4,6 +4,7 @@
   "private": true,
   "main": "index.js",
   "scripts": {
+    "predev": "pnpm --filter cors-unlocker build:dev",
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",

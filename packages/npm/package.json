@@ -6,8 +6,10 @@
   "module": "dist/index.es.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "dev": "vite build --watch --mode development",
+    "dev": "sleep 10 && pnpm dev:watch",
+    "dev:watch": "vite build --watch --mode development",
     "build": "tsc && vite build",
+    "build:dev": "tsc && vite build --mode development",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [

@@ -16,8 +16,8 @@ export default defineConfig(({ mode }) => ({
     // In development mode, generate sourcemaps and don't minify
     sourcemap: mode === 'development',
     minify: mode !== 'development',
-    // Watch for changes in development mode
-    watch: mode === 'development' ? {} : null,
+    // Let vite handle watch mode based on --watch flag
+    // Don't override it in config
     // Optimize bundle size
     rollupOptions: {
       output: {
