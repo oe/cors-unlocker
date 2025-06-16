@@ -33,7 +33,8 @@ const EXT_FRAME_URL =
 
 const EXTENSION_ID_MAP = {
   chrome: 'knhlkjdfmgkmelcjfnbbhpphkmjjacng',
-  firefox: '1822d040-5dac-4ce7-b1fe-003d686a541b'
+  // Firefox development ID (will be replaced by Mozilla after publishing)
+  firefox: 'cors-unlocker@forth.ink'
 };
 
 const IS_FIREFOX = /firefox/i.test(navigator.userAgent);

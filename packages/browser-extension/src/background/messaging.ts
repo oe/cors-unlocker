@@ -58,6 +58,35 @@ function validateExternalOrigin(origin: string): boolean {
 }
 
 /**
+ * Check if sender is a valid extension context (popup, options, etc.)
+ */
+function isValidExtensionSender(sender: browser.Runtime.MessageSender): boolean {
+  if (!sender.url) return false;
+  
+  // Chrome extension URLs
+  if (sender.url.startsWith('chrome-extension://')) {
+    return true;
+  }
+  
+  // Firefox extension URLs (moz-extension://)
+  if (sender.url.startsWith('moz-extension://')) {
+    return true;
+  }
+  
+  // Safari extension URLs (safari-web-extension://)
+  if (sender.url.startsWith('safari-web-extension://')) {
+    return true;
+  }
+  
+  // Edge extension URLs (ms-browser-extension://)
+  if (sender.url.startsWith('ms-browser-extension://')) {
+    return true;
+  }
+  
+  return false;
+}
+
+/**
  * listen message from web pages
  */
 export async function onExternalMessage(
@@ -218,7 +247,7 @@ export async function onRuntimeMessage(
     logger.debug('Runtime message received:', message, sender);
 
     // Validate internal message sender
-    if (!sender.tab && !sender.url?.startsWith('chrome-extension://')) {
+    if (!sender.tab && !isValidExtensionSender(sender)) {
       logger.warn('Unauthorized internal message sender:', sender);
       return;
     }

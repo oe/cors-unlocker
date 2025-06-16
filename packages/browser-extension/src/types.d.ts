@@ -1,3 +1,7 @@
+// Build-time constants
+declare const FIREFOX_BUILD: boolean;
+declare const __DEV__: boolean;
+
 export interface IRuleItem {
   /**
    * Unique identifier of the rule, auto increment

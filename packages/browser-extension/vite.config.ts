@@ -16,14 +16,21 @@ function generateManifest() {
   };
 }
 
-const extID = 'knhlkjdfmgkmelcjfnbbhpphkmjjacng';
+const firefoxExtID = 'cors-unlocker@forth.ink';
+const chromeExtID = 'knhlkjdfmgkmelcjfnbbhpphkmjjacng';
 
 const browserTarget = process.env.TARGET || 'chrome';
 // https://vitejs.dev/config/
 export default defineConfig(({ command, mode }) => {
   const isDev = command === 'serve' || mode === 'development';
+  const isFirefox = browserTarget === 'firefox';
   
   return {
+    define: {
+      // Conditional compilation flags
+      FIREFOX_BUILD: isFirefox,
+      __DEV__: isDev
+    },
     build: {
       emptyOutDir: true,
       outDir: `dist/${browserTarget}`,
@@ -60,10 +67,13 @@ export default defineConfig(({ command, mode }) => {
       webExtension({
         browser: browserTarget,
         webExtConfig: {
-          target: 'chromium',
+          target: browserTarget === 'firefox' ? 'firefox-desktop' : 'chromium',
+          // Only auto-start browser for Chrome in development mode
           startUrl: [
             // chrome extension options page
-            `chrome-extension://${extID}/src/options/index.html`,
+            browserTarget === 'firefox'
+              ? `moz-extension://${firefoxExtID}/src/options/index.html`
+              : `chrome-extension://${chromeExtID}/src/options/index.html`,
             'https://www.google.com/ncr',
             'https://forth.ink',
             'http://localhost:4321'
