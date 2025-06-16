@@ -136,7 +136,7 @@ function initFrame(): Promise<HTMLIFrameElement> {
 }
 
 let isEventInited = false;
-const listenerMap: Record<string, [(data: any) => void, (error: AppCorsError) => void, NodeJS.Timeout]> = {};
+const listenerMap: Record<string, [(data: any) => void, (error: AppCorsError) => void, NodeJS.Timeout | null]> = {};
 
 function initEventMessage() {
   if (isEventInited) return;
@@ -150,7 +150,7 @@ function initEventMessage() {
     
     const [resolve, reject, timeoutId] = callbacks;
     delete listenerMap[data.id];
-    clearTimeout(timeoutId);
+    if (timeoutId) clearTimeout(timeoutId);
     
     if (data.error) {
       reject(new AppCorsError({
@@ -195,17 +195,22 @@ async function sendMessage(params: ISendMessageParams) {
     };
     initEventMessage();
     
-    // Add timeout for individual messages
-    const timeoutId = setTimeout(() => {
-      const callbacks = listenerMap[id];
-      if (callbacks) {
-        delete listenerMap[id];
-        reject(new AppCorsError({ 
-          type: 'communication-failed', 
-          message: `Message timeout: ${params.method}` 
-        }));
-      }
-    }, 5000); // 5 second timeout for individual messages
+    // For methods that require user interaction, don't set timeout to avoid race conditions
+    // For other methods, use default 5 second timeout
+    let timeoutId: NodeJS.Timeout | null = null;
+    
+    if (params.method !== 'enable') {
+      timeoutId = setTimeout(() => {
+        const callbacks = listenerMap[id];
+        if (callbacks) {
+          delete listenerMap[id];
+          reject(new AppCorsError({ 
+            type: 'communication-failed', 
+            message: `Message timeout: ${params.method}` 
+          }));
+        }
+      }, 5000);
+    }
     
     listenerMap[id] = [
       (data: any) => resolve(data), 
@@ -218,7 +223,7 @@ async function sendMessage(params: ISendMessageParams) {
     } catch (error) {
       const callbacks = listenerMap[id];
       if (callbacks) {
-        clearTimeout(callbacks[2]);
+        if (callbacks[2]) clearTimeout(callbacks[2]);
         delete listenerMap[id];
       }
       // Reset frame for retry
@@ -300,6 +305,8 @@ async function getExtConfig() {
 
 /**
  * Enable CORS for the current page(tab)
+ * Note: This method may require user confirmation and has no timeout limit to avoid race conditions.
+ * The operation will complete when the user responds to the confirmation dialog or when a network/system timeout occurs.
  * @param options Configuration options for enabling CORS
  * @returns Promise<{ enabled: boolean, credentials: boolean }> The resulting CORS status
  * @throws {AppCorsError} When the extension is not installed, user cancels, or operation fails

@@ -1,7 +1,7 @@
 {
   "name": "cors-unlocker",
   "version": "1.0.0",
-  "description": "Grant cross-origin request permissions for websites and open doors to boundless potential",
+  "description": "Lightweight npm package for seamless CORS management through the CORS Unlocker browser extension. Perfect for API testing and cross-origin development.",
   "main": "dist/index.umd.js",
   "module": "dist/index.es.js",
   "types": "dist/index.d.ts",
@@ -10,7 +10,18 @@
     "build": "tsc && vite build",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
+  "keywords": [
+    "cors", 
+    "cross-origin", 
+    "api-testing", 
+    "browser-extension", 
+    "http-headers", 
+    "fetch", 
+    "ajax", 
+    "web-development", 
+    "typescript",
+    "lightweight"
+  ],
   "author": "Saiya",
   "license": "MIT",
   "devDependencies": {

@@ -20,7 +20,6 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "astro": "catalog:",
-    "cors-unlocker": "workspace:*",
     "eslint": "catalog:",
     "eslint-plugin-react": "catalog:",
     "globals": "^16.0.0",
@@ -32,6 +31,7 @@
     "vite-plugin-eslint": "catalog:"
   },
   "dependencies": {
+    "cors-unlocker": "workspace:*",
     "lucide-react": "^0.475.0",
     "react-random-shapes": "^0.6.2"
   }
