@@ -11,7 +11,6 @@ import {
   onExternalMessage,
   onRuntimeMessage,
   onWindowClose,
-  onExternalConnect,
 } from './messaging';
 import { logger } from '@/common/logger';
 
@@ -89,11 +88,21 @@ browser.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   }
 });
 
-// external message listener from web pages
-browser.runtime.onMessageExternal.addListener(onExternalMessage);
-// internal message listener from options and popup pages
-browser.runtime.onMessage.addListener(onRuntimeMessage);
+if (__TARGET__ === 'chrome') {
+  // external message listener from web pages
+  browser.runtime.onMessageExternal.addListener(onExternalMessage);
+  // internal message listener from options and popup pages
+  browser.runtime.onMessage.addListener(onRuntimeMessage);
+} else {
+  browser.runtime.onMessage.addListener((message, sender) => {
+    // Handle internal messages only
+    if (sender.id === browser.runtime.id) {
+      return onRuntimeMessage(message, sender);
+    }
+    // Ignore external messages
+    logger.warn('Ignoring external message:', message, sender);
+    return onExternalMessage(message, sender);
+  });
+}
 // clear cached currentTabRule after window closed
 browser.windows.onRemoved.addListener(onWindowClose);
-// external connect listener from web pages
-browser.runtime.onConnectExternal.addListener(onExternalConnect);

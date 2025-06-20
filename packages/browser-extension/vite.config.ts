@@ -27,6 +27,7 @@ export default defineConfig(({ command, mode }) => {
   
   return {
     define: {
+      __TARGET__: JSON.stringify(browserTarget),
       // Conditional compilation flags
       FIREFOX_BUILD: isFirefox,
       __DEV__: isDev

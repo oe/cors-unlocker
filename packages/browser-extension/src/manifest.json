@@ -23,6 +23,17 @@
       "*://localhost/*"
     ]
   },
+  "{{firefox}}.content_scripts": [
+    {
+      "matches": [
+        "https://*.forth.ink/*",
+        "*://localhost/*"
+      ],
+      "js": ["src/content/firefox.ts"],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ],
   "default_locale": "en",
   "background": {
     "{{chrome}}.service_worker": "src/background/index.ts",

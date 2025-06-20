@@ -22,28 +22,6 @@ const BASIC_CONFIG = (() => {
   }
 })();
 
-// browser auto disconnect the port when the page is unloaded
-let port: chrome.runtime.Port | null = null;
-
-const connectToExtension = () => {
-  if (!BASIC_CONFIG.extID || port) return;
-  
-  try {
-    port = extObject.runtime.connect(BASIC_CONFIG.extID);
-    port.onDisconnect.addListener(() => {
-      port = null;
-    });
-  } catch {
-    port = null;
-  }
-}
-
-const ensureConnection = async () => {
-  if (!port) {
-    connectToExtension();
-  }
-  return port;
-}
 
 const messageCallbacks = {
   isInstalled: async (payload?: { throw?: boolean}) => {
@@ -72,28 +50,7 @@ const messageCallbacks = {
 
     // Verify if the specific extension ID is installed and available
     try {
-      await new Promise<void>((resolve, reject) => {
-        // Try to send a simple ping message to the specified extension
-        extObject.runtime.sendMessage(BASIC_CONFIG.extID, {
-          method: 'ping',
-          payload: {}
-        }, (_response: any) => {
-          // Check for runtime errors
-          if (extObject.runtime.lastError) {
-            reject(new Error(extObject.runtime.lastError.message || 'Extension communication failed'));
-            return;
-          }
-          
-          // If response received, extension is installed and available
-          resolve();
-        });
-        
-        // Set timeout to avoid infinite waiting
-        setTimeout(() => {
-          reject(new Error('Extension communication timeout'));
-        }, 2000);
-      });
-      
+      await sendMessage2ext('ping', {}, 2000);
       return true;
     } catch {
       if (payload?.throw) {
@@ -184,11 +141,8 @@ window.addEventListener('message', async (event) => {
   }
 });
 
-function sendMessage2ext(method: string, payload?: any) {
+function sendMessage2ext(method: string, payload?: any, timeout?: number) {
   return new Promise((resolve, reject) => {
-    // Ensure connection before sending message
-    ensureConnection();
-    
     extObject.runtime.sendMessage(BASIC_CONFIG.extID, {
       method,
       payload: {
@@ -209,8 +163,6 @@ function sendMessage2ext(method: string, payload?: any) {
       
       // Check for runtime errors (connection issues)
       if (extObject.runtime.lastError) {
-        // Reset port on connection error to allow retry
-        port = null;
         return reject({
           type: 'communication-failed',
           message: extObject.runtime.lastError.message || 'Connection failed'
@@ -219,6 +171,14 @@ function sendMessage2ext(method: string, payload?: any) {
       
       resolve(response);
     })
+    if (timeout) {
+      setTimeout(() => {
+        reject({
+          type: 'timeout',
+          message: `Message "${method}" timed out after ${timeout}ms`
+        });
+      }, timeout);
+    }
   })
 }
 

@@ -7,7 +7,6 @@ import {
   dataStorage,
 } from '@/common/storage';
 import { extConfig } from '@/common/ext-config';
-import { diffRules } from './user-rule';
 import { isSupportedProtocol } from '@/common/utils';
 import { logger } from '@/common/logger';
 
@@ -137,6 +136,7 @@ export async function onExternalMessage(
     }
 
     if (!payload?.origin) {
+      logger.debug('Missing origin in payload:', method, payload,sender.url);
       throw new Error(JSON.stringify({
         message: 'Missing origin in payload',
         type: 'missing-origin',
@@ -291,75 +291,3 @@ export function onWindowClose(windowId: number) {
   }
 }
 
-/**
- * port map to origin
- */
-const portMap = new Map<browser.Runtime.Port, string>();
-
-/**
- * on external connect from web pages
- */
-export function onExternalConnect(port: browser.Runtime.Port) {
-  try {
-    logger.debug('External port connected:', port.name, port.sender?.url);
-    
-    const url = port.sender?.url;
-    if (!url) {
-      logger.warn('Port connection without URL');
-      port.disconnect();
-      return;
-    }
-    
-    const origin = new URL(url).origin;
-    
-    // Validate external origin
-    if (!validateExternalOrigin(origin)) {
-      logger.warn('Port connection from unauthorized origin:', origin);
-      port.disconnect();
-      return;
-    }
-    
-    portMap.set(port, origin);
-    
-    port.onDisconnect.addListener(() => {
-      logger.debug('External port disconnected:', origin);
-      portMap.delete(port);
-    });
-    
-  } catch (error) {
-    logger.error('Error handling external connection:', error);
-    port.disconnect();
-  }
-}
-
-/**
- * notify pages when rules changed via ports
- */
-dataStorage.onRulesChange((newRules, oldRules) => {
-  try {
-    if (!portMap.size) return;
-    
-    const updatedRules = diffRules(newRules, oldRules);
-    if (!updatedRules.length) return;
-    
-    logger.debug('Notifying connected ports about rule changes:', updatedRules.length);
-    
-    portMap.forEach((origin, port) => {
-      try {
-        const rule = updatedRules.find((rule) => rule.origin === origin);
-        if (!rule) return;
-        
-        port.postMessage({
-          enabled: !rule.disabled,
-          credentials: !!rule.credentials,
-        });
-      } catch (error) {
-        logger.error('Error sending message to port:', error);
-        // Remove broken port
-        portMap.delete(port);
-      }
-    });
-  } catch (error) {
-    logger.error('Error notifying ports about rule changes:', error);
-  }
-});
