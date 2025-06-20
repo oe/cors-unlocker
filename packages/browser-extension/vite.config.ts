@@ -81,7 +81,55 @@ export default defineConfig(({ command, mode }) => {
           ]
         },
         manifest: generateManifest
-      })
+      }),
+      // Custom plugin to filter localhost from manifest in production
+      {
+        name: 'filter-localhost-manifest',
+        generateBundle(options, bundle) {
+          if (isDev) return; // Skip in development
+          
+          // Find and modify manifest.json
+          const manifestKey = 'manifest.json';
+          if (bundle[manifestKey] && bundle[manifestKey].type === 'asset') {
+            const manifestAsset = bundle[manifestKey] as any;
+            const manifest = JSON.parse(manifestAsset.source as string);
+            
+            // Filter localhost from externally_connectable.matches (Chrome only)
+            if (manifest.externally_connectable?.matches) {
+              manifest.externally_connectable.matches = manifest.externally_connectable.matches.filter(
+                (match: string) => !match.includes('localhost') && !match.includes('127.0.0.1')
+              );
+              // Remove externally_connectable if no matches left
+              if (manifest.externally_connectable.matches.length === 0) {
+                delete manifest.externally_connectable;
+              }
+            }
+            
+            // Filter localhost from content_scripts.matches (Firefox only)
+            if (manifest.content_scripts && Array.isArray(manifest.content_scripts)) {
+              manifest.content_scripts = manifest.content_scripts
+                .map((script: any) => {
+                  if (script.matches && Array.isArray(script.matches)) {
+                    const filteredMatches = script.matches.filter(
+                      (match: string) => !match.includes('localhost') && !match.includes('127.0.0.1')
+                    );
+                    return filteredMatches.length > 0 ? { ...script, matches: filteredMatches } : null;
+                  }
+                  return script;
+                })
+                .filter(Boolean); // Remove null entries
+              
+              // Remove content_scripts if no valid scripts left
+              if (manifest.content_scripts.length === 0) {
+                delete manifest.content_scripts;
+              }
+            }
+            
+            // Update the asset source
+            manifestAsset.source = JSON.stringify(manifest, null, 2);
+          }
+        }
+      }
     ]
   };
 });
