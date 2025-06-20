@@ -125,20 +125,22 @@ export function Settings() {
               </p>
             </div>
 
-            <div>
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={state.config.debugMode || false}
-                  onChange={(e) => updateConfig('debugMode', e.target.checked)}
-                  className="rounded"
-                />
-                <span className="text-slate-800">Debug mode</span>
-              </label>
-              <p className="text-sm text-slate-500 mt-1">
-                Enable detailed logging for troubleshooting
-              </p>
-            </div>
+            {__DEV__ && (
+              <div>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={state.config.debugMode || false}
+                    onChange={(e) => updateConfig('debugMode', e.target.checked)}
+                    className="rounded"
+                  />
+                  <span className="text-slate-800">Debug mode</span>
+                </label>
+                <p className="text-sm text-slate-500 mt-1">
+                  Enable detailed logging for troubleshooting
+                </p>
+              </div>
+            )}
 
             <div>
               <label className="block text-slate-800 mb-1">
