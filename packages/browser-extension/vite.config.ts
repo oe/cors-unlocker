@@ -35,8 +35,8 @@ export default defineConfig(({ command, mode }) => {
     build: {
       emptyOutDir: true,
       outDir: `dist/${browserTarget}`,
-      // Enable sourcemap for development and inline sourcemap for production
-      sourcemap: isDev ? true : 'inline',
+      // Enable sourcemap only in development, disable in production
+      sourcemap: isDev,
       // Optimize for debugging in development
       minify: isDev ? false : 'esbuild',
       // Keep function names for better debugging
@@ -52,9 +52,9 @@ export default defineConfig(({ command, mode }) => {
       // Enable source maps in dev server
       sourcemapIgnoreList: false
     },
-    // Enable source maps for CSS
+    // Enable source maps for CSS only in development
     css: {
-      devSourcemap: true
+      devSourcemap: isDev
     },
     resolve: {
       alias: {

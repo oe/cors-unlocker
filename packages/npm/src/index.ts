@@ -2,7 +2,7 @@ export interface IMessageData {
   /**
    * The type of message.
    */
-  type: 'ext';
+  type: 'from-npm' | 'from-cs' | 'from-page';
   /**
    * The message id for tracking requests
    */
@@ -108,7 +108,7 @@ function initFrame(): Promise<HTMLIFrameElement> {
     const onInit = (event: MessageEvent) => {
       if (event.source !== frameDom!.contentWindow ||
         !event.data ||
-        event.data.type !== 'ext' ||
+        event.data.type !== 'from-page' ||
         event.data.method !== 'init'
       ) return;
 
@@ -152,7 +152,7 @@ function initEventMessage() {
   isEventInited = true;
   window.addEventListener('message', (event) => {
     const data = event.data as IMessageResponse;
-    if (event.source !== frameWin) return;
+    if (event.source !== frameWin || !data) return;
     
     const callbacks = listenerMap[data.id];
     if (!callbacks) return;
@@ -200,7 +200,7 @@ async function sendMessage(params: ISendMessageParams) {
     const message: IMessageData = {
       id,
       ...params,
-      type: 'ext',
+      type: 'from-npm',
     };
     initEventMessage();
     

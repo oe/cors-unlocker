@@ -65,32 +65,36 @@ export function useViewModel() {
             setTimeout(() => resolve(false), 3000) // Shortened timeout and default to not installed
           )
         ]);
+
+        if (!installed) {
+          return setState(prev => ({
+            ...prev,
+            isCheckingExtension: false,
+          }));
+        }
         
         console.log('Extension installed:', installed);
         
-        let corsStatus = { enabled: false, credentials: false };
-        if (installed) {
-          try {
-            corsStatus = await appCors.isEnabled();
-          } catch (error) {
-            console.warn('Failed to get CORS status:', error);
-            // If getting status fails, the plugin may not actually be installed
-            setState(prev => ({
-              ...prev,
-              isInstalled: false,
-              corsStatus: { enabled: false, credentials: false },
-              isCheckingExtension: false,
-            }));
-            return;
-          }
+        try {
+          const corsStatus = await appCors.isEnabled();
+          setState((prev) => ({
+            ...prev,
+            isInstalled: installed,
+            corsStatus,
+            errorMessage: null,
+            isCheckingExtension: false
+          }));
+        } catch (error: any) {
+          console.warn('Failed to get CORS status:', error);
+          // If getting status fails, the plugin may not actually be installed
+          setState((prev) => ({
+            ...prev,
+            errorMessage: error.message || 'Failed to get CORS status',
+            isInstalled: true,
+            isCheckingExtension: false
+          }));
+          return;
         }
-        
-        setState(prev => ({
-          ...prev,
-          isInstalled: installed,
-          corsStatus,
-          isCheckingExtension: false,
-        }));
 
       } catch (error) {
         console.error('Failed to initialize extension status:', error);

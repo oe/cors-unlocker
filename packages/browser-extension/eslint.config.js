@@ -12,6 +12,11 @@ export default [
   ...tseslint.configs.recommended,
   pluginReact.configs.flat.recommended,
   {
+    settings: {
+      react: {
+        version: "detect", // Automatically detect React version
+      },
+    },
     rules: {
       "react/react-in-jsx-scope": "off",
       "@typescript-eslint/no-explicit-any": "off",
@@ -20,6 +25,7 @@ export default [
         vars: 'all',
         args: 'after-used',
         argsIgnorePattern: '^_', // Ignore arguments starting with "_"
+        varsIgnorePattern: '^_', // Ignore variables starting with "_"
         ignoreRestSiblings: true,
       }],
     }

@@ -63,7 +63,7 @@ function App() {
       )}
 
       <Settings 
-        className='w-4 h-4 fixed top-2 right-2 cursor-pointer dark:text-slate-200 z-10 hover:text-blue-500 dark:hover:text-blue-400' 
+        className='w-4 h-4 fixed top-2 right-2 cursor-pointer dark:text-slate-200 z-30 hover:text-blue-500 dark:hover:text-blue-400' 
         onClick={gotoOptionsPage} 
       />
 

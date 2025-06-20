@@ -89,19 +89,30 @@ browser.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 });
 
 if (__TARGET__ === 'chrome') {
-  // external message listener from web pages
+  // Chrome: separate handlers for external and internal messages
   browser.runtime.onMessageExternal.addListener(onExternalMessage);
-  // internal message listener from options and popup pages
   browser.runtime.onMessage.addListener(onRuntimeMessage);
 } else {
+  // Firefox: unified message handler since no onMessageExternal
   browser.runtime.onMessage.addListener((message, sender) => {
-    // Handle internal messages only
-    if (sender.id === browser.runtime.id) {
+    logger.debug('Firefox message received:', message, sender);
+    
+    // Check if sender is from extension internal pages (popup, options, etc.)
+    if (sender.url && sender.url.startsWith('moz-extension://')) {
+      // Internal extension message (popup, options)
+      logger.debug('Routing to onRuntimeMessage (internal)');
       return onRuntimeMessage(message, sender);
     }
-    // Ignore external messages
-    logger.warn('Ignoring external message:', message, sender);
-    return onExternalMessage(message, sender);
+    
+    // Check if sender is from content script (our firefox-bridge)
+    if (sender.tab && sender.tab.url && sender.url) {
+      // Message from content script on web page
+      logger.debug('Routing to onExternalMessage (content script)');
+      return onExternalMessage(message, sender);
+    }
+    
+    // logger.warn('Unknown message sender type:', sender);
+    return Promise.resolve();
   });
 }
 // clear cached currentTabRule after window closed

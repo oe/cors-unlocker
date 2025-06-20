@@ -3,14 +3,24 @@ import type {
   IMessageResponse,
   IEnableOptions,
 } from 'cors-unlocker';
+
+// Browser detection
+const IS_FIREFOX = /firefox/i.test(navigator.userAgent);
+
 // @ts-expect-error chrome / browser is browser extension related object
 const extObject: typeof chrome = typeof chrome !== 'undefined' ? chrome : typeof browser !== 'undefined' ? browser : null;
+
+// event callbacks map for Firefox bridge
+const EVENT_CALLBACKS_MAP: Record<
+  string,
+  [(v: any) => void, (v: any) => void]
+> = {};
 
 if (parent === window) {
   document.body.innerHTML = '<p>This page is intended to be embedded for internal communication.</p>';
 } else {
-  // tell the parent window that the extension is ready
-  parent.postMessage({ type: 'ext', method: 'init' }, '*');
+  // tell the parent window that the page is ready
+  parent.postMessage({ type: 'from-page', method: 'init' }, '*');
 }
 
 // get the basic config from the query string
@@ -22,10 +32,15 @@ const BASIC_CONFIG = (() => {
   }
 })();
 
-
 const messageCallbacks = {
   isInstalled: async (payload?: { throw?: boolean}) => {
-    // Basic check: whether browser extension API is available
+    // In Firefox, check if bridge is ready instead of extObject
+    if (IS_FIREFOX) {
+      console.warn('Using Firefox bridge, checking if bridge is ready');
+      // @ts-expect-error __cors_unlocker_ready__ is injected by the content script
+      return !!window.__cors_unlocker_ready__;
+    }
+    // Chrome/Edge: Basic check for extension API availability
     const hasExtAPI = !!extObject && !!extObject.runtime;
     if (!hasExtAPI) {
       if (payload?.throw) {
@@ -36,7 +51,6 @@ const messageCallbacks = {
       }
       return false;
     }
-
     // If extID is not provided, can only do basic check
     if (!BASIC_CONFIG.extID) {
       if (payload?.throw) {
@@ -97,8 +111,19 @@ const messageCallbacks = {
 
 window.addEventListener('message', async (event) => {
   const data = event.data;
+  if (!data) return;
+  // message from content script bridge
+  if (data.type === 'from-cs' && event.source === window) {
+    const eventItem = EVENT_CALLBACKS_MAP[data.id];
+    if (!eventItem) return;
+    const [resolve, reject] = eventItem;
+    if (data.error) {
+      return reject(data.error);
+    }
+    return resolve(data.data);
+  }
   // not the designated message
-  if (!isMessageData(data) || data.type !== 'ext') return;
+  if (!isMessageData(data) || data.type !== 'from-npm') return;
   
   const { method, payload } = data;
   try {
@@ -142,6 +167,12 @@ window.addEventListener('message', async (event) => {
 });
 
 function sendMessage2ext(method: string, payload?: any, timeout?: number) {
+  // In Firefox, use window.postMessage to communicate with content script bridge
+  if (IS_FIREFOX) {
+    return sendMessage2extViaContentScript(method, payload, timeout);
+  }
+
+  // Chrome/Edge: use direct extension messaging
   return new Promise((resolve, reject) => {
     extObject.runtime.sendMessage(BASIC_CONFIG.extID, {
       method,
@@ -181,6 +212,34 @@ function sendMessage2ext(method: string, payload?: any, timeout?: number) {
     }
   })
 }
+
+function sendMessage2extViaContentScript(method: string, payload?: any, timeout?: number) {
+  return new Promise((resolve, reject) => {
+    const id = Math.random().toString(36).substring(2, 15);
+    EVENT_CALLBACKS_MAP[id] = [resolve, reject];
+    window.postMessage({
+      type: 'to-cs',
+      id,
+      method,
+      payload: {
+        ...payload,
+        origin: BASIC_CONFIG.origin
+      }
+    }, '*');
+    if (timeout) {
+      setTimeout(() => {
+        if (!EVENT_CALLBACKS_MAP[id]) return;
+        const [_, rejectFn] = EVENT_CALLBACKS_MAP[id];
+        delete EVENT_CALLBACKS_MAP[id];
+        rejectFn({
+          type: 'timeout',
+          message: `Message "${method}" timed out after ${timeout}ms`
+        });
+      }, timeout);
+    }  
+  })
+}
+
 
 function isMessageData(data: any): data is IMessageData {
   return data && data.type && data.id && data.method;

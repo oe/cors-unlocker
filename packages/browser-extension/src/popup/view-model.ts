@@ -165,6 +165,12 @@ export function useViewModel() {
   const gotoOptionsPage = useCallback(async () => {
     try {
       await browser.runtime.openOptionsPage();
+      
+      // In Firefox, popup doesn't close automatically when opening options page
+      // We need to close it manually
+      if (__TARGET__ === 'firefox') {
+        window.close();
+      }
     } catch (error) {
       logger.error('Failed to open options page:', error);
       setState(prev => ({ 

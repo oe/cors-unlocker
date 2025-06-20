@@ -29,7 +29,7 @@
         "https://*.forth.ink/*",
         "*://localhost/*"
       ],
-      "js": ["src/content/firefox.ts"],
+      "js": ["src/content/firefox-bridge.ts"],
       "run_at": "document_start",
       "all_frames": true
     }
