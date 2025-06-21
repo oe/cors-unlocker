@@ -1,5 +1,9 @@
+---
+import InstallButton from './install-button.tsx';
+---
+
 <!-- Hero Section - Apple Style -->
-<section class="relative overflow-hidden bg-gradient-to-br from-gray-50 via-white to-gray-100 min-h-screen flex items-center">
+<section class="relative overflow-hidden bg-gradient-to-br from-gray-50 via-white to-gray-100  flex items-center">
   <!-- Background decoration -->
   <div class="absolute inset-0">
     <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-gradient-to-br from-blue-200/20 to-purple-200/20 rounded-full blur-3xl"></div>
@@ -27,28 +31,10 @@
         </p>
 
         <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-          <a
-            href="#"
-            id="download"
-            class="inline-flex items-center px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-2xl transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-xl group"
-            role="button"
-          >
-            Install Extension
-            <svg
-              class="w-5 h-5 ml-3 group-hover:translate-x-1 transition-transform"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M13 7l5 5m0 0l-5 5m5-5H6"
-              />
-            </svg>
-          </a>
+          <InstallButton 
+            client:load 
+            className="shadow-lg hover:shadow-xl"
+          />
           
           <a
             href="/playground"
@@ -76,6 +62,5 @@
         </div>
       </div>
     </div>
-  </div>
   </div>
 </section>
