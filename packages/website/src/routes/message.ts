@@ -8,7 +8,7 @@ import type {
 const IS_FIREFOX = /firefox/i.test(navigator.userAgent);
 
 // @ts-expect-error chrome / browser is browser extension related object
-const extObject: typeof chrome = typeof chrome !== 'undefined' ? chrome : typeof browser !== 'undefined' ? browser : null;
+const extObject = typeof chrome !== 'undefined' ? chrome : (typeof browser !== 'undefined' ? browser : null);
 
 // event callbacks map for Firefox bridge
 const EVENT_CALLBACKS_MAP: Record<
@@ -43,7 +43,7 @@ const messageCallbacks = {
     // Chrome/Edge: Basic check for extension API availability
     const hasExtAPI = !!extObject && !!extObject.runtime;
     if (!hasExtAPI) {
-      if (payload?.throw) {
+      if (payload && payload.throw) {
         throw {
           type: 'not-installed',
           message: 'browser extension API not available'
@@ -53,7 +53,7 @@ const messageCallbacks = {
     }
     // If extID is not provided, can only do basic check
     if (!BASIC_CONFIG.extID) {
-      if (payload?.throw) {
+      if (payload && payload.throw) {
         throw {
           type: 'config-error',
           message: 'extID not provided'
@@ -64,10 +64,11 @@ const messageCallbacks = {
 
     // Verify if the specific extension ID is installed and available
     try {
-      await sendMessage2ext('ping', {}, 2000);
-      return true;
+      const resp = await sendMessage2ext('ping', {}, 2000);
+      // @ts-expect-error ignore type issues
+      return !!resp && resp.success === true;
     } catch {
-      if (payload?.throw) {
+      if (payload && payload.throw) {
         throw {
           type: 'not-installed',
           message: `extension with ID ${BASIC_CONFIG.extID} not installed or not responding`
@@ -76,7 +77,7 @@ const messageCallbacks = {
       return false;
     }
   },
-  enable: async (options?: IEnableOptions) => {
+  enable: async (options: IEnableOptions = {}) => {
     const rule: any = await sendMessage2ext('getRule');
     if (rule && !rule.disabled) {
       // already enabled, nothing to do
@@ -89,8 +90,8 @@ const messageCallbacks = {
     // if downgrade from credentials to no credentials, there is no need to confirm
     if (!rule || rule.disabled || !rule.credentials) {
       let message = `Current page("${origin}") is requesting to enable CORS`;
-      message += options?.credentials ? ' **with credentials**.' : '.';
-      message += options?.reason
+      message += options.credentials ? ' **with credentials**.' : '.';
+      message += options.reason
         ? `\n\nMessage from current Page:\n${options.reason}\n\n`
         : '\n\n';
 
@@ -112,6 +113,9 @@ const messageCallbacks = {
 window.addEventListener('message', async (event) => {
   const data = event.data;
   if (!data) return;
+  if (import.meta.env.DEV) {
+    console.log(`[message page]Receive raw message from page:`, data);
+  }
   // message from content script bridge
   if (data.type === 'from-cs' && event.source === window) {
     const eventItem = EVENT_CALLBACKS_MAP[data.id];
@@ -155,6 +159,12 @@ window.addEventListener('message', async (event) => {
       data: response
     });
   } catch(error: any) {
+    if (import.meta.env.DEV) {
+      console.warn(
+        `[message page]Sending error message to page:`,
+        error
+      );
+    }
     sendMessage2frame({
       id: data.id,
       type: 'response',
@@ -167,6 +177,12 @@ window.addEventListener('message', async (event) => {
 });
 
 function sendMessage2ext(method: string, payload?: any, timeout?: number) {
+  if (import.meta.env.DEV) {
+    console.log(
+      `[message page]Sending message to extension: ${method}`,
+      payload
+    );
+  }
   // In Firefox, use window.postMessage to communicate with content script bridge
   if (IS_FIREFOX) {
     return sendMessage2extViaContentScript(method, payload, timeout);
@@ -181,6 +197,9 @@ function sendMessage2ext(method: string, payload?: any, timeout?: number) {
         origin: BASIC_CONFIG.origin
       }
     }, (response: any) => {
+      if (import.meta.env.DEV) {
+        console.log(`[message page]Received response from extension: ${method}`, response);
+      }
       if (
         (response && typeof response === 'object') &&
         response.__mozWebExtensionPolyfillReject__
