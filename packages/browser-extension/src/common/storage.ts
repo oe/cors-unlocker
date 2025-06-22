@@ -76,16 +76,25 @@ export const dataStorage = {
 
   async addRule(options: ICreateRuleOptions): Promise<boolean> {
     try {
+      const rules = await this.getRules();
+      const config = extConfig.get();
+      
+      // Check maxRules limit
+      if (rules.length >= config.maxRules) {
+        logger.warn(`Cannot add rule: maximum limit of ${config.maxRules} rules reached`);
+        throw new Error(`Maximum limit of ${config.maxRules} rules reached`);
+      }
+      
       const newRule = createRule(options);
       if (newRule) {
         // Check for duplicate origin using cached rules
-        const existingRule = lastRules.find(r => r.origin === newRule.origin);
+        const existingRule = rules.find(r => r.origin === newRule.origin);
         if (existingRule) {
           logger.warn('Rule with origin already exists:', newRule.origin);
           return false;
         }
         
-        const newRules = [...lastRules, newRule];
+        const newRules = [...rules, newRule];
         await this.saveRules(newRules);
         logger.info('Added new rule:', newRule.origin);
         return true;
@@ -93,14 +102,15 @@ export const dataStorage = {
       return false;
     } catch (error) {
       logger.error('Failed to add rule:', error);
-      return false;
+      throw error;
     }
   },
 
   async removeRule(id: number): Promise<boolean> {
     try {
-      const newRules = lastRules.filter((r) => r.id !== id);
-      if (newRules.length === lastRules.length) {
+      const rules = await this.getRules(); // Always get fresh rules
+      const newRules = rules.filter((r) => r.id !== id);
+      if (newRules.length === rules.length) {
         logger.warn('Rule not found for removal:', id);
         return false;
       }
@@ -115,8 +125,9 @@ export const dataStorage = {
   
   async updateRule(newRule: Partial<IRuleItem>): Promise<boolean> {
     try {
+      const rules = await this.getRules(); // Always get fresh rules
       let updated = false;
-      const newRules = lastRules.map((item) => {
+      const newRules = rules.map((item) => {
         if (isSameRule(item, newRule)) {
           updated = true;
           return { ...item, ...newRule, updatedAt: Date.now() };
@@ -147,6 +158,10 @@ export const dataStorage = {
       if (areaName !== 'local' || !changed) return;
       
       try {
+        // Update cached rules when storage changes
+        if (changed.newValue) {
+          this.updateCachedRules(changed.newValue);
+        }
         callback(changed.newValue, changed.oldValue);
       } catch (error) {
         logger.error('Error in rules change callback:', error);
@@ -250,8 +265,9 @@ export function removeCurrentTabRule(winId: number) {
 
 export async function toggleRuleViaOrigin(rule: Partial<IRuleItem>): Promise<boolean> {
   try {
-    // Use cached rules instead of reloading
-    const existRule = lastRules.find((r) => r.origin === rule.origin);
+    // Always get fresh rules instead of using cached ones
+    const rules = await dataStorage.getRules();
+    const existRule = rules.find((r) => r.origin === rule.origin);
     
     if (existRule) {
       return await dataStorage.updateRule({ ...existRule, ...rule });

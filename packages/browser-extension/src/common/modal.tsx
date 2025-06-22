@@ -61,7 +61,7 @@ export function Modal(props: PropsWithChildren<IModalProps>) {
   <div ref={rootRef} tabIndex={-1} className="overflow-y-auto overflow-x-hidden fixed ease-in-out duration-300  z-50 justify-center items-center w-full inset-0 flex bg-gray-500/50">
     <div className="relative p-4 w-full max-w-2xl max-h-full ease-in-out duration-300">
       <div className="relative bg-white rounded-lg shadow">
-        <div className="flex items-center justify-between p-4 md:p-5 border-b rounded-t ">
+        <div className="flex items-center justify-between p-4 md:p-5 border-b border-gray-200 rounded-t ">
           <h3 className="text-xl font-semibold text-gray-900">
             {props.title}
           </h3>

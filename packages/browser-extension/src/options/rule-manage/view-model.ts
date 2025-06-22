@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { IRuleItem, } from '@/types';
 import { dataStorage } from '@/common/storage';
+import { extConfig } from '@/common/ext-config';
 
 export function getOrigin(url: string) {
   try {
@@ -19,6 +20,11 @@ export function getOrigin(url: string) {
 
 export function useViewModel() {
   const [rules, setRules] = useState<IRuleItem[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [maxRules, setMaxRules] = useState(100);
+  
+  const pageSize = 20; // 每页显示20条规则
 
   useEffect(() => {
     dataStorage.getRules().then(r => {
@@ -27,8 +33,45 @@ export function useViewModel() {
     });
     dataStorage.onRulesChange((newRules) => {
       setRules(newRules || []);
-    })
+    });
+
+    // 获取最大规则数限制
+    const config = extConfig.get();
+    setMaxRules(config.maxRules);
   }, []);
+
+  // 过滤规则
+  const filteredRules = useMemo(() => {
+    if (!searchTerm.trim()) return rules;
+    
+    const term = searchTerm.toLowerCase();
+    return rules.filter(rule => 
+      rule.origin.toLowerCase().includes(term) ||
+      (rule.comment && rule.comment.toLowerCase().includes(term))
+    );
+  }, [rules, searchTerm]);
+
+  // 计算分页
+  const totalPages = Math.ceil(filteredRules.length / pageSize);
+  
+  // 获取当前页的规则
+  const paginatedRules = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    return filteredRules.slice(startIndex, endIndex);
+  }, [filteredRules, currentPage, pageSize]);
+
+  // 当搜索条件改变时重置到第一页
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
+  // 当总页数变化且当前页超出范围时，回到最后一页
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   /**
    * validate rule url, return origin if valid, or an error will be thrown
@@ -49,10 +92,17 @@ export function useViewModel() {
   
   const addRule = async (v: {origin: string, comment: string}) => {
     const origin = validateRule(v.origin);
-    const isSuccess = dataStorage.addRule({
+    const config = extConfig.get();
+    
+    if (rules.length >= config.maxRules) {
+      throw new Error(`Maximum limit of ${config.maxRules} rules reached`);
+    }
+    
+    const isSuccess = await dataStorage.addRule({
       origin,
       comment: v.comment,
-    })
+    });
+    
     if (!isSuccess) {
       throw new Error('unable to create rule');
     }
@@ -73,6 +123,23 @@ export function useViewModel() {
     dataStorage.updateRule(rule);
   };
 
-  return { rules, addRule, removeRule, updateRule, validateRule, toggleRule };
+  return { 
+    rules, 
+    addRule, 
+    removeRule, 
+    updateRule, 
+    validateRule, 
+    toggleRule,
+    // 搜索和分页相关
+    filteredRules,
+    searchTerm,
+    setSearchTerm,
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    pageSize,
+    maxRules,
+    paginatedRules
+  };
 }
 

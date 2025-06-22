@@ -13,7 +13,6 @@ import { logger } from '@/common/logger';
 // Allowed external origins for security
 const ALLOWED_EXTERNAL_ORIGINS = [
   'https://cors.forth.ink',
-  'https://www.forth.ink',
 ];
 
 // Rate limiting for external messages

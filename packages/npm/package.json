@@ -6,7 +6,7 @@
   "module": "dist/index.es.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "dev": "sleep 8 && pnpm dev:watch",
+    "dev": "sleep 10 && pnpm dev:watch",
     "dev:watch": "vite build --watch --mode development",
     "build": "tsc && vite build",
     "build:dev": "tsc && vite build --mode development",
