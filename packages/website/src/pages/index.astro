@@ -1,17 +1,23 @@
 ---
 import BaseLayout from '../components/base-layout.astro';
 import Hero from '../components/hero.astro';
+import CostComparison from '../components/cost-comparison.astro';
+import IntegrationGuide from '../components/integration-guide.astro';
+import UseCases from '../components/use-cases.astro';
 import Features from '../components/features/index.astro';
 import { SupportedBrowsers } from '../components/browser-support.tsx';
 import '../components/tailwind.css';
 ---
 
 <BaseLayout
-  title="The Ultimate Cross-Origin Solution for Web Apps"
-  description="Browser App Cors simplifies cross-origin request management with powerful tools for users and developers, combining a browser extension and an npm package. Secure, efficient, and easy to use."
+  title="Enable Cross-Origin Requests Without Any Server - CORS Unlocker"
+  description="Enable cross-origin requests directly in your browser. No proxy servers, no infrastructure costs. Free browser extension for seamless API integration."
   isHomepage
 >
   <Hero />
+  <CostComparison />
+  <IntegrationGuide />
+  <UseCases />
   <Features />
   
   <!-- Browser Compatibility Section -->

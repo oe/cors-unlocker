@@ -206,6 +206,238 @@ function CORSManager() {
 }
 ```
 
+## Real-World Integration Patterns
+
+### Pattern 1: Progressive Enhancement for Internal Tools
+
+Many developers use CORS Unlocker to enhance internal company tools without requiring server-side changes:
+
+```typescript
+import appCors from 'cors-unlocker'
+
+class APIIntegration {
+  private corsEnabled = false
+  
+  async init() {
+    try {
+      const isInstalled = await appCors.isExtInstalled()
+      if (isInstalled) {
+        await appCors.enable({
+          reason: 'Enable direct API access for company dashboard'
+        })
+        this.corsEnabled = true
+        console.log('✅ Direct API access enabled')
+      } else {
+        console.log('📦 Extension not installed, using proxy fallback')
+      }
+    } catch (error) {
+      console.log('⚠️ CORS unavailable, using proxy fallback')
+    }
+  }
+  
+  async fetchData(endpoint: string) {
+    const url = this.corsEnabled 
+      ? `https://api.company.com${endpoint}`
+      : `/api/proxy${endpoint}` // Fallback to server proxy
+      
+    return fetch(url)
+  }
+}
+```
+
+### Pattern 2: Development vs Production Configuration
+
+Smart handling of different environments:
+
+```typescript
+const config = {
+  development: {
+    useDirectAPI: true,
+    fallbackToProxy: false
+  },
+  production: {
+    useDirectAPI: false, // Force proxy in production
+    fallbackToProxy: true
+  }
+}
+
+async function setupAPIClient() {
+  const env = process.env.NODE_ENV
+  const { useDirectAPI, fallbackToProxy } = config[env] || config.development
+  
+  if (useDirectAPI) {
+    const canUseCORS = await appCors.isExtInstalled()
+    if (canUseCORS) {
+      await appCors.enable()
+      return new DirectAPIClient()
+    }
+  }
+  
+  if (fallbackToProxy) {
+    return new ProxyAPIClient()
+  }
+  
+  throw new Error('No API access method available')
+}
+```
+
+### Pattern 3: User-Friendly Installation Flow
+
+Guide users through extension installation with a smooth UX:
+
+```typescript
+class CORSManager {
+  async requestAccess() {
+    const isInstalled = await appCors.isExtInstalled()
+    
+    if (!isInstalled) {
+      const userWantsToInstall = await this.showInstallationDialog()
+      if (userWantsToInstall) {
+        appCors.openStorePage()
+        // Listen for extension installation
+        return this.waitForInstallation()
+      }
+      return false
+    }
+    
+    try {
+      await appCors.enable({
+        reason: 'Access external APIs for enhanced features'
+      })
+      return true
+    } catch (error) {
+      if (error.type === 'user-cancel') {
+        this.showWhyNeededDialog()
+      }
+      return false
+    }
+  }
+  
+  private async waitForInstallation(): Promise<boolean> {
+    return new Promise((resolve) => {
+      const checkInterval = setInterval(async () => {
+        const isInstalled = await appCors.isExtInstalled()
+        if (isInstalled) {
+          clearInterval(checkInterval)
+          resolve(true)
+        }
+      }, 1000)
+      
+      // Timeout after 5 minutes
+      setTimeout(() => {
+        clearInterval(checkInterval)
+        resolve(false)
+      }, 5 * 60 * 1000)
+    })
+  }
+}
+```
+
+## Common Use Cases & Implementation Tips
+
+### Internal Company Dashboards
+
+**Scenario**: Building a dashboard that aggregates data from multiple SaaS tools (Slack, GitHub, Jira, etc.)
+
+**Implementation Strategy**:
+- Use CORS Unlocker for development and internal deployment
+- Implement graceful fallback to server-side proxy for external users
+- Cache responses to minimize API calls
+
+```typescript
+// Dashboard API aggregator
+class DashboardAPI {
+  private apis = {
+    github: 'https://api.github.com',
+    slack: 'https://slack.com/api',
+    jira: 'https://company.atlassian.net/rest/api/3'
+  }
+  
+  async aggregateData() {
+    await appCors.enable()
+    
+    const [githubData, slackData, jiraData] = await Promise.all([
+      this.fetchGitHub(),
+      this.fetchSlack(),
+      this.fetchJira()
+    ])
+    
+    return { github: githubData, slack: slackData, jira: jiraData }
+  }
+}
+```
+
+### Rapid API Prototyping
+
+**Scenario**: Testing integrations with third-party APIs during development
+
+**Benefits**:
+- No backend setup required
+- Test API responses immediately  
+- Iterate faster on frontend logic
+
+```typescript
+// Quick API testing setup
+async function testAPIIntegration() {
+  await appCors.enable({ 
+    reason: 'Testing API integration for prototype' 
+  })
+  
+  // Test multiple endpoints quickly
+  const apis = [
+    'https://jsonplaceholder.typicode.com/posts',
+    'https://api.github.com/repos/microsoft/vscode',
+    'https://httpbin.org/json'
+  ]
+  
+  for (const api of apis) {
+    try {
+      const response = await fetch(api)
+      const data = await response.json()
+      console.log(`✅ ${api}:`, data)
+    } catch (error) {
+      console.log(`❌ ${api}:`, error.message)
+    }
+  }
+}
+```
+
+### MVP and Startup Applications
+
+**Scenario**: Building an MVP that needs to integrate with external APIs without backend infrastructure
+
+**Cost Savings**:
+- $0 proxy server costs
+- Faster time to market
+- Focus budget on core features
+
+```typescript
+// MVP startup integration
+class MVPApp {
+  async initializeExternalServices() {
+    const corsAvailable = await appCors.isExtInstalled()
+    
+    if (!corsAvailable) {
+      // Show value proposition to users
+      this.showExtensionBenefits()
+      return
+    }
+    
+    await appCors.enable({
+      reason: 'Enable seamless integration with your favorite tools'
+    })
+    
+    // Now can integrate with any API directly
+    this.enableFeatures(['analytics', 'notifications', 'dataimport'])
+  }
+  
+  showExtensionBenefits() {
+    // Modal explaining how extension enables enhanced features
+    // without requiring them to trust a third-party proxy server
+  }
+}
+```
+
 ## Browser Compatibility
 
 <FeatureGrid columns={2} title="Supported Browsers">
