@@ -222,7 +222,7 @@ const RequestConfigCard: React.FC<{ vm: ReturnType<typeof useViewModel> }> = ({ 
               <select
                 value={vm.requestForm.method}
                 onChange={(e) => vm.setFormValue('method', e.target.value)}
-                className="w-full px-3 lg:px-4 py-2.5 lg:py-3 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50/50 backdrop-blur font-medium transition-all duration-200 text-sm lg:text-base"
+                className="w-full appearance-none px-3 lg:px-4 py-2.5 lg:py-3 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50/50 backdrop-blur font-medium transition-all duration-200 text-sm lg:text-base"
               >
                 <option value="GET">GET</option>
                 <option value="POST">POST</option>
