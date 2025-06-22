@@ -2,7 +2,6 @@ import browser from 'webextension-polyfill';
 import {
   diffRules,
   reorderRules,
-  getDefaultRules,
 } from './user-rule';
 import { dataStorage } from '@/common/storage';
 import { onTabActiveChange } from './on-tab-change';
@@ -36,17 +35,6 @@ browser.runtime.onStartup.addListener(async () => {
   }
 });
 
-// Initialize default rules on installation
-browser.runtime.onInstalled.addListener(async (e) => {
-  try {
-    // only run on install
-    if (e.reason !== 'install') return;
-    // will trigger events to update rules
-    await dataStorage.saveRules(getDefaultRules());
-  } catch (error) {
-    logger.error('Error during installation:', error);
-  }
-});
 
 // Update rules when storage changes
 dataStorage.onRulesChange(async (newRules, oldRules) => {

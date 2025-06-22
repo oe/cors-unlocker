@@ -82,7 +82,7 @@ export function RuleTable(props: IRuleTableProps) {
             </tr>
           ))}
           {props.rules.length === 0 && (
-            <tr className="border-t">
+            <tr className="border-t border-gray-200">
               <td colSpan={4} className="py-2 text-center text-slate-400">No rules</td>
             </tr>
           )}

@@ -1,7 +1,4 @@
 import type { IRuleItem } from '@/types';
-import { createRule } from '@/common/rules';
-
-const DEFAULT_ORIGINS = ['https://cors.forth.ink', 'https://www.google.com'];
 
 /**
  * diff new rules with old rules
@@ -40,11 +37,4 @@ export function reorderRules(rules: IRuleItem[]) {
   const newRules = rules.map((rule, index) => ({ ...rule, id: index + 1 }));
   const updatedRules = diffRules(newRules, rules);
   return updatedRules.length ? newRules : null;
-}
-
-
-export function getDefaultRules(): IRuleItem[] {
-  return DEFAULT_ORIGINS.map((origin) =>
-    createRule({ origin })
-  ).filter(Boolean) as IRuleItem[];
 }
