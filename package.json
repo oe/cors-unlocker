@@ -6,7 +6,7 @@
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",
-    "dev:extension": "turbo dev --filter=browser-extension-cors-unlocker",
+    "dev:extension": "turbo dev --filter=browser-cors-unlocker",
     "dev:cors-unlocker": "turbo dev --filter=cors-unlocker",
     "dev:website": "turbo dev --filter=website"
   },

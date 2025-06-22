@@ -1,5 +1,5 @@
 {
-  "name": "browser-extension-cors-unlocker",
+  "name": "browser-cors-unlocker",
   "private": true,
   "version": "1.0.0",
   "type": "module",
