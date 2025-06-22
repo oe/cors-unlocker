@@ -1,6 +1,6 @@
-<!DOCTYPE html><html lang="en" class="h-full"> <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Developer Integration Guide - CORS Unlocker</title><link rel="shortcut icon" href="/favicon.ico" type="image/x-icon"><meta name="description" content="Seamlessly integrate CORS management into your web application with our powerful npm package. Enable, disable, and monitor cross-origin requests with just a few lines of code."><meta name="astro-view-transitions-enabled" content="true"><meta name="astro-view-transitions-fallback" content="animate"><script type="module" src="/_astro/ClientRouter.astro_astro_type_script_index_0_lang.CtSceO8m.js"></script><link rel="stylesheet" href="/_astro/docs.CGXsTgm8.css">
-<link rel="stylesheet" href="/_astro/docs.BPSeBTFl.css">
-<link rel="stylesheet" href="/_astro/docs.BBbYf26Z.css"></head> <body class="flex flex-col h-full"> <header class="bg-slate-100/30" data-astro-transition-persist="astro-3si54kmc-1"> <div class="px-4 mx-auto sm:px-6 lg:px-8"> <div class="flex items-center justify-between h-16 lg:h-20"> <div class="flex-shrink-0"> <a href="/" title="" class="flex gap-2 items-center"> <img src="/icon.png" alt="CORS Unlocker icon" class="w-8 h-8"> <span>CORS Unlocker</span> </a> </div> <div class="flex items-center justify-center space-x-6 text-sm md:text-base text-black"> <a href="/docs/" title="integrate with your app" class="transition-all duration-200 hover:text-opacity-80">
+<!DOCTYPE html><html lang="en" class="h-full"> <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Developer Integration Guide - CORS Unlocker</title><link rel="shortcut icon" href="/favicon.ico" type="image/x-icon"><meta name="description" content="Seamlessly integrate CORS management into your web application with our powerful npm package. Enable, disable, and monitor cross-origin requests with just a few lines of code."><meta name="astro-view-transitions-enabled" content="true"><meta name="astro-view-transitions-fallback" content="animate"><script type="module" src="/_astro/ClientRouter.astro_astro_type_script_index_0_lang.CtSceO8m.js"></script><link rel="stylesheet" href="/_astro/docs.7Fdpp3K4.css">
+<link rel="stylesheet" href="/_astro/docs.BKtFvugF.css">
+<link rel="stylesheet" href="/_astro/docs.CL_9yIlp.css"></head> <body class="flex flex-col h-full"> <header class="bg-slate-100/30" data-astro-transition-persist="astro-3si54kmc-1"> <div class="px-4 mx-auto sm:px-6 lg:px-8"> <div class="flex items-center justify-between h-16 lg:h-20"> <div class="flex-shrink-0"> <a href="/" title="" class="flex gap-2 items-center"> <img src="/icon.png" alt="CORS Unlocker icon" class="w-8 h-8"> <span>CORS Unlocker</span> </a> </div> <div class="flex items-center justify-center space-x-6 text-sm md:text-base text-black"> <a href="/docs/" title="integrate with your app" class="transition-all duration-200 hover:text-opacity-80">
 Integration
 </a> <a href="/playground/" class="hidden sm:inline transition-all duration-200 hover:text-opacity-80">
 Playground
@@ -136,6 +136,209 @@ Install
 <span class="line"><span style="color:#E1E4E8">      {</span><span style="color:#FFAB70">corsStatus</span><span style="color:#E1E4E8">?.</span><span style="color:#FFAB70">enabled</span><span style="color:#E1E4E8"> ? </span><span style="color:#9ECBFF">&#39;Disable&#39;</span><span style="color:#E1E4E8"> : </span><span style="color:#9ECBFF">&#39;Enable&#39;</span><span style="color:#E1E4E8">} </span><span style="color:#FFAB70">CORS</span></span>
 <span class="line"><span style="color:#F97583">    &lt;/</span><span style="color:#E1E4E8">button</span><span style="color:#F97583">&gt;</span></span>
 <span class="line"><span style="color:#E1E4E8">  )</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
+<h2 id="real-world-integration-patterns">Real-World Integration Patterns</h2>
+<h3 id="pattern-1-progressive-enhancement-for-internal-tools">Pattern 1: Progressive Enhancement for Internal Tools</h3>
+<p>Many developers use CORS Unlocker to enhance internal company tools without requiring server-side changes:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8;overflow-x:auto" tabindex="0" data-language="typescript"><code><span class="line"><span style="color:#F97583">import</span><span style="color:#E1E4E8"> appCors </span><span style="color:#F97583">from</span><span style="color:#9ECBFF"> &#39;cors-unlocker&#39;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">class</span><span style="color:#B392F0"> APIIntegration</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#F97583">  private</span><span style="color:#FFAB70"> corsEnabled</span><span style="color:#F97583"> =</span><span style="color:#79B8FF"> false</span></span>
+<span class="line"><span style="color:#E1E4E8">  </span></span>
+<span class="line"><span style="color:#F97583">  async</span><span style="color:#B392F0"> init</span><span style="color:#E1E4E8">() {</span></span>
+<span class="line"><span style="color:#F97583">    try</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#F97583">      const</span><span style="color:#79B8FF"> isInstalled</span><span style="color:#F97583"> =</span><span style="color:#F97583"> await</span><span style="color:#E1E4E8"> appCors.</span><span style="color:#B392F0">isExtInstalled</span><span style="color:#E1E4E8">()</span></span>
+<span class="line"><span style="color:#F97583">      if</span><span style="color:#E1E4E8"> (isInstalled) {</span></span>
+<span class="line"><span style="color:#F97583">        await</span><span style="color:#E1E4E8"> appCors.</span><span style="color:#B392F0">enable</span><span style="color:#E1E4E8">({</span></span>
+<span class="line"><span style="color:#E1E4E8">          reason: </span><span style="color:#9ECBFF">&#39;Enable direct API access for company dashboard&#39;</span></span>
+<span class="line"><span style="color:#E1E4E8">        })</span></span>
+<span class="line"><span style="color:#79B8FF">        this</span><span style="color:#E1E4E8">.corsEnabled </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> true</span></span>
+<span class="line"><span style="color:#E1E4E8">        console.</span><span style="color:#B392F0">log</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">&#39;✅ Direct API access enabled&#39;</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">      } </span><span style="color:#F97583">else</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#E1E4E8">        console.</span><span style="color:#B392F0">log</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">&#39;📦 Extension not installed, using proxy fallback&#39;</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">      }</span></span>
+<span class="line"><span style="color:#E1E4E8">    } </span><span style="color:#F97583">catch</span><span style="color:#E1E4E8"> (error) {</span></span>
+<span class="line"><span style="color:#E1E4E8">      console.</span><span style="color:#B392F0">log</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">&#39;⚠️ CORS unavailable, using proxy fallback&#39;</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">    }</span></span>
+<span class="line"><span style="color:#E1E4E8">  }</span></span>
+<span class="line"><span style="color:#E1E4E8">  </span></span>
+<span class="line"><span style="color:#F97583">  async</span><span style="color:#B392F0"> fetchData</span><span style="color:#E1E4E8">(</span><span style="color:#FFAB70">endpoint</span><span style="color:#F97583">:</span><span style="color:#79B8FF"> string</span><span style="color:#E1E4E8">) {</span></span>
+<span class="line"><span style="color:#F97583">    const</span><span style="color:#79B8FF"> url</span><span style="color:#F97583"> =</span><span style="color:#79B8FF"> this</span><span style="color:#E1E4E8">.corsEnabled </span></span>
+<span class="line"><span style="color:#F97583">      ?</span><span style="color:#9ECBFF"> `https://api.company.com${</span><span style="color:#E1E4E8">endpoint</span><span style="color:#9ECBFF">}`</span></span>
+<span class="line"><span style="color:#F97583">      :</span><span style="color:#9ECBFF"> `/api/proxy${</span><span style="color:#E1E4E8">endpoint</span><span style="color:#9ECBFF">}`</span><span style="color:#6A737D"> // Fallback to server proxy</span></span>
+<span class="line"><span style="color:#E1E4E8">      </span></span>
+<span class="line"><span style="color:#F97583">    return</span><span style="color:#B392F0"> fetch</span><span style="color:#E1E4E8">(url)</span></span>
+<span class="line"><span style="color:#E1E4E8">  }</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
+<h3 id="pattern-2-development-vs-production-configuration">Pattern 2: Development vs Production Configuration</h3>
+<p>Smart handling of different environments:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8;overflow-x:auto" tabindex="0" data-language="typescript"><code><span class="line"><span style="color:#F97583">const</span><span style="color:#79B8FF"> config</span><span style="color:#F97583"> =</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#E1E4E8">  development: {</span></span>
+<span class="line"><span style="color:#E1E4E8">    useDirectAPI: </span><span style="color:#79B8FF">true</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#E1E4E8">    fallbackToProxy: </span><span style="color:#79B8FF">false</span></span>
+<span class="line"><span style="color:#E1E4E8">  },</span></span>
+<span class="line"><span style="color:#E1E4E8">  production: {</span></span>
+<span class="line"><span style="color:#E1E4E8">    useDirectAPI: </span><span style="color:#79B8FF">false</span><span style="color:#E1E4E8">, </span><span style="color:#6A737D">// Force proxy in production</span></span>
+<span class="line"><span style="color:#E1E4E8">    fallbackToProxy: </span><span style="color:#79B8FF">true</span></span>
+<span class="line"><span style="color:#E1E4E8">  }</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">async</span><span style="color:#F97583"> function</span><span style="color:#B392F0"> setupAPIClient</span><span style="color:#E1E4E8">() {</span></span>
+<span class="line"><span style="color:#F97583">  const</span><span style="color:#79B8FF"> env</span><span style="color:#F97583"> =</span><span style="color:#E1E4E8"> process.env.</span><span style="color:#79B8FF">NODE_ENV</span></span>
+<span class="line"><span style="color:#F97583">  const</span><span style="color:#E1E4E8"> { </span><span style="color:#79B8FF">useDirectAPI</span><span style="color:#E1E4E8">, </span><span style="color:#79B8FF">fallbackToProxy</span><span style="color:#E1E4E8"> } </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> config[env] </span><span style="color:#F97583">||</span><span style="color:#E1E4E8"> config.development</span></span>
+<span class="line"><span style="color:#E1E4E8">  </span></span>
+<span class="line"><span style="color:#F97583">  if</span><span style="color:#E1E4E8"> (useDirectAPI) {</span></span>
+<span class="line"><span style="color:#F97583">    const</span><span style="color:#79B8FF"> canUseCORS</span><span style="color:#F97583"> =</span><span style="color:#F97583"> await</span><span style="color:#E1E4E8"> appCors.</span><span style="color:#B392F0">isExtInstalled</span><span style="color:#E1E4E8">()</span></span>
+<span class="line"><span style="color:#F97583">    if</span><span style="color:#E1E4E8"> (canUseCORS) {</span></span>
+<span class="line"><span style="color:#F97583">      await</span><span style="color:#E1E4E8"> appCors.</span><span style="color:#B392F0">enable</span><span style="color:#E1E4E8">()</span></span>
+<span class="line"><span style="color:#F97583">      return</span><span style="color:#F97583"> new</span><span style="color:#B392F0"> DirectAPIClient</span><span style="color:#E1E4E8">()</span></span>
+<span class="line"><span style="color:#E1E4E8">    }</span></span>
+<span class="line"><span style="color:#E1E4E8">  }</span></span>
+<span class="line"><span style="color:#E1E4E8">  </span></span>
+<span class="line"><span style="color:#F97583">  if</span><span style="color:#E1E4E8"> (fallbackToProxy) {</span></span>
+<span class="line"><span style="color:#F97583">    return</span><span style="color:#F97583"> new</span><span style="color:#B392F0"> ProxyAPIClient</span><span style="color:#E1E4E8">()</span></span>
+<span class="line"><span style="color:#E1E4E8">  }</span></span>
+<span class="line"><span style="color:#E1E4E8">  </span></span>
+<span class="line"><span style="color:#F97583">  throw</span><span style="color:#F97583"> new</span><span style="color:#B392F0"> Error</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">&#39;No API access method available&#39;</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
+<h3 id="pattern-3-user-friendly-installation-flow">Pattern 3: User-Friendly Installation Flow</h3>
+<p>Guide users through extension installation with a smooth UX:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8;overflow-x:auto" tabindex="0" data-language="typescript"><code><span class="line"><span style="color:#F97583">class</span><span style="color:#B392F0"> CORSManager</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#F97583">  async</span><span style="color:#B392F0"> requestAccess</span><span style="color:#E1E4E8">() {</span></span>
+<span class="line"><span style="color:#F97583">    const</span><span style="color:#79B8FF"> isInstalled</span><span style="color:#F97583"> =</span><span style="color:#F97583"> await</span><span style="color:#E1E4E8"> appCors.</span><span style="color:#B392F0">isExtInstalled</span><span style="color:#E1E4E8">()</span></span>
+<span class="line"><span style="color:#E1E4E8">    </span></span>
+<span class="line"><span style="color:#F97583">    if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#E1E4E8">isInstalled) {</span></span>
+<span class="line"><span style="color:#F97583">      const</span><span style="color:#79B8FF"> userWantsToInstall</span><span style="color:#F97583"> =</span><span style="color:#F97583"> await</span><span style="color:#79B8FF"> this</span><span style="color:#E1E4E8">.</span><span style="color:#B392F0">showInstallationDialog</span><span style="color:#E1E4E8">()</span></span>
+<span class="line"><span style="color:#F97583">      if</span><span style="color:#E1E4E8"> (userWantsToInstall) {</span></span>
+<span class="line"><span style="color:#E1E4E8">        appCors.</span><span style="color:#B392F0">openStorePage</span><span style="color:#E1E4E8">()</span></span>
+<span class="line"><span style="color:#6A737D">        // Listen for extension installation</span></span>
+<span class="line"><span style="color:#F97583">        return</span><span style="color:#79B8FF"> this</span><span style="color:#E1E4E8">.</span><span style="color:#B392F0">waitForInstallation</span><span style="color:#E1E4E8">()</span></span>
+<span class="line"><span style="color:#E1E4E8">      }</span></span>
+<span class="line"><span style="color:#F97583">      return</span><span style="color:#79B8FF"> false</span></span>
+<span class="line"><span style="color:#E1E4E8">    }</span></span>
+<span class="line"><span style="color:#E1E4E8">    </span></span>
+<span class="line"><span style="color:#F97583">    try</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#F97583">      await</span><span style="color:#E1E4E8"> appCors.</span><span style="color:#B392F0">enable</span><span style="color:#E1E4E8">({</span></span>
+<span class="line"><span style="color:#E1E4E8">        reason: </span><span style="color:#9ECBFF">&#39;Access external APIs for enhanced features&#39;</span></span>
+<span class="line"><span style="color:#E1E4E8">      })</span></span>
+<span class="line"><span style="color:#F97583">      return</span><span style="color:#79B8FF"> true</span></span>
+<span class="line"><span style="color:#E1E4E8">    } </span><span style="color:#F97583">catch</span><span style="color:#E1E4E8"> (error) {</span></span>
+<span class="line"><span style="color:#F97583">      if</span><span style="color:#E1E4E8"> (error.type </span><span style="color:#F97583">===</span><span style="color:#9ECBFF"> &#39;user-cancel&#39;</span><span style="color:#E1E4E8">) {</span></span>
+<span class="line"><span style="color:#79B8FF">        this</span><span style="color:#E1E4E8">.</span><span style="color:#B392F0">showWhyNeededDialog</span><span style="color:#E1E4E8">()</span></span>
+<span class="line"><span style="color:#E1E4E8">      }</span></span>
+<span class="line"><span style="color:#F97583">      return</span><span style="color:#79B8FF"> false</span></span>
+<span class="line"><span style="color:#E1E4E8">    }</span></span>
+<span class="line"><span style="color:#E1E4E8">  }</span></span>
+<span class="line"><span style="color:#E1E4E8">  </span></span>
+<span class="line"><span style="color:#F97583">  private</span><span style="color:#F97583"> async</span><span style="color:#B392F0"> waitForInstallation</span><span style="color:#E1E4E8">()</span><span style="color:#F97583">:</span><span style="color:#B392F0"> Promise</span><span style="color:#E1E4E8">&lt;</span><span style="color:#79B8FF">boolean</span><span style="color:#E1E4E8">&gt; {</span></span>
+<span class="line"><span style="color:#F97583">    return</span><span style="color:#F97583"> new</span><span style="color:#79B8FF"> Promise</span><span style="color:#E1E4E8">((</span><span style="color:#FFAB70">resolve</span><span style="color:#E1E4E8">) </span><span style="color:#F97583">=&gt;</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#F97583">      const</span><span style="color:#79B8FF"> checkInterval</span><span style="color:#F97583"> =</span><span style="color:#B392F0"> setInterval</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">async</span><span style="color:#E1E4E8"> () </span><span style="color:#F97583">=&gt;</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#F97583">        const</span><span style="color:#79B8FF"> isInstalled</span><span style="color:#F97583"> =</span><span style="color:#F97583"> await</span><span style="color:#E1E4E8"> appCors.</span><span style="color:#B392F0">isExtInstalled</span><span style="color:#E1E4E8">()</span></span>
+<span class="line"><span style="color:#F97583">        if</span><span style="color:#E1E4E8"> (isInstalled) {</span></span>
+<span class="line"><span style="color:#B392F0">          clearInterval</span><span style="color:#E1E4E8">(checkInterval)</span></span>
+<span class="line"><span style="color:#B392F0">          resolve</span><span style="color:#E1E4E8">(</span><span style="color:#79B8FF">true</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">        }</span></span>
+<span class="line"><span style="color:#E1E4E8">      }, </span><span style="color:#79B8FF">1000</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">      </span></span>
+<span class="line"><span style="color:#6A737D">      // Timeout after 5 minutes</span></span>
+<span class="line"><span style="color:#B392F0">      setTimeout</span><span style="color:#E1E4E8">(() </span><span style="color:#F97583">=&gt;</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#B392F0">        clearInterval</span><span style="color:#E1E4E8">(checkInterval)</span></span>
+<span class="line"><span style="color:#B392F0">        resolve</span><span style="color:#E1E4E8">(</span><span style="color:#79B8FF">false</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">      }, </span><span style="color:#79B8FF">5</span><span style="color:#F97583"> *</span><span style="color:#79B8FF"> 60</span><span style="color:#F97583"> *</span><span style="color:#79B8FF"> 1000</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">    })</span></span>
+<span class="line"><span style="color:#E1E4E8">  }</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
+<h2 id="common-use-cases--implementation-tips">Common Use Cases &amp; Implementation Tips</h2>
+<h3 id="internal-company-dashboards">Internal Company Dashboards</h3>
+<p><strong>Scenario</strong>: Building a dashboard that aggregates data from multiple SaaS tools (Slack, GitHub, Jira, etc.)</p>
+<p><strong>Implementation Strategy</strong>:</p>
+<ul>
+<li>Use CORS Unlocker for development and internal deployment</li>
+<li>Implement graceful fallback to server-side proxy for external users</li>
+<li>Cache responses to minimize API calls</li>
+</ul>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8;overflow-x:auto" tabindex="0" data-language="typescript"><code><span class="line"><span style="color:#6A737D">// Dashboard API aggregator</span></span>
+<span class="line"><span style="color:#F97583">class</span><span style="color:#B392F0"> DashboardAPI</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#F97583">  private</span><span style="color:#FFAB70"> apis</span><span style="color:#F97583"> =</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#E1E4E8">    github: </span><span style="color:#9ECBFF">&#39;https://api.github.com&#39;</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#E1E4E8">    slack: </span><span style="color:#9ECBFF">&#39;https://slack.com/api&#39;</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#E1E4E8">    jira: </span><span style="color:#9ECBFF">&#39;https://company.atlassian.net/rest/api/3&#39;</span></span>
+<span class="line"><span style="color:#E1E4E8">  }</span></span>
+<span class="line"><span style="color:#E1E4E8">  </span></span>
+<span class="line"><span style="color:#F97583">  async</span><span style="color:#B392F0"> aggregateData</span><span style="color:#E1E4E8">() {</span></span>
+<span class="line"><span style="color:#F97583">    await</span><span style="color:#E1E4E8"> appCors.</span><span style="color:#B392F0">enable</span><span style="color:#E1E4E8">()</span></span>
+<span class="line"><span style="color:#E1E4E8">    </span></span>
+<span class="line"><span style="color:#F97583">    const</span><span style="color:#E1E4E8"> [</span><span style="color:#79B8FF">githubData</span><span style="color:#E1E4E8">, </span><span style="color:#79B8FF">slackData</span><span style="color:#E1E4E8">, </span><span style="color:#79B8FF">jiraData</span><span style="color:#E1E4E8">] </span><span style="color:#F97583">=</span><span style="color:#F97583"> await</span><span style="color:#79B8FF"> Promise</span><span style="color:#E1E4E8">.</span><span style="color:#B392F0">all</span><span style="color:#E1E4E8">([</span></span>
+<span class="line"><span style="color:#79B8FF">      this</span><span style="color:#E1E4E8">.</span><span style="color:#B392F0">fetchGitHub</span><span style="color:#E1E4E8">(),</span></span>
+<span class="line"><span style="color:#79B8FF">      this</span><span style="color:#E1E4E8">.</span><span style="color:#B392F0">fetchSlack</span><span style="color:#E1E4E8">(),</span></span>
+<span class="line"><span style="color:#79B8FF">      this</span><span style="color:#E1E4E8">.</span><span style="color:#B392F0">fetchJira</span><span style="color:#E1E4E8">()</span></span>
+<span class="line"><span style="color:#E1E4E8">    ])</span></span>
+<span class="line"><span style="color:#E1E4E8">    </span></span>
+<span class="line"><span style="color:#F97583">    return</span><span style="color:#E1E4E8"> { github: githubData, slack: slackData, jira: jiraData }</span></span>
+<span class="line"><span style="color:#E1E4E8">  }</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
+<h3 id="rapid-api-prototyping">Rapid API Prototyping</h3>
+<p><strong>Scenario</strong>: Testing integrations with third-party APIs during development</p>
+<p><strong>Benefits</strong>:</p>
+<ul>
+<li>No backend setup required</li>
+<li>Test API responses immediately</li>
+<li>Iterate faster on frontend logic</li>
+</ul>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8;overflow-x:auto" tabindex="0" data-language="typescript"><code><span class="line"><span style="color:#6A737D">// Quick API testing setup</span></span>
+<span class="line"><span style="color:#F97583">async</span><span style="color:#F97583"> function</span><span style="color:#B392F0"> testAPIIntegration</span><span style="color:#E1E4E8">() {</span></span>
+<span class="line"><span style="color:#F97583">  await</span><span style="color:#E1E4E8"> appCors.</span><span style="color:#B392F0">enable</span><span style="color:#E1E4E8">({ </span></span>
+<span class="line"><span style="color:#E1E4E8">    reason: </span><span style="color:#9ECBFF">&#39;Testing API integration for prototype&#39;</span><span style="color:#E1E4E8"> </span></span>
+<span class="line"><span style="color:#E1E4E8">  })</span></span>
+<span class="line"><span style="color:#E1E4E8">  </span></span>
+<span class="line"><span style="color:#6A737D">  // Test multiple endpoints quickly</span></span>
+<span class="line"><span style="color:#F97583">  const</span><span style="color:#79B8FF"> apis</span><span style="color:#F97583"> =</span><span style="color:#E1E4E8"> [</span></span>
+<span class="line"><span style="color:#9ECBFF">    &#39;https://jsonplaceholder.typicode.com/posts&#39;</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#9ECBFF">    &#39;https://api.github.com/repos/microsoft/vscode&#39;</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#9ECBFF">    &#39;https://httpbin.org/json&#39;</span></span>
+<span class="line"><span style="color:#E1E4E8">  ]</span></span>
+<span class="line"><span style="color:#E1E4E8">  </span></span>
+<span class="line"><span style="color:#F97583">  for</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">const</span><span style="color:#79B8FF"> api</span><span style="color:#F97583"> of</span><span style="color:#E1E4E8"> apis) {</span></span>
+<span class="line"><span style="color:#F97583">    try</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#F97583">      const</span><span style="color:#79B8FF"> response</span><span style="color:#F97583"> =</span><span style="color:#F97583"> await</span><span style="color:#B392F0"> fetch</span><span style="color:#E1E4E8">(api)</span></span>
+<span class="line"><span style="color:#F97583">      const</span><span style="color:#79B8FF"> data</span><span style="color:#F97583"> =</span><span style="color:#F97583"> await</span><span style="color:#E1E4E8"> response.</span><span style="color:#B392F0">json</span><span style="color:#E1E4E8">()</span></span>
+<span class="line"><span style="color:#E1E4E8">      console.</span><span style="color:#B392F0">log</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">`✅ ${</span><span style="color:#E1E4E8">api</span><span style="color:#9ECBFF">}:`</span><span style="color:#E1E4E8">, data)</span></span>
+<span class="line"><span style="color:#E1E4E8">    } </span><span style="color:#F97583">catch</span><span style="color:#E1E4E8"> (error) {</span></span>
+<span class="line"><span style="color:#E1E4E8">      console.</span><span style="color:#B392F0">log</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">`❌ ${</span><span style="color:#E1E4E8">api</span><span style="color:#9ECBFF">}:`</span><span style="color:#E1E4E8">, error.message)</span></span>
+<span class="line"><span style="color:#E1E4E8">    }</span></span>
+<span class="line"><span style="color:#E1E4E8">  }</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
+<h3 id="mvp-and-startup-applications">MVP and Startup Applications</h3>
+<p><strong>Scenario</strong>: Building an MVP that needs to integrate with external APIs without backend infrastructure</p>
+<p><strong>Cost Savings</strong>:</p>
+<ul>
+<li>$0 proxy server costs</li>
+<li>Faster time to market</li>
+<li>Focus budget on core features</li>
+</ul>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8;overflow-x:auto" tabindex="0" data-language="typescript"><code><span class="line"><span style="color:#6A737D">// MVP startup integration</span></span>
+<span class="line"><span style="color:#F97583">class</span><span style="color:#B392F0"> MVPApp</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#F97583">  async</span><span style="color:#B392F0"> initializeExternalServices</span><span style="color:#E1E4E8">() {</span></span>
+<span class="line"><span style="color:#F97583">    const</span><span style="color:#79B8FF"> corsAvailable</span><span style="color:#F97583"> =</span><span style="color:#F97583"> await</span><span style="color:#E1E4E8"> appCors.</span><span style="color:#B392F0">isExtInstalled</span><span style="color:#E1E4E8">()</span></span>
+<span class="line"><span style="color:#E1E4E8">    </span></span>
+<span class="line"><span style="color:#F97583">    if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#E1E4E8">corsAvailable) {</span></span>
+<span class="line"><span style="color:#6A737D">      // Show value proposition to users</span></span>
+<span class="line"><span style="color:#79B8FF">      this</span><span style="color:#E1E4E8">.</span><span style="color:#B392F0">showExtensionBenefits</span><span style="color:#E1E4E8">()</span></span>
+<span class="line"><span style="color:#F97583">      return</span></span>
+<span class="line"><span style="color:#E1E4E8">    }</span></span>
+<span class="line"><span style="color:#E1E4E8">    </span></span>
+<span class="line"><span style="color:#F97583">    await</span><span style="color:#E1E4E8"> appCors.</span><span style="color:#B392F0">enable</span><span style="color:#E1E4E8">({</span></span>
+<span class="line"><span style="color:#E1E4E8">      reason: </span><span style="color:#9ECBFF">&#39;Enable seamless integration with your favorite tools&#39;</span></span>
+<span class="line"><span style="color:#E1E4E8">    })</span></span>
+<span class="line"><span style="color:#E1E4E8">    </span></span>
+<span class="line"><span style="color:#6A737D">    // Now can integrate with any API directly</span></span>
+<span class="line"><span style="color:#79B8FF">    this</span><span style="color:#E1E4E8">.</span><span style="color:#B392F0">enableFeatures</span><span style="color:#E1E4E8">([</span><span style="color:#9ECBFF">&#39;analytics&#39;</span><span style="color:#E1E4E8">, </span><span style="color:#9ECBFF">&#39;notifications&#39;</span><span style="color:#E1E4E8">, </span><span style="color:#9ECBFF">&#39;dataimport&#39;</span><span style="color:#E1E4E8">])</span></span>
+<span class="line"><span style="color:#E1E4E8">  }</span></span>
+<span class="line"><span style="color:#E1E4E8">  </span></span>
+<span class="line"><span style="color:#B392F0">  showExtensionBenefits</span><span style="color:#E1E4E8">() {</span></span>
+<span class="line"><span style="color:#6A737D">    // Modal explaining how extension enables enhanced features</span></span>
+<span class="line"><span style="color:#6A737D">    // without requiring them to trust a third-party proxy server</span></span>
+<span class="line"><span style="color:#E1E4E8">  }</span></span>
 <span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
 <h2 id="browser-compatibility">Browser Compatibility</h2>
 <div class="not-prose my-8 " data-astro-cid-7d2amkf7> <h3 class="text-xl font-semibold text-gray-900 mb-6 text-center !mt-0" data-astro-cid-7d2amkf7>Supported Browsers</h3> <div class="grid gap-4 grid-cols-1 md:grid-cols-2" data-astro-cid-7d2amkf7> <div class="feature-item"><span class="feature-item-icon">🌐</span><h4 class="feature-item-title">Chrome 88+ <span class="inline-flex items-center font-medium border rounded-full not-prose bg-green-100 text-green-800 border-green-200 text-xs px-2 py-1 "> Popular </span></h4><p class="feature-item-desc">Full support with Manifest V3</p></div><div class="feature-item"><span class="feature-item-icon">🦊</span><h4 class="feature-item-title">Firefox 85+ <span class="inline-flex items-center font-medium border rounded-full not-prose bg-green-100 text-green-800 border-green-200 text-xs px-2 py-1 "> Stable </span></h4><p class="feature-item-desc">WebExtensions API support</p></div><div class="feature-item"><span class="feature-item-icon">🧭</span><h4 class="feature-item-title">Safari 14+ <span class="inline-flex items-center font-medium border rounded-full not-prose bg-amber-100 text-amber-800 border-amber-200 text-xs px-2 py-1 "> New </span></h4><p class="feature-item-desc">Safari Web Extensions</p></div><div class="feature-item"><span class="feature-item-icon">💎</span><h4 class="feature-item-title">Edge 88+ <span class="inline-flex items-center font-medium border rounded-full not-prose bg-blue-100 text-blue-800 border-blue-200 text-xs px-2 py-1 "> Chromium </span></h4><p class="feature-item-desc">Chromium-based support</p></div> </div> </div> <!-- Feature item style component --> 
