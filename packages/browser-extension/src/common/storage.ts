@@ -297,3 +297,46 @@ export async function toggleRuleViaOrigin(rule: Partial<IRuleItem>): Promise<boo
     return true;
   }
 }
+
+/**
+ * Auto-cleanup disabled rules older than specified days
+ */
+export async function autoCleanupDisabledRules(): Promise<number> {
+  try {
+    const config = extConfig.get();
+    
+    // Skip cleanup if disabled (0 days) or no cleanup period set
+    if (!config.autoCleanupDays || config.autoCleanupDays <= 0) {
+      logger.debug('Auto-cleanup disabled');
+      return 0;
+    }
+
+    const rules = await dataStorage.getRules();
+    const cutoffTime = Date.now() - (config.autoCleanupDays * 24 * 60 * 60 * 1000);
+    
+    // Find disabled rules older than cutoff time
+    const rulesToCleanup = rules.filter(rule => 
+      rule.disabled && 
+      (rule.updatedAt || rule.createdAt) < cutoffTime
+    );
+    
+    if (rulesToCleanup.length === 0) {
+      logger.debug('No rules to cleanup');
+      return 0;
+    }
+
+    // Remove old disabled rules
+    const remainingRules = rules.filter(rule => 
+      !rule.disabled || 
+      (rule.updatedAt || rule.createdAt) >= cutoffTime
+    );
+    
+    await dataStorage.saveRules(remainingRules);
+    
+    logger.info(`Auto-cleanup: removed ${rulesToCleanup.length} disabled rules older than ${config.autoCleanupDays} days`);
+    return rulesToCleanup.length;
+  } catch (error) {
+    logger.error('Failed to auto-cleanup disabled rules:', error);
+    return 0;
+  }
+}

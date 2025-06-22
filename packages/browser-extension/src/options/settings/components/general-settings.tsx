@@ -7,25 +7,95 @@ interface GeneralSettingsProps {
 
 export function GeneralSettings({ config, onConfigChange }: GeneralSettingsProps) {
   const [inputValues, setInputValues] = useState({
-    maxRules: config.maxRules || 100,
-    autoCleanupDays: config.autoCleanupDays || 30
+    maxRules: String(config.maxRules ?? 100),
+    autoCleanupDays: String(config.autoCleanupDays ?? 30)
   });
+  
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   // Update input values when config changes
   useEffect(() => {
     setInputValues({
-      maxRules: config.maxRules || 100,
-      autoCleanupDays: config.autoCleanupDays || 30
+      maxRules: String(config.maxRules ?? 100),
+      autoCleanupDays: String(config.autoCleanupDays ?? 30)
     });
+    // Clear validation errors when config is updated from external source
+    setValidationErrors({});
   }, [config.maxRules, config.autoCleanupDays]);
 
-  const handleInputChange = (key: string, value: number) => {
-    setInputValues(prev => ({ ...prev, [key]: value }));
+  const validateMaxRules = (value: string): { isValid: boolean; error?: string; validValue?: number } => {
+    const num = parseInt(value);
+    if (isNaN(num)) {
+      return { isValid: false, error: 'Must be a valid number' };
+    }
+    if (num < 1) {
+      return { isValid: false, error: 'Must be at least 1' };
+    }
+    if (num > 1000) {
+      return { isValid: false, error: 'Cannot exceed 1000' };
+    }
+    return { isValid: true, validValue: num };
   };
 
-  const handleInputBlur = (key: string, value: number) => {
-    if (value !== config[key]) {
-      onConfigChange(key, value);
+  const validateAutoCleanupDays = (value: string): { isValid: boolean; error?: string; validValue?: number } => {
+    const num = parseInt(value);
+    if (isNaN(num)) {
+      return { isValid: false, error: 'Must be a valid number' };
+    }
+    if (num < 0) {
+      return { isValid: false, error: 'Cannot be negative' };
+    }
+    if (num > 365) {
+      return { isValid: false, error: 'Cannot exceed 365 days' };
+    }
+    return { isValid: true, validValue: num };
+  };
+
+  const handleInputChange = (key: string, value: string) => {
+    // Simply update the display value without any validation or modification
+    setInputValues(prev => ({ 
+      ...prev, 
+      [key]: value
+    }));
+    
+    // Clear previous validation error when user starts typing
+    if (validationErrors[key]) {
+      setValidationErrors(prev => ({ ...prev, [key]: '' }));
+    }
+  };
+
+  const handleInputBlur = async (key: string, value: string) => {
+    let validation: { isValid: boolean; error?: string; validValue?: number };
+    
+    if (key === 'maxRules') {
+      validation = validateMaxRules(value);
+    } else if (key === 'autoCleanupDays') {
+      validation = validateAutoCleanupDays(value);
+    } else {
+      return;
+    }
+
+    if (!validation.isValid) {
+      // Show validation error
+      setValidationErrors(prev => ({ ...prev, [key]: validation.error || 'Invalid value' }));
+      // Reset to previous valid value (as string)
+      setInputValues(prev => ({ ...prev, [key]: String(config[key]) }));
+      return;
+    }
+
+    // Clear validation error
+    setValidationErrors(prev => ({ ...prev, [key]: '' }));
+    
+    // Save only if value changed and is valid
+    if (validation.validValue !== config[key]) {
+      try {
+        await onConfigChange(key, validation.validValue);
+      } catch (err) {
+        console.error('Failed to save setting:', err);
+        // On save error, reset to previous value (as string)
+        setInputValues(prev => ({ ...prev, [key]: String(config[key]) }));
+        setValidationErrors(prev => ({ ...prev, [key]: 'Failed to save setting' }));
+      }
     }
   };
 
@@ -75,12 +145,17 @@ export function GeneralSettings({ config, onConfigChange }: GeneralSettingsProps
             min="1"
             max="1000"
             value={inputValues.maxRules}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('maxRules', parseInt(e.target.value) || 100)}
-            onBlur={(e: React.FocusEvent<HTMLInputElement>) => handleInputBlur('maxRules', parseInt(e.target.value) || 100)}
-            className="w-32 px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('maxRules', e.target.value)}
+            onBlur={(e: React.FocusEvent<HTMLInputElement>) => handleInputBlur('maxRules', e.target.value)}
+            className={`w-32 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+              validationErrors.maxRules ? 'border-red-500' : 'border-slate-300'
+            }`}
           />
+          {validationErrors.maxRules && (
+            <p className="text-sm text-red-600 mt-1">{validationErrors.maxRules}</p>
+          )}
           <p className="text-sm text-slate-500 mt-2">
-            Limits the number of CORS rules to prevent performance issues. Browser extensions have storage and performance constraints, so keeping the rule count reasonable ensures optimal performance.
+            Range: 1-1000 rules. Limits the number of CORS rules to prevent performance issues. Browser extensions have storage and performance constraints, so keeping the rule count reasonable ensures optimal performance.
           </p>
         </div>
 
@@ -93,12 +168,17 @@ export function GeneralSettings({ config, onConfigChange }: GeneralSettingsProps
             min="0"
             max="365"
             value={inputValues.autoCleanupDays}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('autoCleanupDays', parseInt(e.target.value) || 30)}
-            onBlur={(e: React.FocusEvent<HTMLInputElement>) => handleInputBlur('autoCleanupDays', parseInt(e.target.value) || 30)}
-            className="w-32 px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('autoCleanupDays', e.target.value)}
+            onBlur={(e: React.FocusEvent<HTMLInputElement>) => handleInputBlur('autoCleanupDays', e.target.value)}
+            className={`w-32 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+              validationErrors.autoCleanupDays ? 'border-red-500' : 'border-slate-300'
+            }`}
           />
+          {validationErrors.autoCleanupDays && (
+            <p className="text-sm text-red-600 mt-1">{validationErrors.autoCleanupDays}</p>
+          )}
           <p className="text-sm text-slate-500 mt-2">
-            Auto-delete disabled rules after this many days (0 to disable)
+            Range: 0-365 days. Auto-delete disabled rules after this many days (set to 0 to disable auto-cleanup)
           </p>
         </div>
       </div>

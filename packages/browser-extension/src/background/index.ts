@@ -3,7 +3,7 @@ import {
   diffRules,
   reorderRules,
 } from './user-rule';
-import { dataStorage } from '@/common/storage';
+import { dataStorage, autoCleanupDisabledRules } from '@/common/storage';
 import { onTabActiveChange } from './on-tab-change';
 import { batchUpdateRules } from './declarative-rules';
 import {
@@ -13,6 +13,9 @@ import {
 } from './messaging';
 import { logger } from '@/common/logger';
 
+// Simple delay utility function
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 // Global error handler for unhandled promise rejections
 self.addEventListener('unhandledrejection', (event) => {
   logger.error('Unhandled promise rejection in background script:', event.reason);
@@ -21,8 +24,20 @@ self.addEventListener('unhandledrejection', (event) => {
 // Initialize rules on browser startup
 browser.runtime.onStartup.addListener(async () => {
   try {
+    // Wait a bit to avoid resource conflicts during browser startup
+    await delay(2000);
+    
+    logger.info('Browser startup detected, initializing extension...');
+    
+    // Auto-cleanup old disabled rules
+    const cleanedCount = await autoCleanupDisabledRules();
+    if (cleanedCount > 0) {
+      logger.info(`Auto-cleanup: removed ${cleanedCount} old disabled rules`);
+    }
+    
     const rules = await dataStorage.getRules();
     if (!rules || !rules.length) return;
+    
     const orderedRules = reorderRules(rules);
     // order changed, update storage then trigger event
     if (orderedRules) {
