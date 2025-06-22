@@ -2,6 +2,7 @@
 import BaseLayout from '../components/base-layout.astro';
 import Hero from '../components/hero.astro';
 import Features from '../components/features/index.astro';
+import { SupportedBrowsers } from '../components/browser-support.tsx';
 import '../components/tailwind.css';
 ---
 
@@ -12,4 +13,11 @@ import '../components/tailwind.css';
 >
   <Hero />
   <Features />
+  
+  <!-- Browser Compatibility Section -->
+  <section class="py-16 bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <SupportedBrowsers client:load />
+    </div>
+  </section>
 </BaseLayout>

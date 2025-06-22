@@ -1,5 +1,6 @@
 import React from 'react';
 import { useViewModel } from './view-model';
+import { BrowserSupport } from '../browser-support';
 
 export const PlaygroundPage: React.FC = () => {
   const vm = useViewModel();
@@ -34,6 +35,11 @@ export const PlaygroundPage: React.FC = () => {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ">
+        {/* Browser Support Notice */}
+        <div className="mb-8">
+          <BrowserSupport />
+        </div>
+
         {/* Extension Status Section */}
         <ExtensionStatusCard vm={vm} />
 

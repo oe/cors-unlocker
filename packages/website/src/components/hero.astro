@@ -1,5 +1,6 @@
 ---
 import InstallButton from './install-button.tsx';
+import { BrowserSupport } from './browser-support.tsx';
 ---
 
 <!-- Hero Section - Apple Style -->
@@ -43,6 +44,11 @@ import InstallButton from './install-button.tsx';
           >
             Try Playground
           </a>
+        </div>
+
+        <!-- Browser Support Information -->
+        <div class="mt-8">
+          <BrowserSupport client:load className="max-w-md" />
         </div>
       </div>
 
