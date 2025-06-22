@@ -61,18 +61,30 @@ export function useSettings() {
     }
   };
 
-  const showMessage = (type: 'success' | 'error', text: string) => {
+  const showMessage = (type: 'success' | 'error', text: string, duration = 5000) => {
     setState(prev => ({ ...prev, message: { type, text } }));
     setTimeout(() => {
       setState(prev => ({ ...prev, message: null }));
-    }, 5000);
+    }, duration);
   };
 
-  const updateConfig = (key: string, value: any) => {
-    setState(prev => ({
-      ...prev,
-      config: { ...prev.config, [key]: value }
-    }));
+  const updateConfig = async (key: string, value: any) => {
+    try {
+      const newConfig = { ...state.config, [key]: value };
+      setState(prev => ({
+        ...prev,
+        config: newConfig
+      }));
+      
+      // Auto-save the config immediately (no loading state for local operations)
+      await extConfig.save(newConfig);
+      
+      // Show success message for all config changes
+      showMessage('success', 'Saved', 2000);
+    } catch (error) {
+      logger.error('Failed to auto-save config:', error);
+      showMessage('error', 'Failed to save settings');
+    }
   };
 
   return {

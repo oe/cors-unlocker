@@ -36,15 +36,23 @@ function App() {
         </div>
       )}
 
-      {/* Recoverable error banner */}
+      {/* Settings button */}
+      <Settings 
+        className='w-4 h-4 fixed top-2 right-2 cursor-pointer dark:text-slate-200 z-30 hover:text-blue-500 dark:hover:text-blue-400' 
+        onClick={gotoOptionsPage} 
+      />
+
+      {/* Recoverable error banner - positioned to avoid settings button */}
       {error && errorType === 'recoverable' && (
-        <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-400 p-3 text-sm text-red-700 dark:text-red-400">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="w-4 h-4" />
-            <span>{error}</span>
+        <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-400 mx-2 mt-2 mr-8 rounded-r-md p-3 text-sm text-red-700 dark:text-red-400">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="break-words">{error}</p>
+            </div>
             <button 
               onClick={clearError}
-              className="ml-auto text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
+              className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 flex-shrink-0 ml-1"
             >
               ×
             </button>
@@ -61,11 +69,6 @@ function App() {
           </div>
         </div>
       )}
-
-      <Settings 
-        className='w-4 h-4 fixed top-2 right-2 cursor-pointer dark:text-slate-200 z-30 hover:text-blue-500 dark:hover:text-blue-400' 
-        onClick={gotoOptionsPage} 
-      />
 
       <div className={'relative p-4 divide-slate-400 ' + containerExtraClass}>
         <div className='flex items-center justify-center py-2'>

@@ -8,9 +8,7 @@ export function Settings() {
   const { 
     config, 
     isLoading, 
-    isSaving, 
     message, 
-    saveConfig, 
     resetConfig, 
     updateConfig 
   } = useSettings();
@@ -25,7 +23,12 @@ export function Settings() {
 
   return (
     <div className="p-4 max-w-6xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6 text-slate-900">Settings</h1>
+      <div className="mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">Settings</h1>
+          <p className="text-slate-600">Configure your CORS Unlocker preferences</p>
+        </div>
+      </div>
       
       <Message message={message} />
 
@@ -38,8 +41,6 @@ export function Settings() {
         <DataManagement />
         
         <SettingsActions 
-          isSaving={isSaving}
-          onSave={saveConfig}
           onReset={resetConfig}
         />
       </div>

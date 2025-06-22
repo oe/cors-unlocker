@@ -8,7 +8,7 @@ import './style.scss';
 export function RuleManage() {
   const { 
     rules, 
-    addRule, 
+    saveRule,
     removeRule, 
     updateRule, 
     validateRule, 
@@ -31,7 +31,7 @@ export function RuleManage() {
       </div>
       
       <div className="space-y-6">
-        <EditRuleForm saveRule={addRule} validateRule={validateRule} />
+        <EditRuleForm saveRule={saveRule} validateRule={validateRule} />
         
         <div className="space-y-4">
           {/* 规则统计信息 - 两端对齐 */}

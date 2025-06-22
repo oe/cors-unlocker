@@ -90,7 +90,7 @@ export function useViewModel() {
     return origin;
   }, [rules]);
   
-  const addRule = async (v: {origin: string, comment: string}) => {
+  const addRule = async (v: {origin: string, comment: string, credentials: boolean}) => {
     const origin = validateRule(v.origin);
     const config = extConfig.get();
     
@@ -101,11 +101,33 @@ export function useViewModel() {
     const isSuccess = await dataStorage.addRule({
       origin,
       comment: v.comment,
+      credentials: v.credentials,
     });
     
     if (!isSuccess) {
-      throw new Error('unable to create rule');
+      throw new Error('Unable to create rule');
     }
+    
+    return true;
+  };
+
+  const saveRule = async (v: {origin: string, comment: string, id?: number, credentials: boolean}) => {
+    if (v.id) {
+      // Update existing rule
+      const success = await dataStorage.updateRule({
+        id: v.id,
+        origin: v.origin,
+        comment: v.comment,
+        credentials: v.credentials,
+      });
+      if (!success) {
+        throw new Error('Unable to update rule');
+      }
+    } else {
+      // Add new rule
+      await addRule(v);
+    }
+    return true;
   };
 
   const removeRule = (ruleId: number) => {
@@ -120,12 +142,17 @@ export function useViewModel() {
   };
 
   const updateRule = async (rule: Partial<IRuleItem>) => {
-    dataStorage.updateRule(rule);
+    const success = await dataStorage.updateRule(rule);
+    if (!success) {
+      throw new Error('Unable to update rule');
+    }
+    return true;
   };
 
   return { 
     rules, 
     addRule, 
+    saveRule,
     removeRule, 
     updateRule, 
     validateRule, 

@@ -33,6 +33,18 @@ export const dataStorage = {
         logger.debug('Loaded rules from storage:', lastRules.length);
       } catch (error) {
         logger.error('Failed to load rules from storage:', error);
+        
+        // Provide specific error messages for common storage issues
+        if (error instanceof Error) {
+          if (error.message.includes('STORAGE_UNAVAILABLE')) {
+            throw new Error('Browser storage is unavailable. Please check your browser settings.');
+          }
+          if (error.message.includes('CORRUPTION')) {
+            throw new Error('Storage data is corrupted. Extension settings may need to be reset.');
+          }
+        }
+        
+        // Fallback to empty array for initialization errors, but throw for access errors
         lastRules = [];
       }
     }
@@ -70,7 +82,18 @@ export const dataStorage = {
       logger.debug('Saved rules to storage:', rules.length);
     } catch (error) {
       logger.error('Failed to save rules to storage:', error);
-      throw error;
+      
+      // Provide specific error messages for common storage issues
+      if (error instanceof Error) {
+        if (error.message.includes('QUOTA_EXCEEDED') || error.message.includes('QuotaExceededError')) {
+          throw new Error('Storage quota exceeded. Please remove some rules and try again.');
+        }
+        if (error.message.includes('STORAGE_UNAVAILABLE')) {
+          throw new Error('Browser storage is unavailable. Please try again later.');
+        }
+      }
+      
+      throw new Error('Failed to save data to browser storage. Please try again.');
     }
   },
 
@@ -86,20 +109,18 @@ export const dataStorage = {
       }
       
       const newRule = createRule(options);
-      if (newRule) {
-        // Check for duplicate origin using cached rules
-        const existingRule = rules.find(r => r.origin === newRule.origin);
-        if (existingRule) {
-          logger.warn('Rule with origin already exists:', newRule.origin);
-          return false;
-        }
-        
-        const newRules = [...rules, newRule];
-        await this.saveRules(newRules);
-        logger.info('Added new rule:', newRule.origin);
-        return true;
+      
+      // Check for duplicate origin using cached rules
+      const existingRule = rules.find(r => r.origin === newRule.origin);
+      if (existingRule) {
+        logger.warn('Rule with origin already exists:', newRule.origin);
+        throw new Error(`Rule for origin "${newRule.origin}" already exists`);
       }
-      return false;
+      
+      const newRules = [...rules, newRule];
+      await this.saveRules(newRules);
+      logger.info('Added new rule:', newRule.origin);
+      return true;
     } catch (error) {
       logger.error('Failed to add rule:', error);
       throw error;
@@ -137,7 +158,7 @@ export const dataStorage = {
       
       if (!updated) {
         logger.warn('Rule not found for update:', newRule.id);
-        return false;
+        throw new Error(`Rule with ID "${newRule.id}" not found`);
       }
       
       await this.saveRules(newRules);
@@ -145,7 +166,7 @@ export const dataStorage = {
       return true;
     } catch (error) {
       logger.error('Failed to update rule:', error);
-      return false;
+      throw error;
     }
   },
   
@@ -264,18 +285,15 @@ export function removeCurrentTabRule(winId: number) {
 }
 
 export async function toggleRuleViaOrigin(rule: Partial<IRuleItem>): Promise<boolean> {
-  try {
-    // Always get fresh rules instead of using cached ones
-    const rules = await dataStorage.getRules();
-    const existRule = rules.find((r) => r.origin === rule.origin);
-    
-    if (existRule) {
-      return await dataStorage.updateRule({ ...existRule, ...rule });
-    } else {
-      return await dataStorage.addRule(rule as ICreateRuleOptions);
-    }
-  } catch (error) {
-    logger.error('Failed to toggle rule via origin:', error);
-    return false;
+  // Always get fresh rules instead of using cached ones
+  const rules = await dataStorage.getRules();
+  const existRule = rules.find((r) => r.origin === rule.origin);
+  
+  if (existRule) {
+    await dataStorage.updateRule({ ...existRule, ...rule });
+    return true;
+  } else {
+    await dataStorage.addRule(rule as ICreateRuleOptions);
+    return true;
   }
 }

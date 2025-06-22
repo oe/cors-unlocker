@@ -8,7 +8,7 @@ import { EditRuleForm } from './rule-form';
 export interface IRuleTableProps {
   rules: IRuleItem[];
   removeRule: (id: number) => void;
-  updateRule: (rule: Partial<IRuleItem>) => void;
+  updateRule: (rule: Partial<IRuleItem>) => Promise<boolean>;
   validateRule: (url: string) => string;
   toggleRule: (rule: IRuleItem) => void;
 }
@@ -17,9 +17,18 @@ export function RuleTable(props: IRuleTableProps) {
   const [currentRule, setCurrentRule] = useState<IRuleItem | null>(null)
   const onCancel = () => setCurrentRule(null);
   const onEdit = (rule: IRuleItem) => setCurrentRule(rule);
-  const onSave = (rule: Partial<IRuleItem>) => {
-    props.updateRule(rule);
-    setCurrentRule(null);
+  const onSave = async (rule: Partial<IRuleItem>) => {
+    try {
+      const success = await props.updateRule(rule);
+      if (success) {
+        setCurrentRule(null);
+      }
+      return success;
+    } catch (error) {
+      // Error handling can be added here if needed
+      console.error('Failed to update rule:', error);
+      return false;
+    }
   }
 
   // 空状态
@@ -142,7 +151,7 @@ function formatTime(time: number) {
 
 interface IEditRuleFormProps {
   rule?: IRuleItem | null;
-  updateRule: (rule: Partial<IRuleItem>) => void;
+  updateRule: (rule: Partial<IRuleItem>) => Promise<boolean>;
   validateRule: (url: string) => string;
   onCancel: () => void;
 }

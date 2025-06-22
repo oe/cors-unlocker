@@ -18,6 +18,13 @@ export function DataManagement() {
 
   useEffect(() => {
     loadRulesCount();
+    
+    // Listen for rule changes to update count
+    const unsubscribe = dataStorage.onRulesChange((rules) => {
+      setState(prev => ({ ...prev, rulesCount: rules?.length || 0 }));
+    });
+    
+    return unsubscribe;
   }, []);
 
   const loadRulesCount = async () => {
@@ -120,51 +127,55 @@ export function DataManagement() {
   }
 
   return (
-    <section className="bg-white rounded-lg p-4 border border-slate-200">
+    <section className="bg-white rounded-lg p-6 border border-slate-200 shadow-sm">
       <h2 className="text-lg font-semibold mb-4 text-slate-900">Data Management</h2>
       
       {/* Message */}
       {state.message && (
-        <div className={`mb-4 p-3 rounded-lg flex items-center gap-2 ${
+        <div className={`mb-4 p-4 rounded-lg flex items-center gap-3 ${
           state.message.type === 'success' 
-            ? 'bg-green-100 text-green-800'
-            : 'bg-red-100 text-red-800'
+            ? 'bg-green-50 text-green-800 border border-green-200'
+            : 'bg-red-50 text-red-800 border border-red-200'
         }`}>
           {state.message.type === 'success' ? (
-            <CheckCircle className="w-4 h-4" />
+            <CheckCircle className="w-5 h-5" />
           ) : (
-            <AlertCircle className="w-4 h-4" />
+            <AlertCircle className="w-5 h-5" />
           )}
-          {state.message.text}
+          <span className="font-medium">{state.message.text}</span>
         </div>
       )}
       
-      <div className="space-y-4">
-        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-          <div>
-            <h3 className="font-medium text-slate-800">Rules Database</h3>
-            <p className="text-sm text-slate-500">
-              {state.rulesCount} rules configured
-            </p>
+      <div className="space-y-6">
+        <div className="bg-slate-50 rounded-lg p-4">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="font-semibold text-slate-800">Rules Database</h3>
+              <p className="text-sm text-slate-500 mt-1">
+                {state.rulesCount} rules configured
+              </p>
+            </div>
           </div>
-          <div className="flex gap-2">
+          
+          <div className="flex flex-wrap gap-3">
             <button
               onClick={exportRules}
               disabled={state.rulesCount === 0}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded transition-colors text-sm ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 font-medium ${
                 state.rulesCount === 0
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-blue-500 text-white hover:bg-blue-600'
+                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'bg-blue-500 text-white hover:bg-blue-600 hover:shadow-md active:scale-95'
               }`}
               title={state.rulesCount === 0 ? "No rules to export" : "Export all rules to a JSON file"}
             >
               <Download className="w-4 h-4" />
-              Export
+              Export Rules
             </button>
-            <label className="flex items-center gap-2 px-3 py-1.5 bg-green-500 text-white rounded hover:bg-green-600 transition-colors text-sm cursor-pointer"
+            
+            <label className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 hover:shadow-md active:scale-95 transition-all duration-200 font-medium cursor-pointer"
                    title="Import rules from a JSON file">
               <Upload className="w-4 h-4" />
-              Import
+              Import Rules
               <input
                 type="file"
                 accept=".json"
@@ -172,10 +183,11 @@ export function DataManagement() {
                 className="hidden"
               />
             </label>
+            
             {state.rulesCount > 0 && (
               <button
                 onClick={clearAllRules}
-                className="flex items-center gap-2 px-3 py-1.5 bg-red-500 text-white rounded hover:bg-red-600 transition-colors text-sm"
+                className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 hover:shadow-md active:scale-95 transition-all duration-200 font-medium"
                 title="Delete all rules"
               >
                 <Trash2 className="w-4 h-4" />
@@ -185,10 +197,13 @@ export function DataManagement() {
           </div>
         </div>
         
-        <div className="text-sm text-slate-600 space-y-1">
-          <p>• <strong>Export:</strong> Download all rules as a backup file</p>
-          <p>• <strong>Import:</strong> Restore rules from a backup file (choose replace or merge)</p>
-          <p>• <strong>Clear All:</strong> Remove all configured rules (cannot be undone)</p>
+        <div className="text-sm text-slate-600 bg-blue-50 rounded-lg p-4 border border-blue-200">
+          <h4 className="font-medium text-blue-800 mb-2">How to use:</h4>
+          <div className="space-y-1">
+            <p>• <strong>Export:</strong> Download all rules as a backup file</p>
+            <p>• <strong>Import:</strong> Restore rules from a backup file (choose replace or merge)</p>
+            <p>• <strong>Clear All:</strong> Remove all configured rules (cannot be undone)</p>
+          </div>
         </div>
       </div>
     </section>

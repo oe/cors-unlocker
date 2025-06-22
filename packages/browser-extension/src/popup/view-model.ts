@@ -74,31 +74,44 @@ export function useViewModel() {
           setState(prev => ({ 
             ...prev, 
             isSupported: false,
-            error: 'No active tab found',
+            error: 'No active tab found or tab URL is unavailable',
             errorType: 'fatal'
           }));
           return;
         }
 
         const url = tabs[0].url;
-        const uu = new URL(url);
-        tabOrigin.current = uu.origin;
-        const isOriginSupported = isSupportedProtocol(uu.protocol);
         
-        setState(prev => ({ 
-          ...prev, 
-          isSupported: isOriginSupported 
-        }));
+        // Better URL validation and error handling
+        try {
+          const uu = new URL(url);
+          tabOrigin.current = uu.origin;
+          const isOriginSupported = isSupportedProtocol(uu.protocol);
+          
+          setState(prev => ({ 
+            ...prev, 
+            isSupported: isOriginSupported 
+          }));
 
-        if (isOriginSupported) {
-          browser.runtime.onMessage.addListener(onRuntimeMessage);
-          await syncRule();
-        } else {
+          if (isOriginSupported) {
+            browser.runtime.onMessage.addListener(onRuntimeMessage);
+            await syncRule();
+          } else {
+            setState(prev => ({ 
+              ...prev,
+              error: `${uu.protocol} protocol is not supported. Only http:// and https:// are supported.`,
+              errorType: 'fatal'
+            }));
+          }
+        } catch (urlError) {
+          logger.error('Failed to parse tab URL:', urlError);
           setState(prev => ({ 
             ...prev,
-            error: 'This protocol is not supported',
+            isSupported: false,
+            error: 'Invalid or malformed URL in active tab',
             errorType: 'fatal'
           }));
+          return;
         }
       } catch (error) {
         logger.error('Failed to initialize popup:', error);
@@ -147,7 +160,7 @@ export function useViewModel() {
         });
 
         if (!result?.success) {
-          throw new Error('Failed to toggle rule');
+          throw new Error(result?.error || 'Failed to toggle rule');
         }
         
         logger.debug('Rule toggled successfully');
@@ -155,7 +168,8 @@ export function useViewModel() {
         logger.error('Failed to toggle rule:', error);
         setState(prev => ({ 
           ...prev, 
-          error: 'Failed to update rule' 
+          error: error instanceof Error ? error.message : 'Failed to update rule',
+          errorType: 'recoverable'
         }));
       }
     },

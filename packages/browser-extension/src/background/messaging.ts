@@ -262,10 +262,18 @@ export async function onRuntimeMessage(
       case 'toggleRuleViaAction': {
         if (!message.payload || !message.payload.origin) {
           logger.warn('Invalid payload in toggleRuleViaAction:', message.payload);
-          return { success: false };
+          return { success: false, error: 'Invalid request: missing origin' };
         }
-        const success = await toggleRuleViaOrigin(message.payload);
-        return { success };
+        try {
+          await toggleRuleViaOrigin(message.payload);
+          return { success: true };
+        } catch (error) {
+          logger.error('Error in toggleRuleViaAction:', error);
+          return { 
+            success: false, 
+            error: error instanceof Error ? error.message : 'Unknown error occurred' 
+          };
+        }
       }
       
       default:

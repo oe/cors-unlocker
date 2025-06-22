@@ -85,29 +85,46 @@ export function RuleInput(props: IRuleInputProps) {
 export interface IEditRuleProps {
   rule?: IRuleItem | null;
   validateRule: (url: string, id?: number) => string;
-  saveRule: (v: { origin: string, comment: string, id?: number, credentials: boolean }) => void;
+  saveRule: (v: { origin: string, comment: string, id?: number, credentials: boolean }) => Promise<boolean>;
 }
 
 export function EditRuleForm(props: IEditRuleProps) {
   const idRef = useRef(props.rule?.id);
   const [formData, setFormData] = useState<Partial<IRuleItem & { url: string}>>(() => getDefaultFormData(props.rule));
+  const [saveError, setSaveError] = useState<string>('');
+  const [isSaving, setIsSaving] = useState(false);
 
   const validateRule = useCallback((url: string) => {
     return props.validateRule(url, idRef.current);
   }, [props.validateRule])
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.origin) return;
-    props.saveRule({
-      id: props.rule?.id,
-      credentials: !!formData.credentials,
-      origin: formData.origin,
-      comment: formData.comment || ''
-    });
-    // 
-    setTimeout(() => {
-      setFormData(() => getDefaultFormData());
-    }, 0);
+    
+    setIsSaving(true);
+    setSaveError('');
+    
+    try {
+      const success = await props.saveRule({
+        id: props.rule?.id,
+        credentials: !!formData.credentials,
+        origin: formData.origin,
+        comment: formData.comment || ''
+      });
+      
+      if (success) {
+        // Clear form on successful save (only for new rules)
+        if (!props.rule?.id) {
+          setTimeout(() => {
+            setFormData(() => getDefaultFormData());
+          }, 0);
+        }
+      }
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Failed to save rule');
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   const setFormValue = (val: Record<string, string | boolean>) => {
@@ -136,6 +153,12 @@ export function EditRuleForm(props: IEditRuleProps) {
         onChange={(v, o) => setFormValue({url: v, origin: o})}
       />
       
+      {saveError && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+          <p className="text-sm text-red-600">{saveError}</p>
+        </div>
+      )}
+      
       <SiteAuthInput
         value={!!formData.credentials}
         focusable
@@ -149,10 +172,14 @@ export function EditRuleForm(props: IEditRuleProps) {
         onChange={(e) => setFormValue({ comment: e.target.value })}
         placeholder='comment(optional)' />
       <div className={'flex ' + (idRef.current ? 'justify-end' : '') }>
-        <button type="button" onClick={handleSave} disabled={!formData.origin} className="bg-blue-500 disabled:bg-blue-300 text-white px-4 py-2 rounded-md self-baseline">
-          { props.rule ? 'Save' : 'Add' }
+        <button 
+          type="button" 
+          onClick={handleSave} 
+          disabled={!formData.origin || isSaving} 
+          className="bg-blue-500 disabled:bg-blue-300 text-white px-4 py-2 rounded-md self-baseline"
+        >
+          {isSaving ? 'Saving...' : (props.rule ? 'Save' : 'Add')}
         </button>
-
       </div>
     </form>
   )
@@ -171,12 +198,12 @@ interface IInputWithAddOnProps {
 
 function InputWithAddOn(props: IInputWithAddOnProps) {
   return (
-    <div className={"flex items-center rounded-md bg-white pl-3 outline outline-1 -outline-offset-1 outline-gray-300 has-[input:focus-within]:outline has-[input:focus-within]:outline-2 has-[input:focus-within]:-outline-offset-2 has-[input:focus-within]:outline-blue-500 " + (props.className || '')}>
+    <div className={"flex items-center rounded-md bg-white pl-3 outline-1 -outline-offset-1 outline-gray-300 has-[input:focus-within]:outline-2 has-[input:focus-within]:-outline-offset-2 has-[input:focus-within]:outline-blue-500 " + (props.className || '')}>
       {props.prepend && <div className="shrink-0 select-none text-base text-gray-500 sm:text-sm/6">{props.prepend}</div>}
       <input type="text" value={props.value} onChange={props.onChange}
       autoFocus={props.autoFocus}
       onKeyUp={props.onKeyUp}
-      className="block min-w-0 grow py-1.5 pl-1 pr-3 text-base text-gray-900 placeholder:text-gray-400 focus:outline focus:outline-0 sm:text-sm/6" placeholder={props.placeholder} />
+      className="block min-w-0 grow py-1.5 pl-1 pr-3 text-base text-gray-900 placeholder:text-gray-400 focus:outline-0 sm:text-sm/6" placeholder={props.placeholder} />
     </div>
 
   )
