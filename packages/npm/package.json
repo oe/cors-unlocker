@@ -5,6 +5,9 @@
   "main": "dist/index.umd.js",
   "module": "dist/index.es.js",
   "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "dev": "sleep 10 && pnpm dev:watch",
     "dev:watch": "vite build --watch --mode development",
