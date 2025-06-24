@@ -5,6 +5,11 @@ A lightweight npm package for seamlessly managing Cross-Origin Resource Sharing 
 [![npm version](https://badge.fury.io/js/cors-unlocker.svg)](https://www.npmjs.com/package/cors-unlocker)
 [![TypeScript](https://img.shields.io/badge/%3C%2F%3E-typescript-blue)](https://www.typescriptlang.org/)
 [![Gzipped Size](https://img.shields.io/badge/gzipped-1.7KB-brightgreen)](https://www.npmjs.com/package/cors-unlocker)
+[![npm downloads](https://img.shields.io/npm/dm/cors-unlocker.svg)](https://www.npmjs.com/package/cors-unlocker)
+
+
+[Home Page](https://cors.forth.ink) | [Install Extension in Chrome](https://chromewebstore.google.com/detail/cors-unlocker/knhlkjdfmgkmelcjfnbbhpphkmjjacng) | [GitHub Repository](https://github.com/oe/cors-unlocker)
+
 
 ## 🚀 Quick Start
 

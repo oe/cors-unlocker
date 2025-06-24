@@ -8,6 +8,14 @@
   "files": [
     "dist"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/oe/cors-unlocker/tree/main/packages/npm"
+  },
+  "author": {
+    "name": "Saiya",
+    "email": "me@evecalm.com"
+  },
   "scripts": {
     "dev": "sleep 10 && pnpm dev:watch",
     "dev:watch": "vite build --watch --mode development",
@@ -27,7 +35,6 @@
     "typescript",
     "lightweight"
   ],
-  "author": "Saiya",
   "license": "MIT",
   "devDependencies": {
     "@types/chrome": "catalog:",
