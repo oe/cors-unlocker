@@ -41,7 +41,8 @@ const EXTENSION_ID_MAP = {
 
 // Browser detection
 const IS_FIREFOX = /firefox/i.test(navigator.userAgent);
-const IS_EDGE = /edg/i.test(navigator.userAgent); // Edge uses "Edg" in user agent
+// disable Edge detection for now, not ready yet
+const IS_EDGE = false; //  /edg/i.test(navigator.userAgent); // Edge uses "Edg" in user agent
 
 function getBrowserExtensionId(): string {
   if (IS_FIREFOX) return EXTENSION_ID_MAP.firefox;

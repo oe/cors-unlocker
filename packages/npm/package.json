@@ -1,6 +1,6 @@
 {
   "name": "cors-unlocker",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Lightweight npm package for seamless CORS management through the CORS Unlocker browser extension. Perfect for API testing and cross-origin development.",
   "main": "dist/index.umd.js",
   "module": "dist/index.es.js",

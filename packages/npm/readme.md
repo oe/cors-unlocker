@@ -1,6 +1,6 @@
 # cors-unlocker
 
-A lightweight npm package for seamlessly managing Cross-Origin Resource Sharing (CORS) settings through the CORS Unlocker browser extension. Perfect for API testing, development, and cross-origin communication.
+A lightweight npm package for seamlessly managing Cross-Origin Resource Sharing (CORS) settings through the [CORS Unlocker browser extension](https://cors.forth.ink/). Perfect for API testing, development, and cross-origin communication.
 
 [![npm version](https://badge.fury.io/js/cors-unlocker.svg)](https://www.npmjs.com/package/cors-unlocker)
 [![TypeScript](https://img.shields.io/badge/%3C%2F%3E-typescript-blue)](https://www.typescriptlang.org/)
@@ -40,7 +40,7 @@ console.log('CORS enabled:', status.enabled, 'Credentials:', status.credentials)
 
 ## 🔧 How it Works
 
-This package communicates with the [CORS Unlocker browser extension](https://chrome.google.com/webstore) through a secure iframe bridge. When CORS is enabled, the extension intelligently modifies HTTP responses by adding necessary `Access-Control-Allow-Origin` headers, enabling cross-origin requests without server-side changes.
+This package communicates with the [CORS Unlocker browser extension](https://chromewebstore.google.com/detail/knhlkjdfmgkmelcjfnbbhpphkmjjacng) through a secure iframe bridge. When CORS is enabled, the extension intelligently modifies HTTP responses by adding necessary `Access-Control-Allow-Origin` headers, enabling cross-origin requests without server-side changes.
 
 ### Key Features
 
