@@ -19,7 +19,9 @@ const SITE_NAME = 'CORS Unlocker';
 const title = frontmatter.title || Astro.props.title;
 
 const pageTitle = title
-  ? Astro.props.isHomepage ? `${SITE_NAME} - ${title}` : `${title} - ${SITE_NAME}`
+  ? Astro.props.isHomepage
+    ? `${SITE_NAME} - ${title}`
+    : `${title} - ${SITE_NAME}`
   : SITE_NAME;
 
 const description = frontmatter.description || Astro.props.description;
@@ -32,6 +34,11 @@ const description = frontmatter.description || Astro.props.description;
     <title>{pageTitle}</title>
     <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
     {description && <meta name="description" content={description} />}
+    <meta property="og:url" content="https://cors.forth.ink/" />
+    <meta property="og:site_name" content="forth.ink" />
+    <meta property="og:title" content="CORS Unlocker" />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content="/og.png" />
     <ClientRouter />
   </head>
   <body class="flex flex-col h-full">
