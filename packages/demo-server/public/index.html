@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CORS Demo - Test Page</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .test-section {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            background: #f9f9f9;
+        }
+        
+        .test-section h3 {
+            margin-top: 0;
+            color: #444;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        button:hover {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .result {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .success {
+            border-left: 4px solid #4CAF50;
+            background-color: #f1f8e9;
+        }
+        
+        .error {
+            border-left: 4px solid #f44336;
+            background-color: #ffebee;
+        }
+        
+        .info {
+            background: #e3f2fd;
+            border: 1px solid #2196F3;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .info h4 {
+            margin-top: 0;
+            color: #1976D2;
+        }
+        
+        input, select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 5px;
+            font-size: 14px;
+        }
+        
+        .flex {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌐 CORS Unlocker Demo</h1>
+        
+        <div class="info">
+            <h4>How to Test:</h4>
+            <ol>
+                <li>Open this page in your browser</li>
+                <li>Try the requests below - they should fail due to CORS</li>
+                <li>Install and enable CORS Unlocker extension</li>
+                <li>Enable CORS for this domain in the extension</li>
+                <li>Try the requests again - they should work!</li>
+            </ol>
+        </div>
+        
+        <div class="test-section">
+            <h3>🔗 Cross-Origin Requests</h3>
+            <p>Current domain: <strong id="currentDomain"></strong></p>
+            <div class="flex">
+                <label>Target API:</label>
+                <select id="targetDomain">
+                    <option value="http://api.localhost:3000">api.localhost:3000</option>
+                    <option value="http://app.localhost:3000">app.localhost:3000</option>
+                    <option value="http://127.0.0.1:3000">127.0.0.1:3000</option>
+                </select>
+                <button onclick="testSimpleRequest()">Test Simple GET</button>
+                <button onclick="testWithHeaders()">Test with Custom Headers</button>
+            </div>
+            <div id="simpleResult" class="result" style="display: none;"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🔐 Authentication & Credentials</h3>
+            <div class="flex">
+                <input type="email" id="loginEmail" placeholder="Email (try: john@example.com)" value="john@example.com">
+                <input type="password" id="loginPassword" placeholder="Password (any)" value="demo123">
+                <button onclick="testLogin()">Login</button>
+                <button onclick="testProtected()" id="protectedBtn" disabled>Test Protected Resource</button>
+            </div>
+            <div id="authResult" class="result" style="display: none;"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>📋 Headers Testing</h3>
+            <div class="flex">
+                <input type="text" id="customToken" placeholder="Custom Token" value="demo-token-123">
+                <input type="text" id="apiKey" placeholder="API Key" value="api-key-456">
+                <button onclick="testCustomHeaders()">Send Custom Headers</button>
+                <button onclick="testHeadersEcho()">Echo All Headers</button>
+            </div>
+            <div id="headersResult" class="result" style="display: none;"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>❌ Error Scenarios</h3>
+            <div class="flex">
+                <select id="errorCode">
+                    <option value="400">400 Bad Request</option>
+                    <option value="401">401 Unauthorized</option>
+                    <option value="403">403 Forbidden</option>
+                    <option value="404">404 Not Found</option>
+                    <option value="500">500 Internal Error</option>
+                </select>
+                <button onclick="testError()">Test Error</button>
+                <button onclick="testTimeout()">Test Timeout (5s)</button>
+            </div>
+            <div id="errorResult" class="result" style="display: none;"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🚀 Performance Testing</h3>
+            <div class="flex">
+                <button onclick="testLargeResponse()">Large Response</button>
+                <button onclick="testMultipleRequests()">Multiple Requests</button>
+            </div>
+            <div id="perfResult" class="result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        let authToken = '';
+        
+        // Set current domain
+        document.getElementById('currentDomain').textContent = window.location.host;
+        
+        // Helper function to show results
+        function showResult(elementId, content, isError = false) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.className = `result ${isError ? 'error' : 'success'}`;
+            element.textContent = content;
+        }
+        
+        // Helper function to make requests with error handling
+        async function makeRequest(url, options = {}) {
+            const startTime = Date.now();
+            try {
+                const response = await fetch(url, {
+                    mode: 'cors',
+                    ...options
+                });
+                const duration = Date.now() - startTime;
+                const data = await response.text();
+                
+                return {
+                    success: response.ok,
+                    status: response.status,
+                    statusText: response.statusText,
+                    data: data,
+                    duration: duration,
+                    headers: Object.fromEntries(response.headers.entries())
+                };
+            } catch (error) {
+                const duration = Date.now() - startTime;
+                return {
+                    success: false,
+                    error: error.message,
+                    duration: duration
+                };
+            }
+        }
+        
+        // Format response for display
+        function formatResponse(response) {
+            if (response.error) {
+                return `❌ ERROR (${response.duration}ms):\n${response.error}\n\nThis is likely a CORS error. Enable CORS Unlocker for this domain!`;
+            }
+            
+            let formatted = `✅ SUCCESS (${response.duration}ms)\n`;
+            formatted += `Status: ${response.status} ${response.statusText}\n\n`;
+            
+            if (response.headers && Object.keys(response.headers).length > 0) {
+                formatted += `Response Headers:\n`;
+                Object.entries(response.headers).forEach(([key, value]) => {
+                    formatted += `  ${key}: ${value}\n`;
+                });
+                formatted += '\n';
+            }
+            
+            formatted += `Response Body:\n${response.data}`;
+            return formatted;
+        }
+        
+        // Test simple GET request
+        async function testSimpleRequest() {
+            const targetDomain = document.getElementById('targetDomain').value;
+            const url = `${targetDomain}/api/users`;
+            
+            showResult('simpleResult', 'Making request...', false);
+            const response = await makeRequest(url);
+            showResult('simpleResult', formatResponse(response), !response.success);
+        }
+        
+        // Test request with custom headers
+        async function testWithHeaders() {
+            const targetDomain = document.getElementById('targetDomain').value;
+            const url = `${targetDomain}/api/custom-headers`;
+            
+            showResult('simpleResult', 'Making request with custom headers...', false);
+            const response = await makeRequest(url, {
+                headers: {
+                    'X-Custom-Token': 'test-from-web-page',
+                    'X-Client-Version': '1.0.0'
+                }
+            });
+            showResult('simpleResult', formatResponse(response), !response.success);
+        }
+        
+        // Test login
+        async function testLogin() {
+            const targetDomain = document.getElementById('targetDomain').value;
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const url = `${targetDomain}/api/login`;
+            
+            showResult('authResult', 'Logging in...', false);
+            const response = await makeRequest(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email, password })
+            });
+            
+            if (response.success && response.data) {
+                try {
+                    const data = JSON.parse(response.data);
+                    if (data.success && data.data.token) {
+                        authToken = data.data.token;
+                        document.getElementById('protectedBtn').disabled = false;
+                    }
+                } catch (e) {
+                    console.error('Failed to parse login response:', e);
+                }
+            }
+            
+            showResult('authResult', formatResponse(response), !response.success);
+        }
+        
+        // Test protected resource
+        async function testProtected() {
+            if (!authToken) {
+                showResult('authResult', '❌ No auth token. Please login first.', true);
+                return;
+            }
+            
+            const targetDomain = document.getElementById('targetDomain').value;
+            const url = `${targetDomain}/api/protected`;
+            
+            showResult('authResult', 'Accessing protected resource...', false);
+            const response = await makeRequest(url, {
+                headers: {
+                    'Authorization': `Bearer ${authToken}`
+                }
+            });
+            showResult('authResult', formatResponse(response), !response.success);
+        }
+        
+        // Test custom headers
+        async function testCustomHeaders() {
+            const targetDomain = document.getElementById('targetDomain').value;
+            const customToken = document.getElementById('customToken').value;
+            const apiKey = document.getElementById('apiKey').value;
+            const url = `${targetDomain}/api/custom-headers`;
+            
+            showResult('headersResult', 'Sending custom headers...', false);
+            const response = await makeRequest(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Custom-Token': customToken,
+                    'X-API-Key': apiKey
+                },
+                body: JSON.stringify({ message: 'Test data with custom headers' })
+            });
+            showResult('headersResult', formatResponse(response), !response.success);
+        }
+        
+        // Test headers echo
+        async function testHeadersEcho() {
+            const targetDomain = document.getElementById('targetDomain').value;
+            const url = `${targetDomain}/api/headers-echo`;
+            
+            showResult('headersResult', 'Echoing headers...', false);
+            const response = await makeRequest(url, {
+                headers: {
+                    'X-Test-Header': 'test-value',
+                    'X-Browser': navigator.userAgent.split(' ')[0]
+                }
+            });
+            showResult('headersResult', formatResponse(response), !response.success);
+        }
+        
+        // Test error responses
+        async function testError() {
+            const targetDomain = document.getElementById('targetDomain').value;
+            const errorCode = document.getElementById('errorCode').value;
+            const url = `${targetDomain}/api/error/${errorCode}`;
+            
+            showResult('errorResult', `Testing ${errorCode} error...`, false);
+            const response = await makeRequest(url);
+            showResult('errorResult', formatResponse(response), false); // Don't mark as error since we expect this
+        }
+        
+        // Test timeout
+        async function testTimeout() {
+            const targetDomain = document.getElementById('targetDomain').value;
+            const url = `${targetDomain}/api/timeout`;
+            
+            showResult('errorResult', 'Testing timeout (this will take 5 seconds)...', false);
+            const response = await makeRequest(url);
+            showResult('errorResult', formatResponse(response), !response.success);
+        }
+        
+        // Test large response
+        async function testLargeResponse() {
+            const targetDomain = document.getElementById('targetDomain').value;
+            const url = `${targetDomain}/api/large`;
+            
+            showResult('perfResult', 'Fetching large response...', false);
+            const response = await makeRequest(url);
+            
+            let formatted = formatResponse(response);
+            if (response.success && response.data) {
+                try {
+                    const data = JSON.parse(response.data);
+                    const size = new Blob([response.data]).size;
+                    formatted = `✅ SUCCESS (${response.duration}ms)\n`;
+                    formatted += `Response size: ${(size / 1024).toFixed(2)} KB\n`;
+                    formatted += `Items count: ${data.data.count}\n`;
+                    formatted += `First item: ${JSON.stringify(data.data.items[0], null, 2)}`;
+                } catch (e) {
+                    // Use original formatted response
+                }
+            }
+            
+            showResult('perfResult', formatted, !response.success);
+        }
+        
+        // Test multiple requests
+        async function testMultipleRequests() {
+            const targetDomain = document.getElementById('targetDomain').value;
+            const url = `${targetDomain}/api/users`;
+            const requestCount = 5;
+            
+            showResult('perfResult', `Making ${requestCount} concurrent requests...`, false);
+            
+            const startTime = Date.now();
+            const promises = Array.from({ length: requestCount }, () => makeRequest(url));
+            const responses = await Promise.all(promises);
+            const totalTime = Date.now() - startTime;
+            
+            const successful = responses.filter(r => r.success).length;
+            const failed = responses.length - successful;
+            const avgTime = responses.reduce((sum, r) => sum + r.duration, 0) / responses.length;
+            
+            let result = `✅ COMPLETED in ${totalTime}ms\n`;
+            result += `Successful: ${successful}/${requestCount}\n`;
+            result += `Failed: ${failed}/${requestCount}\n`;
+            result += `Average response time: ${avgTime.toFixed(1)}ms\n\n`;
+            
+            if (failed > 0) {
+                result += `Failed requests likely due to CORS. Enable CORS Unlocker!`;
+            }
+            
+            showResult('perfResult', result, failed > 0);
+        }
+        
+        // Auto-detect cross-origin scenario
+        function detectCrossOrigin() {
+            const currentHost = window.location.host;
+            const targetSelect = document.getElementById('targetDomain');
+            
+            // If we're on a localhost subdomain, select a different one as default
+            if (currentHost.includes('localhost')) {
+                const options = targetSelect.options;
+                for (let i = 0; i < options.length; i++) {
+                    if (!options[i].value.includes(currentHost)) {
+                        targetSelect.selectedIndex = i;
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // Initialize
+        detectCrossOrigin();
+        
+        // Show a helpful message about CORS
+        if (window.location.hostname.includes('localhost')) {
+            console.log('🌐 CORS Demo loaded!');
+            console.log('💡 Tip: Open browser dev tools to see CORS errors in console');
+            console.log('🔧 Install CORS Unlocker extension to bypass CORS restrictions');
+        }
+    </script>
+</body>
+</html>
