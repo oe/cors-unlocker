@@ -14,7 +14,7 @@ More Apps
 Adds <code>Access-Control-Allow-Origin</code> headers to server responses, allowing your web application to fetch data from external APIs that would normally block cross-origin requests.</p><p><strong>🔐 Support Authentication</strong>
 When <strong>Site Auth</strong> is enabled, allows credentialed requests to include cookies and authentication headers for accessing protected resources.</p></details>
 <h2 id="configuration--usage">Configuration &amp; Usage</h2>
-<details><summary>🔑 What is Site Auth and when should I use it?</summary><div class="not-prose p-4 rounded-r-lg my-6 bg-amber-50 border-l-4 border-amber-400 text-amber-800 "> <div class="font-semibold text-amber-900 mb-2 flex items-center gap-2"> <span class="text-lg">⚠️</span> Important Security Note </div> <div class="prose prose-sm max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"> <p>Site Auth allows sharing authentication data (cookies, tokens) with cross-origin requests. Only enable for trusted websites.</p> </div> </div><div class="grid md:grid-cols-2 gap-4 mb-6"> <div class="bg-green-50 p-4 rounded-lg border border-green-200"> <h4 class="font-semibold text-green-900 mb-2 flex items-center gap-2 !mt-0"> <span class="text-lg">✅</span> Enable Site Auth when: </h4> <div class="text-green-800 prose-sm [&>*:first-child]:!mt-0 [&>*:last-child]:!mb-0"> <div><ul>
+<details id="auth"><summary>🔑 What is Site Auth and when should I use it?</summary><div class="not-prose p-4 rounded-r-lg my-6 bg-amber-50 border-l-4 border-amber-400 text-amber-800 "> <div class="font-semibold text-amber-900 mb-2 flex items-center gap-2"> <span class="text-lg">⚠️</span> Important Security Note </div> <div class="prose prose-sm max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"> <p>Site Auth allows sharing authentication data (cookies, tokens) with cross-origin requests. Only enable for trusted websites.</p> </div> </div><div class="grid md:grid-cols-2 gap-4 mb-6"> <div class="bg-green-50 p-4 rounded-lg border border-green-200"> <h4 class="font-semibold text-green-900 mb-2 flex items-center gap-2 !mt-0"> <span class="text-lg">✅</span> Enable Site Auth when: </h4> <div class="text-green-800 prose-sm [&>*:first-child]:!mt-0 [&>*:last-child]:!mb-0"> <div><ul>
 <li>Accessing authenticated APIs</li>
 <li>Working with user-specific data</li>
 <li>Developing with login-protected services</li>
@@ -25,6 +25,16 @@ When <strong>Site Auth</strong> is enabled, allows credentialed requests to incl
 <li>Prioritizing privacy protection</li>
 <li>Using anonymous data sources</li>
 </ul></div> </div> </div> </div></details>
+<h2 id="known-limitations">Known Limitations</h2>
+<details><summary>⚠️ What are the technical limitations of this extension?</summary><div class="not-prose p-4 rounded-r-lg my-6 bg-red-50 border-l-4 border-red-400 text-red-800 "> <div class="font-semibold text-red-900 mb-2 flex items-center gap-2"> <span class="text-lg">❌</span> Manifest V3 Limitations </div> <div class="prose prose-sm max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"> <p>Due to browser security restrictions, some CORS scenarios cannot be resolved by extensions.</p> </div> </div><p><strong>🚫 Preflight Request Failures</strong></p><p>If the target server doesn’t support OPTIONS requests or returns non-success responses for preflight requests, complex CORS requests will still fail. This affects:</p><ul>
+<li>Requests with custom headers (not simple headers)</li>
+<li>Non-simple HTTP methods (PUT, DELETE, PATCH, etc.)</li>
+<li>Requests with certain content types (application/json with custom headers)</li>
+</ul><p><strong>💡 Workaround:</strong> Contact the API provider to properly implement CORS preflight support.</p><p><strong>🖼️ iframe and Embedded Content Issues</strong></p><p>The extension only works for the main page origin. If your request originates from:</p><ul>
+<li>iframe elements</li>
+<li>Embedded widgets</li>
+<li>Web workers in different origins</li>
+</ul><p>You must enable CORS for the <strong>iframe’s origin</strong>, not the parent page’s origin.</p><p><strong>💡 Solution:</strong> Use the extension popup while on the iframe’s actual domain, or configure CORS for the correct origin.</p></details>
 <h2 id="troubleshooting">Troubleshooting</h2>
 <details><summary>🐛 Why isn’t the extension working?</summary><p><strong>1️⃣ Extension Status</strong>
 Verify the extension is installed and enabled. Look for the CORS Unlocker icon in your browser toolbar.</p><p><strong>2️⃣ Protocol Support</strong>
@@ -46,13 +56,38 @@ Can’t find what you’re looking for? We’re here to help!</p>
 <hr/>
 <p>💖 <strong>Love CORS Unlocker?</strong>
 Help us keep it free and open source for everyone!</p>
-<div class="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-lg border border-purple-200 mt-8"> <h3 class="text-lg font-semibold text-purple-900 mb-2 !mt-0">Support Our Work</h3> <p class="text-purple-800 mb-4">Your support helps us continue developing and maintaining this tool</p> <div class="flex flex-wrap gap-3"> <a href="https://forth.ink/donate/" class="btn-primary inline-flex items-center px-4 py-2 rounded-lg transition-colors font-medium bg-purple-700 hover:bg-purple-800 text-white"> <span class="mr-1">☕</span> Buy us a coffee </a> </div> </div> </main> </article> </div> <script type="module">
+<div class="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-lg border border-purple-200 mt-8"> <h3 class="text-lg font-semibold text-purple-900 mb-2 !mt-0">Support Our Work</h3> <p class="text-purple-800 mb-4">Your support helps us continue developing and maintaining this tool</p> <div class="flex flex-wrap gap-3"> <a href="https://forth.ink/donate/" class="btn-primary inline-flex items-center px-4 py-2 rounded-lg transition-colors font-medium bg-purple-700 hover:bg-purple-800 text-white">  Buy us a coffee </a> </div> </div> </main> </article> </div> <script type="module">
     (function () {
-      const hash = window.location.hash;
-      if (!hash) return;
-      const el = document.querySelector(hash);
-      if (!el || el.tagName !== 'DETAILS') return;
-      // @ts-expect-error el is a details element
-      el.open = true;
+      function handleAnchor() {
+        const hash = window.location.hash;
+        if (!hash) return;
+        
+        const el = document.querySelector(hash);
+        if (!el) return;
+        
+        // If it's a details element, open it
+        if (el.tagName === 'DETAILS') {
+          // @ts-expect-error el is a details element
+          el.open = true;
+          
+          // Scroll to the element after a short delay to ensure layout is updated
+          setTimeout(() => {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 100);
+        } else {
+          // For other elements, just scroll to them
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+      
+      // Handle on page load
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', handleAnchor);
+      } else {
+        handleAnchor();
+      }
+      
+      // Handle hash changes (for SPA-like navigation)
+      window.addEventListener('hashchange', handleAnchor);
     })();
   </script>  </div> <footer class="text-center py-8 bg-slate-100/30"> <div>Copyright © 2025 <a class="font-borel" target="_blank" href="https://forth.ink/">forthink</a></div> </footer> </body></html>

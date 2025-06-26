@@ -64,11 +64,36 @@ CORS Unlocker is free and open source. If it helps you, consider supporting our 
 <div class="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-lg border border-purple-200 mt-8"> <h3 class="text-lg font-semibold text-purple-900 mb-2 !mt-0">Support Development</h3> <p class="text-purple-800 mb-4">Help us continue improving CORS Unlocker for everyone</p> <div class="flex flex-wrap gap-3"> <a href="https://forth.ink/donate/" class="btn-primary inline-flex items-center px-4 py-2 rounded-lg transition-colors font-medium bg-purple-700 hover:bg-purple-800 text-white"> <span class="mr-1">☕</span> Buy us a coffee </a> </div> </div>
 <p><em>Last updated: 6/26/2025</em></p> </main> </article> </div> <script type="module">
     (function () {
-      const hash = window.location.hash;
-      if (!hash) return;
-      const el = document.querySelector(hash);
-      if (!el || el.tagName !== 'DETAILS') return;
-      // @ts-expect-error el is a details element
-      el.open = true;
+      function handleAnchor() {
+        const hash = window.location.hash;
+        if (!hash) return;
+        
+        const el = document.querySelector(hash);
+        if (!el) return;
+        
+        // If it's a details element, open it
+        if (el.tagName === 'DETAILS') {
+          // @ts-expect-error el is a details element
+          el.open = true;
+          
+          // Scroll to the element after a short delay to ensure layout is updated
+          setTimeout(() => {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 100);
+        } else {
+          // For other elements, just scroll to them
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+      
+      // Handle on page load
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', handleAnchor);
+      } else {
+        handleAnchor();
+      }
+      
+      // Handle hash changes (for SPA-like navigation)
+      window.addEventListener('hashchange', handleAnchor);
     })();
   </script>  </div> <footer class="text-center py-8 bg-slate-100/30"> <div>Copyright © 2025 <a class="font-borel" target="_blank" href="https://forth.ink/">forthink</a></div> </footer> </body></html>
