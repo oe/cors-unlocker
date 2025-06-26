@@ -27,10 +27,11 @@ export interface IRuleItem {
    */
   credentials?: boolean;
   /**
-   * User-provided comment or description for this rule
-   * Optional field for documentation purposes
+   * Custom headers to include in Access-Control-Allow-Headers when credentials is enabled
+   * Stored as comma-separated string (e.g., "X-Custom-Token,X-API-Version")
+   * These headers will be merged with preset headers
    */
-  comment?: string;
+  extraHeaders?: string;
   /**
    * Whether the rule is currently disabled
    * Rules are enabled by default (disabled = false)

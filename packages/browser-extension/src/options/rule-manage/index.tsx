@@ -5,7 +5,14 @@ import { SearchBar } from './components/search-bar';
 import { Pagination } from './components/pagination';
 import './style.scss';
 
-export function RuleManage() {
+export interface IRuleManageProps {
+  /**
+   * Rule ID to edit automatically when component mounts
+   */
+  editRuleId?: number | null;
+}
+
+export function RuleManage(props: IRuleManageProps) {
   const { 
     rules, 
     saveRule,
@@ -22,7 +29,7 @@ export function RuleManage() {
     pageSize,
     maxRules,
     paginatedRules
-  } = useViewModel();
+  } = useViewModel(props.editRuleId);
 
   return (
     <div className="p-4 max-w-6xl mx-auto">
@@ -74,6 +81,7 @@ export function RuleManage() {
             removeRule={removeRule}
             validateRule={validateRule}
             updateRule={updateRule} 
+            editRuleId={props.editRuleId}
           />
           
           <Pagination

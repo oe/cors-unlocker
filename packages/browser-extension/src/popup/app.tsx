@@ -1,8 +1,8 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { useViewModel } from './view-model';
-import { AuthHelp } from '@/common/shard';
-import { SiteAuthSwitch, PowerSwitch } from './power-switch';
+import { SiteAuthSwitch } from '@/common/shard';
+import { PowerSwitch } from './power-switch';
 import { Settings, AlertCircle } from 'lucide-react';
 import '@/common/tailwind.css';
 import './style.scss';
@@ -16,6 +16,7 @@ function App() {
     error,
     errorType,
     gotoOptionsPage,
+    gotoEditRule,
     clearError
   } = useViewModel();
 
@@ -90,10 +91,11 @@ function App() {
               credentials: value 
             })}
             disabled={!isSupported || !ruleEnabled}
+            credentialsEnabled={!!rule?.credentials}
+            rule={rule ? { id: rule.id, origin: rule.origin } : null}
+            onEditRule={gotoEditRule}
+            vertical={true}
           />
-        </div>
-        <div className='dark:text-white'>
-          <AuthHelp />
         </div>
       </div>
     </>

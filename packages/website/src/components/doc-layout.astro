@@ -433,12 +433,37 @@ const { frontmatter } = Astro.props;
 
   <script type="module">
     (function () {
-      const hash = window.location.hash;
-      if (!hash) return;
-      const el = document.querySelector(hash);
-      if (!el || el.tagName !== 'DETAILS') return;
-      // @ts-expect-error el is a details element
-      el.open = true;
+      function handleAnchor() {
+        const hash = window.location.hash;
+        if (!hash) return;
+        
+        const el = document.querySelector(hash);
+        if (!el) return;
+        
+        // If it's a details element, open it
+        if (el.tagName === 'DETAILS') {
+          // @ts-expect-error el is a details element
+          el.open = true;
+          
+          // Scroll to the element after a short delay to ensure layout is updated
+          setTimeout(() => {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 100);
+        } else {
+          // For other elements, just scroll to them
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+      
+      // Handle on page load
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', handleAnchor);
+      } else {
+        handleAnchor();
+      }
+      
+      // Handle hash changes (for SPA-like navigation)
+      window.addEventListener('hashchange', handleAnchor);
     })();
   </script>
 </BaseLayout>

@@ -13,15 +13,29 @@ const tabs = [
 
 const defaultActiveTab = (() => {
   const hash = window.location.hash.slice(1);
-  return tabs.find(tab => tab.name === hash)?.name || tabs[0].name;
+  const [tab] = hash.split('?');
+  return tabs.find(t => t.name === tab)?.name || tabs[0].name;
 })();
 
+/**
+ * Extract URL parameters from hash
+ */
+function getUrlParams(): URLSearchParams {
+  const hash = window.location.hash.slice(1);
+  const [, queryString] = hash.split('?');
+  return new URLSearchParams(queryString || '');
+}
+
 function App() {
+  const urlParams = getUrlParams();
+  const editRuleId = urlParams.get('edit') ? parseInt(urlParams.get('edit')!, 10) : null;
+
   return (
     <div className="container max-w-4xl mx-auto mt-16">
       <Tabs
         activeTab={defaultActiveTab}
         tabs={tabs}
+        editRuleId={editRuleId}
       />
     </div>
   );

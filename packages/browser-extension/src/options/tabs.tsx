@@ -2,12 +2,13 @@ import { useState, useCallback } from 'react';
 export interface ITabItem {
   title: string;
   name: string;
-  content: React.ComponentType
+  content: React.ComponentType<any>
 }
 
 export interface ITabsProps {
   tabs: ITabItem[];
   activeTab?: string;
+  editRuleId?: number | null;
 }
 
 export function Tabs(props: ITabsProps) {
@@ -35,7 +36,7 @@ export function Tabs(props: ITabsProps) {
       ))}
     </ul>
     <div className="flex-1 p-4">
-      {TabContent && <TabContent />}
+      {TabContent && <TabContent editRuleId={props.editRuleId} />}
     </div>
   </div>
   );

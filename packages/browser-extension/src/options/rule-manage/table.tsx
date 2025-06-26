@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Edit, Trash } from 'lucide-react';
 import type { IRuleItem } from '@/types';
 import { Switch } from '@/common/shard';
@@ -11,12 +11,39 @@ export interface IRuleTableProps {
   updateRule: (rule: Partial<IRuleItem>) => Promise<boolean>;
   validateRule: (url: string) => string;
   toggleRule: (rule: IRuleItem) => void;
+  /**
+   * Rule ID to edit automatically when component mounts
+   */
+  editRuleId?: number | null;
 }
 
 export function RuleTable(props: IRuleTableProps) {
   const [currentRule, setCurrentRule] = useState<IRuleItem | null>(null)
+  const [hasTriedAutoEdit, setHasTriedAutoEdit] = useState(false);
+  
   const onCancel = () => setCurrentRule(null);
   const onEdit = (rule: IRuleItem) => setCurrentRule(rule);
+  
+  // Auto-open edit dialog if editRuleId is provided
+  useEffect(() => {
+    // Only try auto-edit once and when we have rules data
+    if (props.editRuleId && !hasTriedAutoEdit && props.rules.length > 0) {
+      const ruleToEdit = props.rules.find(rule => rule.id === props.editRuleId);
+      if (ruleToEdit) {
+        setCurrentRule(ruleToEdit);
+        
+        // Clear URL parameters after opening dialog
+        setTimeout(() => {
+          const url = new URL(window.location.href);
+          const hash = url.hash.split('?')[0];
+          url.hash = hash;
+          window.history.replaceState({}, '', url.toString());
+        }, 100);
+      }
+      setHasTriedAutoEdit(true);
+    }
+  }, [props.editRuleId, hasTriedAutoEdit, props.rules]);
+  
   const onSave = async (rule: Partial<IRuleItem>) => {
     try {
       const success = await props.updateRule(rule);
@@ -70,20 +97,14 @@ export function RuleTable(props: IRuleTableProps) {
             <tr key={rule.id} className="border-t border-gray-200 hover:bg-slate-100/30">
               <td className="py-2 text-center">{rule.id}</td>
               <td className="py-2 text-left break-all">
-                {/* <div className='group relative'> */}
+                <div className="text-gray-900">
                   {rule.origin}
-                  <div className='text-slate-400 break-all'>
-                    {rule.comment}
+                </div>
+                {rule.credentials && rule.extraHeaders && (
+                  <div className='text-slate-400 text-xs mt-1 break-all'>
+                    Custom headers: {rule.extraHeaders}
                   </div>
-                  {/* <div className="bg-zinc-800 p-2 rounded-md group-hover:flex hidden absolute -top-2 -translate-y-full left-12 -translate-x-1/2">
-                    <div className="text-zinc-400 whitespace-nowrap">
-                      <div className="text-xs">created At <FormattedDate date={rule.createdAt} /></div>
-                      <div className="text-xs">updated At <FormattedDate date={rule.updatedAt} /></div>
-                      
-                    </div>
-                    <div className="bg-inherit rotate-45 p-1 absolute bottom-0 translate-y-1/2 left-1/2 -translate-x-1/2"></div>
-                  </div> */}
-                {/* </div> */}
+                )}
               </td>
               <td className="py-2 text-center">
                 {rule.credentials ? 'Yes' : 'No'}

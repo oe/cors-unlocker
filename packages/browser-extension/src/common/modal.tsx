@@ -17,12 +17,14 @@ export function Modal(props: PropsWithChildren<IModalProps>) {
   const [isVisible, setIsVisible] = useState(props.visible);
   
   useEffect(() => {
-    if (!props.visible) {
-      setTimeout(() => {
-        setIsVisible(false);
-      }, 0);
-    } else {
+    if (props.visible) {
       setIsVisible(true);
+    } else {
+      // Add a small delay before hiding to allow for smooth transitions
+      const timer = setTimeout(() => {
+        setIsVisible(false);
+      }, 150);
+      return () => clearTimeout(timer);
     }
   }, [props.visible]);
 

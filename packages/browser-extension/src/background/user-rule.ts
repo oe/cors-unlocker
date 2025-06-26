@@ -26,7 +26,10 @@ export function diffRules(newRules?: IRuleItem[], oldRules?: IRuleItem[]) {
 
 function isRuleEqual(newRule: IRuleItem, oldRule: IRuleItem) {
   return (
-    newRule.origin === oldRule.origin && newRule.disabled === oldRule.disabled && newRule.credentials === oldRule.credentials
+    newRule.origin === oldRule.origin && 
+    newRule.disabled === oldRule.disabled && 
+    newRule.credentials === oldRule.credentials &&
+    newRule.extraHeaders === oldRule.extraHeaders
   );
 }
 

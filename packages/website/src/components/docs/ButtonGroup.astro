@@ -51,18 +51,21 @@ const styles = variants[variant];
     <p class={`${styles.subtitle} mb-4`}>{subtitle}</p>
   )}
   <div class="flex flex-wrap gap-3">
-    {buttons.map((button) => (
-      <a 
-        href={button.href} 
-        class={`btn-${button.type || 'primary'} inline-flex items-center px-4 py-2 rounded-lg transition-colors font-medium ${
-          button.type === 'secondary' 
-            ? `${styles.secondary} border` 
-            : styles.primary
-        }`}
-      >
-        {button.icon && <span class="mr-1">{button.icon}</span>}
-        {button.text}
-      </a>
-    ))}
+    {buttons.map((button) => {
+      const hasIcon = button.icon && typeof button.icon === 'string';
+      return (
+        <a 
+          href={button.href} 
+          class={`btn-${button.type || 'primary'} inline-flex items-center px-4 py-2 rounded-lg transition-colors font-medium ${
+            button.type === 'secondary' 
+              ? `${styles.secondary} border` 
+              : styles.primary
+          }`}
+        >
+          {hasIcon && <span class="mr-1">{button.icon}</span>}
+          {button.text}
+        </a>
+      );
+    })}
   </div>
 </div>

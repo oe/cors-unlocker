@@ -1,8 +1,9 @@
 import { IRuleItem } from '@/types';
-import { Link, MessageSquareMore } from 'lucide-react';
+import { Link, Tags, X } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { SiteAuthInput } from '@/common/shard';
 import { extConfig } from '@/common/ext-config';
+import { PRESET_CORS_HEADERS, validateExtraHeaders } from '@/common/rules';
 
 
 export interface IRuleInputProps {
@@ -85,7 +86,7 @@ export function RuleInput(props: IRuleInputProps) {
 export interface IEditRuleProps {
   rule?: IRuleItem | null;
   validateRule: (url: string, id?: number) => string;
-  saveRule: (v: { origin: string, comment: string, id?: number, credentials: boolean }) => Promise<boolean>;
+  saveRule: (v: { origin: string, extraHeaders?: string, id?: number, credentials: boolean }) => Promise<boolean>;
 }
 
 export function EditRuleForm(props: IEditRuleProps) {
@@ -109,7 +110,7 @@ export function EditRuleForm(props: IEditRuleProps) {
         id: props.rule?.id,
         credentials: !!formData.credentials,
         origin: formData.origin,
-        comment: formData.comment || ''
+        extraHeaders: formData.extraHeaders || ''
       });
       
       if (success) {
@@ -165,12 +166,21 @@ export function EditRuleForm(props: IEditRuleProps) {
         onChange={(v) => setFormValue({ credentials: v})}
         />
 
-      <InputWithAddOn
-        className='mb-4'
-        value={formData.comment || ''}
-        prepend={<MessageSquareMore className='w-4'/>}
-        onChange={(e) => setFormValue({ comment: e.target.value })}
-        placeholder='comment(optional)' />
+      {formData.credentials && (
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            <Tags className="w-4 h-4 inline mr-1" />
+            Custom Headers
+          </label>
+          <TagInput
+            value={formData.extraHeaders || ''}
+            onChange={(v) => setFormValue({ extraHeaders: v })}
+            placeholder="Enter custom headers (press space/comma to add)"
+            showCredentials={true}
+          />
+        </div>
+      )}
+
       <div className={'flex ' + (idRef.current ? 'justify-end' : '') }>
         <button 
           type="button" 
@@ -214,9 +224,128 @@ function getDefaultFormData(rule?: IRuleItem | null) {
     return {
       url: rule.origin,
       origin: rule.origin,
-      comment: rule.comment,
+      extraHeaders: rule.extraHeaders,
       credentials: rule.credentials
     }
   }
-  return { url: '', origin: '', comment: '', credentials: extConfig.get().dftEnableCredentials };
+  return { url: '', origin: '', extraHeaders: '', credentials: extConfig.get().dftEnableCredentials };
+}
+
+// Tag input component for extra headers
+interface ITagInputProps {
+  value?: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  showCredentials?: boolean;
+}
+
+function TagInput(props: ITagInputProps) {
+  const [inputValue, setInputValue] = useState('');
+  const [validationMessage, setValidationMessage] = useState<{ type: 'success' | 'warning' | 'error', text: string } | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  
+  const tags = props.value ? props.value.split(',').filter(t => t.trim()) : [];
+
+  const addTag = (tag: string) => {
+    const trimmed = tag.trim();
+    if (!trimmed) return;
+
+    const validation = validateExtraHeaders(trimmed);
+    
+    // Show validation messages
+    if (validation.invalid.length > 0) {
+      setValidationMessage({ type: 'error', text: `Invalid header format: ${validation.invalid.join(', ')}` });
+      return;
+    }
+    
+    if (validation.duplicates.length > 0) {
+      setValidationMessage({ type: 'warning', text: `Already exists in preset headers: ${validation.duplicates.join(', ')}` });
+      return;
+    }
+
+    if (validation.headers.length > 0) {
+      const currentTags = props.value ? props.value.split(',').filter(t => t.trim()) : [];
+      const newTags = [...currentTags, ...validation.headers];
+      props.onChange(newTags.join(','));
+      setValidationMessage({ type: 'success', text: `Added: ${validation.headers.join(', ')}` });
+    }
+
+    setInputValue('');
+    setTimeout(() => setValidationMessage(null), 3000);
+  };
+
+  const removeTag = (index: number) => {
+    const newTags = tags.filter((_, i) => i !== index);
+    props.onChange(newTags.join(','));
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === ',' || e.key === ' ') {
+      e.preventDefault();
+      addTag(inputValue);
+    } else if (e.key === 'Backspace' && !inputValue && tags.length > 0) {
+      removeTag(tags.length - 1);
+    }
+  };
+
+  const handleBlur = () => {
+    if (inputValue.trim()) {
+      addTag(inputValue);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-1 p-2 border border-gray-300 rounded-md bg-white min-h-[42px] focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
+        {tags.map((tag, index) => (
+          <span
+            key={index}
+            className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded"
+          >
+            {tag}
+            <button
+              type="button"
+              onClick={() => removeTag(index)}
+              className="text-blue-600 hover:text-blue-800"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </span>
+        ))}
+        <input
+          ref={inputRef}
+          type="text"
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onBlur={handleBlur}
+          placeholder={tags.length === 0 ? props.placeholder : ''}
+          className="flex-1 min-w-[120px] border-0 outline-0 bg-transparent"
+        />
+      </div>
+      
+      {validationMessage && (
+        <div className={`text-sm px-2 ${
+          validationMessage.type === 'error' ? 'text-red-600' : 
+          validationMessage.type === 'warning' ? 'text-yellow-600' : 
+          'text-green-600'
+        }`}>
+          {validationMessage.text}
+        </div>
+      )}
+      
+      {props.showCredentials && (
+        <div className="text-sm text-gray-500 px-2">
+          <div className="mb-1">Preset headers included:</div>
+          <div className="flex flex-wrap gap-1">
+            {PRESET_CORS_HEADERS.map((header) => (
+              <span key={header} className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
+                {header}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }

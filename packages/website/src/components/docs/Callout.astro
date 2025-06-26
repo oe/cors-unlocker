@@ -1,6 +1,6 @@
 ---
 export interface Props {
-  type?: 'info' | 'warning' | 'danger' | 'success' | 'tip';
+  type?: 'info' | 'warning' | 'danger' | 'error' | 'success' | 'tip';
   title?: string;
   icon?: string;
   className?: string;
@@ -22,6 +22,11 @@ const typeStyles = {
   danger: {
     container: 'bg-red-50 border-l-4 border-red-400 text-red-800',
     icon: '🚨',
+    title: 'text-red-900'
+  },
+  error: {
+    container: 'bg-red-50 border-l-4 border-red-400 text-red-800',
+    icon: '❌',
     title: 'text-red-900'
   },
   success: {

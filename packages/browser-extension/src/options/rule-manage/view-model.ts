@@ -18,7 +18,7 @@ export function getOrigin(url: string) {
   }
 }
 
-export function useViewModel() {
+export function useViewModel(editRuleId?: number | null) {
   const [rules, setRules] = useState<IRuleItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -46,8 +46,7 @@ export function useViewModel() {
     
     const term = searchTerm.toLowerCase();
     return rules.filter(rule => 
-      rule.origin.toLowerCase().includes(term) ||
-      (rule.comment && rule.comment.toLowerCase().includes(term))
+      rule.origin.toLowerCase().includes(term)
     );
   }, [rules, searchTerm]);
 
@@ -73,6 +72,19 @@ export function useViewModel() {
     }
   }, [currentPage, totalPages]);
 
+  // 自动跳转到包含目标规则的页面
+  useEffect(() => {
+    if (editRuleId && rules.length > 0) {
+      const ruleIndex = filteredRules.findIndex(rule => rule.id === editRuleId);
+      if (ruleIndex !== -1) {
+        const targetPage = Math.floor(ruleIndex / pageSize) + 1;
+        if (targetPage !== currentPage) {
+          setCurrentPage(targetPage);
+        }
+      }
+    }
+  }, [editRuleId, rules, filteredRules, currentPage, pageSize]);
+
   /**
    * validate rule url, return origin if valid, or an error will be thrown
    * @param url rule url
@@ -90,7 +102,7 @@ export function useViewModel() {
     return origin;
   }, [rules]);
   
-  const addRule = async (v: {origin: string, comment: string, credentials: boolean}) => {
+  const addRule = async (v: {origin: string, extraHeaders?: string, credentials: boolean}) => {
     const origin = validateRule(v.origin);
     const config = extConfig.get();
     
@@ -100,7 +112,7 @@ export function useViewModel() {
     
     const isSuccess = await dataStorage.addRule({
       origin,
-      comment: v.comment,
+      extraHeaders: v.extraHeaders,
       credentials: v.credentials,
     });
     
@@ -111,13 +123,13 @@ export function useViewModel() {
     return true;
   };
 
-  const saveRule = async (v: {origin: string, comment: string, id?: number, credentials: boolean}) => {
+  const saveRule = async (v: {origin: string, extraHeaders?: string, id?: number, credentials: boolean}) => {
     if (v.id) {
       // Update existing rule
       const success = await dataStorage.updateRule({
         id: v.id,
         origin: v.origin,
-        comment: v.comment,
+        extraHeaders: v.extraHeaders,
         credentials: v.credentials,
       });
       if (!success) {

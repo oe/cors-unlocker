@@ -1,6 +1,7 @@
 import browser from 'webextension-polyfill';
 import type { IRuleItem } from '../types';
 import { logger } from '@/common/logger';
+import { mergeHeaders } from '@/common/rules';
 
 const resourceTypes = [
   'main_frame',
@@ -81,6 +82,11 @@ async function updateRulesIndividually(rules: IRuleItem[]) {
 }
 
 function createRule(rule: IRuleItem) {
+  // Generate headers based on credentials mode
+  const allowHeaders = rule.credentials 
+    ? mergeHeaders(rule.extraHeaders).join(', ')
+    : '*';
+
   return {
     id: rule.id,
     priority: 1,
@@ -105,7 +111,7 @@ function createRule(rule: IRuleItem) {
         {
           header: 'Access-Control-Allow-Headers',
           operation: 'set',
-          value: 'Content-Type, Authorization, X-Requested-With, Accept, Origin'
+          value: allowHeaders
         }
       ]
     },

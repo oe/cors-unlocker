@@ -194,6 +194,28 @@ export function useViewModel() {
     }
   }, []);
 
+  /**
+   * Navigate to options page and open edit dialog for specific rule
+   */
+  const gotoEditRule = useCallback(async (ruleId: number) => {
+    try {
+      // Create URL with hash for rule editing
+      const optionsUrl = browser.runtime.getURL('src/options/index.html') + `#rules?edit=${ruleId}`;
+      
+      // Open in new tab for better user experience
+      await browser.tabs.create({ url: optionsUrl });
+      
+      // Close popup
+      window.close();
+    } catch (error) {
+      logger.error('Failed to open rule edit page:', error);
+      setState(prev => ({ 
+        ...prev, 
+        error: 'Failed to open rule edit page'
+      }));
+    }
+  }, []);
+
   const clearError = useCallback(() => {
     setState(prev => ({ ...prev, error: null }));
   }, []);
@@ -206,6 +228,7 @@ export function useViewModel() {
     ruleEnabled,
     toggleRule,
     gotoOptionsPage,
+    gotoEditRule,
     clearError,
     retry: syncRule,
   };

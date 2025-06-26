@@ -26,7 +26,7 @@ When **Site Auth** is enabled, allows credentialed requests to include cookies a
 
 ## Configuration & Usage
 
-<details>
+<details id="auth">
   <summary>🔑 What is Site Auth and when should I use it?</summary>
 
 <Callout type="warning" title="Important Security Note">
@@ -51,6 +51,37 @@ Site Auth allows sharing authentication data (cookies, tokens) with cross-origin
 
 </div>
 </CompareCards>
+
+</details>
+
+## Known Limitations
+
+<details>
+  <summary>⚠️ What are the technical limitations of this extension?</summary>
+
+<Callout type="error" title="Manifest V3 Limitations">
+Due to browser security restrictions, some CORS scenarios cannot be resolved by extensions.
+</Callout>
+
+**🚫 Preflight Request Failures**
+
+If the target server doesn't support OPTIONS requests or returns non-success responses for preflight requests, complex CORS requests will still fail. This affects:
+- Requests with custom headers (not simple headers)
+- Non-simple HTTP methods (PUT, DELETE, PATCH, etc.)
+- Requests with certain content types (application/json with custom headers)
+
+**💡 Workaround:** Contact the API provider to properly implement CORS preflight support.
+
+**🖼️ iframe and Embedded Content Issues**
+
+The extension only works for the main page origin. If your request originates from:
+- iframe elements
+- Embedded widgets
+- Web workers in different origins
+
+You must enable CORS for the **iframe's origin**, not the parent page's origin.
+
+**💡 Solution:** Use the extension popup while on the iframe's actual domain, or configure CORS for the correct origin.
 
 </details>
 
@@ -122,6 +153,6 @@ Help us keep it free and open source for everyone!
   subtitle="Your support helps us continue developing and maintaining this tool"
   variant="purple"
   buttons={[
-    { text: "Buy us a coffee", href: "https://forth.ink/donate/", type: "primary", icon: "☕" }
+    { text: "Buy us a coffee", href: "https://forth.ink/donate/", type: "primary" }
   ]} 
 />
