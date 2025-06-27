@@ -13,7 +13,8 @@ dist-ssr
 *.local
 .turbo
 .astro
-
+playwright-report
+test-results
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

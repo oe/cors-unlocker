@@ -13,7 +13,8 @@ export function Switch(props: ISwitchProps) {
   const onClickLabel = (e: React.MouseEvent<HTMLSpanElement>) => {
     const target = e.target as HTMLElement;
     if (target.tagName === 'A') {
-      e.stopPropagation();
+      e.preventDefault(); // Prevent the default link behavior
+      e.stopPropagation(); // Stop the event from bubbling up
     }
   };
 

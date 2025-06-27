@@ -8,7 +8,12 @@
     "dev": "turbo dev",
     "dev:extension": "turbo dev --filter=browser-cors-unlocker",
     "dev:cors-unlocker": "turbo dev --filter=cors-unlocker",
-    "dev:website": "turbo dev --filter=website"
+    "dev:website": "turbo dev --filter=website",
+    "test": "turbo test",
+    "test:run": "turbo test:run",
+    "test:coverage": "turbo test:coverage",
+    "test:e2e": "turbo test:e2e",
+    "lint": "turbo lint"
   },
   "keywords": [],
   "author": "",
