@@ -1,6 +1,6 @@
-<!DOCTYPE html><html lang="en" class="h-full"> <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Developer Integration Guide - CORS Unlocker</title><link rel="shortcut icon" href="/favicon.ico" type="image/x-icon"><meta name="description" content="Seamlessly integrate CORS management into your web application with our powerful npm package. Enable, disable, and monitor cross-origin requests with just a few lines of code."><meta property="og:url" content="https://cors.forth.ink/"><meta property="og:site_name" content="forth.ink"><meta property="og:title" content="CORS Unlocker"><meta property="og:description" content="Seamlessly integrate CORS management into your web application with our powerful npm package. Enable, disable, and monitor cross-origin requests with just a few lines of code."><meta property="og:image" content="/og.png"><meta name="astro-view-transitions-enabled" content="true"><meta name="astro-view-transitions-fallback" content="animate"><script type="module" src="/_astro/ClientRouter.astro_astro_type_script_index_0_lang.CtSceO8m.js"></script><link rel="stylesheet" href="/_astro/docs.C5hOr3r4.css">
-<link rel="stylesheet" href="/_astro/docs.DVDYjfms.css">
-<link rel="stylesheet" href="/_astro/docs.Bo1UUwt_.css"></head> <body class="flex flex-col h-full"> <header class="bg-slate-100/30" data-astro-transition-persist="astro-3si54kmc-1"> <div class="px-4 mx-auto sm:px-6 lg:px-8"> <div class="flex items-center justify-between h-16 lg:h-20"> <div class="flex-shrink-0"> <a href="/" title="" class="flex gap-2 items-center"> <img src="/icon.png" alt="CORS Unlocker icon" class="w-8 h-8"> <span>CORS Unlocker</span> </a> </div> <div class="flex items-center justify-center space-x-6 text-sm md:text-base text-black"> <a href="/docs/" title="integrate with your app" class="transition-all duration-200 hover:text-opacity-80">
+<!DOCTYPE html><html lang="en" class="h-full"> <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Developer Integration Guide - CORS Unlocker</title><link rel="shortcut icon" href="/favicon.ico" type="image/x-icon"><meta name="description" content="Seamlessly integrate CORS management into your web application with our powerful npm package. Enable, disable, and monitor cross-origin requests with just a few lines of code."><meta property="og:url" content="https://cors.forth.ink/"><meta property="og:site_name" content="forth.ink"><meta property="og:title" content="CORS Unlocker"><meta property="og:description" content="Seamlessly integrate CORS management into your web application with our powerful npm package. Enable, disable, and monitor cross-origin requests with just a few lines of code."><meta property="og:image" content="/og.png"><meta name="astro-view-transitions-enabled" content="true"><meta name="astro-view-transitions-fallback" content="animate"><script type="module" src="/_astro/ClientRouter.astro_astro_type_script_index_0_lang.CtSceO8m.js"></script><link rel="stylesheet" href="/_astro/docs.CT_Pg4WX.css">
+<link rel="stylesheet" href="/_astro/docs.BcrDfAth.css">
+<link rel="stylesheet" href="/_astro/docs.BA2hLyFT.css"></head> <body class="flex flex-col h-full"> <header class="bg-slate-100/30" data-astro-transition-persist="astro-3si54kmc-1"> <div class="px-4 mx-auto sm:px-6 lg:px-8"> <div class="flex items-center justify-between h-16 lg:h-20"> <div class="flex-shrink-0"> <a href="/" title="" class="flex gap-2 items-center"> <img src="/icon.png" alt="CORS Unlocker icon" class="w-8 h-8"> <span>CORS Unlocker</span> </a> </div> <div class="flex items-center justify-center space-x-6 text-sm md:text-base text-black"> <a href="/docs/" title="integrate with your app" class="transition-all duration-200 hover:text-opacity-80">
 Integration
 </a> <a href="/playground/" class="hidden sm:inline transition-all duration-200 hover:text-opacity-80">
 Playground
@@ -379,5 +379,14 @@ More Apps
       
       // Handle hash changes (for SPA-like navigation)
       window.addEventListener('hashchange', handleAnchor);
+      
+      // Handle Astro's page transitions
+      document.addEventListener('astro:page-load', handleAnchor);
+      
+      // Also handle when DOM content is ready after navigation
+      document.addEventListener('astro:after-swap', () => {
+        // Use a small delay to ensure DOM is fully updated
+        setTimeout(handleAnchor, 50);
+      });
     })();
   </script>  </div> <footer class="text-center py-8 bg-slate-100/30"> <div>Copyright © 2025 <a class="font-borel" target="_blank" href="https://forth.ink/">forthink</a></div> </footer> </body></html>
