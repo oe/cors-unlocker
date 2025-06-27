@@ -229,6 +229,7 @@ const RequestConfigCard: React.FC<{ vm: ReturnType<typeof useViewModel> }> = ({ 
                 <option value="PUT">PUT</option>
                 <option value="DELETE">DELETE</option>
                 <option value="PATCH">PATCH</option>
+                <option value="OPTIONS">OPTIONS</option>
               </select>
             </div>
             <div className="md:col-span-3">
@@ -352,13 +353,13 @@ const ResponseContent: React.FC<{ vm: ReturnType<typeof useViewModel> }> = ({ vm
 };
 
 // Response Viewer Component
-const ResponseViewer: React.FC<{ response: { mediaType: string; contentType: string; content: string } }> = ({ response }) => {
+const ResponseViewer: React.FC<{ response: { status: number, mediaType: string; contentType: string; content: string } }> = ({ response }) => {
   switch (response.mediaType) {
     case 'text':
       return (
         <div>
           <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <span className="text-sm font-medium text-gray-600">Content-Type: {response.contentType}</span>
+            <span className="text-sm font-medium text-gray-600"><code className='text-gray-400'>Status: {response.status}</code> Content-Type: {response.contentType}</span>
             <button 
               onClick={() => navigator.clipboard.writeText(response.content)}
               className="text-sm text-blue-600 hover:text-blue-700 font-medium cursor-pointer whitespace-nowrap"
@@ -375,7 +376,7 @@ const ResponseViewer: React.FC<{ response: { mediaType: string; contentType: str
       return (
         <div>
           <div className="mb-4">
-            <span className="text-sm font-medium text-gray-600">Content-Type: {response.contentType}</span>
+            <span className="text-sm font-medium text-gray-600"><code className='text-gray-400'>Status: {response.status}</code> Content-Type: {response.contentType}</span>
           </div>
           <div className="flex justify-center">
             <img 
@@ -390,7 +391,7 @@ const ResponseViewer: React.FC<{ response: { mediaType: string; contentType: str
       return (
         <div>
           <div className="mb-4">
-            <span className="text-sm font-medium text-gray-600">Content-Type: {response.contentType}</span>
+            <span className="text-sm font-medium text-gray-600"><code className='text-gray-400'>Status: {response.status}</code> Content-Type: {response.contentType}</span>
           </div>
           <div className="flex justify-center">
             <audio controls src={response.content} className="w-full max-w-md" />

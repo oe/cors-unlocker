@@ -464,6 +464,15 @@ const { frontmatter } = Astro.props;
       
       // Handle hash changes (for SPA-like navigation)
       window.addEventListener('hashchange', handleAnchor);
+      
+      // Handle Astro's page transitions
+      document.addEventListener('astro:page-load', handleAnchor);
+      
+      // Also handle when DOM content is ready after navigation
+      document.addEventListener('astro:after-swap', () => {
+        // Use a small delay to ensure DOM is fully updated
+        setTimeout(handleAnchor, 50);
+      });
     })();
   </script>
 </BaseLayout>

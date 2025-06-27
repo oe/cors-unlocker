@@ -25,6 +25,7 @@ interface PlaygroundState {
     contentType: string;
     mediaType: string;
     content: string;
+    status: number;
   } | null;
   error: Error | null;
   
@@ -241,7 +242,7 @@ async function* sendRequest(url: string, options: RequestInit): AsyncGenerator<a
   const response = await fetch(url, options);
   const contentType = response.headers.get('content-type') || '';
   const mediaType = detectContentTypeCategory(contentType);
-  yield { contentType, mediaType };
+  yield { contentType, mediaType, status: response.status };
   switch (mediaType) {
     case 'text':
       yield await response.text();  
