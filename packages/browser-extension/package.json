@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "TARGET=chrome vite build --watch --mode development",
+    "dev:firefox": "TARGET=firefox vite build --watch --mode development",
     "dev:serve": "vite dev",
     "build:chrome": "vite build --mode production",
     "build:firefox": "TARGET=firefox vite build --mode production",
