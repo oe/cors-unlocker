@@ -5,9 +5,14 @@ import eslint from 'vite-plugin-eslint';
 import webExtension, { readJsonFile } from "vite-plugin-web-extension";
 import tailwindcss from '@tailwindcss/vite';
 
+const browserTarget = process.env.TARGET || 'chrome';
+
 function generateManifest() {
   const manifest = readJsonFile("src/manifest.json");
   const pkg = readJsonFile("package.json");
+  if (browserTarget === 'chrome') {
+    manifest.permissions = [...manifest.permissions, 'debugger', 'sidePanel'];
+  }
   return {
     name: pkg.name,
     description: pkg.description,
@@ -19,7 +24,6 @@ function generateManifest() {
 const firefoxExtID = 'cors-unlocker@forth.ink';
 const chromeExtID = 'knhlkjdfmgkmelcjfnbbhpphkmjjacng';
 
-const browserTarget = process.env.TARGET || 'chrome';
 // https://vitejs.dev/config/
 export default defineConfig(({ command, mode }) => {
   const isDev = command === 'serve' || mode === 'development';

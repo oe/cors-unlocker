@@ -5,13 +5,16 @@ import browser from 'webextension-polyfill';
 import { logger } from './logger';
 
 import { extConfig } from './ext-config';
+import {
+  APP_STATE_KEY,
+  ensureProxyAppState,
+  getCorsCompatibilityRules,
+  isProxyAppState,
+  saveProxyAppState,
+  withLegacyRules,
+} from './proxy-state';
 
-/**
- * local storage key for allowed domains
- */
-const storageKey = 'allowedOrigins';
-
-let lastRules: IRuleItem[];
+let lastRules: IRuleItem[] | undefined;
 let maxId = 0;
 
 // Debounce saves to avoid too frequent storage writes
@@ -27,8 +30,8 @@ export const dataStorage = {
   async getRules(): Promise<IRuleItem[]> {
     if (!lastRules) {
       try {
-        const result = await browser.storage.local.get(storageKey);
-        lastRules = result[storageKey] || [];
+        const state = await ensureProxyAppState();
+        lastRules = getCorsCompatibilityRules(state);
         updateMaxId(lastRules);
         logger.debug('Loaded rules from storage:', lastRules.length);
       } catch (error) {
@@ -48,7 +51,7 @@ export const dataStorage = {
         lastRules = [];
       }
     }
-    return lastRules;
+    return lastRules || [];
   },
   
   saveRules(rules: IRuleItem[], debounce: boolean = false): Promise<void> {
@@ -76,8 +79,9 @@ export const dataStorage = {
 
   async _saveRulesImmediate(rules: IRuleItem[]): Promise<void> {
     try {
+      const state = await ensureProxyAppState();
       await browser.storage.local.set({
-        [storageKey]: rules
+        [APP_STATE_KEY]: withLegacyRules(state, rules),
       });
       logger.debug('Saved rules to storage:', rules.length);
     } catch (error) {
@@ -175,15 +179,19 @@ export const dataStorage = {
   ) {
     browser.storage.onChanged.addListener((changes, areaName) => {
       logger.debug('Storage changed:', changes, areaName);
-      const changed = changes[storageKey];
+      const changed = changes[APP_STATE_KEY];
       if (areaName !== 'local' || !changed) return;
       
       try {
         // Update cached rules when storage changes
-        if (changed.newValue) {
-          this.updateCachedRules(changed.newValue);
-        }
-        callback(changed.newValue, changed.oldValue);
+        const newRules = changed.newValue
+          ? getCorsCompatibilityRules(changed.newValue)
+          : [];
+        const oldRules = changed.oldValue
+          ? getCorsCompatibilityRules(changed.oldValue)
+          : [];
+        this.updateCachedRules(newRules);
+        callback(newRules, oldRules);
       } catch (error) {
         logger.error('Error in rules change callback:', error);
       }
@@ -193,11 +201,11 @@ export const dataStorage = {
   // Export/Import functionality
   async exportRules(): Promise<string> {
     try {
-      const rules = await this.getRules();
+      const state = await ensureProxyAppState();
       return JSON.stringify({
-        version: '1.0',
+        version: '2.0',
         timestamp: Date.now(),
-        rules: rules
+        state,
       }, null, 2);
     } catch (error) {
       logger.error('Failed to export rules:', error);
@@ -208,6 +216,22 @@ export const dataStorage = {
   async importRules(data: string, merge: boolean = false): Promise<boolean> {
     try {
       const parsed = JSON.parse(data);
+      if (parsed.version === '2.0' && isProxyAppState(parsed.state)) {
+        if (merge) {
+          const current = await ensureProxyAppState();
+          const rulesById = new Map(current.rules.map((rule) => [rule.id, rule]));
+          for (const rule of parsed.state.rules) rulesById.set(rule.id, rule);
+          await saveProxyAppState({
+            ...current,
+            rules: [...rulesById.values()],
+          });
+        } else {
+          await saveProxyAppState(parsed.state);
+        }
+        lastRules = undefined;
+        logger.info('Imported v2 proxy state successfully');
+        return true;
+      }
       if (!parsed.rules || !Array.isArray(parsed.rules)) {
         throw new Error('Invalid export format');
       }

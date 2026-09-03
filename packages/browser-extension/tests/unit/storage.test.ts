@@ -75,7 +75,16 @@ describe('storage.ts', () => {
   describe('dataStorage.getRules', () => {
     it('should return cached rules if available', async () => {
       const mockRules = [
-        { id: 1, origin: 'example.com', disabled: false, credentials: false }
+        {
+          id: 1,
+          origin: 'https://example.com',
+          domain: 'example.com',
+          disabled: false,
+          credentials: false,
+          extraHeaders: '',
+          createdAt: 100,
+          updatedAt: 100,
+        }
       ]
       
       // Set cached rules
@@ -92,21 +101,41 @@ describe('storage.ts', () => {
 
     it('should load rules from storage when cache is empty', async () => {
       const mockRules = [
-        { id: 1, origin: 'example.com', disabled: false, credentials: false }
+        {
+          id: 1,
+          origin: 'https://example.com',
+          domain: 'example.com',
+          disabled: false,
+          credentials: false,
+          extraHeaders: '',
+          createdAt: 100,
+          updatedAt: 100,
+        }
       ]
       
       // Import browser mock
       const { default: browser } = await import('webextension-polyfill')
       
       // Setup mock to return rules from storage
-      ;(browser.storage.local.get as any).mockResolvedValue({
-        allowedOrigins: mockRules
+      let savedState: any
+      ;(browser.storage.local.set as any).mockImplementation(async (value: any) => {
+        savedState = value.proxyAppState
+      })
+      ;(browser.storage.local.get as any).mockImplementation(async (key: any) => {
+        if (Array.isArray(key)) return { allowedOrigins: mockRules }
+        if (key === 'proxyAppState') return { proxyAppState: savedState }
+        return {}
       })
 
       // getRules should load from storage when no cache
       const result = await dataStorage.getRules()
       
-      expect(browser.storage.local.get).toHaveBeenCalledWith('allowedOrigins')
+      expect(browser.storage.local.get).toHaveBeenCalledWith([
+        'proxyAppState',
+        'legacyBackupV1',
+        'allowedOrigins',
+        'extConfig',
+      ])
       expect(result).toEqual(mockRules)
     })
 

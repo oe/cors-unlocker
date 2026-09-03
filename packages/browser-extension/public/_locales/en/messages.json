@@ -1,8 +1,8 @@
 {
   "extName": {
-    "message": "CORS Unlocker"
+    "message": "Browser Proxy"
   },
   "extDescription": {
-    "message": "Grant cross-origin request permissions for websites and open doors to boundless potential"
+    "message": "A local, tab-scoped request proxy for CORS repair, headers, redirects, blocking, mocks, delays, and debugging."
   }
 }

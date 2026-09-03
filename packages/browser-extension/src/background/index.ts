@@ -12,9 +12,27 @@ import {
   onWindowClose,
 } from './messaging';
 import { logger } from '@/common/logger';
+import { ensureProxyAppState } from '@/common/proxy-state';
+import './advanced-proxy';
+import { reconcileProxyDnrRules } from './proxy-dnr';
 
 // Simple delay utility function
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+async function bootstrap() {
+  try {
+    const state = await ensureProxyAppState();
+    const rules = await dataStorage.getRules();
+    await Promise.all([
+      rules.length > 0 ? batchUpdateRules(rules) : Promise.resolve(),
+      reconcileProxyDnrRules(state.rules),
+    ]);
+  } catch (error) {
+    logger.error('Extension bootstrap failed:', error);
+  }
+}
+
+void bootstrap();
 
 // Global error handler for unhandled promise rejections
 self.addEventListener('unhandledrejection', (event) => {
@@ -72,6 +90,14 @@ dataStorage.onRulesChange(async (newRules, oldRules) => {
   } catch (error) {
     logger.error('Error handling rules change:', error);
   }
+});
+
+browser.storage.onChanged.addListener((changes, areaName) => {
+  const state = changes.proxyAppState?.newValue;
+  if (areaName !== 'local' || !state?.rules) return;
+  void reconcileProxyDnrRules(state.rules).catch((error) => {
+    logger.error('Unable to reconcile proxy DNR rules:', error);
+  });
 });
 
 browser.tabs.onActivated.addListener(async (activeInfo) => {

@@ -9,6 +9,19 @@ import {
 import { extConfig } from '@/common/ext-config';
 import { isSupportedProtocol } from '@/common/utils';
 import { logger } from '@/common/logger';
+import {
+  clearRequestLog,
+  disableAdvancedProxy,
+  enableAdvancedProxy,
+  getAdvancedProxyStatus,
+  getRequestLog,
+} from './advanced-proxy';
+import {
+  addProxyRule,
+  ensureProxyAppState,
+  removeProxyRule,
+  updateProxyRule,
+} from '@/common/proxy-state';
 
 // Allowed external origins for security
 const ALLOWED_EXTERNAL_ORIGINS = [
@@ -252,6 +265,86 @@ export async function onRuntimeMessage(
     }
 
     switch (message.type) {
+      case 'getAdvancedProxyStatus': {
+        const tabId = message.payload?.tabId;
+        return typeof tabId === 'number'
+          ? getAdvancedProxyStatus(tabId)
+          : { phase: 'error', error: 'Invalid request: missing tab ID' };
+      }
+
+      case 'enableAdvancedProxy': {
+        const tabId = message.payload?.tabId;
+        return typeof tabId === 'number'
+          ? enableAdvancedProxy(tabId, message.payload)
+          : { phase: 'error', error: 'Invalid request: missing tab ID' };
+      }
+
+      case 'disableAdvancedProxy': {
+        const tabId = message.payload?.tabId;
+        return typeof tabId === 'number'
+          ? disableAdvancedProxy(tabId)
+          : { phase: 'error', error: 'Invalid request: missing tab ID' };
+      }
+
+      case 'getAdvancedProxyLog': {
+        const tabId = message.payload?.tabId;
+        return typeof tabId === 'number' ? getRequestLog(tabId) : [];
+      }
+
+      case 'clearAdvancedProxyLog': {
+        const tabId = message.payload?.tabId;
+        if (typeof tabId === 'number') clearRequestLog(tabId);
+        return { success: typeof tabId === 'number' };
+      }
+
+      case 'getProxyState':
+        return ensureProxyAppState();
+
+      case 'saveProxyRule': {
+        const rule = message.payload?.rule;
+        if (!rule) return { success: false, error: 'Missing proxy rule.' };
+        const saved = rule.id
+          ? await updateProxyRule(rule.id, rule)
+          : await addProxyRule({ ...rule, source: 'user' });
+        return { success: true, rule: saved };
+      }
+
+      case 'deleteProxyRule': {
+        const id = message.payload?.id;
+        if (typeof id !== 'string') return { success: false, error: 'Missing proxy rule ID.' };
+        await removeProxyRule(id);
+        return { success: true };
+      }
+
+      case 'createRuleFromRequest': {
+        const request = message.payload?.request;
+        const initiatorOrigin = message.payload?.initiatorOrigin;
+        if (!request?.url || !request?.method || !initiatorOrigin) {
+          return { success: false, error: 'Request details are incomplete.' };
+        }
+        const saved = await addProxyRule({
+          name: `${request.method} ${new URL(request.url).hostname}`,
+          enabled: false,
+          source: 'user',
+          match: {
+            initiatorOrigins: [initiatorOrigin],
+            urlPattern: request.url,
+            methods: [request.method.toUpperCase()],
+            resourceTypes: request.resourceType ? [request.resourceType] : undefined,
+          },
+          actions: [{ type: 'setResponseHeaders', headers: {} }],
+        });
+        return { success: true, rule: saved };
+      }
+
+      case 'openSidePanel': {
+        if (__TARGET__ !== 'chrome') return { success: false, error: 'Chrome only.' };
+        const tabId = message.payload?.tabId;
+        if (typeof tabId !== 'number') return { success: false, error: 'Missing tab ID.' };
+        await chrome.sidePanel.open({ tabId });
+        return { success: true };
+      }
+
       case 'getCurrentTabRule':
         if (typeof message.windowId !== 'number') {
           logger.warn('Invalid windowId in getCurrentTabRule:', message.windowId);
@@ -297,4 +390,3 @@ export function onWindowClose(windowId: number) {
     logger.error('Error clearing cached rule:', error);
   }
 }
-

@@ -1,26 +1,12 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-// Custom styles can be added here
 html,
-body {
-  width: 260px;
-  padding: 0;
+body,
+#root {
+  width: 340px;
+  min-height: 420px;
   margin: 0;
 }
-// gradient reference: <https://www.gradientmagic.com/browse>
 
-body {
-  background-image: repeating-linear-gradient(90deg, rgba(201, 201, 201, 0.06) 0px, rgba(201, 201, 201, 0.06) 1px, transparent 1px, transparent 96px),
-    repeating-linear-gradient(0deg, rgba(201, 201, 201, 0.06) 0px, rgba(201, 201, 201, 0.06) 1px, transparent 1px, transparent 96px),
-    repeating-linear-gradient(0deg, rgba(201, 201, 201, 0.09) 0px, rgba(201, 201, 201, 0.09) 1px, transparent 1px, transparent 12px),
-    repeating-linear-gradient(90deg, rgba(201, 201, 201, 0.09) 0px, rgba(201, 201, 201, 0.09) 1px, transparent 1px, transparent 12px),
-    linear-gradient(90deg, rgb(255, 255, 255), rgb(255, 255, 255));;
-
-
-  // dark mode
-  @media (prefers-color-scheme: dark) {
-    background-image: radial-gradient(circle, transparent 0%, rgb(33, 33, 33) 99%), repeating-linear-gradient(0deg, rgba(163, 163, 163, 0.2) 0px, rgba(163, 163, 163, 0.2) 1px, transparent 1px, transparent 6px), repeating-linear-gradient(90deg, rgba(163, 163, 163, 0.2) 0px, rgba(163, 163, 163, 0.2) 1px, transparent 1px, transparent 6px), linear-gradient(90deg, rgb(33, 33, 33), rgb(33, 33, 33));
-  }
+button,
+[role='switch'] {
+  cursor: pointer;
 }

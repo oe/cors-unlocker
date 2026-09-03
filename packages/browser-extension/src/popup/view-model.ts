@@ -4,12 +4,15 @@ import { isSupportedProtocol } from '@/common/utils';
 import { logger } from '@/common/logger';
 import { extConfig } from '@/common/ext-config';
 import type { IRuleItem } from '@/types';
+import type { IAdvancedProxyStatus } from '@/background/advanced-proxy';
 
 interface ViewModelState {
   rule: IRuleItem | null;
   isSupported: boolean;
   error: string | null;
   errorType: 'recoverable' | 'fatal' | null;
+  advancedProxy: IAdvancedProxyStatus | null;
+  advancedProxyPending: boolean;
 }
 
 export function useViewModel() {
@@ -17,10 +20,13 @@ export function useViewModel() {
     rule: null,
     isSupported: false,
     error: null,
-    errorType: null
+    errorType: null,
+    advancedProxy: null,
+    advancedProxyPending: false,
   });
   
   const tabOrigin = useRef('');
+  const tabId = useRef<number | null>(null);
   const mounted = useRef(true);
 
   const syncRule = useCallback(async () => {
@@ -28,15 +34,24 @@ export function useViewModel() {
       setState(prev => ({ ...prev, error: null, errorType: null }));
       
       const win = await browser.windows.getCurrent();
-      const result = await browser.runtime.sendMessage({
-        type: 'getCurrentTabRule',
-        windowId: win.id
-      });
+      const [result, advancedProxy] = await Promise.all([
+        browser.runtime.sendMessage({
+          type: 'getCurrentTabRule',
+          windowId: win.id
+        }),
+        typeof tabId.current === 'number'
+          ? browser.runtime.sendMessage({
+            type: 'getAdvancedProxyStatus',
+            payload: { tabId: tabId.current },
+          })
+          : Promise.resolve(null),
+      ]);
       
       if (mounted.current) {
         setState(prev => ({ 
           ...prev, 
-          rule: result
+          rule: result,
+          advancedProxy,
         }));
       }
     } catch (error) {
@@ -58,9 +73,21 @@ export function useViewModel() {
       message: any,
       _: browser.Runtime.MessageSender
     ) => {
-      if (!message || message.type !== 'activeTabRuleChange') return;
-      logger.debug('Active tab rule changed, syncing...');
-      syncRule();
+      if (!message) return;
+      if (message.type === 'activeTabRuleChange') {
+        logger.debug('Active tab rule changed, syncing...');
+        void syncRule();
+      }
+      if (
+        message.type === 'advancedProxyStatusChange'
+        && message.payload?.tabId === tabId.current
+      ) {
+        setState((previous) => ({
+          ...previous,
+          advancedProxy: message.payload,
+          advancedProxyPending: false,
+        }));
+      }
     };
 
     // Initialize
@@ -81,6 +108,7 @@ export function useViewModel() {
         }
 
         const url = tabs[0].url;
+        tabId.current = tabs[0].id ?? null;
         
         // Better URL validation and error handling
         try {
@@ -194,6 +222,15 @@ export function useViewModel() {
     }
   }, []);
 
+  const openInspector = useCallback(async () => {
+    if (typeof tabId.current !== 'number') return;
+    await browser.runtime.sendMessage({
+      type: 'openSidePanel',
+      payload: { tabId: tabId.current },
+    });
+    window.close();
+  }, []);
+
   /**
    * Navigate to options page and open edit dialog for specific rule
    */
@@ -220,6 +257,37 @@ export function useViewModel() {
     setState(prev => ({ ...prev, error: null }));
   }, []);
 
+  const toggleAdvancedProxy = useCallback(async (enabled: boolean) => {
+    if (typeof tabId.current !== 'number') return;
+    setState((previous) => ({ ...previous, advancedProxyPending: true, error: null }));
+    try {
+      const advancedProxy = await browser.runtime.sendMessage({
+        type: enabled ? 'enableAdvancedProxy' : 'disableAdvancedProxy',
+        payload: {
+          tabId: tabId.current,
+          credentials: !!state.rule?.credentials,
+          extraHeaders: state.rule?.extraHeaders,
+        },
+      }) as IAdvancedProxyStatus;
+      setState((previous) => ({
+        ...previous,
+        advancedProxy,
+        advancedProxyPending: false,
+        error: advancedProxy.phase === 'error'
+          ? advancedProxy.error || 'Unable to start advanced proxy'
+          : null,
+        errorType: advancedProxy.phase === 'error' ? 'recoverable' : null,
+      }));
+    } catch (error) {
+      setState((previous) => ({
+        ...previous,
+        advancedProxyPending: false,
+        error: error instanceof Error ? error.message : 'Unable to update advanced proxy',
+        errorType: 'recoverable',
+      }));
+    }
+  }, [state.rule?.credentials, state.rule?.extraHeaders]);
+
   // rule is enabled when it's not disabled and has an id
   const ruleEnabled = !!state.rule && !state.rule.disabled && !!state.rule.id;
 
@@ -228,8 +296,10 @@ export function useViewModel() {
     ruleEnabled,
     toggleRule,
     gotoOptionsPage,
+    openInspector,
     gotoEditRule,
     clearError,
+    toggleAdvancedProxy,
     retry: syncRule,
   };
 }
