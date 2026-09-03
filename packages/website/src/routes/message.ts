@@ -16,21 +16,26 @@ const EVENT_CALLBACKS_MAP: Record<
   [(v: any) => void, (v: any) => void]
 > = {};
 
-if (parent === window) {
-  document.body.innerHTML = '<p>This page is intended to be embedded for internal communication.</p>';
-} else {
-  // tell the parent window that the page is ready
-  parent.postMessage({ type: 'from-page', method: 'init' }, '*');
-}
-
 // get the basic config from the query string
 const BASIC_CONFIG = (() => {
   const query = new URLSearchParams(location.search);
+  let parentOrigin: string | null = null;
+  try {
+    parentOrigin = document.referrer ? new URL(document.referrer).origin : null;
+  } catch {
+    parentOrigin = null;
+  }
   return {
     extID: query.get('extID'),
-    origin: query.get('origin'),
+    origin: parentOrigin,
   }
 })();
+
+if (parent === window) {
+  document.body.innerHTML = '<p>This page is intended to be embedded for legacy SDK communication.</p>';
+} else if (BASIC_CONFIG.origin) {
+  parent.postMessage({ type: 'from-page', method: 'init' }, BASIC_CONFIG.origin);
+}
 
 const messageCallbacks = {
   isInstalled: async (payload?: { throw?: boolean}) => {
@@ -89,7 +94,7 @@ const messageCallbacks = {
     // oly confirm when rule is not found or disabled or no credentials set
     // if downgrade from credentials to no credentials, there is no need to confirm
     if (!rule || rule.disabled || !rule.credentials) {
-      let message = `Current page("${origin}") is requesting to enable CORS`;
+      let message = `${origin} is asking Forth Intercept to repair CORS`;
       message += options.credentials ? ' **with credentials**.' : '.';
       message += options.reason
         ? `\n\nMessage from current Page:\n${options.reason}\n\n`
@@ -127,7 +132,10 @@ window.addEventListener('message', async (event) => {
     return resolve(data.data);
   }
   // not the designated message
-  if (!isMessageData(data) || data.type !== 'from-npm') return;
+  if (event.source !== parent
+    || event.origin !== BASIC_CONFIG.origin
+    || !isMessageData(data)
+    || data.type !== 'from-npm') return;
   
   const { method, payload } = data;
   try {
@@ -265,5 +273,5 @@ function isMessageData(data: any): data is IMessageData {
 }
 
 function sendMessage2frame(data: IMessageData | IMessageResponse) {
-  parent.postMessage(data, '*');
+  if (BASIC_CONFIG.origin) parent.postMessage(data, BASIC_CONFIG.origin);
 }

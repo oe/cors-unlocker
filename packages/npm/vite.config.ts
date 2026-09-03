@@ -9,7 +9,7 @@ export default defineConfig(({ mode }) => ({
   build: {
     lib: {
       entry: 'src/index.ts',
-      name: 'browserAppCors',
+      name: 'forthIntercept',
       formats: ['es', 'umd'],
       fileName: (format) => `index.${format}.js`
     },

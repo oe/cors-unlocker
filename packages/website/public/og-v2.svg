@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="white"/>
+  <rect x="64" y="56" width="56" height="56" rx="12" fill="#111113"/>
+  <path d="M80 72 104 96M104 72 80 96" stroke="white" stroke-width="3"/>
+  <circle cx="80" cy="72" r="5" fill="white"/><circle cx="104" cy="72" r="5" fill="white"/>
+  <circle cx="80" cy="96" r="5" fill="white"/><circle cx="104" cy="96" r="5" fill="white"/>
+  <text x="140" y="96" font-family="Inter,Arial,sans-serif" font-size="32" font-weight="700" fill="#111113">Forth Intercept</text>
+  <text x="64" y="280" font-family="Inter,Arial,sans-serif" font-size="76" font-weight="700" letter-spacing="-3" fill="#111113">Patch the request.</text>
+  <text x="64" y="370" font-family="Inter,Arial,sans-serif" font-size="76" font-weight="700" letter-spacing="-3" fill="#111113">Keep your flow.</text>
+  <text x="64" y="445" font-family="Inter,Arial,sans-serif" font-size="28" fill="#626268">A Chrome-native request lab. No native client. No proxy setup.</text>
+  <rect x="64" y="505" width="190" height="56" rx="10" fill="#111113"/>
+  <text x="96" y="542" font-family="Inter,Arial,sans-serif" font-size="21" font-weight="600" fill="white">Add to Chrome</text>
+  <rect x="820" y="130" width="320" height="370" rx="16" fill="#fafafa" stroke="#dedee1"/>
+  <rect x="844" y="158" width="272" height="38" rx="8" fill="white" stroke="#dedee1"/>
+  <rect x="844" y="220" width="272" height="52" rx="8" fill="#edf5ff" stroke="#b7d5ff"/>
+  <rect x="844" y="292" width="272" height="52" rx="8" fill="white" stroke="#dedee1"/>
+  <rect x="844" y="364" width="272" height="104" rx="10" fill="#edf5ff" stroke="#b7d5ff"/>
+  <circle cx="872" cy="246" r="7" fill="#1267e8"/><circle cx="872" cy="318" r="7" fill="#25a265"/>
+  <text x="892" y="252" font-family="monospace" font-size="15" fill="#111113">GET /api/projects</text>
+  <text x="892" y="324" font-family="monospace" font-size="15" fill="#111113">POST /api/orders</text>
+  <text x="864" y="400" font-family="Inter,Arial,sans-serif" font-size="17" font-weight="700" fill="#1267e8">CORS repaired</text>
+  <text x="864" y="431" font-family="Inter,Arial,sans-serif" font-size="14" fill="#345b91">Response patched locally.</text>
+</svg>

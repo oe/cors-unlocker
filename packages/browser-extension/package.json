@@ -2,6 +2,7 @@
   "name": "browser-cors-unlocker",
   "private": true,
   "version": "2.0.0",
+  "description": "Forth Intercept: a local, tab-scoped request lab for Chrome.",
   "type": "module",
   "scripts": {
     "dev": "TARGET=chrome vite build --watch --mode development",

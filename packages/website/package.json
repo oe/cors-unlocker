@@ -1,6 +1,6 @@
 {
   "name": "website",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "main": "index.js",
   "scripts": {
@@ -8,7 +8,7 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "astro build"
   },
   "license": "ISC",
   "devDependencies": {

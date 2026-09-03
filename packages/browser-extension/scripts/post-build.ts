@@ -12,7 +12,7 @@ const buildDir = path.resolve(ROOT_DIR, 'dist');
 function zipBuild(target: string) {
   return zip(
     path.join(buildDir, target),
-    path.resolve(buildDir, `browser-proxy-${target}-v2.0.0.zip`),
+    path.resolve(buildDir, `forth-intercept-${target}-v2.0.0.zip`),
   );
 }
 

@@ -1,368 +1,260 @@
-export interface IMessageData {
-  /**
-   * The type of message.
-   */
-  type: 'from-npm' | 'from-cs' | 'from-page';
-  /**
-   * The message id for tracking requests
-   */
-  id: string;
-  /**
-   * The method to call on the extension.
-   */
-  method: string;
-  /**
-   * The parameters to pass to the method.
-   */
-  payload?: Record<string, any>;
-}
+const EXTENSION_ID = 'knhlkjdfmgkmelcjfnbbhpphkmjjacng';
+const REQUEST_TYPE = 'forth-intercept:sdk-request';
+const RESPONSE_TYPE = 'forth-intercept:sdk-response';
+const DEFAULT_TIMEOUT = 5_000;
 
-export type IMessageResponse =
-  | { id: string; type: 'response'; data?: any; error?: undefined }
-  | {
-      id: string;
-      type: 'response';
-      error: { message: string; type: string };
-      data?: undefined;
-    };
+export type InterceptErrorType =
+  | 'not-installed'
+  | 'user-cancel'
+  | 'invalid-request'
+  | 'unsupported-origin'
+  | 'communication-failed'
+  | 'timeout'
+  | 'unknown-error';
 
-const EXT_FRAME_URL =
-  process.env.NODE_ENV === 'development'
-    ? `/message`
-    : 'https://cors.forth.ink/message/index.html';
+export class InterceptError extends Error {
+  readonly type: InterceptErrorType;
 
-const EXTENSION_ID_MAP = {
-  chrome: 'knhlkjdfmgkmelcjfnbbhpphkmjjacng',
-  // Firefox development ID (will be replaced by Mozilla after publishing)
-  firefox: 'cors-unlocker@forth.ink',
-  // Edge will use the same ID as Chrome (same store)
-  edge: 'knhlkjdfmgkmelcjfnbbhpphkmjjacng'
-};
-
-// Browser detection
-const IS_FIREFOX = /firefox/i.test(navigator.userAgent);
-// disable Edge detection for now, not ready yet
-const IS_EDGE = false; //  /edg/i.test(navigator.userAgent); // Edge uses "Edg" in user agent
-
-function getBrowserExtensionId(): string {
-  if (IS_FIREFOX) return EXTENSION_ID_MAP.firefox;
-  if (IS_EDGE) return EXTENSION_ID_MAP.edge;
-  return EXTENSION_ID_MAP.chrome; // Default to Chrome
-}
-
-const EXTENSION_ID = getBrowserExtensionId();
-
-
-/**
- * Error types that can be thrown by the CORS Unlocker API
- */
-export type CorsErrorType = 
-  | 'not-installed'           // Extension is not installed
-  | 'forbidden-origin'        // Origin is not allowed to use the extension
-  | 'rate-limit'              // Too many requests from this origin
-  | 'user-cancel'             // User cancelled the operation
-  | 'invalid-sender'          // Invalid message sender
-  | 'missing-method'          // Missing method in message
-  | 'missing-origin'          // Missing origin in payload
-  | 'unsupported-origin'      // Unsupported origin protocol (only http/https allowed)
-  | 'unsupported-method'      // Unsupported method
-  | 'config-error'            // Extension configuration error
-  | 'invalid-origin'          // Origin format is invalid
-  | 'inner-error'             // Internal extension error
-  | 'communication-failed'    // Failed to communicate with extension
-  | 'unknown-error';          // Fallback for unexpected errors
-
-/**
- * Custom error class for CORS Unlocker operations
- */
-export class AppCorsError extends Error {
-  readonly type: CorsErrorType;
-  
-  constructor(options: { type: CorsErrorType, message: string }) {
+  constructor(options: { type: InterceptErrorType; message: string }) {
     super(options.message);
+    this.name = 'InterceptError';
     this.type = options.type;
-    this.name = 'AppCorsError';
   }
 }
 
-let framePromise: Promise<HTMLIFrameElement> | null = null;
-let frameWin: Window | null = null;
-let frameDom: HTMLIFrameElement | null = null;
+/** @deprecated Use InterceptError. */
+export class AppCorsError extends InterceptError {}
 
-function initFrame(): Promise<HTMLIFrameElement> {
-  // if frameDom.isConnected is false, it means the frame is not in the document, need to reinitialize
-  if (framePromise && (!frameDom || frameDom.isConnected)) return framePromise;
-
-  framePromise = new Promise((resolve, reject) => {
-    frameDom = document.createElement('iframe');
-    frameDom.src = `${EXT_FRAME_URL}?origin=${encodeURIComponent(
-      location.origin
-    )}&extID=${encodeURIComponent(EXTENSION_ID)}`;
-    frameDom.style.display = 'none';
-    frameDom.className = 'cors-unlocker-frame';
-
-    const cleanup = () => {
-      window.removeEventListener('message', onInit);
-      clearTimeout(timeoutId);
-    };
-
-    const onInit = (event: MessageEvent) => {
-      if (event.source !== frameDom!.contentWindow ||
-        !event.data ||
-        event.data.type !== 'from-page' ||
-        event.data.method !== 'init'
-      ) return;
-
-      frameWin = frameDom!.contentWindow;
-      cleanup();
-      resolve(frameDom!);
-    };
-
-    const timeoutId = setTimeout(() => {
-      cleanup();
-      reject(
-        new AppCorsError({
-          type: 'communication-failed',
-          message:
-            'Frame initialization timeout - extension may not be installed or may not have permission to communicate with this origin'
-        })
-      );
-    }, 10000);
-
-    window.addEventListener('message', onInit);
-    frameDom.onerror = () => {
-      cleanup();
-      reject(
-        new AppCorsError({
-          type: 'communication-failed',
-          message: 'Frame failed to load'
-        })
-      );
-    };
-
-    document.body.appendChild(frameDom);
-  });
-  return framePromise;
+export interface InterceptCapabilities {
+  protocolVersion: 2;
+  product: 'Forth Intercept';
+  cors: true;
+  draftRules: true;
+  workspace: true;
+  advancedMode: 'user-initiated';
 }
 
-let isEventInited = false;
-const listenerMap: Record<string, [(data: any) => void, (error: AppCorsError) => void, NodeJS.Timeout | null]> = {};
-
-function initEventMessage() {
-  if (isEventInited) return;
-  isEventInited = true;
-  window.addEventListener('message', (event) => {
-    const data = event.data as IMessageResponse;
-    if (event.source !== frameWin || !data) return;
-    
-    const callbacks = listenerMap[data.id];
-    if (!callbacks) return;
-    
-    const [resolve, reject, timeoutId] = callbacks;
-    delete listenerMap[data.id];
-    if (timeoutId) clearTimeout(timeoutId);
-    
-    if (data.error) {
-      reject(new AppCorsError({
-        type: data.error.type as CorsErrorType,
-        message: data.error.message
-      }));
-    } else {
-      resolve(data.data);
-    }
-  });
+export interface InterceptStatus {
+  origin: string;
+  cors: {
+    enabled: boolean;
+    credentials: boolean;
+  };
+  advancedMode: 'disabled' | 'connecting' | 'connected' | 'error';
 }
 
-interface ISendMessageParams {
-  method: string;
-  payload?: Record<string, any>;
-}
-
-async function sendMessage(params: ISendMessageParams) {
-  try {
-    await initFrame();
-  } catch (error) {
-    // Reset frame promise to allow retry
-    framePromise = null;
-    frameWin = null;
-    throw error;
-  }
-  
-  return new Promise((resolve, reject) => {
-    if (!frameWin) {
-      reject(new AppCorsError({ 
-        type: 'communication-failed', 
-        message: 'Frame window is not ready' 
-      }));
-      return;
-    }
-    
-    const id = Math.random().toString(36).slice(2);
-    const message: IMessageData = {
-      id,
-      ...params,
-      type: 'from-npm',
-    };
-    initEventMessage();
-    
-    // For methods that require user interaction, don't set timeout to avoid race conditions
-    // For other methods, use default 5 second timeout
-    let timeoutId: NodeJS.Timeout | null = null;
-    
-    if (params.method !== 'enable') {
-      timeoutId = setTimeout(() => {
-        const callbacks = listenerMap[id];
-        if (callbacks) {
-          delete listenerMap[id];
-          reject(new AppCorsError({ 
-            type: 'communication-failed', 
-            message: `Message timeout: ${params.method}` 
-          }));
-        }
-      }, 5000);
-    }
-    
-    listenerMap[id] = [
-      (data: any) => resolve(data), 
-      (error: AppCorsError) => reject(error),
-      timeoutId
-    ];
-    
-    try {
-      frameWin.postMessage(message, '*');
-    } catch (error) {
-      const callbacks = listenerMap[id];
-      if (callbacks) {
-        if (callbacks[2]) clearTimeout(callbacks[2]);
-        delete listenerMap[id];
-      }
-      // Reset frame for retry
-      framePromise = null;
-      frameWin = null;
-      reject(new AppCorsError({ 
-        type: 'communication-failed', 
-        message: 'Failed to send message to frame' 
-      }));
-    }
-  });
-}
-
-/**
- * Check whether the extension is installed
- * @returns Promise<boolean>
- * @throws {AppCorsError} When there's an error communicating with the extension infrastructure
- */
-export function isExtInstalled(): Promise<boolean> {
-  return sendMessage({ method: 'isInstalled' }) as Promise<boolean>;
-}
-
-/**
- * Open the extension's options page
- * @throws {AppCorsError} When the extension is not installed or fails to open options
- */
-export async function openExtOptions(): Promise<void> {
-  await sendMessage({ method: 'openOptions' });
-}
-
-/**
- * open the extension store page
- * * use it when the extension isn't installed
- */
-export function openStorePage() {
-  let url: string;
-  
-  if (IS_FIREFOX) {
-    url = `https://addons.mozilla.org/en-US/firefox/addon/cors-unlocker/`;
-  } else if (IS_EDGE) {
-    url = `https://microsoftedge.microsoft.com/addons/detail/${EXTENSION_ID}`;
-  } else {
-    // Chrome or Chrome-based browsers
-    url = `https://chromewebstore.google.com/detail/${EXTENSION_ID}`;
-  }
-
-  window.open(url, '_blank');
-}
-
-/**
- * Check whether CORS is enabled for the current page(tab)
- * @returns Promise<{ enabled: boolean, credentials: boolean }>
- * @throws {AppCorsError} When there's an error checking CORS status (except when extension is not installed)
- */
-export async function isEnabled(): Promise<{ enabled: boolean, credentials: boolean }> {
-  try {
-    const result = await sendMessage({ method: 'isEnabled' }) as { enabled: boolean; credentials: boolean };
-    return result;
-  } catch (error) {
-    // if the extension is not installed, return false instead of throwing an error
-    if (error instanceof AppCorsError && error.type === 'not-installed') {
-      return { enabled: false, credentials: false };
-    }
-    throw error;
-  }
-}
-
-export interface IEnableOptions {
-  /**
-   * whether allow cors with credentials
-   */
+export interface RequestCorsOptions {
   credentials?: boolean;
-  /**
-   * reason of enabling CORS
-   */
   reason?: string;
 }
 
-/**
- * Get extension configuration (internal use only)
- * @internal
- */
-async function getExtConfig() {
-  return await sendMessage({ method: 'getExtConfig' }) as { dftEnableCredentials: boolean };
+/** @deprecated Use RequestCorsOptions. */
+export type IEnableOptions = RequestCorsOptions;
+
+export type DraftAction =
+  | { type: 'cors'; allowCredentials: boolean; allowOrigin: '*' | 'initiator'; allowMethods: string[]; allowHeaders: string[] }
+  | { type: 'setRequestHeaders'; headers: Record<string, string> }
+  | { type: 'setResponseHeaders'; headers: Record<string, string> }
+  | { type: 'redirect'; url: string }
+  | { type: 'block' }
+  | { type: 'mockResponse'; status: number; headers: Record<string, string>; body: string }
+  | { type: 'delay'; milliseconds: number }
+  | { type: 'networkFailure'; reason: string };
+
+export interface DraftRuleInput {
+  name: string;
+  urlPattern: string;
+  methods?: string[];
+  resourceTypes?: string[];
+  actions: DraftAction[];
 }
 
-/**
- * Enable CORS for the current page(tab)
- * Note: This method may require user confirmation and has no timeout limit to avoid race conditions.
- * The operation will complete when the user responds to the confirmation dialog or when a network/system timeout occurs.
- * @param options Configuration options for enabling CORS
- * @returns Promise<{ enabled: boolean, credentials: boolean }> The resulting CORS status
- * @throws {AppCorsError} When the extension is not installed, user cancels, or operation fails
- */
-export async function enable(options?: IEnableOptions): Promise<{ enabled: boolean, credentials: boolean }> {
-  let finalOptions = options;
-  
-  // If credentials is not explicitly set, use extension default
-  if (!options || typeof options.credentials === 'undefined') {
-    try {
-      const config = await getExtConfig();
-      finalOptions = {
-        ...options,
-        credentials: config.dftEnableCredentials
-      };
-    } catch (error) {
-      // If config fetch fails, proceed with original options
-      console.warn('Failed to get extension config, using provided options:', error);
-    }
+export interface DraftRuleResult {
+  id: string;
+  enabled: false;
+  workspaceOpened: boolean;
+}
+
+interface BridgeResponse<T = unknown> {
+  type: typeof RESPONSE_TYPE;
+  clientId: string;
+  id: string;
+  data?: T;
+  error?: { type?: string; message?: string };
+}
+
+function randomId(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
+
+function assertBrowserContext(): void {
+  if (typeof window === 'undefined' || typeof location === 'undefined') {
+    throw new InterceptError({
+      type: 'unsupported-origin',
+      message: 'Forth Intercept SDK must run in a browser page.',
+    });
   }
-  
-  const result = await sendMessage({ method: 'enable', payload: finalOptions }) as { enabled: boolean; credentials: boolean };
-  return result;
+  if (location.protocol !== 'http:' && location.protocol !== 'https:') {
+    throw new InterceptError({
+      type: 'unsupported-origin',
+      message: 'Only HTTP and HTTPS pages can connect to Forth Intercept.',
+    });
+  }
 }
 
-/**
- * Disable CORS for the current page(tab)
- * @returns Promise<void>
- * @throws {AppCorsError} When the extension is not installed or operation fails
- */
+class LocalBridge {
+  readonly clientId = randomId();
+
+  request<T>(method: string, payload?: unknown, timeout = DEFAULT_TIMEOUT): Promise<T> {
+    assertBrowserContext();
+    const id = randomId();
+    return new Promise<T>((resolve, reject) => {
+      const cleanup = () => {
+        clearTimeout(timer);
+        window.removeEventListener('message', onMessage);
+      };
+      const onMessage = (event: MessageEvent<BridgeResponse<T>>) => {
+        const response = event.data;
+        if (event.source !== window
+          || response?.type !== RESPONSE_TYPE
+          || response.clientId !== this.clientId
+          || response.id !== id) return;
+        cleanup();
+        if (response.error) {
+          reject(new InterceptError({
+            type: (response.error.type || 'unknown-error') as InterceptErrorType,
+            message: response.error.message || 'Forth Intercept request failed.',
+          }));
+          return;
+        }
+        resolve(response.data as T);
+      };
+      const timer = window.setTimeout(() => {
+        cleanup();
+        reject(new InterceptError({
+          type: method === 'connect' ? 'not-installed' : 'timeout',
+          message: method === 'connect'
+            ? 'Forth Intercept is not installed or is not available on this page.'
+            : `Forth Intercept did not respond to ${method}.`,
+        }));
+      }, timeout);
+      window.addEventListener('message', onMessage);
+      window.postMessage({
+        type: REQUEST_TYPE,
+        clientId: this.clientId,
+        id,
+        method,
+        payload,
+      }, location.origin);
+    });
+  }
+}
+
+export class InterceptSession {
+  readonly origin: string;
+  readonly capabilities: InterceptCapabilities;
+  private readonly bridge: LocalBridge;
+
+  constructor(bridge: LocalBridge, origin: string, capabilities: InterceptCapabilities) {
+    this.bridge = bridge;
+    this.origin = origin;
+    this.capabilities = capabilities;
+  }
+
+  getStatus(): Promise<InterceptStatus> {
+    return this.bridge.request('getStatus');
+  }
+
+  requestCors(options: RequestCorsOptions = {}): Promise<InterceptStatus> {
+    return this.bridge.request('requestCors', options, 60_000);
+  }
+
+  disableCors(): Promise<InterceptStatus> {
+    return this.bridge.request('disableCors');
+  }
+
+  createRuleDraft(rule: DraftRuleInput, options: { openWorkspace?: boolean } = {}): Promise<DraftRuleResult> {
+    return this.bridge.request('createRuleDraft', {
+      rule,
+      openWorkspace: options.openWorkspace ?? true,
+    });
+  }
+
+  openWorkspace(): Promise<void> {
+    return this.bridge.request('openWorkspace');
+  }
+}
+
+export const intercept = {
+  async connect(options: { timeout?: number } = {}): Promise<InterceptSession> {
+    const bridge = new LocalBridge();
+    const response = await bridge.request<{ origin: string; capabilities: InterceptCapabilities }>(
+      'connect',
+      undefined,
+      options.timeout ?? 1_500,
+    );
+    return new InterceptSession(bridge, response.origin, response.capabilities);
+  },
+
+  async isAvailable(): Promise<boolean> {
+    try {
+      await this.connect({ timeout: 750 });
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  openStorePage(): void {
+    window.open(`https://chromewebstore.google.com/detail/${EXTENSION_ID}`, '_blank', 'noopener,noreferrer');
+  },
+};
+
+async function legacySession(): Promise<InterceptSession> {
+  return intercept.connect();
+}
+
+/** @deprecated Use intercept.isAvailable(). */
+export function isExtInstalled(): Promise<boolean> {
+  return intercept.isAvailable();
+}
+
+/** @deprecated Use intercept.connect().then(session => session.openWorkspace()). */
+export async function openExtOptions(): Promise<void> {
+  await (await legacySession()).openWorkspace();
+}
+
+/** @deprecated Use intercept.openStorePage(). */
+export function openStorePage(): void {
+  intercept.openStorePage();
+}
+
+/** @deprecated Use InterceptSession.getStatus(). */
+export async function isEnabled(): Promise<{ enabled: boolean; credentials: boolean }> {
+  if (!(await intercept.isAvailable())) return { enabled: false, credentials: false };
+  return (await (await legacySession()).getStatus()).cors;
+}
+
+/** @deprecated Use InterceptSession.requestCors(). */
+export async function enable(options?: IEnableOptions): Promise<{ enabled: boolean; credentials: boolean }> {
+  return (await (await legacySession()).requestCors(options)).cors;
+}
+
+/** @deprecated Use InterceptSession.disableCors(). */
 export async function disable(): Promise<void> {
-  await sendMessage({ method: 'disable' });
+  await (await legacySession()).disableCors();
 }
 
-export default {
-  isExtInstalled,
-  openExtOptions,
-  openStorePage,
-  isEnabled,
-  enable,
-  disable
+export interface IMessageData {
+  type: 'from-npm' | 'from-cs' | 'from-page';
+  id: string;
+  method: string;
+  payload?: Record<string, unknown>;
 }
+
+export type IMessageResponse =
+  | { id: string; type: 'response'; data?: unknown; error?: undefined }
+  | { id: string; type: 'response'; error: { message: string; type: string }; data?: undefined };
+
+export default intercept;

@@ -1,8 +1,18 @@
 ---
-import './font-borel/style.scss';
-const getYear = () => new Date().getFullYear();
+const year = new Date().getFullYear();
 ---
-
-<footer class="text-center py-8 bg-slate-100/30">
-  <div>Copyright © {getYear()} <a class="font-borel" target="_blank" href="https://forth.ink/">forthink</a></div>
+<footer class="border-t hairline bg-white py-10">
+  <div class="site-shell flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
+    <div class="flex items-center gap-2 font-semibold">
+      <span class="flex size-7 items-center justify-center rounded-md bg-black text-sm text-white">F</span>
+      Forth Intercept
+    </div>
+    <nav class="flex flex-wrap gap-x-6 gap-y-3 text-sm text-neutral-600" aria-label="Footer navigation">
+      <a href="/#product">Product</a><a href="/#sdk">SDK</a><a href="/docs/">Docs</a>
+      <a href="/faq/">FAQ</a><a href="/privacy/">Privacy</a>
+      <a href="https://github.com/oe/cors-unlocker" target="_blank" rel="noreferrer">GitHub</a>
+    </nav>
+    <p class="text-sm text-neutral-500">Chrome first <span class="px-1 text-blue-600">·</span> Firefox planned</p>
+  </div>
+  <div class="site-shell mt-8 text-xs text-neutral-400">© {year} forth.ink</div>
 </footer>

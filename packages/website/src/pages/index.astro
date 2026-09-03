@@ -1,29 +1,125 @@
 ---
 import BaseLayout from '../components/base-layout.astro';
-import Hero from '../components/hero.astro';
-import CostComparison from '../components/cost-comparison.astro';
-import IntegrationGuide from '../components/integration-guide.astro';
-import UseCases from '../components/use-cases.astro';
-import Features from '../components/features/index.astro';
-import { SupportedBrowsers } from '../components/browser-support.tsx';
-import '../components/tailwind.css';
 ---
+<BaseLayout title="Patch the request. Keep your flow" description="Inspect, rewrite, mock, and debug traffic in the active Chrome tab—no native client and no proxy setup.">
+  <section class="site-shell grid min-h-[790px] items-center gap-14 py-16 lg:grid-cols-[1fr_1.25fr] lg:py-24">
+    <div>
+      <h1 class="max-w-xl text-[clamp(3.4rem,5.2vw,4.5rem)] font-semibold leading-[.96] tracking-[-.065em]">Patch the request.<br />Keep your flow.</h1>
+      <p class="section-copy mt-7 max-w-xl text-xl">Inspect, rewrite, mock, and debug traffic in the tab you are already using—no native client, no proxy setup.</p>
+      <div class="mt-9 flex flex-wrap gap-3">
+        <a class="button-primary focus-ring" href="https://chromewebstore.google.com/detail/knhlkjdfmgkmelcjfnbbhpphkmjjacng" target="_blank" rel="noreferrer">Add to Chrome</a>
+        <a class="button-secondary focus-ring" href="#sdk">Explore the SDK <span aria-hidden="true">→</span></a>
+      </div>
+    </div>
 
-<BaseLayout
-  title="Enable Cross-Origin Requests Without Any Server - CORS Unlocker"
-  description="Enable cross-origin requests directly in your browser. No proxy servers, no infrastructure costs. Free browser extension for seamless API integration."
-  isHomepage
->
-  <Hero />
-  <CostComparison />
-  <IntegrationGuide />
-  <UseCases />
-  <Features />
-  
-  <!-- Browser Compatibility Section -->
-  <section class="py-16 bg-gray-50">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <SupportedBrowsers client:load />
+    <div class="surface overflow-hidden" aria-label="Forth Intercept traffic inspector preview">
+      <div class="flex items-center justify-between border-b hairline px-4 py-3 text-xs">
+        <div class="flex items-center gap-2 font-semibold"><span class="flex size-6 items-center justify-center rounded-md bg-black text-white">F</span>Traffic inspector</div>
+        <div class="flex items-center gap-2 text-neutral-500"><span>Advanced</span><span class="relative h-5 w-9 rounded-full bg-blue-600"><span class="absolute right-0.5 top-0.5 size-4 rounded-full bg-white"></span></span></div>
+      </div>
+      <div class="grid min-h-[535px] md:grid-cols-[220px_1fr]">
+        <div class="border-b hairline md:border-b-0 md:border-r">
+          <div class="border-b hairline p-3"><div class="rounded-lg border hairline px-3 py-2 text-xs text-neutral-400">Search requests</div></div>
+          <div class="divide-y divide-neutral-100 text-xs">
+            <div class="flex justify-between px-3 py-3"><span>GET&nbsp; /api/profile</span><span class="text-emerald-600">200</span></div>
+            <div class="flex justify-between px-3 py-3"><span>POST&nbsp; /api/orders</span><span class="text-emerald-600">201</span></div>
+            <div class="border-l-2 border-blue-600 bg-blue-50/50 px-3 py-3 font-medium"><div class="flex justify-between"><span>GET&nbsp; /api/projects/123</span><span class="text-emerald-600">200</span></div><p class="mt-1 text-neutral-500">Fetch · 342 ms</p></div>
+            <div class="flex justify-between px-3 py-3"><span>GET&nbsp; /api/metrics</span><span class="text-red-600">Blocked</span></div>
+            <div class="flex justify-between px-3 py-3"><span>GET&nbsp; /api/search</span><span class="text-emerald-600">200</span></div>
+          </div>
+        </div>
+        <div class="p-5 text-xs sm:p-7">
+          <div class="flex flex-wrap items-center gap-2"><span class="rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 font-medium text-emerald-700">GET</span><span class="font-mono">https://api.example.com/api/projects/123</span><span class="ml-auto text-emerald-600">200 OK</span></div>
+          <div class="mt-6 grid grid-cols-[100px_1fr] gap-y-3 text-neutral-600"><span>Initiator</span><span class="text-neutral-900">app.example.com</span><span>Type</span><span class="text-neutral-900">Fetch</span><span>Matched rule</span><span class="text-neutral-900">Repair staging API</span></div>
+          <h2 class="mt-8 font-semibold">Request headers</h2>
+          <div class="mt-3 overflow-hidden rounded-lg border hairline">
+            <div class="grid grid-cols-[130px_1fr] border-b hairline px-3 py-2"><span>Authorization</span><span>••••••••••••</span></div>
+            <div class="grid grid-cols-[130px_1fr] border-b hairline px-3 py-2"><span>Content-Type</span><span>application/json</span></div>
+            <div class="grid grid-cols-[130px_1fr] px-3 py-2"><span>Origin</span><span>https://app.example.com</span></div>
+          </div>
+          <div class="mt-6 rounded-xl border border-blue-200 bg-blue-50/60 p-4">
+            <div class="flex items-center gap-2 font-semibold text-blue-900"><span class="flex size-5 items-center justify-center rounded-full bg-blue-600 text-[10px] text-white">✓</span>CORS repaired</div>
+            <p class="mt-2 leading-5 text-blue-800">Preflight synthesized locally. Response headers were patched before browser enforcement.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="product" class="border-y hairline py-24 sm:py-32">
+    <div class="site-shell">
+      <h2 class="section-title max-w-4xl">Fast when rules are enough.<br />Deep when they are not.</h2>
+      <p class="section-copy mt-5 max-w-2xl">One extension, with two deliberately different execution paths.</p>
+      <div class="mt-14 grid overflow-hidden rounded-2xl border hairline lg:grid-cols-2">
+        <article class="p-7 sm:p-10 lg:border-r hairline">
+          <div class="flex size-10 items-center justify-center rounded-lg border border-blue-300 text-blue-600">≡</div>
+          <h3 class="mt-7 text-2xl font-semibold tracking-tight">Rules mode</h3>
+          <p class="mt-2 text-sm text-neutral-500">Chrome declarativeNetRequest</p>
+          <ul class="mt-8 space-y-4 text-sm"><li>✓ CORS, headers, redirects, and blocking</li><li>✓ High performance and low overhead</li><li>✓ No debugging banner</li><li>✓ Always-on rules when you need them</li></ul>
+        </article>
+        <article class="bg-neutral-50 p-7 sm:p-10">
+          <div class="flex size-10 items-center justify-center rounded-lg border border-blue-300 font-mono text-blue-600">&lt;/&gt;</div>
+          <h3 class="mt-7 text-2xl font-semibold tracking-tight">Advanced mode</h3>
+          <p class="mt-2 text-sm text-neutral-500">Tab-scoped Chrome DevTools Protocol</p>
+          <ul class="mt-8 space-y-4 text-sm"><li>✓ Inspect requests and responses</li><li>✓ Repair failed preflights and CORS responses</li><li>✓ Static mocks, delay, and network failure</li><li>✓ Chrome shows its standard debugging disclosure</li></ul>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="sdk" class="site-shell py-24 sm:py-32">
+    <div class="grid items-center gap-14 lg:grid-cols-2">
+      <div>
+        <h2 class="section-title">Let your app ask for the capability it needs.</h2>
+        <p class="section-copy mt-6">The open-source SDK connects a web app to the locally installed extension. Every request is bound to the real top-level page origin, and CORS changes require user consent.</p>
+        <ol class="mt-9 space-y-5 text-sm">
+          <li class="flex gap-4"><span class="flex size-7 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">1</span><span><strong class="block">Connect locally</strong><span class="mt-1 block text-neutral-500">No account, API key, or cloud relay.</span></span></li>
+          <li class="flex gap-4"><span class="flex size-7 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">2</span><span><strong class="block">Ask for one capability</strong><span class="mt-1 block text-neutral-500">CORS access is scoped to the current origin.</span></span></li>
+          <li class="flex gap-4"><span class="flex size-7 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">3</span><span><strong class="block">Create safe drafts</strong><span class="mt-1 block text-neutral-500">Apps can prepare disabled rules; users review before enabling.</span></span></li>
+        </ol>
+        <a class="mt-9 inline-flex text-sm font-semibold text-blue-700 hover:underline" href="/docs/#sdk">Read the SDK guide →</a>
+      </div>
+      <div class="overflow-hidden rounded-2xl border border-neutral-800 bg-[#111418] text-neutral-100 shadow-2xl">
+        <div class="border-b border-neutral-700 px-5 py-3 font-mono text-xs text-neutral-400">app.ts</div>
+        <pre class="overflow-x-auto p-6 text-[13px] leading-7 sm:p-8"><code><span class="text-fuchsia-300">import</span> &#123; intercept &#125; <span class="text-fuchsia-300">from</span> <span class="text-lime-300">'cors-unlocker'</span>;
+
+<span class="text-fuchsia-300">const</span> session = <span class="text-fuchsia-300">await</span> intercept.connect();
+
+<span class="text-fuchsia-300">await</span> session.requestCors(&#123;
+  reason: 'Preview staging data'
+&#125;);
+
+<span class="text-neutral-500">// Drafts are disabled until the user reviews them.</span>
+<span class="text-fuchsia-300">await</span> session.createRuleDraft(rule);</code></pre>
+      </div>
+    </div>
+  </section>
+
+  <section class="bg-neutral-50 py-24 sm:py-32">
+    <div class="site-shell grid gap-14 lg:grid-cols-[.8fr_1.2fr]">
+      <div><h2 class="section-title">Local by design.</h2><p class="section-copy mt-6">Traffic stays on your machine, and powerful access ends with the tab.</p></div>
+      <div class="divide-y divide-neutral-200 border-y border-neutral-200">
+        <div class="grid gap-2 py-6 sm:grid-cols-[220px_1fr]"><strong>No traffic upload</strong><span class="text-neutral-600">Requests, responses, rules, and logs are not sent to our servers.</span></div>
+        <div class="grid gap-2 py-6 sm:grid-cols-[220px_1fr]"><strong>No native client</strong><span class="text-neutral-600">Everything runs inside Chrome.</span></div>
+        <div class="grid gap-2 py-6 sm:grid-cols-[220px_1fr]"><strong>Sensitive headers redacted</strong><span class="text-neutral-600">Authorization and cookie values are masked in the inspector.</span></div>
+        <div class="grid gap-2 py-6 sm:grid-cols-[220px_1fr]"><strong>Tab-scoped attach</strong><span class="text-neutral-600">Advanced mode detaches on disable, tab close, or cross-origin navigation.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="site-shell grid gap-14 py-24 sm:py-32 lg:grid-cols-[.8fr_1.2fr]">
+    <div><h2 class="section-title">Your CORS Unlocker setup comes with you.</h2><p class="section-copy mt-6">The name and product changed. Your existing setup does not disappear.</p></div>
+    <ol class="space-y-7">
+      <li class="grid grid-cols-[34px_1fr] gap-4"><span class="flex size-8 items-center justify-center rounded-full bg-blue-600 text-sm text-white">1</span><div><strong>One-time migration to v2</strong><p class="mt-1 text-neutral-600">Existing CORS rules and settings are converted automatically.</p></div></li>
+      <li class="grid grid-cols-[34px_1fr] gap-4"><span class="flex size-8 items-center justify-center rounded-full bg-blue-600 text-sm text-white">2</span><div><strong>Recovery snapshot retained</strong><p class="mt-1 text-neutral-600">A local copy of the v1 data remains available for recovery.</p></div></li>
+      <li class="grid grid-cols-[34px_1fr] gap-4"><span class="flex size-8 items-center justify-center rounded-full bg-blue-600 text-sm text-white">3</span><div><strong>v2 becomes the only source of truth</strong><p class="mt-1 text-neutral-600">Old settings are not read or dual-written after migration.</p></div></li>
+    </ol>
+  </section>
+
+  <section class="border-t hairline py-20">
+    <div class="site-shell flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
+      <h2 class="section-title max-w-xl">Make the browser your request lab.</h2>
+      <div class="flex flex-wrap gap-3"><a class="button-primary" href="https://chromewebstore.google.com/detail/knhlkjdfmgkmelcjfnbbhpphkmjjacng" target="_blank" rel="noreferrer">Add to Chrome</a><a class="button-secondary" href="/docs/">Read the docs</a></div>
     </div>
   </section>
 </BaseLayout>

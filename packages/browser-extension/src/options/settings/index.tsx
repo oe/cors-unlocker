@@ -26,7 +26,7 @@ export function Settings() {
       <div className="mb-8">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 mb-2">Settings</h1>
-          <p className="text-slate-600">Configure your Browser Proxy preferences</p>
+          <p className="text-slate-600">Configure your Forth Intercept preferences</p>
         </div>
       </div>
       

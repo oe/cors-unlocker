@@ -1,517 +1,119 @@
 ---
-layout: '../components/doc-layout.astro'
-title: Developer Integration Guide
-description: Seamlessly integrate CORS management into your web application with our powerful npm package. Enable, disable, and monitor cross-origin requests with just a few lines of code.
+layout: ../components/doc-layout.astro
+title: Documentation
+description: Install Forth Intercept, choose the right interception mode, and connect a web app through the origin-scoped SDK.
 ---
 
-import InfoCard from '../components/docs/InfoCard.astro';
-import Callout from '../components/docs/Callout.astro';
-import Quote from '../components/docs/Quote.astro';
-import CompareCards from '../components/docs/CompareCards.astro';
-import FeatureGrid from '../components/docs/FeatureGrid.astro';
-import ApiMethod from '../components/docs/ApiMethod.astro';
-import Badge from '../components/docs/Badge.astro';
-import CodeBlock from '../components/docs/CodeBlock.astro';
-import StepCards from '../components/docs/StepCards.astro';
-import ButtonGroup from '../components/docs/ButtonGroup.astro';
+# Forth Intercept documentation
 
-## Getting Started
+Forth Intercept is a Chrome-native request lab. It changes requests inside Chrome; it is not an IP proxy, VPN, or system-wide traffic capture tool.
 
-Transform your web development experience with the `cors-unlocker` npm package. Designed for developers who need reliable CORS management without the complexity.
+## Install
 
-<div className="flex flex-wrap gap-2 justify-center my-8">
-  <img src="https://github.com/oe/cors-unlocker/actions/workflows/pages.yml/badge.svg" alt="GitHub Actions" className="not-prose" />
-  <img src="https://img.shields.io/badge/%3C%2F%3E-typescript-blue" alt="TypeScript" className="not-prose" />
-  <img src="https://badge.fury.io/js/cors-unlocker.svg" alt="npm version" className="not-prose" />
-  <img src="https://img.shields.io/npm/dm/cors-unlocker.svg" alt="npm downloads" className="not-prose" />
-</div>
+[Add Forth Intercept to Chrome](https://chromewebstore.google.com/detail/knhlkjdfmgkmelcjfnbbhpphkmjjacng), then pin it to the toolbar. Version 2 keeps the same extension ID as CORS Unlocker and automatically migrates existing settings.
 
-## Quick Installation
+## Choose a mode
 
-Get up and running in seconds with your preferred package manager:
+| | Rules mode | Advanced mode |
+|---|---|---|
+| Engine | `declarativeNetRequest` | Chrome DevTools Protocol `Fetch` |
+| Scope | Matching rules | Explicitly attached tab |
+| Use for | CORS, headers, redirects, blocking | Inspection, preflight repair, mocks, delay, failures |
+| Chrome disclosure | None | Standard debugging banner while attached |
+
+Advanced mode detaches when you switch it off, close the tab, another debugger takes over, or the top-level page navigates to a different origin.
+
+## Rules
+
+A rule contains a page-origin match, request URL glob, optional HTTP methods and resource types, followed by one or more actions.
+
+```json
+{
+  "name": "Mock project API",
+  "enabled": true,
+  "match": {
+    "initiatorOrigins": ["https://app.example.com"],
+    "urlPattern": "https://api.example.com/projects/*",
+    "methods": ["GET"],
+    "resourceTypes": ["XHR", "Fetch"]
+  },
+  "actions": [
+    {
+      "type": "mockResponse",
+      "status": 200,
+      "headers": { "Content-Type": "application/json" },
+      "body": "{\"id\":123,\"state\":\"preview\"}"
+    }
+  ]
+}
+```
+
+Available actions are `cors`, `setRequestHeaders`, `setResponseHeaders`, `redirect`, `block`, `mockResponse`, `delay`, and `networkFailure`. Action scripts are validated JSON; arbitrary JavaScript is not evaluated.
+
+## Traffic inspector
+
+Open **Inspect traffic** from the popup, enable Advanced mode for the current HTTP or HTTPS tab, and reproduce the request. The inspector shows method, URL, resource type, outcome, status, duration, matched rules, response headers, and CORS diagnostics. Authorization, Cookie, Proxy-Authorization, and Set-Cookie values are masked by default.
+
+## SDK
+
+The published package remains `cors-unlocker` so existing installs and links continue to work. Version 0.2 adds the Forth Intercept session API while keeping the old CORS helpers as deprecated aliases.
 
 ```bash
-# Using npm
-npm install cors-unlocker
-
-# Using yarn
-yarn add cors-unlocker
-
-# Using pnpm
 pnpm add cors-unlocker
 ```
 
-## How It Works
+```ts
+import { intercept } from 'cors-unlocker';
 
-The `cors-unlocker` package provides a seamless bridge between your web application and the CORS Unlocker browser extension. Here's the magic behind it:
+const session = await intercept.connect();
+console.log(session.origin, session.capabilities);
 
-<Quote type="note">
-**Secure Communication**: Our package communicates with the browser extension through a secure iframe bridge, ensuring your website's integrity while providing powerful CORS management capabilities.
-</Quote>
+const status = await session.getStatus();
 
-When CORS is enabled, the extension intelligently modifies HTTP responses by adding the necessary `Access-Control-Allow-Origin` headers, making cross-origin requests possible without server-side changes.
-
-## Core API Reference
-
-### Extension Detection
-
-<ApiMethod
-  name="appCors.isExtInstalled()"
-  description="Check if the CORS Unlocker extension is available"
-  returnType="Promise<boolean>"
-  example={`import appCors from 'cors-unlocker';
-
-// Check if the extension is installed
-const isInstalled = await appCors.isExtInstalled()
-console.log('Extension available:', isInstalled)`}
-/>
-
-### CORS Status Management
-
-<ApiMethod
-  name="appCors.isEnabled()"
-  description="Monitor and control CORS settings with precision"
-  returnType="Promise<{ enabled: boolean, credentials: boolean } | false>"
-  example={`// Check current CORS status
-try {
-  const status = await appCors.isEnabled()
-  console.log('CORS status:', status)
-  // Returns: { enabled: boolean, credentials: boolean } or false
-} catch (error) {
-  console.error('Extension not available:', error)
-}`}
-/>
-
-### Enable CORS Protection
-
-<ApiMethod
-  name="appCors.enable(options?)"
-  description="Activate CORS with optional credential support. May require user confirmation and has no timeout limit to ensure reliable operation."
-  parameters={[
-    { name: "credentials", type: "boolean", required: false, description: "Enable credential-based requests (uses extension default if not specified)" },
-    { name: "reason", type: "string", required: false, description: "Description for user consent" }
-  ]}
-  returnType="Promise<{ enabled: boolean, credentials: boolean }>"
-  example={`// Basic CORS activation (uses default credentials setting)
-const status = await appCors.enable()
-console.log('CORS enabled:', status.enabled, 'Credentials:', status.credentials)
-
-// Enable with explicit credentials for authenticated requests
-const authStatus = await appCors.enable({ 
-  credentials: true,
-  reason: 'Testing authenticated API endpoints'
-})
-console.log('Auth enabled:', authStatus.credentials)`}
-/>
-
-### Disable CORS Protection
-
-<ApiMethod
-  name="appCors.disable()"
-  description="Safely disable CORS when no longer needed"
-  returnType="Promise<void>"
-  example={`try {
-  await appCors.disable()
-  console.log('CORS protection disabled')
-} catch (error) {
-  console.error('Failed to disable CORS:', error)
-}`}
-/>
-
-### Extension Management
-
-Quick access to extension settings and installation:
-
-```typescript
-// Open extension settings
-await appCors.openExtOptions()
-
-// Direct users to extension store
-appCors.openStorePage()
+await session.requestCors({
+  credentials: false,
+  reason: 'Preview staging API data',
+});
 ```
 
-## Advanced Usage Patterns
+`requestCors()` always shows an extension-controlled confirmation and applies only to the real top-level page origin. A page cannot request changes for another origin.
 
-### Error Handling Best Practices
+### Create a disabled rule draft
 
-```typescript
-import appCors, { AppCorsError } from 'cors-unlocker'
-
-try {
-  await appCors.enable({ credentials: true })
-} catch (error) {
-  if (error instanceof AppCorsError) {
-    switch (error.type) {
-      case 'not-installed':
-        // Guide user to install extension
-        appCors.openStorePage()
-        break
-      case 'user-cancel':
-        // User declined the request
-        console.log('User cancelled CORS activation')
-        break
-      default:
-        console.error('CORS error:', error.message)
-    }
-  }
-}
+```ts
+await session.createRuleDraft({
+  name: 'Simulate slow projects API',
+  urlPattern: 'https://api.example.com/projects/*',
+  methods: ['GET'],
+  resourceTypes: ['XHR', 'Fetch'],
+  actions: [{ type: 'delay', milliseconds: 800 }],
+});
 ```
 
-### React Integration Example
+SDK-created rules are always disabled and scoped to the calling page. By default, the workspace opens so the user can review and enable the draft.
 
-```typescript
-import { useState, useEffect } from 'react'
-import appCors from 'cors-unlocker'
+### API surface
 
-function CORSManager() {
-  const [corsStatus, setCorsStatus] = useState(null)
-  const [isInstalled, setIsInstalled] = useState(false)
+- `intercept.connect({ timeout? })` → `InterceptSession`
+- `intercept.isAvailable()` → `boolean`
+- `intercept.openStorePage()`
+- `session.getStatus()`
+- `session.requestCors({ credentials?, reason? })`
+- `session.disableCors()`
+- `session.createRuleDraft(rule, { openWorkspace? })`
+- `session.openWorkspace()`
 
-  useEffect(() => {
-    // Check installation status
-    appCors.isExtInstalled().then(setIsInstalled)
-    
-    // Check initial CORS status
-    appCors.isEnabled().then(setCorsStatus)
-  }, [])
+The legacy `isExtInstalled`, `isEnabled`, `enable`, `disable`, `openExtOptions`, and `openStorePage` exports continue to call the new local bridge.
 
-  const toggleCORS = async () => {
-    try {
-      if (corsStatus?.enabled) {
-        await appCors.disable()
-        // After disable, check the current status
-        setCorsStatus(await appCors.isEnabled())
-      } else {
-        const newStatus = await appCors.enable({ credentials: true })
-        setCorsStatus(newStatus)
-      }
-    } catch (error) {
-      console.error('Failed to toggle CORS:', error)
-    }
-  }
+## Upgrade and data
 
-  if (!isInstalled) {
-    return (
-      <button onClick={() => appCors.openStorePage()}>
-        Install CORS Unlocker
-      </button>
-    )
-  }
+On first v2 startup, Forth Intercept reads `allowedOrigins` and `extConfig`, writes a `legacyBackupV1` recovery snapshot, validates the new `proxyAppState`, and then uses only the v2 state. Old keys are not used as live configuration or dual-written.
 
-  return (
-    <button onClick={toggleCORS}>
-      {corsStatus?.enabled ? 'Disable' : 'Enable'} CORS
-    </button>
-  )
-}
-```
+The workspace imports old v1 rule exports and complete v2 exports. New exports use the v2 format.
 
-## Real-World Integration Patterns
+## Limitations
 
-### Pattern 1: Progressive Enhancement for Internal Tools
-
-Many developers use CORS Unlocker to enhance internal company tools without requiring server-side changes:
-
-```typescript
-import appCors from 'cors-unlocker'
-
-class APIIntegration {
-  private corsEnabled = false
-  
-  async init() {
-    try {
-      const isInstalled = await appCors.isExtInstalled()
-      if (isInstalled) {
-        await appCors.enable({
-          reason: 'Enable direct API access for company dashboard'
-        })
-        this.corsEnabled = true
-        console.log('✅ Direct API access enabled')
-      } else {
-        console.log('📦 Extension not installed, using proxy fallback')
-      }
-    } catch (error) {
-      console.log('⚠️ CORS unavailable, using proxy fallback')
-    }
-  }
-  
-  async fetchData(endpoint: string) {
-    const url = this.corsEnabled 
-      ? `https://api.company.com${endpoint}`
-      : `/api/proxy${endpoint}` // Fallback to server proxy
-      
-    return fetch(url)
-  }
-}
-```
-
-### Pattern 2: Development vs Production Configuration
-
-Smart handling of different environments:
-
-```typescript
-const config = {
-  development: {
-    useDirectAPI: true,
-    fallbackToProxy: false
-  },
-  production: {
-    useDirectAPI: false, // Force proxy in production
-    fallbackToProxy: true
-  }
-}
-
-async function setupAPIClient() {
-  const env = process.env.NODE_ENV
-  const { useDirectAPI, fallbackToProxy } = config[env] || config.development
-  
-  if (useDirectAPI) {
-    const canUseCORS = await appCors.isExtInstalled()
-    if (canUseCORS) {
-      await appCors.enable()
-      return new DirectAPIClient()
-    }
-  }
-  
-  if (fallbackToProxy) {
-    return new ProxyAPIClient()
-  }
-  
-  throw new Error('No API access method available')
-}
-```
-
-### Pattern 3: User-Friendly Installation Flow
-
-Guide users through extension installation with a smooth UX:
-
-```typescript
-class CORSManager {
-  async requestAccess() {
-    const isInstalled = await appCors.isExtInstalled()
-    
-    if (!isInstalled) {
-      const userWantsToInstall = await this.showInstallationDialog()
-      if (userWantsToInstall) {
-        appCors.openStorePage()
-        // Listen for extension installation
-        return this.waitForInstallation()
-      }
-      return false
-    }
-    
-    try {
-      await appCors.enable({
-        reason: 'Access external APIs for enhanced features'
-      })
-      return true
-    } catch (error) {
-      if (error.type === 'user-cancel') {
-        this.showWhyNeededDialog()
-      }
-      return false
-    }
-  }
-  
-  private async waitForInstallation(): Promise<boolean> {
-    return new Promise((resolve) => {
-      const checkInterval = setInterval(async () => {
-        const isInstalled = await appCors.isExtInstalled()
-        if (isInstalled) {
-          clearInterval(checkInterval)
-          resolve(true)
-        }
-      }, 1000)
-      
-      // Timeout after 5 minutes
-      setTimeout(() => {
-        clearInterval(checkInterval)
-        resolve(false)
-      }, 5 * 60 * 1000)
-    })
-  }
-}
-```
-
-## Common Use Cases & Implementation Tips
-
-### Internal Company Dashboards
-
-**Scenario**: Building a dashboard that aggregates data from multiple SaaS tools (Slack, GitHub, Jira, etc.)
-
-**Implementation Strategy**:
-- Use CORS Unlocker for development and internal deployment
-- Implement graceful fallback to server-side proxy for external users
-- Cache responses to minimize API calls
-
-```typescript
-// Dashboard API aggregator
-class DashboardAPI {
-  private apis = {
-    github: 'https://api.github.com',
-    slack: 'https://slack.com/api',
-    jira: 'https://company.atlassian.net/rest/api/3'
-  }
-  
-  async aggregateData() {
-    await appCors.enable()
-    
-    const [githubData, slackData, jiraData] = await Promise.all([
-      this.fetchGitHub(),
-      this.fetchSlack(),
-      this.fetchJira()
-    ])
-    
-    return { github: githubData, slack: slackData, jira: jiraData }
-  }
-}
-```
-
-### Rapid API Prototyping
-
-**Scenario**: Testing integrations with third-party APIs during development
-
-**Benefits**:
-- No backend setup required
-- Test API responses immediately  
-- Iterate faster on frontend logic
-
-```typescript
-// Quick API testing setup
-async function testAPIIntegration() {
-  await appCors.enable({ 
-    reason: 'Testing API integration for prototype' 
-  })
-  
-  // Test multiple endpoints quickly
-  const apis = [
-    'https://jsonplaceholder.typicode.com/posts',
-    'https://api.github.com/repos/microsoft/vscode',
-    'https://httpbin.org/json'
-  ]
-  
-  for (const api of apis) {
-    try {
-      const response = await fetch(api)
-      const data = await response.json()
-      console.log(`✅ ${api}:`, data)
-    } catch (error) {
-      console.log(`❌ ${api}:`, error.message)
-    }
-  }
-}
-```
-
-### MVP and Startup Applications
-
-**Scenario**: Building an MVP that needs to integrate with external APIs without backend infrastructure
-
-**Cost Savings**:
-- $0 proxy server costs
-- Faster time to market
-- Focus budget on core features
-
-```typescript
-// MVP startup integration
-class MVPApp {
-  async initializeExternalServices() {
-    const corsAvailable = await appCors.isExtInstalled()
-    
-    if (!corsAvailable) {
-      // Show value proposition to users
-      this.showExtensionBenefits()
-      return
-    }
-    
-    await appCors.enable({
-      reason: 'Enable seamless integration with your favorite tools'
-    })
-    
-    // Now can integrate with any API directly
-    this.enableFeatures(['analytics', 'notifications', 'dataimport'])
-  }
-  
-  showExtensionBenefits() {
-    // Modal explaining how extension enables enhanced features
-    // without requiring them to trust a third-party proxy server
-  }
-}
-```
-
-## Browser Compatibility
-
-<FeatureGrid columns={2} title="Supported Browsers">
-<div class="feature-item">
-  <span class="feature-item-icon">🌐</span>
-  <h4 class="feature-item-title">Chrome 88+ <Badge variant="success" size="sm">Popular</Badge></h4>
-  <p class="feature-item-desc">Full support with Manifest V3</p>
-</div>
-
-<div class="feature-item">
-  <span class="feature-item-icon">🦊</span>
-  <h4 class="feature-item-title">Firefox 85+ <Badge variant="success" size="sm">Stable</Badge></h4>
-  <p class="feature-item-desc">WebExtensions API support</p>
-</div>
-
-<div class="feature-item">
-  <span class="feature-item-icon">🧭</span>
-  <h4 class="feature-item-title">Safari 14+ <Badge variant="warning" size="sm">New</Badge></h4>
-  <p class="feature-item-desc">Safari Web Extensions</p>
-</div>
-
-<div class="feature-item">
-  <span class="feature-item-icon">💎</span>
-  <h4 class="feature-item-title">Edge 88+ <Badge variant="info" size="sm">Chromium</Badge></h4>
-  <p class="feature-item-desc">Chromium-based support</p>
-</div>
-</FeatureGrid>
-
-## Support & Community
-
-<FeatureGrid columns={2} title="Get Help & Connect">
-<div class="feature-item">
-  <span class="feature-item-icon">📚</span>
-  <h4 class="feature-item-title">Documentation</h4>
-  <p class="feature-item-desc">Complete API reference and guides</p>
-  <a href="https://cors.forth.ink/docs" class="text-blue-600 hover:text-blue-800 text-sm">View Docs →</a>
-</div>
-
-<div class="feature-item">
-  <span class="feature-item-icon">🐛</span>
-  <h4 class="feature-item-title">Report Issues</h4>
-  <p class="feature-item-desc">Found a bug or have suggestions?</p>
-  <a href="https://github.com/oe/cors-unlocker/issues" class="text-blue-600 hover:text-blue-800 text-sm">GitHub Issues →</a>
-</div>
-
-<div class="feature-item">
-  <span class="feature-item-icon">💬</span>
-  <h4 class="feature-item-title">Discussions</h4>
-  <p class="feature-item-desc">Community support and ideas</p>
-  <a href="https://github.com/oe/cors-unlocker/discussions" class="text-blue-600 hover:text-blue-800 text-sm">Join Discussion →</a>
-</div>
-
-<div class="feature-item">
-  <span class="feature-item-icon">🚀</span>
-  <h4 class="feature-item-title">Try Playground</h4>
-  <p class="feature-item-desc">Test CORS functionality live</p>
-  <a href="https://cors.forth.ink/playground" class="text-blue-600 hover:text-blue-800 text-sm">Open Playground →</a>
-</div>
-</FeatureGrid>
-
----
-
-*Built with ❤️ for developers who need reliable CORS management*
-
-## Support Our Work
-
-CORS Unlocker is completely free and open source. If it saves you time and makes your development easier, consider supporting our continued development!
-
-<ButtonGroup 
-  title="Show Your Appreciation" 
-  subtitle="Help us keep this tool free and continuously improving"
-  variant="purple"
-  buttons={[
-    { text: "Buy us a coffee", href: "https://forth.ink/donate/", type: "primary", icon: "☕" },
-    { text: "Star on GitHub", href: "https://github.com/oe/cors-unlocker", type: "secondary", icon: "⭐" }
-  ]} 
-/>
+- Chrome only for the v2 release; Firefox support is planned.
+- Advanced mode necessarily shows Chrome's debugging disclosure.
+- Changes affect matching Chrome traffic, not other applications.
+- Forth Intercept does not change your public IP address or decrypt traffic outside Chrome.

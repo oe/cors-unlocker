@@ -1,6 +1,6 @@
 {
   "extName": {
-    "message": "Browser Proxy"
+    "message": "Forth Intercept"
   },
   "extDescription": {
     "message": "A local, tab-scoped request proxy for CORS repair, headers, redirects, blocking, mocks, delays, and debugging."

@@ -20,6 +20,14 @@
   "{{chrome}}.side_panel": {
     "default_path": "src/sidepanel/index.html"
   },
+  "{{chrome}}.content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/content/page-bridge.ts"],
+      "run_at": "document_start",
+      "all_frames": false
+    }
+  ],
   "{{chrome}}.externally_connectable": {
     "matches": [
       "https://*.forth.ink/*",

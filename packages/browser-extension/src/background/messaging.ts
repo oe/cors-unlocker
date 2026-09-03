@@ -246,6 +246,97 @@ async function isOriginEnabled(origin: string) {
   };
 }
 
+async function handleSdkRequest(
+  message: any,
+  sender: browser.Runtime.MessageSender,
+): Promise<any> {
+  if (typeof sender.tab?.id !== 'number' || !sender.url || sender.frameId !== 0) {
+    throw new Error('The SDK is only available from a top-level browser tab.');
+  }
+  const pageUrl = new URL(sender.url);
+  if (!isSupportedProtocol(pageUrl.protocol)) {
+    throw new Error('The SDK only supports HTTP and HTTPS pages.');
+  }
+  const origin = pageUrl.origin;
+  if (!checkRateLimit(`sdk:${sender.tab.id}:${origin}`)) {
+    throw new Error('SDK rate limit exceeded.');
+  }
+  const method = message.payload?.method;
+  const data = message.payload?.data;
+
+  switch (method) {
+    case 'connect':
+      return {
+        origin,
+        capabilities: {
+          protocolVersion: 2,
+          product: 'Forth Intercept',
+          cors: true,
+          draftRules: true,
+          workspace: true,
+          advancedMode: 'user-initiated',
+        },
+      };
+    case 'getStatus':
+      return {
+        origin,
+        cors: await isOriginEnabled(origin),
+        advancedMode: getAdvancedProxyStatus(sender.tab.id).phase,
+      };
+    case 'requestCors': {
+      await toggleRuleViaOrigin({
+        origin,
+        disabled: false,
+        credentials: data?.credentials === true,
+      });
+      return {
+        origin,
+        cors: await isOriginEnabled(origin),
+        advancedMode: getAdvancedProxyStatus(sender.tab.id).phase,
+      };
+    }
+    case 'disableCors':
+      await toggleRuleViaOrigin({ origin, disabled: true });
+      return {
+        origin,
+        cors: await isOriginEnabled(origin),
+        advancedMode: getAdvancedProxyStatus(sender.tab.id).phase,
+      };
+    case 'createRuleDraft': {
+      const draft = data?.rule;
+      if (!draft || typeof draft !== 'object') throw new Error('Missing rule draft.');
+      const serialized = JSON.stringify(draft);
+      if (serialized.length > 65_536) throw new Error('Rule draft exceeds the 64 KB limit.');
+      const rule = await addProxyRule({
+        name: typeof draft.name === 'string' ? draft.name.trim().slice(0, 120) : '',
+        enabled: false,
+        source: 'user',
+        match: {
+          initiatorOrigins: [origin],
+          urlPattern: typeof draft.urlPattern === 'string'
+            ? draft.urlPattern.trim().slice(0, 2_048)
+            : '',
+          methods: Array.isArray(draft.methods)
+            ? draft.methods.slice(0, 16).map((value: unknown) => String(value).toUpperCase())
+            : undefined,
+          resourceTypes: Array.isArray(draft.resourceTypes)
+            ? draft.resourceTypes.slice(0, 16).map(String)
+            : undefined,
+        },
+        actions: Array.isArray(draft.actions) ? draft.actions : [],
+      });
+      const workspaceOpened = data?.openWorkspace !== false;
+      if (workspaceOpened) await browser.runtime.openOptionsPage();
+      return { id: rule.id, enabled: false, workspaceOpened };
+    }
+    case 'openWorkspace':
+      await browser.runtime.openOptionsPage();
+      return undefined;
+    default:
+      throw new Error(`Unsupported SDK method: ${String(method)}`);
+  }
+}
+
 /**
  * listen message from options and popup
  */
@@ -265,6 +356,9 @@ export async function onRuntimeMessage(
     }
 
     switch (message.type) {
+      case 'sdkRequest':
+        return handleSdkRequest(message, sender);
+
       case 'getAdvancedProxyStatus': {
         const tabId = message.payload?.tabId;
         return typeof tabId === 'number'

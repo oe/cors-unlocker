@@ -1,6 +1,6 @@
-# Browser Proxy
+# Forth Intercept
 
-Browser Proxy 2.0 is a Chrome MV3 developer proxy that runs entirely inside the browser. It keeps the fast, warning-free CORS path from CORS Unlocker and adds an opt-in, tab-scoped advanced mode for traffic inspection, response mocking, latency and failure simulation, redirects, blocking, and header rewriting.
+Forth Intercept 2.0 is a Chrome-native request lab. It keeps the fast, warning-free CORS path from CORS Unlocker and adds an opt-in, tab-scoped advanced mode for traffic inspection, response mocking, latency and failure simulation, redirects, blocking, and header rewriting.
 
 No native client is required. Advanced mode uses Chrome DevTools Protocol through `chrome.debugger`, so Chrome displays its standard debugging disclosure while a tab is attached.
 
@@ -51,7 +51,7 @@ pnpm --filter browser-cors-unlocker build:chrome
 pnpm --filter browser-cors-unlocker package:chrome
 ```
 
-The unpacked extension is written to `packages/browser-extension/dist/chrome`; the release archive is `packages/browser-extension/dist/browser-proxy-chrome-v2.0.0.zip`.
+The unpacked extension is written to `packages/browser-extension/dist/chrome`; the release archive is `packages/browser-extension/dist/forth-intercept-chrome-v2.0.0.zip`.
 
 ## Verification
 
@@ -77,11 +77,13 @@ If Playwright's bundled Chromium is not installed, set `PLAYWRIGHT_CHROMIUM_EXEC
 - `tabs`, `storage`, and `sidePanel` support tab scope, local persistence, and the inspector.
 - Sensitive request and response headers are redacted by default. The extension does not upload traffic, rules, or logs.
 
-Browser Proxy is a development tool, not a system VPN: it affects Chrome requests matched by its rules and cannot proxy other applications or hide the browser's network address.
+Forth Intercept is a development tool, not a system VPN: it affects Chrome requests matched by its rules and cannot proxy other applications or hide the browser's network address.
 
 ## Other packages
 
-The repository still contains the v1-compatible npm bridge and documentation website under `packages/npm` and `packages/website`. The Chrome extension in `packages/browser-extension` is the 2.0 product.
+- `packages/npm` publishes the `cors-unlocker` 0.2 SDK. Its new local bridge exposes `intercept.connect()`, origin-scoped CORS consent, status, and disabled rule drafts; deprecated v1 helpers remain as aliases for upgrade continuity.
+- `packages/website` is the Forth Intercept product site, documentation, privacy explanation, FAQ, and live SDK playground.
+- `packages/browser-extension` is the Chrome 2.0 product.
 
 ## License
 

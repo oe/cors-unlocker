@@ -332,7 +332,7 @@ function DataSettings({ state, reload }: { state: IProxyAppState; reload: () => 
     const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
     const link = document.createElement('a');
     link.href = url;
-    link.download = `browser-proxy-${new Date().toISOString().slice(0, 10)}.json`;
+    link.download = `forth-intercept-${new Date().toISOString().slice(0, 10)}.json`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -407,7 +407,7 @@ function App() {
           <div className="flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground"><Network /></div>
             <div>
-              <h1 className="text-xl font-semibold tracking-tight">Browser Proxy</h1>
+              <h1 className="text-xl font-semibold tracking-tight">Forth Intercept</h1>
               <p className="text-sm text-muted-foreground">Local request interception for Chrome</p>
             </div>
           </div>

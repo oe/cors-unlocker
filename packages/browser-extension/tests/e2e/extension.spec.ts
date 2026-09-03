@@ -8,11 +8,11 @@ test.describe.configure({ mode: 'serial' });
 test.setTimeout(90_000);
 
 let context: BrowserContext;
-let extensionId: string;
+const extensionId = 'knhlkjdfmgkmelcjfnbbhpphkmjjacng';
 let worker: Worker;
 let control: Page;
 let extensionPath: string;
-const userDataDir = mkdtempSync(path.join(tmpdir(), 'browser-proxy-e2e-'));
+const userDataDir = mkdtempSync(path.join(tmpdir(), 'forth-intercept-e2e-'));
 
 async function currentWorker() {
   const workers = context.serviceWorkers();
@@ -44,10 +44,9 @@ async function launchContext() {
       `--load-extension=${extensionPath}`,
     ],
   });
-  worker = await currentWorker();
-  extensionId = worker.url().split('/')[2];
   control = await context.newPage();
   await control.goto(`chrome-extension://${extensionId}/src/options/index.html`);
+  worker = await currentWorker();
 }
 
 test.afterAll(async () => {
@@ -57,6 +56,10 @@ test.afterAll(async () => {
 
 test('migrates v1 storage once and keeps a recovery snapshot', async () => {
   expect(extensionId).toBe('knhlkjdfmgkmelcjfnbbhpphkmjjacng');
+  await expect.poll(async () => worker.evaluate(async () => {
+    const values = await chrome.storage.local.get('proxyAppState');
+    return values.proxyAppState?.schemaVersion;
+  })).toBe(2);
   await worker.evaluate(async () => {
     await chrome.storage.local.clear();
     await chrome.storage.local.set({
@@ -119,23 +122,80 @@ test('migrates v1 storage once and keeps a recovery snapshot', async () => {
 
 test('renders the shadcn proxy workspace and popup', async () => {
   await control.reload();
-  await expect(control.getByRole('heading', { name: 'Browser Proxy' })).toBeVisible();
+  await expect(control.getByRole('heading', { name: 'Forth Intercept' })).toBeVisible();
   await expect(control.getByRole('tab', { name: 'Rules' })).toBeVisible();
-  await control.screenshot({ path: 'test-results/browser-proxy-options.png', fullPage: true });
+  await control.screenshot({ path: 'test-results/forth-intercept-options.png', fullPage: true });
 
   const popup = await context.newPage();
   await popup.goto(`chrome-extension://${extensionId}/src/popup/index.html`);
   await expect(popup.getByText('Advanced proxy')).toBeVisible();
   await expect(popup.getByText('v2.0')).toBeVisible();
-  await popup.screenshot({ path: 'test-results/browser-proxy-popup.png', fullPage: true });
+  await popup.screenshot({ path: 'test-results/forth-intercept-popup.png', fullPage: true });
   await popup.close();
 
   const inspector = await context.newPage();
   await inspector.goto(`chrome-extension://${extensionId}/src/sidepanel/index.html`);
   await expect(inspector.getByRole('heading', { name: 'Traffic inspector' })).toBeVisible();
   await inspector.setViewportSize({ width: 420, height: 820 });
-  await inspector.screenshot({ path: 'test-results/browser-proxy-inspector.png', fullPage: true });
+  await inspector.screenshot({ path: 'test-results/forth-intercept-inspector.png', fullPage: true });
   await inspector.close();
+});
+
+test('exposes an origin-scoped SDK bridge with consent and disabled drafts', async () => {
+  const target = await context.newPage();
+  await target.goto('http://test.localhost:3000/');
+
+  const sdkRequest = async (method: string, payload?: unknown) => target.evaluate(({ method: sdkMethod, payload: sdkPayload }) => new Promise<any>((resolve, reject) => {
+    const clientId = crypto.randomUUID();
+    const id = crypto.randomUUID();
+    const timer = setTimeout(() => reject(new Error('SDK response timeout')), 5_000);
+    const listener = (event: MessageEvent) => {
+      if (event.data?.type !== 'forth-intercept:sdk-response'
+        || event.data.clientId !== clientId
+        || event.data.id !== id) return;
+      clearTimeout(timer);
+      window.removeEventListener('message', listener);
+      resolve(event.data);
+    };
+    window.addEventListener('message', listener);
+    window.postMessage({
+      type: 'forth-intercept:sdk-request',
+      clientId,
+      id,
+      method: sdkMethod,
+      payload: sdkPayload,
+    }, location.origin);
+  }), { method, payload });
+
+  const connected = await sdkRequest('connect');
+  expect(connected.data).toMatchObject({
+    origin: 'http://test.localhost:3000',
+    capabilities: { protocolVersion: 2, product: 'Forth Intercept' },
+  });
+
+  target.once('dialog', (dialog) => dialog.accept());
+  const enabled = await sdkRequest('requestCors', { reason: 'E2E consent check' });
+  expect(enabled.data.cors).toEqual({ enabled: true, credentials: false });
+
+  const draft = await sdkRequest('createRuleDraft', {
+    openWorkspace: false,
+    rule: {
+      name: 'SDK safe draft',
+      urlPattern: 'http://api.localhost:3000/api/*',
+      methods: ['GET'],
+      resourceTypes: ['Fetch'],
+      actions: [{ type: 'delay', milliseconds: 400 }],
+    },
+  });
+  expect(draft.data).toMatchObject({ enabled: false, workspaceOpened: false });
+  const stored = await control.evaluate(async () => chrome.runtime.sendMessage({ type: 'getProxyState' }));
+  expect(stored.rules.find((rule: any) => rule.id === draft.data.id)).toMatchObject({
+    enabled: false,
+    match: { initiatorOrigins: ['http://test.localhost:3000'] },
+  });
+  const disabled = await sdkRequest('disableCors');
+  expect(disabled.data.cors.enabled).toBe(false);
+  await target.close();
 });
 
 test('repairs a genuinely failing preflight and records the request', async () => {
@@ -202,7 +262,7 @@ test('mocks a response from a captured-rule-compatible matcher', async () => {
           type: 'mockResponse',
           status: 202,
           headers: { 'Content-Type': 'application/json' },
-          body: '{"source":"browser-proxy"}',
+          body: '{"source":"forth-intercept"}',
         }],
       },
     },
@@ -215,7 +275,7 @@ test('mocks a response from a captured-rule-compatible matcher', async () => {
     const response = await fetch(url);
     return { status: response.status, body: await response.json() };
   }, mockUrl);
-  expect(result).toEqual({ status: 202, body: { source: 'browser-proxy' } });
+  expect(result).toEqual({ status: 202, body: { source: 'forth-intercept' } });
 
   await control.evaluate(async (id) => chrome.runtime.sendMessage({
     type: 'disableAdvancedProxy', payload: { tabId: id },
@@ -234,7 +294,17 @@ test('applies fast-path request headers and blocking through DNR', async () => {
       enabled: true,
       source: 'user',
       match: { initiatorOrigins: ['http://test.localhost:3000'], urlPattern: echoUrl },
-      actions: [{ type: 'setRequestHeaders', headers: { 'X-Proxy-E2E': 'active' } }],
+      actions: [
+        { type: 'setRequestHeaders', headers: { 'X-Proxy-E2E': 'active' } },
+        {
+          type: 'setResponseHeaders',
+          headers: {
+            'Access-Control-Allow-Origin': 'http://test.localhost:3000',
+            'Access-Control-Allow-Methods': 'GET, OPTIONS',
+            'Access-Control-Allow-Headers': 'X-Proxy-E2E',
+          },
+        },
+      ],
     },
     {
       name: 'DNR block',

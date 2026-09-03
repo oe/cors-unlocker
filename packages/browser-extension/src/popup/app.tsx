@@ -45,7 +45,7 @@ function App() {
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h1 className="truncate text-sm font-semibold">Browser Proxy</h1>
+              <h1 className="truncate text-sm font-semibold">Forth Intercept</h1>
               <Badge variant="secondary">v2.0</Badge>
             </div>
             <p className="truncate text-xs text-muted-foreground">Local request controls</p>
