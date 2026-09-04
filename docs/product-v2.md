@@ -8,6 +8,8 @@ The product is **Forth Intercept**, described as **a Chrome-native request lab**
 
 Core line: **Patch the request. Keep your flow.**
 
+Canonical website: **https://intercept.forth.ink**. The former `cors.forth.ink` hostname remains a redirect and legacy SDK compatibility surface.
+
 ## Audience and job
 
 Primary users are frontend engineers and QA engineers who need to reproduce API states without changing backend code or leaving the page they are testing.

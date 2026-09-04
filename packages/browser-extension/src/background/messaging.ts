@@ -26,6 +26,7 @@ import {
 // Allowed external origins for security
 const ALLOWED_EXTERNAL_ORIGINS = [
   'https://cors.forth.ink',
+  'https://intercept.forth.ink',
 ];
 
 // Rate limiting for external messages

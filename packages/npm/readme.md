@@ -48,4 +48,4 @@ await session.createRuleDraft({
 
 Legacy aliases: `isExtInstalled`, `isEnabled`, `enable`, `disable`, `openExtOptions`, and `openStorePage`.
 
-Full documentation: [cors.forth.ink/docs](https://cors.forth.ink/docs/)
+Full documentation: [intercept.forth.ink/docs](https://intercept.forth.ink/docs/)

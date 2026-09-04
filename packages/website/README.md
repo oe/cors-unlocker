@@ -22,4 +22,4 @@ Routes:
 - `/privacy/` — permissions, local data, and SDK trust boundary
 - `/message/` — legacy hidden bridge retained for clients using SDK 0.1
 
-The site is currently hosted at `cors.forth.ink`; the legacy hostname can remain during the product rename.
+The canonical site is `intercept.forth.ink`. Keep `cors.forth.ink` as a redirect and legacy SDK compatibility hostname.

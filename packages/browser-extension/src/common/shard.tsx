@@ -66,7 +66,7 @@ export function AuthHelp(props: IAuthHelpProps) {
   return (
     <>
       Off: Block login info (higher privacy); On: Allow login info to be used (full features). 
-      <a href="https://cors.forth.ink/faq/#auth" target="_blank" className='text-blue-400 underline' rel="noreferrer">
+      <a href="https://intercept.forth.ink/faq/#auth" target="_blank" className='text-blue-400 underline' rel="noreferrer">
         Learn more
       </a>
       {props.credentialsEnabled && props.rule && (
