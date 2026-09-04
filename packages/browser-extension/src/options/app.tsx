@@ -1,7 +1,7 @@
 import { StrictMode, useCallback, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import browser from 'webextension-polyfill';
-import { Download, Network, Plus, RotateCcw, Trash2, Upload } from 'lucide-react';
+import { Download, Info, Network, Plus, RotateCcw, Trash2, Upload } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -70,6 +70,22 @@ const ACTION_TEMPLATES: Record<string, IProxyAction[]> = {
   failure: [{ type: 'networkFailure', reason: 'Failed' }],
 };
 
+type ActionTemplate = keyof typeof ACTION_TEMPLATES;
+
+function actionTemplateLabel(template: ActionTemplate, isFirefox: boolean): string {
+  const labels: Record<ActionTemplate, string> = {
+    cors: 'Repair CORS',
+    responseHeaders: 'Set response headers',
+    requestHeaders: 'Set request headers',
+    mock: isFirefox ? 'Replace response body' : 'Mock response',
+    redirect: 'Redirect',
+    block: 'Block request',
+    delay: 'Delay',
+    failure: 'Network failure',
+  };
+  return labels[template];
+}
+
 type RuleDraft = {
   id?: string;
   name: string;
@@ -109,6 +125,15 @@ function splitList(value: string): string[] | undefined {
   return items.length > 0 ? items : undefined;
 }
 
+function actionScriptContains(actions: string, type: IProxyAction['type']): boolean {
+  try {
+    const parsed = JSON.parse(actions);
+    return Array.isArray(parsed) && parsed.some((action) => action?.type === type);
+  } catch {
+    return false;
+  }
+}
+
 function RuleDialog({
   draft,
   onOpenChange,
@@ -119,12 +144,16 @@ function RuleDialog({
   onSaved: () => Promise<void>;
 }) {
   const [form, setForm] = useState<RuleDraft>(EMPTY_DRAFT);
+  const [actionTemplate, setActionTemplate] = useState<ActionTemplate>('responseHeaders');
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const isFirefox = __TARGET__ === 'firefox';
+  const replacesResponseBody = isFirefox && actionScriptContains(form.actions, 'mockResponse');
 
   useEffect(() => {
     if (draft) {
       setForm(draft);
+      setActionTemplate('responseHeaders');
       setError(null);
     }
   }, [draft]);
@@ -198,27 +227,30 @@ function RuleDialog({
             <Field>
               <FieldLabel htmlFor="rule-resources">Resource types</FieldLabel>
               <Input id="rule-resources" value={form.resourceTypes} onChange={(event) => setForm({ ...form, resourceTypes: event.target.value })} placeholder="XHR, Fetch" />
+              {isFirefox ? <FieldDescription>Firefox treats Fetch and XMLHttpRequest as one XHR resource type.</FieldDescription> : null}
             </Field>
           </div>
           <Field>
             <FieldLabel>Action template</FieldLabel>
             <Select
-              defaultValue="responseHeaders"
+              value={actionTemplate}
               onValueChange={(value) => {
-                if (!value) return;
+                if (!value || !(value in ACTION_TEMPLATES)) return;
+                const template = value as ActionTemplate;
+                setActionTemplate(template);
                 setForm({
                   ...form,
-                  actions: JSON.stringify(ACTION_TEMPLATES[value], null, 2),
+                  actions: JSON.stringify(ACTION_TEMPLATES[template], null, 2),
                 });
               }}
             >
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger><SelectValue>{actionTemplateLabel(actionTemplate, isFirefox)}</SelectValue></SelectTrigger>
               <SelectContent>
                 <SelectGroup>
                   <SelectItem value="cors">Repair CORS</SelectItem>
                   <SelectItem value="responseHeaders">Set response headers</SelectItem>
                   <SelectItem value="requestHeaders">Set request headers</SelectItem>
-                  <SelectItem value="mock">Mock response</SelectItem>
+                  <SelectItem value="mock">{isFirefox ? 'Replace response body' : 'Mock response'}</SelectItem>
                   <SelectItem value="redirect">Redirect</SelectItem>
                   <SelectItem value="block">Block request</SelectItem>
                   <SelectItem value="delay">Delay</SelectItem>
@@ -228,6 +260,15 @@ function RuleDialog({
             </Select>
             <FieldDescription>Selecting a template replaces the JSON below.</FieldDescription>
           </Field>
+          {replacesResponseBody ? (
+            <Alert>
+              <Info />
+              <AlertTitle>Firefox response replacement</AlertTitle>
+              <AlertDescription>
+                Firefox still sends the request and preserves the server status. The JSON status value remains for portable Chrome rules and is ignored by Firefox.
+              </AlertDescription>
+            </Alert>
+          ) : null}
           <Field data-invalid={!!error}>
             <FieldLabel htmlFor="rule-actions">Action script (JSON)</FieldLabel>
             <Textarea
@@ -276,7 +317,16 @@ function ProxyRules({ state, reload }: { state: IProxyAppState; reload: () => Pr
           </Button>
         </CardAction>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex flex-col gap-4">
+        {__TARGET__ === 'firefox' ? (
+          <Alert>
+            <Info />
+            <AlertTitle>Firefox execution profile</AlertTitle>
+            <AlertDescription>
+              Response mocks replace an existing body, failed preflights cannot be synthesized, network failures cancel requests, and Fetch/XHR share one resource type.
+            </AlertDescription>
+          </Alert>
+        ) : null}
         <Table>
           <TableHeader>
             <TableRow>
@@ -408,7 +458,7 @@ function App() {
             <div className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground"><Network /></div>
             <div>
               <h1 className="text-xl font-semibold tracking-tight">Forth Intercept</h1>
-              <p className="text-sm text-muted-foreground">Local request interception for Chrome</p>
+              <p className="text-sm text-muted-foreground">Local request interception for {__TARGET__ === 'firefox' ? 'Firefox' : 'Chrome'}</p>
             </div>
           </div>
           <Button size="sm" variant="ghost" onClick={reload}><RotateCcw data-icon="inline-start" />Refresh</Button>

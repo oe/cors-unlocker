@@ -73,9 +73,11 @@ export default function Playground() {
           <span className={`size-3 rounded-full ${session ? 'bg-emerald-500' : 'bg-neutral-300'}`} aria-label={session ? 'Connected' : 'Disconnected'} />
         </div>
         <dl className="grid grid-cols-2 gap-y-4 py-6 text-sm">
+          <dt className="text-neutral-500">Browser</dt><dd className="text-right font-medium capitalize">{session?.capabilities.browser || '—'}</dd>
           <dt className="text-neutral-500">CORS</dt><dd className="text-right font-medium">{status?.cors.enabled ? 'Enabled' : 'Disabled'}</dd>
           <dt className="text-neutral-500">Credentials</dt><dd className="text-right font-medium">{status?.cors.credentials ? 'Allowed' : 'Off'}</dd>
           <dt className="text-neutral-500">Advanced mode</dt><dd className="text-right font-medium">{status?.advancedMode || 'disabled'}</dd>
+          <dt className="text-neutral-500">Response mock</dt><dd className="text-right font-medium">{session?.capabilities.interception?.responseMock || '—'}</dd>
         </dl>
         <div className="grid gap-3 sm:grid-cols-2">
           <button disabled={pending || !session} onClick={() => run((active) => active.requestCors({ reason: 'Testing the Forth Intercept SDK playground' }))} className="min-h-11 rounded-lg bg-black px-4 text-sm font-semibold text-white disabled:opacity-40">Request CORS</button>
@@ -83,7 +85,7 @@ export default function Playground() {
           <button disabled={pending || !session} onClick={createDraft} className="min-h-11 rounded-lg border border-neutral-300 px-4 text-sm font-semibold disabled:opacity-40">Create safe draft</button>
           <button disabled={pending} onClick={connect} className="min-h-11 rounded-lg border border-neutral-300 px-4 text-sm font-semibold disabled:opacity-40">Reconnect</button>
         </div>
-        {!session ? <button onClick={() => intercept.openStorePage()} className="mt-5 text-sm font-semibold text-blue-700 hover:underline">Add Forth Intercept to Chrome →</button> : null}
+        {!session ? <button onClick={() => intercept.openStorePage()} className="mt-5 text-sm font-semibold text-blue-700 hover:underline">Install Forth Intercept →</button> : null}
       </div>
     </div>
   );

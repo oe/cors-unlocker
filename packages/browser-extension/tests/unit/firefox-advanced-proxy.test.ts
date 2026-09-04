@@ -149,4 +149,72 @@ describe('Firefox WebRequest interception engine', () => {
       'Firefox replaced the response body; the original HTTP status was preserved.',
     );
   });
+
+  it('redirects a matching request before it reaches the server', async () => {
+    vi.mocked(browser.storage.local.get).mockResolvedValue({
+      proxyAppState: state([{ type: 'redirect', url: 'https://example.com/replacement' }]),
+    });
+    await engine.enableAdvancedProxy(10);
+
+    const result = await listener(browser.webRequest.onBeforeRequest)(requestDetails(10, 'redirect'));
+
+    expect(result).toEqual({ redirectUrl: 'https://example.com/replacement' });
+    expect(engine.getRequestLog(10)[0]).toMatchObject({ outcome: 'continued' });
+    expect(engine.getRequestLog(10)[0].diagnostics).toContain(
+      'Redirected to https://example.com/replacement',
+    );
+  });
+
+  it('represents Firefox network failures as request cancellation', async () => {
+    vi.mocked(browser.storage.local.get).mockResolvedValue({
+      proxyAppState: state([{ type: 'networkFailure', reason: 'ConnectionRefused' }]),
+    });
+    await engine.enableAdvancedProxy(11);
+
+    const result = await listener(browser.webRequest.onBeforeRequest)(requestDetails(11, 'failure'));
+
+    expect(result).toEqual({ cancel: true });
+    expect(engine.getRequestLog(11)[0]).toMatchObject({ outcome: 'failed' });
+    expect(engine.getRequestLog(11)[0].diagnostics).toContain(
+      'Firefox cancelled this request: ConnectionRefused',
+    );
+  });
+
+  it('delays a matching request before allowing it to continue', async () => {
+    vi.mocked(browser.storage.local.get).mockResolvedValue({
+      proxyAppState: state([{ type: 'delay', milliseconds: 20 }]),
+    });
+    await engine.enableAdvancedProxy(12);
+    const startedAt = performance.now();
+
+    const result = await listener(browser.webRequest.onBeforeRequest)(requestDetails(12, 'delay'));
+
+    expect(result).toEqual({});
+    expect(performance.now() - startedAt).toBeGreaterThanOrEqual(15);
+    expect(engine.getRequestLog(12)[0]).toMatchObject({ outcome: 'continued' });
+  });
+
+  it('gives body replacement precedence over redirects like the Chrome engine', async () => {
+    const filter = {
+      ondata: null,
+      onstop: null,
+      onerror: null,
+      write: vi.fn(),
+      close: vi.fn(),
+      disconnect: vi.fn(),
+    };
+    vi.mocked(browser.webRequest.filterResponseData).mockReturnValue(filter as never);
+    vi.mocked(browser.storage.local.get).mockResolvedValue({
+      proxyAppState: state([
+        { type: 'redirect', url: 'https://example.com/replacement' },
+        { type: 'mockResponse', status: 200, headers: {}, body: '{}' },
+      ]),
+    });
+    await engine.enableAdvancedProxy(13);
+
+    const result = await listener(browser.webRequest.onBeforeRequest)(requestDetails(13, 'precedence'));
+
+    expect(result).toEqual({});
+    expect(browser.webRequest.filterResponseData).toHaveBeenCalledWith('precedence');
+  });
 });

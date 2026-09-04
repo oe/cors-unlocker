@@ -16,6 +16,7 @@ import {
   getAdvancedProxyStatus,
   getRequestLog,
 } from '@/background/advanced-proxy';
+import { PRODUCT_CAPABILITIES } from '@/common/capabilities';
 import {
   addProxyRule,
   ensureProxyAppState,
@@ -269,15 +270,7 @@ async function handleSdkRequest(
     case 'connect':
       return {
         origin,
-        capabilities: {
-          protocolVersion: 2,
-          product: 'Forth Intercept',
-          browser: __TARGET__,
-          cors: true,
-          draftRules: true,
-          workspace: true,
-          advancedMode: 'user-initiated',
-        },
+        capabilities: PRODUCT_CAPABILITIES,
       };
     case 'getStatus':
       return {

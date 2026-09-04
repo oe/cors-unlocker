@@ -33,6 +33,12 @@ describe('Forth Intercept SDK', () => {
           draftRules: true,
           workspace: true,
           advancedMode: 'user-initiated',
+          interception: {
+            responseMock: 'synthetic',
+            preflight: 'synthetic',
+            networkFailure: 'reasoned',
+            resourceTypes: 'distinct-fetch-xhr',
+          },
         },
       },
     }));
@@ -40,6 +46,7 @@ describe('Forth Intercept SDK', () => {
     const session = await intercept.connect();
     expect(session.origin).toBe('https://app.example.com');
     expect(session.capabilities.advancedMode).toBe('user-initiated');
+    expect(session.capabilities.interception.responseMock).toBe('synthetic');
   });
 
   it('uses the session bridge for CORS and safe rule drafts', async () => {
@@ -48,7 +55,21 @@ describe('Forth Intercept SDK', () => {
       methods.push(request.method);
       if (request.method === 'connect') return { data: {
         origin: 'https://app.example.com',
-        capabilities: { protocolVersion: 2, product: 'Forth Intercept', browser: 'chrome', cors: true, draftRules: true, workspace: true, advancedMode: 'user-initiated' },
+        capabilities: {
+          protocolVersion: 2,
+          product: 'Forth Intercept',
+          browser: 'chrome',
+          cors: true,
+          draftRules: true,
+          workspace: true,
+          advancedMode: 'user-initiated',
+          interception: {
+            responseMock: 'synthetic',
+            preflight: 'synthetic',
+            networkFailure: 'reasoned',
+            resourceTypes: 'distinct-fetch-xhr',
+          },
+        },
       } };
       if (request.method === 'requestCors') return { data: {
         origin: 'https://app.example.com',

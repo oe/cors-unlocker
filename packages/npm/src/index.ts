@@ -33,6 +33,12 @@ export interface InterceptCapabilities {
   draftRules: true;
   workspace: true;
   advancedMode: 'user-initiated';
+  interception: {
+    responseMock: 'synthetic' | 'body-replacement';
+    preflight: 'synthetic' | 'headers-only';
+    networkFailure: 'reasoned' | 'cancel';
+    resourceTypes: 'distinct-fetch-xhr' | 'combined-fetch-xhr';
+  };
 }
 
 export interface InterceptStatus {

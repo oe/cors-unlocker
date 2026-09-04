@@ -70,6 +70,10 @@ import { intercept } from 'forth-intercept';
 const session = await intercept.connect();
 console.log(session.origin, session.capabilities);
 
+if (session.capabilities.interception.responseMock === 'body-replacement') {
+  console.log('Mocks preserve the upstream HTTP status in this browser.');
+}
+
 const status = await session.getStatus();
 
 await session.requestCors({
@@ -79,6 +83,8 @@ await session.requestCors({
 ```
 
 `requestCors()` always shows an extension-controlled confirmation and applies only to the real top-level page origin. A page cannot request changes for another origin.
+
+`session.capabilities.interception` reports whether the browser supports synthetic responses or body replacement, synthetic preflights or header-only repair, reasoned network failures or cancellation, and distinct or combined Fetch/XHR resource types. Applications should use these values instead of inferring behavior from the user agent.
 
 ### Create a disabled rule draft
 

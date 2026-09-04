@@ -258,6 +258,12 @@ async function onBeforeRequest(details: RequestDetails) {
     notifyLogChanged(details.tabId);
     return { cancel: true };
   }
+  const mock = actionOfType(actions, 'mockResponse');
+  if (mock) {
+    installMockFilter(details, mock, entry);
+    notifyLogChanged(details.tabId);
+    return {};
+  }
   const redirect = actionOfType(actions, 'redirect');
   if (redirect) {
     entry.outcome = 'continued';
@@ -265,9 +271,7 @@ async function onBeforeRequest(details: RequestDetails) {
     notifyLogChanged(details.tabId);
     return { redirectUrl: redirect.url };
   }
-  const mock = actionOfType(actions, 'mockResponse');
-  if (mock) installMockFilter(details, mock, entry);
-  else entry.outcome = 'continued';
+  entry.outcome = 'continued';
   notifyLogChanged(details.tabId);
   return {};
 }

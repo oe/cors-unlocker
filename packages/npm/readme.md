@@ -12,6 +12,7 @@ pnpm add forth-intercept
 import { intercept } from 'forth-intercept';
 
 const session = await intercept.connect();
+console.log(session.capabilities.browser, session.capabilities.interception);
 
 await session.requestCors({
   reason: 'Preview staging data',
@@ -29,7 +30,7 @@ await session.createRuleDraft({
 ## Safety model
 
 - Communication uses a packaged content-script bridge, not a hosted traffic relay.
-- Chrome supplies the actual sender tab; page code cannot claim a different origin.
+- The browser supplies the actual sender tab; page code cannot claim a different origin.
 - Enabling CORS requires confirmation.
 - SDK-created rules are always disabled and origin-scoped until reviewed by the user.
 - Advanced mode cannot be silently attached by the SDK.

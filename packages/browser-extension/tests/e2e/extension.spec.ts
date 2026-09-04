@@ -170,7 +170,17 @@ test('exposes an origin-scoped SDK bridge with consent and disabled drafts', asy
   const connected = await sdkRequest('connect');
   expect(connected.data).toMatchObject({
     origin: 'http://test.localhost:3000',
-    capabilities: { protocolVersion: 2, product: 'Forth Intercept' },
+    capabilities: {
+      protocolVersion: 2,
+      product: 'Forth Intercept',
+      browser: 'chrome',
+      interception: {
+        responseMock: 'synthetic',
+        preflight: 'synthetic',
+        networkFailure: 'reasoned',
+        resourceTypes: 'distinct-fetch-xhr',
+      },
+    },
   });
 
   target.once('dialog', (dialog) => dialog.accept());
