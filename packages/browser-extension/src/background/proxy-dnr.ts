@@ -1,6 +1,7 @@
 import browser from 'webextension-polyfill';
 import type { IProxyAction, IProxyRule } from '@/common/proxy-state';
 import { logger } from '@/common/logger';
+import { toDnrResourceTypes } from '@/common/request-match';
 
 const RULE_ID_BASE = 1_000_000;
 const RULE_ID_RANGE = 1_000_000_000;
@@ -22,28 +23,12 @@ function asDomains(origins: string[]): string[] | undefined {
   return domains.length > 0 ? [...new Set(domains)] : undefined;
 }
 
-function asResourceTypes(types?: string[]): chrome.declarativeNetRequest.ResourceType[] | undefined {
-  if (!types?.length) return undefined;
-  const known = new Set([
-    'main_frame', 'sub_frame', 'stylesheet', 'script', 'image', 'font', 'object',
-    'xmlhttprequest', 'ping', 'csp_report', 'media', 'websocket', 'other',
-  ]);
-  const normalized = types.map((type) => {
-    const lower = type.toLowerCase();
-    if (lower === 'xhr' || lower === 'fetch') return 'xmlhttprequest';
-    return lower;
-  }).filter((type) => known.has(type));
-  return normalized.length > 0
-    ? [...new Set(normalized)] as chrome.declarativeNetRequest.ResourceType[]
-    : undefined;
-}
-
 function createCondition(rule: IProxyRule): chrome.declarativeNetRequest.RuleCondition {
   return {
     urlFilter: rule.match.urlPattern || '*',
     initiatorDomains: asDomains(rule.match.initiatorOrigins),
     requestMethods: rule.match.methods?.map((method) => method.toLowerCase()) as chrome.declarativeNetRequest.RequestMethod[] | undefined,
-    resourceTypes: asResourceTypes(rule.match.resourceTypes),
+    resourceTypes: toDnrResourceTypes(rule.match.resourceTypes),
   };
 }
 
@@ -72,6 +57,7 @@ export function compileProxyRules(rules: IProxyRule[]): browser.DeclarativeNetRe
   return rules.flatMap((rule) => {
     if (!rule.enabled || rule.source === 'legacy-cors') return [];
     const condition = createCondition(rule);
+    if (rule.match.resourceTypes?.length && !condition.resourceTypes?.length) return [];
     const block = rule.actions.find((action) => action.type === 'block');
     if (block) return [{
       id: allocateId(`${rule.id}:block`),

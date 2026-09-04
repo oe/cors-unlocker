@@ -46,4 +46,14 @@ describe('proxy DNR compiler', () => {
   it('does not recompile migrated CORS rules', () => {
     expect(compileProxyRules([rule({ source: 'legacy-cors', legacyRuleId: 1 })])).toEqual([]);
   });
+
+  it('keeps CDP-only resource types out of the broad DNR fast path', () => {
+    expect(compileProxyRules([rule({
+      match: {
+        initiatorOrigins: ['https://app.example.com'],
+        urlPattern: '*://api.example.com/*',
+        resourceTypes: ['Preflight'],
+      },
+    })])).toEqual([]);
+  });
 });

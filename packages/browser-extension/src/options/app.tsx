@@ -1,8 +1,10 @@
 import { StrictMode, useCallback, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import browser from 'webextension-polyfill';
-import { Download, Info, Network, Plus, RotateCcw, Trash2, Upload } from 'lucide-react';
+import { Download, Info, Pencil, Plus, RotateCcw, Trash2, Upload } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { BrandMark } from '@/components/brand-mark';
+import { MultiSelectField } from '@/components/multi-select-field';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -45,6 +47,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { dataStorage } from '@/common/storage';
 import type { IProxyAction, IProxyAppState, IProxyRule } from '@/common/proxy-state';
+import { RESOURCE_TYPES } from '@/common/request-match';
 import '@/common/tailwind.css';
 import './style.scss';
 
@@ -93,7 +96,7 @@ type RuleDraft = {
   origins: string;
   urlPattern: string;
   methods: string;
-  resourceTypes: string;
+  resourceTypes: string[];
   actions: string;
 };
 
@@ -103,7 +106,7 @@ const EMPTY_DRAFT: RuleDraft = {
   origins: '*',
   urlPattern: '*',
   methods: '',
-  resourceTypes: 'XHR,Fetch',
+  resourceTypes: ['XHR', 'Fetch'],
   actions: JSON.stringify(ACTION_TEMPLATES.responseHeaders, null, 2),
 };
 
@@ -115,7 +118,7 @@ function draftFromRule(rule: IProxyRule): RuleDraft {
     origins: rule.match.initiatorOrigins.join(', '),
     urlPattern: rule.match.urlPattern,
     methods: rule.match.methods?.join(', ') || '',
-    resourceTypes: rule.match.resourceTypes?.join(', ') || '',
+    resourceTypes: [...(rule.match.resourceTypes || [])],
     actions: JSON.stringify(rule.actions, null, 2),
   };
 }
@@ -181,7 +184,7 @@ function RuleDialog({
               initiatorOrigins: origins,
               urlPattern: form.urlPattern.trim(),
               methods: splitList(form.methods)?.map((method) => method.toUpperCase()),
-              resourceTypes: splitList(form.resourceTypes),
+              resourceTypes: form.resourceTypes.length > 0 ? form.resourceTypes : undefined,
             },
             actions,
           },
@@ -213,21 +216,31 @@ function RuleDialog({
             <Field>
               <FieldLabel htmlFor="rule-origins">Page origins</FieldLabel>
               <Input id="rule-origins" value={form.origins} onChange={(event) => setForm({ ...form, origins: event.target.value })} placeholder="https://app.example.com or *" />
+              <FieldDescription>Comma-separated origins. Use * only when every page should match.</FieldDescription>
             </Field>
             <Field>
               <FieldLabel htmlFor="rule-pattern">Request URL pattern</FieldLabel>
               <Input id="rule-pattern" value={form.urlPattern} onChange={(event) => setForm({ ...form, urlPattern: event.target.value })} placeholder="*://api.example.com/*" />
+              <FieldDescription>Use * as a wildcard. Matching is case-insensitive.</FieldDescription>
             </Field>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field>
               <FieldLabel htmlFor="rule-methods">Methods</FieldLabel>
               <Input id="rule-methods" value={form.methods} onChange={(event) => setForm({ ...form, methods: event.target.value })} placeholder="GET, POST (blank = all)" />
+              <FieldDescription>Comma-separated HTTP methods. Leave blank to match every method.</FieldDescription>
             </Field>
             <Field>
               <FieldLabel htmlFor="rule-resources">Resource types</FieldLabel>
-              <Input id="rule-resources" value={form.resourceTypes} onChange={(event) => setForm({ ...form, resourceTypes: event.target.value })} placeholder="XHR, Fetch" />
-              {isFirefox ? <FieldDescription>Firefox treats Fetch and XMLHttpRequest as one XHR resource type.</FieldDescription> : null}
+              <MultiSelectField
+                id="rule-resources"
+                label="Resource types"
+                options={RESOURCE_TYPES}
+                value={form.resourceTypes}
+                allLabel="All resource types"
+                onChange={(resourceTypes) => setForm({ ...form, resourceTypes })}
+              />
+              <FieldDescription>{isFirefox ? 'Firefox reports Fetch and XMLHttpRequest together as XHR.' : 'Choose one or more CDP resource types; no selection matches all.'}</FieldDescription>
             </Field>
           </div>
           <Field>
@@ -293,8 +306,10 @@ function RuleDialog({
 
 function ProxyRules({ state, reload }: { state: IProxyAppState; reload: () => Promise<void> }) {
   const [draft, setDraft] = useState<RuleDraft | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<IProxyRule | null>(null);
   const remove = async (id: string) => {
     await browser.runtime.sendMessage({ type: 'deleteProxyRule', payload: { id } });
+    setPendingDelete(null);
     await reload();
   };
   const toggle = async (rule: IProxyRule, enabled: boolean) => {
@@ -340,20 +355,26 @@ function ProxyRules({ state, reload }: { state: IProxyAppState; reload: () => Pr
             {state.rules.map((rule) => (
               <TableRow key={rule.id}>
                 <TableCell>
-                  <button className="flex flex-col gap-1 text-left" onClick={() => setDraft(draftFromRule(rule))}>
+                  <button className="flex flex-col gap-1 rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => setDraft(draftFromRule(rule))}>
                     <span className="font-medium">{rule.name}</span>
                     <Badge variant={rule.source === 'legacy-cors' ? 'secondary' : 'outline'}>{rule.source}</Badge>
                   </button>
                 </TableCell>
                 <TableCell className="max-w-72">
-                  <p className="truncate font-mono text-xs">{rule.match.urlPattern}</p>
-                  <p className="truncate text-xs text-muted-foreground">{rule.match.initiatorOrigins.join(', ')}</p>
+                  <p className="truncate font-mono text-xs" title={rule.match.urlPattern}>{rule.match.urlPattern}</p>
+                  <p className="truncate text-xs text-muted-foreground" title={rule.match.initiatorOrigins.join(', ')}>{rule.match.initiatorOrigins.join(', ')}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {rule.match.methods?.join(', ') || 'All methods'} · {rule.match.resourceTypes?.join(', ') || 'All resource types'}
+                  </p>
                 </TableCell>
                 <TableCell className="text-xs text-muted-foreground">{rule.actions.map((action) => action.type).join(', ')}</TableCell>
                 <TableCell>
                   <div className="flex justify-end gap-2">
                     <Switch checked={rule.enabled} onCheckedChange={(enabled) => toggle(rule, enabled)} aria-label={`Toggle ${rule.name}`} />
-                    <Button size="icon-sm" variant="ghost" aria-label={`Delete ${rule.name}`} onClick={() => remove(rule.id)}>
+                    <Button size="icon-sm" variant="ghost" aria-label={`Edit ${rule.name}`} onClick={() => setDraft(draftFromRule(rule))}>
+                      <Pencil />
+                    </Button>
+                    <Button size="icon-sm" variant="ghost" aria-label={`Delete ${rule.name}`} onClick={() => setPendingDelete(rule)}>
                       <Trash2 />
                     </Button>
                   </div>
@@ -364,13 +385,27 @@ function ProxyRules({ state, reload }: { state: IProxyAppState; reload: () => Pr
         </Table>
         {state.rules.length === 0 ? (
           <div className="flex min-h-52 flex-col items-center justify-center gap-2 text-center">
-            <Network className="size-8 text-muted-foreground" />
+            <BrandMark className="size-9 opacity-60 grayscale" />
             <p className="font-medium">No proxy rules yet</p>
             <p className="text-sm text-muted-foreground">Capture a request or create your first rule.</p>
           </div>
         ) : null}
       </CardContent>
       <RuleDialog draft={draft} onOpenChange={(open) => !open && setDraft(null)} onSaved={reload} />
+      <Dialog open={!!pendingDelete} onOpenChange={(open) => !open && setPendingDelete(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete proxy rule?</DialogTitle>
+            <DialogDescription>
+              “{pendingDelete?.name}” will stop matching immediately. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
+            <Button variant="destructive" onClick={() => pendingDelete && remove(pendingDelete.id)}>Delete rule</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
@@ -455,7 +490,7 @@ function App() {
       <div className="mx-auto flex max-w-6xl flex-col gap-6 px-5 py-8">
         <header className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground"><Network /></div>
+            <BrandMark className="size-10" />
             <div>
               <h1 className="text-xl font-semibold tracking-tight">Forth Intercept</h1>
               <p className="text-sm text-muted-foreground">Local request interception for {__TARGET__ === 'firefox' ? 'Firefox' : 'Chrome'}</p>

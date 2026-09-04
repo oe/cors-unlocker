@@ -9,6 +9,7 @@ import {
   type IProxyRule,
   type ProxyHeaderMap,
 } from '@/common/proxy-state';
+import { normalizeResourceType } from '@/common/request-match';
 
 const PROTOCOL_VERSION = '1.3';
 
@@ -90,11 +91,14 @@ function globMatches(pattern: string, value: string): boolean {
 
 function matchingRules(session: IAdvancedProxySession, params: IRequestPausedParams): IProxyRule[] {
   const method = params.request.method.toUpperCase();
+  const resourceType = normalizeResourceType(params.resourceType);
   return cachedRules.filter((rule) => rule.enabled
     && rule.match.initiatorOrigins.some((origin) => origin === '*' || origin === session.origin)
     && globMatches(rule.match.urlPattern, params.request.url)
     && (!rule.match.methods?.length || rule.match.methods.includes(method))
-    && (!rule.match.resourceTypes?.length || rule.match.resourceTypes.includes(params.resourceType || 'Other')));
+    && (!rule.match.resourceTypes?.length || rule.match.resourceTypes.some(
+      (expected) => normalizeResourceType(expected) === resourceType,
+    )));
 }
 
 function recordRequest(tabId: number, params: IRequestPausedParams, rules: IProxyRule[]): IRequestLogEntry {
@@ -103,7 +107,7 @@ function recordRequest(tabId: number, params: IRequestPausedParams, rules: IProx
     tabId,
     url: params.request.url,
     method: params.request.method,
-    resourceType: params.resourceType || 'Other',
+    resourceType: normalizeResourceType(params.resourceType),
     startedAt: Date.now(),
     requestHeaders: redactHeaders(params.request.headers),
     matchedRuleIds: rules.map((rule) => rule.id),

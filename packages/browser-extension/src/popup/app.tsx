@@ -1,7 +1,8 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { AlertCircle, ArrowUpRight, Network, Settings } from 'lucide-react';
+import { AlertCircle, ArrowUpRight, Settings } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { BrandMark } from '@/components/brand-mark';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -32,7 +33,6 @@ function App() {
     toggleAdvancedProxy,
     openInspector,
     gotoOptionsPage,
-    gotoEditRule,
     clearError,
   } = useViewModel();
   const advancedEnabled = advancedProxy?.phase === 'connected';
@@ -41,9 +41,7 @@ function App() {
     <main className="flex min-h-full flex-col gap-3 bg-background p-3 text-foreground">
       <header className="flex items-center justify-between px-1 py-0.5">
         <div className="flex min-w-0 items-center gap-2">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Network aria-hidden="true" />
-          </div>
+          <BrandMark />
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <h1 className="truncate text-sm font-semibold">Forth Intercept</h1>
@@ -133,10 +131,9 @@ function App() {
         <Button
           size="sm"
           variant="ghost"
-          disabled={!rule?.id}
-          onClick={() => rule?.id && gotoEditRule(rule.id)}
+          onClick={gotoOptionsPage}
         >
-          Manage rules
+          Open rules
           <ArrowUpRight data-icon="inline-end" />
         </Button>
       </footer>

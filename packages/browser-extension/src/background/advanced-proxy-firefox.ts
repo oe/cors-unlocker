@@ -9,6 +9,7 @@ import {
   type IProxyRule,
   type ProxyHeaderMap,
 } from '@/common/proxy-state';
+import { normalizeResourceType } from '@/common/request-match';
 
 export type AdvancedProxyPhase = 'disabled' | 'connecting' | 'connected' | 'error';
 
@@ -70,6 +71,11 @@ let requestLogLimit = 500;
 
 const SENSITIVE_HEADERS = new Set(['authorization', 'cookie', 'proxy-authorization', 'set-cookie']);
 
+function normalizeFirefoxResourceType(resourceType?: string): string {
+  const normalized = normalizeResourceType(resourceType);
+  return normalized === 'Fetch' ? 'XHR' : normalized;
+}
+
 function keyFor(details: RequestDetails): string {
   return `${details.tabId}:${details.requestId}`;
 }
@@ -91,12 +97,6 @@ function redactHeaders(headers: ProxyHeaderMap): ProxyHeaderMap {
   ]));
 }
 
-function normalizeResourceType(resourceType?: string): string {
-  const lower = (resourceType || 'other').toLowerCase();
-  if (lower === 'xmlhttprequest' || lower === 'xhr' || lower === 'fetch') return 'XHR';
-  return lower.split('_').map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
-}
-
 function globMatches(pattern: string, value: string): boolean {
   if (!pattern || pattern === '*') return true;
   const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
@@ -105,13 +105,13 @@ function globMatches(pattern: string, value: string): boolean {
 
 function matchingRules(session: Session, details: RequestDetails): IProxyRule[] {
   const method = details.method.toUpperCase();
-  const resourceType = normalizeResourceType(details.type);
+  const resourceType = normalizeFirefoxResourceType(details.type);
   return cachedRules.filter((rule) => rule.enabled
     && rule.match.initiatorOrigins.some((origin) => origin === '*' || origin === session.origin)
     && globMatches(rule.match.urlPattern, details.url)
     && (!rule.match.methods?.length || rule.match.methods.includes(method))
     && (!rule.match.resourceTypes?.length || rule.match.resourceTypes.some(
-      (expected) => normalizeResourceType(expected) === resourceType,
+      (expected) => normalizeFirefoxResourceType(expected) === resourceType,
     )));
 }
 
@@ -162,7 +162,7 @@ function recordRequest(details: RequestDetails, rules: IProxyRule[]): IRequestLo
     tabId: details.tabId,
     url: details.url,
     method: details.method,
-    resourceType: normalizeResourceType(details.type),
+    resourceType: normalizeFirefoxResourceType(details.type),
     startedAt: Date.now(),
     requestHeaders: {},
     matchedRuleIds: rules.map((rule) => rule.id),
@@ -301,7 +301,7 @@ function onHeadersReceived(details: RequestDetails) {
   const sentHeaders = requestHeaders.get(key) || {};
   const { actions } = actionsFor(session, details);
   let headers = details.responseHeaders || [];
-  if (normalizeResourceType(details.type) === 'XHR') {
+  if (normalizeFirefoxResourceType(details.type) === 'XHR') {
     for (const header of corsHeaders(session, sentHeaders)) {
       if (header.value) headers = upsertHeader(headers, header.name, header.value);
     }

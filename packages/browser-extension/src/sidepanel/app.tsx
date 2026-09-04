@@ -1,8 +1,9 @@
 import { StrictMode, useCallback, useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import browser from 'webextension-polyfill';
-import { CircleSlash2, Eraser, ExternalLink, Network, Plus, Search } from 'lucide-react';
+import { CircleSlash2, Eraser, ExternalLink, Plus, Search } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { BrandMark } from '@/components/brand-mark';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -140,7 +141,7 @@ function App() {
     <main className="flex min-h-screen flex-col gap-3 bg-background p-3 text-foreground">
       <header className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground"><Network /></div>
+          <BrandMark />
           <div className="min-w-0">
             <h1 className="text-sm font-semibold">Traffic inspector</h1>
             <p className="truncate text-xs text-muted-foreground">{origin || 'No supported tab'}</p>

@@ -48,6 +48,11 @@ jobs:
           pnpm --filter browser-cors-unlocker build:chrome
           pnpm --filter browser-cors-unlocker package:chrome
 
+      - name: Run Chrome extension end-to-end tests
+        run: |
+          pnpm --filter browser-cors-unlocker exec playwright install --with-deps chromium
+          xvfb-run -a pnpm --filter browser-cors-unlocker test:e2e
+
       - name: Verify and package Firefox extension
         run: pnpm --filter browser-cors-unlocker check:firefox
 

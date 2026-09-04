@@ -124,6 +124,15 @@ test('renders the shadcn proxy workspace and popup', async () => {
   await control.reload();
   await expect(control.getByRole('heading', { name: 'Forth Intercept' })).toBeVisible();
   await expect(control.getByRole('tab', { name: 'Rules' })).toBeVisible();
+  await control.getByRole('button', { name: 'New rule' }).click();
+  const resources = control.getByRole('button', { name: 'Resource types: XHR, Fetch' });
+  await resources.click();
+  await expect(control.getByRole('menuitemcheckbox', { name: 'XHR' })).toBeChecked();
+  await expect(control.getByRole('menuitemcheckbox', { name: 'Fetch', exact: true })).toBeChecked();
+  await control.getByRole('menuitemcheckbox', { name: 'Image' }).click();
+  await expect(control.getByRole('button', { name: 'Resource types: 3 selected' })).toBeVisible();
+  await control.keyboard.press('Escape');
+  await control.getByRole('button', { name: 'Cancel' }).click();
   await control.screenshot({ path: 'test-results/forth-intercept-options.png', fullPage: true });
 
   const inspectedTab = await context.newPage();

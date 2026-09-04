@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { isSupportedProtocol } from '@/common/utils';
 import { logger } from '@/common/logger';
 import { extConfig } from '@/common/ext-config';
+import { inspectorPathForTab } from '@/common/inspector-target';
 import type { IRuleItem } from '@/types';
 import type { IAdvancedProxyStatus } from '@/background/advanced-proxy';
 
@@ -224,11 +225,31 @@ export function useViewModel() {
 
   const openInspector = useCallback(async () => {
     if (typeof tabId.current !== 'number') return;
-    await browser.runtime.sendMessage({
-      type: 'openSidePanel',
-      payload: { tabId: tabId.current },
-    });
-    window.close();
+    try {
+      if (__TARGET__ === 'chrome') {
+        await chrome.sidePanel.setOptions({
+          tabId: tabId.current,
+          path: inspectorPathForTab(tabId.current),
+          enabled: true,
+        });
+        // Keep sidePanel.open in the popup click handler so Chrome retains the
+        // user gesture required to reveal the panel.
+        await chrome.sidePanel.open({ tabId: tabId.current });
+      } else {
+        await browser.runtime.sendMessage({
+          type: 'openSidePanel',
+          payload: { tabId: tabId.current },
+        });
+      }
+      window.close();
+    } catch (error) {
+      logger.error('Failed to open traffic inspector:', error);
+      setState((previous) => ({
+        ...previous,
+        error: error instanceof Error ? error.message : 'Unable to open traffic inspector',
+        errorType: 'recoverable',
+      }));
+    }
   }, []);
 
   /**
