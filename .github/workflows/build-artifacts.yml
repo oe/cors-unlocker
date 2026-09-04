@@ -54,11 +54,22 @@ jobs:
       - name: Build product website
         run: pnpm --filter website build
 
+      - name: Validate extension packages
+        run: |
+          unzip -t packages/browser-extension/dist/forth-intercept-chrome-*.zip
+          unzip -t packages/browser-extension/dist/forth-intercept-firefox-*.zip
+          test -f packages/browser-extension/dist/chrome/manifest.json
+          test -f packages/browser-extension/dist/firefox/manifest.json
+          cp packages/browser-extension/CI-ARTIFACT-INSTALL.md packages/browser-extension/dist/chrome/INSTALL.md
+          cp packages/browser-extension/CI-ARTIFACT-INSTALL.md packages/browser-extension/dist/firefox/INSTALL.md
+
       - name: Upload Chrome extension
         uses: actions/upload-artifact@v4
         with:
           name: forth-intercept-chrome-${{ github.sha }}
-          path: packages/browser-extension/dist/forth-intercept-chrome-*.zip
+          # GitHub artifacts are ZIP files already. Uploading the packaged ZIP
+          # produced a nested archive that looked corrupt when installed directly.
+          path: packages/browser-extension/dist/chrome
           if-no-files-found: error
           retention-days: 14
 
@@ -74,7 +85,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: forth-intercept-firefox-${{ github.sha }}
-          path: packages/browser-extension/dist/forth-intercept-firefox-*.zip
+          path: packages/browser-extension/dist/firefox
           if-no-files-found: error
           retention-days: 14
 
