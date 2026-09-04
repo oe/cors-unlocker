@@ -11,6 +11,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import type { IAdvancedProxyStatus, IRequestLogEntry } from '@/background/advanced-proxy';
+import { parseInspectorTabId } from '@/common/inspector-target';
+import { isSupportedProtocol } from '@/common/utils';
 import '@/common/tailwind.css';
 import './style.scss';
 
@@ -22,8 +24,7 @@ function statusVariant(entry: IRequestLogEntry): 'default' | 'secondary' | 'dest
 
 function App() {
   const requestedTabId = useMemo(() => {
-    const value = Number(new URLSearchParams(location.search).get('tabId'));
-    return Number.isInteger(value) && value >= 0 ? value : null;
+    return parseInspectorTabId(location.search);
   }, []);
   const [tabId, setTabId] = useState<number | null>(null);
   const [origin, setOrigin] = useState('');
@@ -32,14 +33,42 @@ function App() {
   const [selected, setSelected] = useState<IRequestLogEntry | null>(null);
   const [search, setSearch] = useState('');
   const [message, setMessage] = useState<string | null>(null);
+  const [targetError, setTargetError] = useState<string | null>(null);
 
   const sync = useCallback(async () => {
     const tab = requestedTabId === null
-      ? (await browser.tabs.query({ active: true, currentWindow: true }))[0]
+      ? (await browser.tabs.query({ active: true, lastFocusedWindow: true }))[0]
       : await browser.tabs.get(requestedTabId).catch(() => undefined);
-    if (typeof tab?.id !== 'number' || !tab.url) return;
+    if (typeof tab?.id !== 'number' || !tab.url) {
+      setTabId(null);
+      setOrigin('');
+      setStatus(null);
+      setEntries([]);
+      setTargetError('Select a regular HTTP or HTTPS tab, then reopen the inspector.');
+      return;
+    }
+    let url: URL;
+    try {
+      url = new URL(tab.url);
+    } catch {
+      setTabId(null);
+      setOrigin('');
+      setStatus(null);
+      setEntries([]);
+      setTargetError('The selected tab has an invalid URL. Select an HTTP or HTTPS tab.');
+      return;
+    }
+    if (!isSupportedProtocol(url.protocol)) {
+      setTabId(null);
+      setOrigin('');
+      setStatus(null);
+      setEntries([]);
+      setTargetError(`${url.protocol} pages cannot be inspected. Select an HTTP or HTTPS tab.`);
+      return;
+    }
     setTabId(tab.id);
-    try { setOrigin(new URL(tab.url).origin); } catch { setOrigin(''); }
+    setOrigin(url.origin);
+    setTargetError(null);
     const [nextStatus, nextEntries] = await Promise.all([
       browser.runtime.sendMessage({ type: 'getAdvancedProxyStatus', payload: { tabId: tab.id } }),
       browser.runtime.sendMessage({ type: 'getAdvancedProxyLog', payload: { tabId: tab.id } }),
@@ -56,10 +85,18 @@ function App() {
         && message.payload?.tabId === tabId
       ) void sync();
     };
+    const onTabUpdated = (updatedTabId: number, changeInfo: browser.Tabs.OnUpdatedChangeInfoType) => {
+      if (!changeInfo.url) return;
+      if (requestedTabId === updatedTabId || (requestedTabId === null && tabId === updatedTabId)) {
+        void sync();
+      }
+    };
     browser.runtime.onMessage.addListener(listener);
+    browser.tabs.onUpdated.addListener(onTabUpdated);
     if (requestedTabId === null) browser.tabs.onActivated.addListener(sync);
     return () => {
       browser.runtime.onMessage.removeListener(listener);
+      browser.tabs.onUpdated.removeListener(onTabUpdated);
       if (requestedTabId === null) browser.tabs.onActivated.removeListener(sync);
     };
   }, [requestedTabId, sync, tabId]);
@@ -120,11 +157,11 @@ function App() {
       {status?.phase !== 'connected' ? (
         <Alert>
           <CircleSlash2 />
-          <AlertTitle>Inspector is paused</AlertTitle>
+          <AlertTitle>{targetError ? 'This tab cannot be inspected' : status?.phase === 'error' ? 'Inspector could not start' : 'Inspector is paused'}</AlertTitle>
           <AlertDescription>
-            {__TARGET__ === 'firefox'
+            {targetError || status?.error || (__TARGET__ === 'firefox'
               ? 'Turn it on to capture and patch requests from this tab using Firefox WebRequest.'
-              : 'Turn it on to attach CDP and capture this tab. Chrome will show its debugging banner.'}
+              : 'Turn it on to attach CDP and capture this tab. Chrome will show its debugging banner.')}
           </AlertDescription>
         </Alert>
       ) : null}

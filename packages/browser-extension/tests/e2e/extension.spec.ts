@@ -126,6 +126,23 @@ test('renders the shadcn proxy workspace and popup', async () => {
   await expect(control.getByRole('tab', { name: 'Rules' })).toBeVisible();
   await control.screenshot({ path: 'test-results/forth-intercept-options.png', fullPage: true });
 
+  const inspectedTab = await context.newPage();
+  await inspectedTab.goto('http://test.localhost:3000/');
+  const inspectedTabId = await getTabId('http://test.localhost:3000/');
+  await control.evaluate((tabId) => {
+    const trigger = document.createElement('button');
+    trigger.id = 'test-open-inspector';
+    trigger.textContent = 'Open test inspector';
+    trigger.addEventListener('click', () => {
+      void chrome.runtime.sendMessage({ type: 'openSidePanel', payload: { tabId } }).catch(() => undefined);
+    });
+    document.body.append(trigger);
+  }, inspectedTabId);
+  await control.locator('#test-open-inspector').click();
+  await expect.poll(() => control.evaluate(async (tabId) => (
+    await chrome.sidePanel.getOptions({ tabId })
+  ).path, inspectedTabId)).toBe(`src/sidepanel/index.html?tabId=${inspectedTabId}`);
+
   const popup = await context.newPage();
   await popup.goto(`chrome-extension://${extensionId}/src/popup/index.html`);
   await expect(popup.getByText('Advanced proxy')).toBeVisible();
@@ -134,11 +151,19 @@ test('renders the shadcn proxy workspace and popup', async () => {
   await popup.close();
 
   const inspector = await context.newPage();
-  await inspector.goto(`chrome-extension://${extensionId}/src/sidepanel/index.html`);
+  await inspector.goto(`chrome-extension://${extensionId}/src/sidepanel/index.html?tabId=${inspectedTabId}`);
   await expect(inspector.getByRole('heading', { name: 'Traffic inspector' })).toBeVisible();
+  await expect(inspector.getByText('http://test.localhost:3000')).toBeVisible();
+  const inspectorToggle = inspector.getByRole('switch', { name: 'Toggle advanced proxy' });
+  await expect(inspectorToggle).toBeEnabled();
+  await inspectorToggle.click();
+  await expect(inspectorToggle).toBeChecked();
+  await inspectorToggle.click();
+  await expect(inspectorToggle).not.toBeChecked();
   await inspector.setViewportSize({ width: 420, height: 820 });
   await inspector.screenshot({ path: 'test-results/forth-intercept-inspector.png', fullPage: true });
   await inspector.close();
+  await inspectedTab.close();
 });
 
 test('exposes an origin-scoped SDK bridge with consent and disabled drafts', async () => {

@@ -17,6 +17,7 @@ import {
   getRequestLog,
 } from '@/background/advanced-proxy';
 import { PRODUCT_CAPABILITIES } from '@/common/capabilities';
+import { inspectorPathForTab } from '@/common/inspector-target';
 import {
   addProxyRule,
   ensureProxyAppState,
@@ -429,16 +430,22 @@ export async function onRuntimeMessage(
       case 'openSidePanel': {
         const tabId = message.payload?.tabId;
         if (typeof tabId !== 'number') return { success: false, error: 'Missing tab ID.' };
+        const inspectorPath = inspectorPathForTab(tabId);
         if (__TARGET__ === 'firefox') {
           try {
             await browser.sidebarAction.open();
           } catch {
             await browser.tabs.create({
-              url: browser.runtime.getURL(`src/sidepanel/index.html?tabId=${tabId}`),
+              url: browser.runtime.getURL(inspectorPath),
             });
           }
           return { success: true };
         }
+        await chrome.sidePanel.setOptions({
+          tabId,
+          path: inspectorPath,
+          enabled: true,
+        });
         await chrome.sidePanel.open({ tabId });
         return { success: true };
       }
