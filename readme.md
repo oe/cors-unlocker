@@ -1,8 +1,8 @@
 # Forth Intercept
 
-Forth Intercept 2.0 is a Chrome-native request lab. It keeps the fast, warning-free CORS path from CORS Unlocker and adds an opt-in, tab-scoped advanced mode for traffic inspection, response mocking, latency and failure simulation, redirects, blocking, and header rewriting.
+Forth Intercept 2.0 is a browser-native request lab for Chrome and Firefox. It keeps the fast, warning-free CORS path from CORS Unlocker and adds opt-in, tab-scoped traffic inspection, response mocking, latency and failure simulation, redirects, blocking, and header rewriting.
 
-No native client is required. Advanced mode uses Chrome DevTools Protocol through `chrome.debugger`, so Chrome displays its standard debugging disclosure while a tab is attached.
+No native client is required. Chrome Advanced mode uses Chrome DevTools Protocol through `chrome.debugger`, so Chrome displays its standard debugging disclosure while a tab is attached. Firefox Intercept mode uses blocking WebRequest APIs and does not show a debugger banner.
 
 ## What 2.0 includes
 
@@ -16,16 +16,17 @@ No native client is required. Advanced mode uses Chrome DevTools Protocol throug
 
 ## Architecture
 
-| Path | Chrome API | Best for | Browser disclosure |
+| Browser path | API | Best for | Disclosure |
 | --- | --- | --- | --- |
 | Fast path | `declarativeNetRequest` | CORS, headers, redirect, block | None |
-| Advanced path | `chrome.debugger` + CDP `Fetch` | inspection, mock, delay, failure, complete CORS repair | Chrome debugging banner |
+| Chrome Advanced | `chrome.debugger` + CDP `Fetch` | inspection, mock, delay, failure, complete CORS repair | Chrome debugging banner |
+| Firefox Intercept | blocking `webRequest` + `filterResponseData` | inspection, headers, redirect, block, delay, failure, body replacement | Install-time permissions |
 
-Advanced mode is deliberately tab-scoped. It detaches when disabled, when the tab closes, when another debugger takes over, or when the tab navigates to a different top-level origin.
+Interception is deliberately tab-scoped. It stops when disabled, when the tab closes, or when the tab navigates to a different top-level origin. Chrome Advanced mode also detaches when another debugger takes over.
 
 ## Upgrade behavior
 
-Keep the existing manifest key when publishing 2.0 so Chrome treats it as an update to the same extension ID. On first startup:
+Keep the existing Chrome manifest key and Firefox Gecko ID when publishing 2.0 so each browser treats it as an update. On first startup:
 
 1. Existing v1 rules and settings are read.
 2. A `legacyBackupV1` snapshot is written.
@@ -53,6 +54,14 @@ pnpm --filter browser-cors-unlocker package:chrome
 
 The unpacked extension is written to `packages/browser-extension/dist/chrome`; the release archive is `packages/browser-extension/dist/forth-intercept-chrome-v2.0.0.zip`.
 
+Build and validate Firefox 2.0:
+
+```bash
+pnpm --filter browser-cors-unlocker check:firefox
+```
+
+The Firefox archive is written to `packages/browser-extension/dist/forth-intercept-firefox-v2.0.0.zip`.
+
 ## Verification
 
 ```bash
@@ -77,13 +86,13 @@ If Playwright's bundled Chromium is not installed, set `PLAYWRIGHT_CHROMIUM_EXEC
 - `tabs`, `storage`, and `sidePanel` support tab scope, local persistence, and the inspector.
 - Sensitive request and response headers are redacted by default. The extension does not upload traffic, rules, or logs.
 
-Forth Intercept is a development tool, not a system VPN: it affects Chrome requests matched by its rules and cannot proxy other applications or hide the browser's network address.
+Forth Intercept is a development tool, not a system VPN: it affects matching browser requests and cannot proxy other applications or hide the browser's network address.
 
 ## Other packages
 
 - `packages/npm` publishes the canonical `forth-intercept` 0.2 SDK. `packages/npm-compat` publishes `cors-unlocker` as a thin compatibility re-export for existing users.
 - `packages/website` is the Forth Intercept product site, documentation, privacy explanation, FAQ, and live SDK playground.
-- `packages/browser-extension` is the Chrome 2.0 product.
+- `packages/browser-extension` builds the Chrome and Firefox 2.0 products.
 
 ## License
 

@@ -28,6 +28,7 @@ describe('Forth Intercept SDK', () => {
         capabilities: {
           protocolVersion: 2,
           product: 'Forth Intercept',
+          browser: 'chrome',
           cors: true,
           draftRules: true,
           workspace: true,
@@ -47,7 +48,7 @@ describe('Forth Intercept SDK', () => {
       methods.push(request.method);
       if (request.method === 'connect') return { data: {
         origin: 'https://app.example.com',
-        capabilities: { protocolVersion: 2, product: 'Forth Intercept', cors: true, draftRules: true, workspace: true, advancedMode: 'user-initiated' },
+        capabilities: { protocolVersion: 2, product: 'Forth Intercept', browser: 'chrome', cors: true, draftRules: true, workspace: true, advancedMode: 'user-initiated' },
       } };
       if (request.method === 'requestCors') return { data: {
         origin: 'https://app.example.com',

@@ -13,7 +13,7 @@ import {
 } from './messaging';
 import { logger } from '@/common/logger';
 import { ensureProxyAppState } from '@/common/proxy-state';
-import './advanced-proxy';
+import '@/background/advanced-proxy';
 import { reconcileProxyDnrRules } from './proxy-dnr';
 
 // Simple delay utility function

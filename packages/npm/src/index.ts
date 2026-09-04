@@ -28,6 +28,7 @@ export class AppCorsError extends InterceptError {}
 export interface InterceptCapabilities {
   protocolVersion: 2;
   product: 'Forth Intercept';
+  browser: 'chrome' | 'firefox';
   cors: true;
   draftRules: true;
   workspace: true;
@@ -207,7 +208,10 @@ export const intercept = {
   },
 
   openStorePage(): void {
-    window.open(`https://chromewebstore.google.com/detail/${EXTENSION_ID}`, '_blank', 'noopener,noreferrer');
+    const url = /firefox/i.test(navigator.userAgent)
+      ? 'https://intercept.forth.ink/docs/#install'
+      : `https://chromewebstore.google.com/detail/${EXTENSION_ID}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
   },
 };
 

@@ -1,6 +1,6 @@
 # Forth Intercept website
 
-The Astro website and documentation for Forth Intercept, a Chrome-native request lab.
+The Astro website and documentation for Forth Intercept, a browser-native request lab for Chrome and Firefox.
 
 ```bash
 pnpm --filter forth-intercept build

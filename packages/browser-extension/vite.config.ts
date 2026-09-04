@@ -12,6 +12,13 @@ function generateManifest() {
   const pkg = readJsonFile("package.json");
   if (browserTarget === 'chrome') {
     manifest.permissions = [...manifest.permissions, 'debugger', 'sidePanel'];
+  } else if (browserTarget === 'firefox') {
+    manifest.permissions = [
+      ...manifest.permissions,
+      'webRequest',
+      'webRequestBlocking',
+      'webRequestFilterResponse',
+    ];
   }
   return {
     name: pkg.name,
@@ -21,6 +28,7 @@ function generateManifest() {
   };
 }
 
+// Keep the legacy Gecko ID so Firefox upgrades retain v1 storage for one-time migration.
 const firefoxExtID = 'cors-unlocker@forth.ink';
 const chromeExtID = 'knhlkjdfmgkmelcjfnbbhpphkmjjacng';
 
@@ -61,9 +69,18 @@ export default defineConfig(({ command, mode }) => {
       devSourcemap: isDev
     },
     resolve: {
-      alias: {
-        '@': path.resolve(__dirname, 'src')
-      }
+      alias: [
+        {
+          find: '@/background/advanced-proxy',
+          replacement: path.resolve(
+            __dirname,
+            isFirefox
+              ? 'src/background/advanced-proxy-firefox.ts'
+              : 'src/background/advanced-proxy.ts',
+          ),
+        },
+        { find: '@', replacement: path.resolve(__dirname, 'src') },
+      ],
     },
     plugins: [
       react(),

@@ -1,6 +1,6 @@
 # Forth Intercept architecture
 
-Forth Intercept is a Chrome-native request lab with three cooperating packages:
+Forth Intercept is a browser-native request lab for Chrome and Firefox with four cooperating packages:
 
 - `packages/browser-extension` owns request interception, local rule storage, the traffic inspector, and the page capability bridge.
 - `packages/npm` is the canonical application-facing SDK published as `forth-intercept`.
@@ -12,6 +12,8 @@ Forth Intercept is a Chrome-native request lab with three cooperating packages:
 Common rules compile to Chrome `declarativeNetRequest`. This path covers CORS, request and response headers, redirects, and blocking without attaching a debugger.
 
 Advanced mode attaches Chrome DevTools Protocol `Fetch` to one user-selected tab. It supports inspection, complete preflight repair, static mocks, delays, and simulated failures. Chrome shows its standard debugging disclosure while attached. The extension detaches on disable, tab close, debugger takeover, or cross-origin top-level navigation.
+
+Firefox Intercept mode uses blocking `webRequest` listeners for observation, headers, redirects, cancellation, and delay. `filterResponseData` replaces response bodies while preserving the server's original HTTP status. It uses install-time Firefox permissions instead of a debugger attachment.
 
 ## Local data and migration
 

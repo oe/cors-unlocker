@@ -7,7 +7,7 @@
   <text x="140" y="96" font-family="Inter,Arial,sans-serif" font-size="32" font-weight="700" fill="#111113">Forth Intercept</text>
   <text x="64" y="280" font-family="Inter,Arial,sans-serif" font-size="76" font-weight="700" letter-spacing="-3" fill="#111113">Patch the request.</text>
   <text x="64" y="370" font-family="Inter,Arial,sans-serif" font-size="76" font-weight="700" letter-spacing="-3" fill="#111113">Keep your flow.</text>
-  <text x="64" y="445" font-family="Inter,Arial,sans-serif" font-size="28" fill="#626268">A Chrome-native request lab. No native client. No proxy setup.</text>
+  <text x="64" y="445" font-family="Inter,Arial,sans-serif" font-size="28" fill="#626268">A browser-native request lab. No native client. No proxy setup.</text>
   <rect x="64" y="505" width="190" height="56" rx="10" fill="#111113"/>
   <text x="96" y="542" font-family="Inter,Arial,sans-serif" font-size="21" font-weight="600" fill="white">Add to Chrome</text>
   <rect x="820" y="130" width="320" height="370" rx="16" fill="#fafafa" stroke="#dedee1"/>

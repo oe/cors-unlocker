@@ -2,7 +2,7 @@
   "name": "browser-cors-unlocker",
   "private": true,
   "version": "2.0.0",
-  "description": "Forth Intercept: a local, tab-scoped request lab for Chrome.",
+  "description": "Forth Intercept: a local, tab-scoped request lab for Chrome and Firefox.",
   "type": "module",
   "scripts": {
     "dev": "TARGET=chrome vite build --watch --mode development",
@@ -13,7 +13,9 @@
     "build": "pnpm run build:chrome && pnpm run build:firefox",
     "postbuild": "tsx scripts/post-build.ts",
     "package:chrome": "tsx scripts/post-build.ts chrome",
+    "package:firefox": "tsx scripts/post-build.ts firefox",
     "check": "tsc -p tsconfig.json --noEmit && eslint src tests && vitest run && pnpm run build:chrome && playwright test",
+    "check:firefox": "tsc -p tsconfig.json --noEmit && eslint src tests && vitest run && pnpm run build:firefox && web-ext lint --source-dir dist/firefox && pnpm run package:firefox",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
@@ -62,6 +64,7 @@
     "vite-plugin-web-extension": "^4.4.4",
     "vitest": "^2.1.8",
     "vitest-webextension-mock": "^0.0.7",
+    "web-ext": "^10.6.0",
     "webextension-polyfill": "^0.10.0",
     "zip-a-folder": "^3.1.8"
   }

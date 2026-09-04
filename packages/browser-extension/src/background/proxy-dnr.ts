@@ -107,7 +107,6 @@ export function compileProxyRules(rules: IProxyRule[]): browser.DeclarativeNetRe
 }
 
 export async function reconcileProxyDnrRules(rules: IProxyRule[]): Promise<void> {
-  if (__TARGET__ !== 'chrome') return;
   const existing = await browser.declarativeNetRequest.getDynamicRules();
   const removeRuleIds = existing
     .filter((rule) => rule.id >= RULE_ID_BASE)

@@ -21,6 +21,10 @@ function statusVariant(entry: IRequestLogEntry): 'default' | 'secondary' | 'dest
 }
 
 function App() {
+  const requestedTabId = useMemo(() => {
+    const value = Number(new URLSearchParams(location.search).get('tabId'));
+    return Number.isInteger(value) && value >= 0 ? value : null;
+  }, []);
   const [tabId, setTabId] = useState<number | null>(null);
   const [origin, setOrigin] = useState('');
   const [status, setStatus] = useState<IAdvancedProxyStatus | null>(null);
@@ -30,7 +34,9 @@ function App() {
   const [message, setMessage] = useState<string | null>(null);
 
   const sync = useCallback(async () => {
-    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+    const tab = requestedTabId === null
+      ? (await browser.tabs.query({ active: true, currentWindow: true }))[0]
+      : await browser.tabs.get(requestedTabId).catch(() => undefined);
     if (typeof tab?.id !== 'number' || !tab.url) return;
     setTabId(tab.id);
     try { setOrigin(new URL(tab.url).origin); } catch { setOrigin(''); }
@@ -40,7 +46,7 @@ function App() {
     ]);
     setStatus(nextStatus);
     setEntries(nextEntries || []);
-  }, []);
+  }, [requestedTabId]);
 
   useEffect(() => {
     void sync();
@@ -51,12 +57,12 @@ function App() {
       ) void sync();
     };
     browser.runtime.onMessage.addListener(listener);
-    browser.tabs.onActivated.addListener(sync);
+    if (requestedTabId === null) browser.tabs.onActivated.addListener(sync);
     return () => {
       browser.runtime.onMessage.removeListener(listener);
-      browser.tabs.onActivated.removeListener(sync);
+      if (requestedTabId === null) browser.tabs.onActivated.removeListener(sync);
     };
-  }, [sync, tabId]);
+  }, [requestedTabId, sync, tabId]);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -115,7 +121,11 @@ function App() {
         <Alert>
           <CircleSlash2 />
           <AlertTitle>Inspector is paused</AlertTitle>
-          <AlertDescription>Turn it on to attach CDP and capture this tab. Chrome will show its debugging banner.</AlertDescription>
+          <AlertDescription>
+            {__TARGET__ === 'firefox'
+              ? 'Turn it on to capture and patch requests from this tab using Firefox WebRequest.'
+              : 'Turn it on to attach CDP and capture this tab. Chrome will show its debugging banner.'}
+          </AlertDescription>
         </Alert>
       ) : null}
       {message ? <Alert><AlertDescription>{message}</AlertDescription></Alert> : null}

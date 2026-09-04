@@ -8,7 +8,7 @@ description: Answers about Forth Intercept, Chrome debugging disclosure, privacy
 
 ## Is Forth Intercept a VPN or network proxy?
 
-No. It is a request interception tool inside Chrome. It does not route other applications, change your public IP, or provide geographic proxying.
+No. It is a request interception tool inside Chrome and Firefox. It does not route other applications, change your public IP, or provide geographic proxying.
 
 ## Why did CORS Unlocker become Forth Intercept?
 
@@ -44,4 +44,4 @@ The canonical package is now `forth-intercept`. `cors-unlocker@0.2` remains as a
 
 ## Is Firefox supported?
 
-The current v2 release targets Chrome. Firefox is planned, but its debugging and request-interception APIs require a separate implementation and acceptance pass.
+Yes. Firefox uses blocking WebRequest rather than Chrome CDP. CORS, headers, redirects, blocking, delay, failure simulation, traffic inspection, the SDK, and response-body replacement are supported. Firefox preserves the server's original HTTP status when replacing a response body, so its static mock behavior is not identical to Chrome.

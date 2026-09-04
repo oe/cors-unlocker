@@ -2,7 +2,7 @@
 
 ## Decision
 
-The product is **Forth Intercept**, described as **a Chrome-native request lab**.
+The product is **Forth Intercept**, described as **a browser-native request lab** for Chrome and Firefox.
 
 “Browser Proxy” is not the brand. It is too generic, overlaps with IP/VPN proxy products, and incorrectly suggests system-wide routing. “Forth Intercept” is tied to the existing forth.ink identity while describing what the extension actually does: intercept and patch request behavior inside a browser tab.
 
@@ -25,7 +25,7 @@ Requestly already covers a broad interceptor platform, team collaboration, deskt
 Forth Intercept should not compete by copying that breadth. Its useful wedge is:
 
 1. **Small, local, browser-only request lab** with no account and no native install.
-2. **Two explicit execution paths:** warning-free DNR rules for common work and opt-in tab-scoped CDP only when deeper interception is needed.
+2. **Explicit execution paths:** warning-free DNR rules, opt-in tab-scoped CDP on Chrome, and blocking WebRequest interception on Firefox.
 3. **Application-aware SDK:** a web app can detect the extension, request origin-scoped CORS access, and prepare a disabled rule draft for user review.
 4. **Upgrade continuity:** existing CORS Unlocker rules migrate automatically.
 

@@ -12,7 +12,7 @@ interface Props {
 const { frontmatter = {} } = Astro.props;
 const title = frontmatter.title || Astro.props.title;
 const pageTitle = title ? `${title} · Forth Intercept` : 'Forth Intercept';
-const description = frontmatter.description || Astro.props.description || 'A Chrome-native request lab for inspecting, rewriting, mocking, and debugging browser traffic.';
+const description = frontmatter.description || Astro.props.description || 'A browser-native request lab for inspecting, rewriting, mocking, and debugging Chrome and Firefox traffic.';
 ---
 <html lang="en" class="h-full">
   <head>

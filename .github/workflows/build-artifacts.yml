@@ -48,6 +48,9 @@ jobs:
           pnpm --filter browser-cors-unlocker build:chrome
           pnpm --filter browser-cors-unlocker package:chrome
 
+      - name: Verify and package Firefox extension
+        run: pnpm --filter browser-cors-unlocker check:firefox
+
       - name: Build product website
         run: pnpm --filter website build
 
@@ -64,6 +67,14 @@ jobs:
         with:
           name: forth-intercept-npm-${{ github.sha }}
           path: artifacts/npm/*.tgz
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Firefox extension
+        uses: actions/upload-artifact@v4
+        with:
+          name: forth-intercept-firefox-${{ github.sha }}
+          path: packages/browser-extension/dist/forth-intercept-firefox-*.zip
           if-no-files-found: error
           retention-days: 14
 

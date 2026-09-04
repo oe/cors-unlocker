@@ -6,22 +6,24 @@ description: Install Forth Intercept, choose the right interception mode, and co
 
 # Forth Intercept documentation
 
-Forth Intercept is a Chrome-native request lab. It changes requests inside Chrome; it is not an IP proxy, VPN, or system-wide traffic capture tool.
+Forth Intercept is a browser-native request lab. It changes requests inside Chrome or Firefox; it is not an IP proxy, VPN, or system-wide traffic capture tool.
 
 ## Install
 
-[Add Forth Intercept to Chrome](https://chromewebstore.google.com/detail/knhlkjdfmgkmelcjfnbbhpphkmjjacng), then pin it to the toolbar. Version 2 keeps the same extension ID as CORS Unlocker and automatically migrates existing settings.
+[Add Forth Intercept to Chrome](https://chromewebstore.google.com/detail/knhlkjdfmgkmelcjfnbbhpphkmjjacng), then pin it to the toolbar. Version 2 keeps the existing Chrome and Firefox extension IDs and automatically migrates existing settings.
+
+Firefox support is currently distributed as a beta build artifact from CI. Load the unpacked `dist/firefox` directory temporarily during development; an AMO-signed public build will follow separately.
 
 ## Choose a mode
 
-| | Rules mode | Advanced mode |
-|---|---|---|
-| Engine | `declarativeNetRequest` | Chrome DevTools Protocol `Fetch` |
-| Scope | Matching rules | Explicitly attached tab |
-| Use for | CORS, headers, redirects, blocking | Inspection, preflight repair, mocks, delay, failures |
-| Chrome disclosure | None | Standard debugging banner while attached |
+| | Rules mode | Chrome Advanced | Firefox Intercept |
+|---|---|---|---|
+| Engine | `declarativeNetRequest` | Chrome DevTools Protocol `Fetch` | Blocking `webRequest` and `filterResponseData` |
+| Scope | Matching rules | Explicitly attached tab | Explicitly enabled tab |
+| Use for | CORS, headers, redirects, blocking | Inspection, preflight repair, mocks, delay, failures | Inspection, headers, redirects, block, delay, failure, body replacement |
+| Browser disclosure | None | Standard debugging banner while attached | Install-time permissions; no debugger banner |
 
-Advanced mode detaches when you switch it off, close the tab, another debugger takes over, or the top-level page navigates to a different origin.
+Interception stops when you switch it off, close the tab, or the top-level page navigates to a different origin. Chrome Advanced mode also detaches when another debugger takes over.
 
 ## Rules
 
@@ -113,7 +115,8 @@ The workspace imports old v1 rule exports and complete v2 exports. New exports u
 
 ## Limitations
 
-- Chrome only for the v2 release; Firefox support is planned.
-- Advanced mode necessarily shows Chrome's debugging disclosure.
-- Changes affect matching Chrome traffic, not other applications.
-- Forth Intercept does not change your public IP address or decrypt traffic outside Chrome.
+- Chrome Advanced mode necessarily shows Chrome's debugging disclosure.
+- Firefox uses blocking WebRequest and does not attach a debugger.
+- Firefox response-body mocks preserve the server's original HTTP status and require an actual response.
+- Changes affect matching Chrome or Firefox traffic, not other applications.
+- Forth Intercept does not change your public IP address or decrypt traffic outside the browser.

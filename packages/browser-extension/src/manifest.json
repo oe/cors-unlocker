@@ -5,7 +5,11 @@
   "{{chrome}}.key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3AFld2MMvgmzzV1BKbE5gAYR5zJup89WLE0Em0oQcGxRoAn6Ul45unRJq/+AqmCnwvZGt2hPyRDvX9DdWW8e1DvvhfKHGbaGvdA0NzhKsoWjKAW/zqje92kQcvRj+Pv/ER0JkmMYocjTBGIsvX19dDOf54BikCrMbfkiD13oqRk3iv0NqffoNratj1Rvz0CTb75IZYE/rx2dbBbTC9PK2RhNCrgbpU0Y9y2NV++prUq5eh7ysfzT36M/fi8eMWRwxyRIRp3U87K/ftJlEHAOKIr9+B4KoDWI01DXkQQaBeTMHNnC89Zkbq42OE+iIS+1iNXZy2VnF1gpyUuvovUFcQIDAQAB",
   "{{firefox}}.browser_specific_settings": {
     "gecko": {
-      "id": "cors-unlocker@forth.ink"
+      "id": "cors-unlocker@forth.ink",
+      "strict_min_version": "142.0",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
     }
   },
   "icons": {
@@ -19,6 +23,10 @@
   },
   "{{chrome}}.side_panel": {
     "default_path": "src/sidepanel/index.html"
+  },
+  "{{firefox}}.sidebar_action": {
+    "default_title": "Forth Intercept traffic inspector",
+    "default_panel": "src/sidepanel/index.html"
   },
   "{{chrome}}.content_scripts": [
     {
@@ -35,6 +43,12 @@
     ]
   },
   "{{firefox}}.content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/content/page-bridge.ts"],
+      "run_at": "document_start",
+      "all_frames": false
+    },
     {
       "matches": [
         "https://*.forth.ink/*",

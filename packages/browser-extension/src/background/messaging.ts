@@ -15,7 +15,7 @@ import {
   enableAdvancedProxy,
   getAdvancedProxyStatus,
   getRequestLog,
-} from './advanced-proxy';
+} from '@/background/advanced-proxy';
 import {
   addProxyRule,
   ensureProxyAppState,
@@ -272,6 +272,7 @@ async function handleSdkRequest(
         capabilities: {
           protocolVersion: 2,
           product: 'Forth Intercept',
+          browser: __TARGET__,
           cors: true,
           draftRules: true,
           workspace: true,
@@ -433,9 +434,18 @@ export async function onRuntimeMessage(
       }
 
       case 'openSidePanel': {
-        if (__TARGET__ !== 'chrome') return { success: false, error: 'Chrome only.' };
         const tabId = message.payload?.tabId;
         if (typeof tabId !== 'number') return { success: false, error: 'Missing tab ID.' };
+        if (__TARGET__ === 'firefox') {
+          try {
+            await browser.sidebarAction.open();
+          } catch {
+            await browser.tabs.create({
+              url: browser.runtime.getURL(`src/sidepanel/index.html?tabId=${tabId}`),
+            });
+          }
+          return { success: true };
+        }
         await chrome.sidePanel.open({ tabId });
         return { success: true };
       }

@@ -19,6 +19,7 @@ import '@/common/tailwind.css';
 import './style.scss';
 
 function App() {
+  const isFirefox = __TARGET__ === 'firefox';
   const {
     rule,
     ruleEnabled,
@@ -101,10 +102,14 @@ function App() {
       <Card size="sm" aria-disabled={!isSupported}>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <CardTitle>Advanced proxy</CardTitle>
+            <CardTitle>{isFirefox ? 'Intercept mode' : 'Advanced proxy'}</CardTitle>
             {advancedEnabled ? <Badge>Connected</Badge> : null}
           </div>
-          <CardDescription>Repairs failed preflights and response headers on this tab.</CardDescription>
+          <CardDescription>
+            {isFirefox
+              ? 'Captures and patches requests from this tab with Firefox WebRequest.'
+              : 'Repairs failed preflights and response headers on this tab.'}
+          </CardDescription>
           <CardAction>
             <Switch
               aria-label="Enable advanced proxy for this tab"
@@ -116,7 +121,9 @@ function App() {
         </CardHeader>
         <CardContent>
           <p className="text-xs text-muted-foreground">
-            Chrome shows a debugging banner while this mode is connected.
+            {isFirefox
+              ? 'No debugger attachment is used; Firefox permissions are granted at install time.'
+              : 'Chrome shows a debugging banner while this mode is connected.'}
           </p>
         </CardContent>
       </Card>
