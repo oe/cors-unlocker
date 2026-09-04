@@ -1,13 +1,14 @@
-import { ChevronDown } from 'lucide-react';
+import { useState } from 'react';
+import { Check, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+  Popover,
+  PopoverContent,
+  PopoverDescription,
+  PopoverHeader,
+  PopoverTitle,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 
 type MultiSelectFieldProps = {
   id: string;
@@ -32,16 +33,17 @@ export function MultiSelectField({
   allLabel,
   onChange,
 }: MultiSelectFieldProps) {
+  const [open, setOpen] = useState(false);
   const selected = new Set(value);
-  const toggle = (option: string, checked: boolean) => {
-    onChange(checked
-      ? options.filter((item) => selected.has(item) || item === option)
-      : value.filter((item) => item !== option));
+  const toggle = (option: string) => {
+    onChange(selected.has(option)
+      ? value.filter((item) => item !== option)
+      : options.filter((item) => selected.has(item) || item === option));
   };
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
         render={(
           <Button
             id={id}
@@ -54,27 +56,42 @@ export function MultiSelectField({
       >
         <span className="truncate">{selectedLabel(value, allLabel)}</span>
         <ChevronDown data-icon="inline-end" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start">
-        <DropdownMenuGroup>
-          <DropdownMenuLabel>{label}</DropdownMenuLabel>
-          <DropdownMenuCheckboxItem
-            checked={value.length === 0}
-            onCheckedChange={() => onChange([])}
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-(--anchor-width) min-w-56 gap-1 p-1">
+        <PopoverHeader className="px-2 py-1">
+          <PopoverTitle>{label}</PopoverTitle>
+          <PopoverDescription>Select any combination.</PopoverDescription>
+        </PopoverHeader>
+        <div role="listbox" aria-label={label} aria-multiselectable="true" className="flex max-h-64 flex-col gap-0.5 overflow-y-auto">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            role="option"
+            aria-selected={value.length === 0}
+            className="w-full justify-between font-normal"
+            onClick={() => onChange([])}
           >
-            {allLabel}
-          </DropdownMenuCheckboxItem>
+            <span className="truncate">{allLabel}</span>
+            <Check className={value.length === 0 ? undefined : 'invisible'} data-icon="inline-end" />
+          </Button>
           {options.map((option) => (
-            <DropdownMenuCheckboxItem
+            <Button
               key={option}
-              checked={selected.has(option)}
-              onCheckedChange={(checked) => toggle(option, checked)}
+              type="button"
+              variant="ghost"
+              size="sm"
+              role="option"
+              aria-selected={selected.has(option)}
+              className="w-full justify-between font-normal"
+              onClick={() => toggle(option)}
             >
-              {option}
-            </DropdownMenuCheckboxItem>
+              <span className="truncate">{option}</span>
+              <Check className={selected.has(option) ? undefined : 'invisible'} data-icon="inline-end" />
+            </Button>
           ))}
-        </DropdownMenuGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
