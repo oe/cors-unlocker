@@ -56,14 +56,14 @@ Open **Inspect traffic** from the popup, enable Advanced mode for the current HT
 
 ## SDK
 
-The published package remains `cors-unlocker` so existing installs and links continue to work. Version 0.2 adds the Forth Intercept session API while keeping the old CORS helpers as deprecated aliases.
+`forth-intercept` is the canonical SDK package. Existing installations can continue using `cors-unlocker@0.2`, which is a thin compatibility package that re-exports the same API.
 
 ```bash
-pnpm add cors-unlocker
+pnpm add forth-intercept
 ```
 
 ```ts
-import { intercept } from 'cors-unlocker';
+import { intercept } from 'forth-intercept';
 
 const session = await intercept.connect();
 console.log(session.origin, session.capabilities);

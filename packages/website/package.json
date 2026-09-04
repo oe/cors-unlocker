@@ -4,7 +4,7 @@
   "private": true,
   "main": "index.js",
   "scripts": {
-    "predev": "pnpm --filter cors-unlocker build:dev",
+    "predev": "pnpm --filter forth-intercept build:dev",
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
@@ -32,7 +32,7 @@
     "vite-plugin-eslint": "catalog:"
   },
   "dependencies": {
-    "cors-unlocker": "workspace:*",
+    "forth-intercept": "workspace:*",
     "lucide-react": "^0.475.0",
     "react-random-shapes": "^0.6.2"
   }

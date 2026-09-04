@@ -38,9 +38,9 @@ Not arbitrary JavaScript. Forth Intercept accepts validated JSON action scripts.
 
 It can detect the installed extension, read status for its own origin, ask the user to enable CORS, disable its own CORS rule, open the workspace, or create a disabled rule draft. It cannot silently enable arbitrary interception, attach Advanced mode, or affect another origin.
 
-## Why is the npm package still named `cors-unlocker`?
+## What happened to the `cors-unlocker` npm package?
 
-Keeping the published name preserves existing installations. Version 0.2 introduces the `intercept` session API and marks the original CORS helper functions as deprecated aliases rather than breaking existing apps immediately.
+The canonical package is now `forth-intercept`. `cors-unlocker@0.2` remains as a thin compatibility package, so existing applications can migrate their import when convenient instead of breaking immediately.
 
 ## Is Firefox supported?
 

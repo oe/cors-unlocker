@@ -57,7 +57,7 @@ Not allowed:
 - read captured traffic into page JavaScript;
 - execute arbitrary JavaScript.
 
-The npm package remains `cors-unlocker` for continuity. Version 0.2 adds `intercept.connect()` and marks the old helpers as deprecated aliases. A future major version can move to a new package name after the brand has proven useful.
+The canonical npm package is `forth-intercept`. Version 0.2 adds `intercept.connect()` and keeps the old helpers as deprecated aliases. The existing `cors-unlocker` package remains available as a thin compatibility re-export so users can migrate imports on their own schedule.
 
 ## Website information architecture
 

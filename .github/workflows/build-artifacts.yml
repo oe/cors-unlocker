@@ -1,0 +1,76 @@
+name: Build v2 artifacts
+
+on:
+  push:
+    branches:
+      - codex/ci-build-artifacts
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.6.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify and build npm SDK
+        run: |
+          pnpm --filter forth-intercept test
+          pnpm --filter forth-intercept build
+          pnpm --filter cors-unlocker test
+          pnpm --filter cors-unlocker build
+          mkdir -p artifacts/npm
+          pnpm --dir packages/npm pack --pack-destination ../../artifacts/npm
+          pnpm --dir packages/npm-compat pack --pack-destination ../../artifacts/npm
+
+      - name: Verify and package Chrome extension
+        run: |
+          pnpm --filter browser-cors-unlocker exec tsc -p tsconfig.json --noEmit
+          pnpm --filter browser-cors-unlocker exec eslint src tests
+          pnpm --filter browser-cors-unlocker test:run
+          pnpm --filter browser-cors-unlocker build:chrome
+          pnpm --filter browser-cors-unlocker package:chrome
+
+      - name: Build product website
+        run: pnpm --filter website build
+
+      - name: Upload Chrome extension
+        uses: actions/upload-artifact@v4
+        with:
+          name: forth-intercept-chrome-${{ github.sha }}
+          path: packages/browser-extension/dist/forth-intercept-chrome-*.zip
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload npm package
+        uses: actions/upload-artifact@v4
+        with:
+          name: forth-intercept-npm-${{ github.sha }}
+          path: artifacts/npm/*.tgz
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload website build
+        uses: actions/upload-artifact@v4
+        with:
+          name: forth-intercept-site-${{ github.sha }}
+          path: packages/website/dist
+          if-no-files-found: error
+          retention-days: 14

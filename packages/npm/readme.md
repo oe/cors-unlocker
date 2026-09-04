@@ -1,15 +1,15 @@
-# cors-unlocker — Forth Intercept SDK
+# forth-intercept
 
 An origin-scoped browser SDK for connecting a web app to the locally installed Forth Intercept Chrome extension.
 
-The package keeps the published `cors-unlocker` name so existing installs continue to resolve. Version 0.2 introduces the session API; the original CORS helper exports remain as deprecated aliases.
+The canonical, origin-scoped browser SDK for connecting a web app to the locally installed Forth Intercept Chrome extension. Existing users can keep using the `cors-unlocker` compatibility package.
 
 ```bash
-pnpm add cors-unlocker
+pnpm add forth-intercept
 ```
 
 ```ts
-import { intercept } from 'cors-unlocker';
+import { intercept } from 'forth-intercept';
 
 const session = await intercept.connect();
 

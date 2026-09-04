@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 import dts from 'vite-plugin-dts';
 
 export default defineConfig(({ mode }) => ({
-  plugins: [dts()],
+  plugins: [dts({ exclude: ['src/**/*.test.ts'] })],
   define: {
     'process.env.NODE_ENV': JSON.stringify(mode === 'development' ? 'development' : 'production'),
   },
@@ -10,8 +10,12 @@ export default defineConfig(({ mode }) => ({
     lib: {
       entry: 'src/index.ts',
       name: 'forthIntercept',
-      formats: ['es', 'umd'],
-      fileName: (format) => `index.${format}.js`
+      formats: ['es', 'cjs', 'umd'],
+      fileName: (format) => {
+        if (format === 'es') return 'index.mjs';
+        if (format === 'cjs') return 'index.cjs';
+        return 'index.umd.js';
+      }
     },
     // In development mode, generate sourcemaps and don't minify
     sourcemap: mode === 'development',

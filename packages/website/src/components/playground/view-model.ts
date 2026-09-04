@@ -1,10 +1,10 @@
-import appCors from 'cors-unlocker';
+import appCors from 'forth-intercept';
 import { useState, useEffect } from 'react';
 
 // @ts-expect-error exposed to window object for debugging
 globalThis.appCors = appCors;
 
-console.log('%cuse `appCors` in console to test the API of "cors-unlocker"', 'color: #0a0; font-size: 1.5em');
+console.log('%cuse `appCors` in console to test the API of "forth-intercept"', 'color: #0a0; font-size: 1.5em');
 
 interface PlaygroundState {
   // Extension status

@@ -1,0 +1,46 @@
+{
+  "name": "cors-unlocker",
+  "version": "0.2.0",
+  "description": "Compatibility package for the Forth Intercept browser SDK.",
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/oe/cors-unlocker/tree/main/packages/npm-compat"
+  },
+  "author": {
+    "name": "Saiya",
+    "email": "me@evecalm.com"
+  },
+  "scripts": {
+    "build": "tsc && vite build",
+    "test": "vitest run"
+  },
+  "keywords": [
+    "cors",
+    "forth-intercept",
+    "browser-extension",
+    "compatibility"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "forth-intercept": "workspace:^"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plugin-dts": "^4.5.3",
+    "vitest": "^2.1.8"
+  }
+}

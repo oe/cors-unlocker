@@ -3,7 +3,8 @@
 Forth Intercept is a Chrome-native request lab with three cooperating packages:
 
 - `packages/browser-extension` owns request interception, local rule storage, the traffic inspector, and the page capability bridge.
-- `packages/npm` is the application-facing SDK published as `cors-unlocker` for upgrade continuity.
+- `packages/npm` is the canonical application-facing SDK published as `forth-intercept`.
+- `packages/npm-compat` preserves the published `cors-unlocker` name as a thin re-export.
 - `packages/website` is the product site, documentation, privacy page, and SDK playground.
 
 ## Execution paths

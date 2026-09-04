@@ -3,7 +3,7 @@
 The Astro website and documentation for Forth Intercept, a Chrome-native request lab.
 
 ```bash
-pnpm --filter cors-unlocker build
+pnpm --filter forth-intercept build
 pnpm --filter website dev
 ```
 

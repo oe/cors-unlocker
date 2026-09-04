@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { intercept, type InterceptSession, type InterceptStatus } from 'cors-unlocker';
+import { intercept, type InterceptSession, type InterceptStatus } from 'forth-intercept';
 
 export default function Playground() {
   const [session, setSession] = useState<InterceptSession | null>(null);

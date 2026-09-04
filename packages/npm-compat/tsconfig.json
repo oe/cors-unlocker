@@ -1,14 +1,10 @@
-
 {
   "compilerOptions": {
     "target": "ESNext",
     "module": "ESNext",
-    "lib": ["DOM", "DOM.Iterable", "ESNext"],
-    "types": ["@types/chrome", "@types/node"],
-    "jsx": "react-jsx",
+    "lib": ["DOM", "ESNext"],
     "strict": true,
     "moduleResolution": "Node",
-    "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
     "skipLibCheck": true

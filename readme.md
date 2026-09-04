@@ -81,7 +81,7 @@ Forth Intercept is a development tool, not a system VPN: it affects Chrome reque
 
 ## Other packages
 
-- `packages/npm` publishes the `cors-unlocker` 0.2 SDK. Its new local bridge exposes `intercept.connect()`, origin-scoped CORS consent, status, and disabled rule drafts; deprecated v1 helpers remain as aliases for upgrade continuity.
+- `packages/npm` publishes the canonical `forth-intercept` 0.2 SDK. `packages/npm-compat` publishes `cors-unlocker` as a thin compatibility re-export for existing users.
 - `packages/website` is the Forth Intercept product site, documentation, privacy explanation, FAQ, and live SDK playground.
 - `packages/browser-extension` is the Chrome 2.0 product.
 

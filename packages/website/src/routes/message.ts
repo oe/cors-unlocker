@@ -2,7 +2,7 @@ import type {
   IMessageData,
   IMessageResponse,
   IEnableOptions,
-} from 'cors-unlocker';
+} from 'forth-intercept';
 
 // Browser detection
 const IS_FIREFOX = /firefox/i.test(navigator.userAgent);
