@@ -123,7 +123,7 @@ test('migrates v1 storage once and keeps a recovery snapshot', async () => {
 test('renders the shadcn proxy workspace and popup', async () => {
   await control.reload();
   await expect(control.getByRole('heading', { name: 'Forth Intercept' })).toBeVisible();
-  await expect(control.getByRole('tab', { name: 'Rules' })).toBeVisible();
+  await expect(control.getByRole('button', { name: 'Rules', exact: true })).toBeVisible();
   await control.getByRole('button', { name: 'New rule' }).click();
   await control.getByLabel('Name', { exact: true }).fill('Resource picker QA');
   const resources = control.getByRole('button', { name: 'Resource types: XHR, Fetch' });
@@ -142,7 +142,7 @@ test('renders the shadcn proxy workspace and popup', async () => {
   await expect(control.getByRole('button', { name: 'Resource types: 3 selected' })).toBeVisible();
   await control.keyboard.press('Escape');
   await control.getByRole('button', { name: 'Save rule' }).click();
-  await expect(control.getByText('Resource picker QA', { exact: true })).toBeVisible();
+  await expect(control.getByRole('button', { name: 'Edit Resource picker QA' })).toBeVisible();
   await control.getByRole('button', { name: 'Edit Resource picker QA' }).click();
   const savedResources = control.getByRole('button', { name: 'Resource types: 3 selected' });
   await savedResources.click();
@@ -152,7 +152,7 @@ test('renders the shadcn proxy workspace and popup', async () => {
   await expect(savedResourceList.getByRole('option', { name: 'Script' })).toHaveAttribute('aria-selected', 'true');
   await expect(savedResourceList.getByRole('option', { name: 'XHR' })).toHaveAttribute('aria-selected', 'false');
   await control.keyboard.press('Escape');
-  await control.getByRole('button', { name: 'Close editor' }).click();
+  await control.getByRole('button', { name: 'Back to rules' }).click();
   await control.screenshot({ path: 'test-results/forth-intercept-options.png', fullPage: true });
 
   const inspectedTab = await context.newPage();
@@ -201,6 +201,7 @@ test('edits structured actions, protects drafts and previews imports', async () 
   await control.getByLabel('Name', { exact: true }).fill('Workspace QA');
   await control.getByLabel('Page origins').fill('http://console.localhost:3000');
   await control.getByLabel('URL pattern').fill('*://console.localhost:3000/health*');
+  await control.getByRole('tab', { name: 'Actions', exact: true }).click();
   await control.getByLabel('Header 1 name', { exact: true }).fill('X-Workspace-QA');
   await control.getByLabel('Header 1 value', { exact: true }).fill('verified');
   await control.getByLabel('Action to add').click();
@@ -216,8 +217,9 @@ test('edits structured actions, protects drafts and previews imports', async () 
   await control.getByRole('button', { name: 'Test conditions' }).click();
   await expect(control.getByRole('status')).toContainText('origin');
   await control.getByLabel('Search rules').fill('no-such-rule');
+  await control.getByRole('tab', { name: 'Match', exact: true }).click();
   await expect(control.getByLabel('Name', { exact: true })).toHaveValue('Workspace QA');
-  await control.getByRole('tab', { name: 'Data & migration' }).click();
+  await control.getByRole('button', { name: 'Data & migration' }).click();
   await expect(control.getByRole('dialog', { name: 'Discard unsaved changes?' })).toBeVisible();
   await control.getByRole('button', { name: 'Keep editing' }).click();
   await control.getByRole('button', { name: 'Save rule', exact: true }).click();
@@ -227,12 +229,13 @@ test('edits structured actions, protects drafts and previews imports', async () 
   await control.getByRole('button', { name: 'New rule' }).click();
   await control.getByRole('button', { name: 'Discard changes', exact: true }).click();
   await expect(control.getByLabel('Name', { exact: true })).toHaveValue('New proxy rule');
-  await control.getByRole('button', { name: 'Close editor' }).click();
+  await control.getByRole('button', { name: 'Back to rules' }).click();
   await control.getByRole('button', { name: 'Edit Workspace QA' }).click();
+  await control.getByRole('tab', { name: 'Actions', exact: true }).click();
   await expect(control.getByLabel('Delay in milliseconds')).toHaveValue('125');
   await expect(control.getByLabel('Header 1 name', { exact: true })).toHaveValue('X-Workspace-QA');
   await control.screenshot({ path: 'test-results/forth-intercept-workspace.png', fullPage: true });
-  await control.getByRole('tab', { name: 'Data & migration' }).click();
+  await control.getByRole('button', { name: 'Data & migration' }).click();
   const before = await worker.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState);
   const incoming = structuredClone(before);
   incoming.rules = [{ ...incoming.rules[0], id: 'import-preview-qa', name: 'Imported QA', enabled: false }];
@@ -249,7 +252,53 @@ test('edits structured actions, protects drafts and previews imports', async () 
   const after = await worker.evaluate(async () => chrome.storage.local.get(['proxyAppState', 'preImportBackup']));
   expect(after.proxyAppState.rules).toHaveLength(before.rules.length + 1);
   expect(after.preImportBackup.state).toEqual(before);
-  await control.getByRole('tab', { name: 'Rules' }).click();
+  await control.getByRole('button', { name: 'Rules', exact: true }).click();
+});
+
+test('keeps editing continuous across toggles, shortcuts, duplication and narrow layouts', async () => {
+  await control.reload();
+  await control.setViewportSize({ width: 1440, height: 900 });
+  await control.getByRole('button', { name: 'Edit Workspace QA', exact: true }).click();
+  await control.getByLabel('Name', { exact: true }).fill('Workspace QA edited');
+  const other = control.getByRole('switch', { name: 'Toggle Resource picker QA', exact: true });
+  const wasEnabled = await other.isChecked();
+  await other.click();
+  await expect(other).toBeChecked({ checked: !wasEnabled });
+  await expect(control.getByRole('dialog')).toHaveCount(0);
+  await expect(control.getByLabel('Name', { exact: true })).toHaveValue('Workspace QA edited');
+  await other.click();
+  await expect(other).toBeChecked({ checked: wasEnabled });
+  await control.keyboard.press('ControlOrMeta+k');
+  await expect(control.getByLabel('Search rules')).toBeFocused();
+  await control.keyboard.press('ControlOrMeta+s');
+  await expect(control.getByRole('button', { name: 'Edit Workspace QA edited', exact: true })).toBeVisible();
+  await control.getByRole('tab', { name: 'Actions', exact: true }).click();
+  await expect(control.getByLabel('Delay in milliseconds')).toHaveValue('125');
+  await expect(control.getByRole('tab', { name: 'Actions', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await control.mouse.move(0, 0);
+  await control.screenshot({ path: 'test-results/workspace-desktop-actions.png', fullPage: true, animations: 'disabled' });
+  await control.getByRole('button', { name: 'Duplicate rule', exact: true }).click();
+  await expect(control.getByLabel('Name', { exact: true })).toHaveValue('Workspace QA edited copy');
+  await expect(control.getByRole('switch', { name: 'Rule enabled', exact: true })).not.toBeChecked();
+  await control.getByRole('button', { name: 'Save rule', exact: true }).click();
+  await expect(control.getByRole('button', { name: 'Edit Workspace QA edited copy', exact: true })).toBeVisible();
+  await control.setViewportSize({ width: 390, height: 844 });
+  await expect(control.getByLabel('Search rules')).not.toBeVisible();
+  await expect(control.getByLabel('Name', { exact: true })).toBeVisible();
+  expect(await control.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await control.screenshot({ path: 'test-results/workspace-narrow-editor.png', fullPage: true, animations: 'disabled' });
+  await control.getByRole('button', { name: 'Back to rules' }).click();
+  await expect(control.getByLabel('Search rules')).toBeVisible();
+  await expect(control.getByRole('region', { name: 'Rule editor', exact: true })).toHaveCount(0);
+  await control.setViewportSize({ width: 1440, height: 900 });
+  const first = control.getByRole('button', { name: 'Edit Resource picker QA', exact: true });
+  await first.focus();
+  await control.keyboard.press('End');
+  await expect(control.getByRole('button', { name: 'Edit Workspace QA edited copy', exact: true })).toBeFocused();
+  await expect(control.getByRole('heading', { name: 'Workspace QA edited copy', exact: true })).toBeVisible();
+  await control.keyboard.press('Home');
+  await expect(control.locator('[data-rule-select]').first()).toBeFocused();
+  expect(await control.evaluate(() => document.documentElement.scrollHeight <= innerHeight)).toBe(true);
 });
 
 test('controls site rules inline and verifies actual request effects', async () => {
@@ -287,7 +336,7 @@ test('controls site rules inline and verifies actual request effects', async () 
   await expect.poll(async () => (await fetchHealth()).body.data?.status).toBe('healthy');
   await panel.getByRole('button', { name: /GET.*console.localhost:3000\/health/ }).first().click();
   await panel.getByText('Check against current rules', { exact: true }).click();
-  await expect(panel.getByText('Rule is disabled', { exact: true })).toBeVisible();
+  await expect(panel.locator('div').filter({ hasText: /^Console mock QARule is disabled$/ })).toBeVisible();
   // Edit within the same side-panel dialog, then verify the next real response.
   await panel.getByRole('button', { name: 'Console mock QA', exact: true }).first().click();
   await expect(panel.getByRole('heading', { name: 'Edit proxy rule' })).toBeVisible();

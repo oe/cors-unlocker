@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import browser from 'webextension-polyfill';
 import { Info } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -104,17 +104,17 @@ function actionScriptContains(actions: string, type: IProxyAction['type']): bool
   }
 }
 
-export function RuleDialog({
+export function RuleEditorForm({
   draft,
   onOpenChange,
   onSaved,
-  inline = false,
+  renderWorkspace,
   onDirtyChange,
 }: {
   draft: RuleDraft | null;
   onOpenChange: (open: boolean) => void;
   onSaved: (rule?: IProxyRule) => Promise<void>;
-  inline?: boolean;
+  renderWorkspace?: (parts: RuleEditorParts) => ReactNode;
   onDirtyChange?: (dirty: boolean) => void;
 }) {
   const [form, setForm] = useState<RuleDraft>(draft || EMPTY_DRAFT);
@@ -220,7 +220,7 @@ export function RuleDialog({
       setBaseline(JSON.stringify(form));
       onDirtyChange?.(false);
       await onSaved(response.rule);
-      if (!inline) onOpenChange(false);
+      if (!renderWorkspace) onOpenChange(false);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to save rule.');
     } finally {
@@ -228,14 +228,8 @@ export function RuleDialog({
     }
   };
 
-  const content = (<>
 
-        <DialogHeader>
-          {inline ? <h2 className="text-lg font-semibold">{form.id ? 'Edit proxy rule' : 'Create proxy rule'}</h2> : <DialogTitle>{form.id ? 'Edit proxy rule' : 'Create proxy rule'}</DialogTitle>}
-          {inline ? <p className="text-sm text-muted-foreground">Match traffic from a page, then configure actions.</p> : <DialogDescription>Match traffic from a page, then run one or more local actions.</DialogDescription>}
-        </DialogHeader>
-        <FieldGroup>
-          <Field>
+  const matchFields = <FieldGroup>          <Field>
             <FieldLabel htmlFor="rule-name">Name</FieldLabel>
             <Input id="rule-name" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
           </Field>
@@ -270,7 +264,8 @@ export function RuleDialog({
               <FieldDescription>{isFirefox ? 'Firefox reports Fetch and XMLHttpRequest together as XHR.' : 'Choose one or more CDP resource types; no selection matches all.'}</FieldDescription>
             </Field>
           </div>
-          <section aria-label="Actions" className="flex flex-col gap-4">
+</FieldGroup>;
+  const actionFields = <FieldGroup>          <section aria-label="Actions" className="flex flex-col gap-4">
             <h3 className="text-base font-semibold">Actions</h3>
             <p className="text-xs text-muted-foreground">Actions use engine precedence, not a general-purpose script sequence. A block or mock can prevent later effects.</p>
             {actions ? actions.map((action, index) => <section key={index} aria-label={`Action ${index + 1}`} className="flex flex-col gap-4 rounded-lg border p-4">
@@ -310,8 +305,8 @@ export function RuleDialog({
             {!error ? <FieldDescription>Compose multiple validated actions without executing arbitrary JavaScript.</FieldDescription> : null}
           </Field>
           </details>
-          {error ? <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : null}
-          <details><summary className="cursor-pointer text-sm font-medium">Test matching</summary>
+</FieldGroup>;
+  const testFields = <>
             <FieldGroup className="mt-4">
               <Field><FieldLabel>Test page origin</FieldLabel><Input aria-label="Test page origin" placeholder="https://app.example.com" value={testOrigin} onChange={(e) => setTestOrigin(e.target.value)} /></Field>
               <Field><FieldLabel>Test request URL</FieldLabel><Input aria-label="Test request URL" placeholder="https://api.example.com/users" value={testUrl} onChange={(e) => setTestUrl(e.target.value)} /></Field>
@@ -321,19 +316,39 @@ export function RuleDialog({
               {testResult ? <p role="status" className="text-sm">{testResult}</p> : null}
               <FieldDescription>Checks unsaved conditions without sending any network requests. Uses advanced-proxy matching semantics.</FieldDescription>
             </FieldGroup>
-          </details>
-        </FieldGroup>
-        <DialogFooter className="sticky bottom-0 border-t bg-background py-3">
-          <Button variant="outline" disabled={pending} onClick={requestClose}>{inline ? 'Close editor' : 'Cancel'}</Button>
-          <Button disabled={pending} onClick={save}>{pending ? 'Saving…' : 'Save rule'}</Button>
-        </DialogFooter>
-      </>);
+          </>;
+  const errorMessage = error ? <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : null;
+  const parts: RuleEditorParts = {
+    name: form.name, enabled: form.enabled, dirty, pending,
+    setEnabled: (enabled) => setForm({ ...form, enabled }),
+    save: () => void save(), close: requestClose,
+    matchFields, actionFields, testFields, errorMessage,
+    requiresAdvanced: !!actions?.some((action) => ['mockResponse', 'delay', 'networkFailure'].includes(action.type)),
+  };
   return <>
-    {inline ? <section aria-label="Rule editor" className="flex min-w-0 flex-col gap-5 p-4 sm:p-6">{content}</section> :
-      <Dialog open={!!draft} onOpenChange={(open) => { if (!open) requestClose(); }}><DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-2xl">{content}</DialogContent></Dialog>}
+    {renderWorkspace ? renderWorkspace(parts) :
+      <Dialog open={!!draft} onOpenChange={(open) => { if (!open) requestClose(); }}>
+        <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader><DialogTitle>{form.id ? 'Edit proxy rule' : 'Create proxy rule'}</DialogTitle><DialogDescription>Match traffic from a page, then configure local actions.</DialogDescription></DialogHeader>
+          {matchFields}{actionFields}
+          <details><summary className="cursor-pointer text-sm font-medium">Test matching</summary>{testFields}</details>
+          {errorMessage}
+          <DialogFooter><Button variant="outline" disabled={pending} onClick={requestClose}>Cancel</Button><Button disabled={pending} onClick={save}>{pending ? 'Saving…' : 'Save rule'}</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>}
     <Dialog open={discard} onOpenChange={setDiscard}><DialogContent>
       <DialogHeader><DialogTitle>Discard unsaved changes?</DialogTitle><DialogDescription>Your edits have not been saved.</DialogDescription></DialogHeader>
       <DialogFooter><Button variant="outline" onClick={() => setDiscard(false)}>Keep editing</Button><Button variant="destructive" onClick={() => { setDiscard(false); onDirtyChange?.(false); onOpenChange(false); }}>Discard changes</Button></DialogFooter>
     </DialogContent></Dialog>
   </>;
+}
+
+export type RuleEditorParts = {
+  name: string; enabled: boolean; dirty: boolean; pending: boolean; requiresAdvanced: boolean;
+  setEnabled: (enabled: boolean) => void; save: () => void; close: () => void;
+  matchFields: ReactNode; actionFields: ReactNode; testFields: ReactNode; errorMessage: ReactNode;
+};
+
+export function RuleDialog(props: Omit<React.ComponentProps<typeof RuleEditorForm>, 'renderWorkspace'>) {
+  return <RuleEditorForm {...props} />;
 }

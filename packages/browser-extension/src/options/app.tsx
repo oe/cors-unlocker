@@ -1,28 +1,30 @@
-import { StrictMode, useCallback, useEffect, useState } from 'react';
+import { StrictMode, useCallback, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import browser from 'webextension-polyfill';
-import { Download, Plus, RotateCcw, Trash2, Upload } from 'lucide-react';
+import { Download, Plus, ListFilter, Database, Shield, Upload } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { BrandMark } from '@/components/brand-mark';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
+import { WorkspaceRuleEditor } from './workspace-rule-editor';
 import { dataStorage } from '@/common/storage';
 import { APP_STATE_KEY, type IProxyAppState, type IProxyRule } from '@/common/proxy-state';
-import { RuleDialog, draftFromRule, EMPTY_DRAFT, type RuleDraft } from '@/components/rule-dialog';
+import { draftFromRule, EMPTY_DRAFT, type RuleDraft } from '@/components/rule-dialog';
 import { ACTION_LABELS } from '@/components/action-fields';
 import { RESOURCE_TYPES } from '@/common/request-match';
 import { parseImport, previewImport } from '@/common/import-preview';
 import '@/common/tailwind.css';
 import './style.scss';
 
-function ProxyRules({ state, reload, navigate, onDirtyChange }: {
-  state: IProxyAppState; reload: () => Promise<void>; navigate: (action: () => void) => void; onDirtyChange: (dirty: boolean) => void;
+function ProxyRules({ state, reload, navigate, onDirtyChange, createToken }: {
+  state: IProxyAppState; reload: () => Promise<void>; navigate: (action: () => void) => void;
+  onDirtyChange: (dirty: boolean) => void; createToken: number;
 }) {
   const [draft, setDraft] = useState<RuleDraft | null>(null);
   const [pendingDelete, setPendingDelete] = useState<IProxyRule | null>(null);
@@ -31,57 +33,105 @@ function ProxyRules({ state, reload, navigate, onDirtyChange }: {
   const [resourceFilter, setResourceFilter] = useState('all');
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
-  const leave = (action: () => void) => navigate(() => { setDraft(null); onDirtyChange(false); action(); });
+  const search = useRef<HTMLInputElement>(null);
+  const previousCreate = useRef(createToken);
+  useEffect(() => {
+    if (previousCreate.current !== createToken) {
+      previousCreate.current = createToken;
+      setDraft({ ...EMPTY_DRAFT });
+      onDirtyChange(false);
+    }
+  }, [createToken, onDirtyChange]);
+  useEffect(() => {
+    const focusSearch = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        const focus = () => { setDraft(null); onDirtyChange(false); requestAnimationFrame(() => search.current?.focus()); };
+        if (window.matchMedia('(max-width: 767px)').matches) navigate(focus);
+        else search.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', focusSearch);
+    return () => window.removeEventListener('keydown', focusSearch);
+  }, [navigate, onDirtyChange]);
+  useEffect(() => {
+    if (message !== 'Rule saved.') return;
+    const timer = window.setTimeout(() => setMessage(''), 6000);
+    return () => window.clearTimeout(timer);
+  }, [message]);
+  const leave = (action: () => void) => navigate(() => { onDirtyChange(false); action(); });
+  const select = (rule: IProxyRule) => {
+    if (draft?.id !== rule.id) leave(() => setDraft(draftFromRule(rule)));
+  };
   const filtered = state.rules.filter((rule) =>
     `${rule.name} ${rule.match.urlPattern} ${rule.match.initiatorOrigins.join(' ')}`.toLowerCase().includes(query.trim().toLowerCase())
     && (actionFilter === 'all' || rule.actions.some((action) => action.type === actionFilter))
     && (resourceFilter === 'all' || !rule.match.resourceTypes?.length || rule.match.resourceTypes.includes(resourceFilter)));
-  const mutate = async (type: string, payload: unknown) => {
+  const mutate = async (type: string, payload: unknown): Promise<IProxyRule | true | false> => {
     setBusy(true); setMessage('');
     try {
       const response = await browser.runtime.sendMessage({ type, payload });
       if (!response?.success) throw new Error(response?.error || 'Unable to update rules.');
       await reload();
-      return true;
+      return response.rule || true;
     } catch (error) { setMessage(String(error)); return false; }
     finally { setBusy(false); }
   };
-  return <div className="grid min-h-[70vh] min-w-0 overflow-hidden rounded-xl border bg-background md:h-[calc(100vh-160px)] md:grid-cols-[300px_minmax(0,1fr)] lg:grid-cols-[340px_minmax(0,1fr)]">
-    <aside aria-label="Rule list" className="flex min-h-0 min-w-0 flex-col gap-3 border-b p-4 md:border-r md:border-b-0">
-      <div className="flex items-center justify-between"><h2 className="font-semibold">Rules <Badge variant="secondary">{state.rules.length}</Badge></h2>
-        <Button size="sm" onClick={() => leave(() => setDraft({ ...EMPTY_DRAFT }))}><Plus data-icon="inline-start" />New rule</Button>
+  const toggle = (rule: IProxyRule, enabled: boolean) => {
+    const apply = () => void mutate('saveProxyRule', { rule: { ...rule, enabled } }).then((result) => {
+      if (result && draft?.id === rule.id) setDraft(draftFromRule(typeof result === 'object' ? result : { ...rule, enabled }));
+    });
+    if (draft?.id === rule.id) leave(() => { setDraft(draftFromRule(rule)); apply(); });
+    else apply();
+  };
+  const selected = state.rules.find((rule) => rule.id === draft?.id);
+  const copy = () => {
+    if (!selected) return;
+    leave(() => {
+      // A duplicate is a disabled draft until the user explicitly saves it.
+      setDraft({ ...draftFromRule(selected), id: undefined, source: 'user', legacyRuleId: undefined, name: `${selected.name} copy`, enabled: false });
+    });
+  };
+  return <div className="relative grid h-full min-h-0 min-w-0 grid-cols-1 md:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[340px_minmax(0,1fr)]">
+    <aside aria-label="Rule list" className={cn('flex min-h-0 min-w-0 flex-col border-r', draft && 'max-md:hidden')}>
+      <div className="flex shrink-0 flex-col gap-2 border-b p-3">
+        <Input ref={search} aria-label="Search rules" placeholder="Search rules · ⌘/Ctrl K" value={query} onChange={(e) => setQuery(e.target.value)} />
+        <div className="grid grid-cols-2 gap-2">
+          <Select value={actionFilter} onValueChange={(value) => value && setActionFilter(value)}><SelectTrigger className="w-full min-w-0" aria-label="Filter actions"><SelectValue>{actionFilter === 'all' ? 'All actions' : ACTION_LABELS[actionFilter as keyof typeof ACTION_LABELS]}</SelectValue></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">All actions</SelectItem>{Object.entries(ACTION_LABELS).map(([key, label]) => <SelectItem key={key} value={key}>{label}</SelectItem>)}</SelectGroup></SelectContent></Select>
+          <Select value={resourceFilter} onValueChange={(value) => value && setResourceFilter(value)}><SelectTrigger className="w-full min-w-0" aria-label="Filter resource types"><SelectValue>{resourceFilter === 'all' ? 'All types' : resourceFilter}</SelectValue></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">All resource types</SelectItem>{RESOURCE_TYPES.map((type) => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectGroup></SelectContent></Select>
+        </div>
+        <div className="flex justify-between text-xs text-muted-foreground"><span>{filtered.length} of {state.rules.length} rules</span><span>↑ ↓ to navigate</span></div>
       </div>
-      <Input aria-label="Search rules" placeholder="Search name, URL or site" value={query} onChange={(e) => setQuery(e.target.value)} />
-      <div className="flex flex-wrap gap-2">
-        <Select value={actionFilter} onValueChange={(value) => value && setActionFilter(value)}><SelectTrigger aria-label="Filter actions"><SelectValue>{actionFilter === 'all' ? 'All actions' : ACTION_LABELS[actionFilter as keyof typeof ACTION_LABELS]}</SelectValue></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">All actions</SelectItem>{Object.entries(ACTION_LABELS).map(([key, label]) => <SelectItem key={key} value={key}>{label}</SelectItem>)}</SelectGroup></SelectContent></Select>
-        <Select value={resourceFilter} onValueChange={(value) => value && setResourceFilter(value)}><SelectTrigger aria-label="Filter resource types"><SelectValue>{resourceFilter === 'all' ? 'All resource types' : resourceFilter}</SelectValue></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">All resource types</SelectItem>{RESOURCE_TYPES.map((type) => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectGroup></SelectContent></Select>
-      </div>
-      <p className="text-xs text-muted-foreground">{filtered.length} shown. Filtering keeps your open draft.</p>
-      {message ? <Alert><AlertDescription>{message}</AlertDescription></Alert> : null}
-      <div className="flex max-h-[40vh] flex-col gap-2 overflow-y-auto md:max-h-none">
-        {filtered.map((rule) => <section key={rule.id} className="flex flex-col gap-2 rounded-lg border p-3">
-          <div className="flex items-center justify-between gap-2">
-            <Button className="min-w-0 justify-start" variant={draft?.id === rule.id ? 'secondary' : 'ghost'} aria-label={`Edit ${rule.name}`} onClick={() => leave(() => setDraft(draftFromRule(rule)))}><span className="truncate">{rule.name}</span></Button>
-            <Switch checked={rule.enabled} disabled={busy} aria-label={`Toggle ${rule.name}`} onCheckedChange={(enabled) => leave(() => { void mutate('saveProxyRule', { rule: { ...rule, enabled } }).then((success) => { if (success && draft?.id === rule.id) setDraft(draftFromRule({ ...rule, enabled })); }); })} />
-          </div>
-          <p className="truncate text-xs text-muted-foreground" title={rule.match.urlPattern}>{rule.match.urlPattern}</p>
-          <p className="truncate text-xs text-muted-foreground">{rule.match.initiatorOrigins.join(', ')}</p>
-          <div className="flex flex-wrap items-center gap-1">
-            <Badge variant="outline">{rule.enabled ? 'Enabled' : 'Disabled'}</Badge>
-            {rule.actions.map((action, index) => <Badge key={index} variant="secondary">{ACTION_LABELS[action.type]}</Badge>)}
-            <Button variant="ghost" size="icon-sm" disabled={busy} aria-label={`Delete ${rule.name}`} onClick={() => leave(() => setPendingDelete(rule))}><Trash2 /></Button>
-          </div>
-        </section>)}
-        {!filtered.length ? <p className="py-8 text-center text-sm text-muted-foreground">{state.rules.length ? 'No rules match these filters.' : 'Create your first rule or capture a request in Site controls.'}</p> : null}
+      <div className="min-h-0 flex-1 overflow-y-auto" aria-label="Rules">
+        {filtered.map((rule, index) => <div key={rule.id} className={cn('flex items-start gap-2 border-b px-3 py-2.5', draft?.id === rule.id && 'bg-muted')}>
+          <button type="button" data-rule-select={rule.id} aria-label={`Edit ${rule.name}`} aria-current={draft?.id === rule.id ? 'true' : undefined}
+            className="flex min-w-0 flex-1 flex-col gap-1 rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onClick={() => select(rule)}
+            onKeyDown={(event) => {
+              if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+              event.preventDefault();
+              const next = event.key === 'Home' ? 0 : event.key === 'End' ? filtered.length - 1 : (index + (event.key === 'ArrowDown' ? 1 : -1) + filtered.length) % filtered.length;
+              const button = event.currentTarget.parentElement?.parentElement?.querySelectorAll<HTMLButtonElement>('[data-rule-select]')[next];
+              leave(() => { setDraft(draftFromRule(filtered[next])); button?.focus(); });
+            }}>
+            <span className="w-full truncate text-sm font-medium">{rule.name}</span>
+            <span className="w-full truncate font-mono text-xs text-muted-foreground" title={rule.match.urlPattern}>{rule.match.urlPattern}</span>
+            <span className="w-full truncate text-xs text-muted-foreground" title={rule.match.initiatorOrigins.join(', ')}>{rule.actions.map((action) => ACTION_LABELS[action.type]).join(' · ')} · {rule.enabled ? 'Enabled' : 'Disabled'}</span>
+          </button>
+          <Switch checked={rule.enabled} disabled={busy} aria-label={`Toggle ${rule.name}`} onCheckedChange={(enabled) => toggle(rule, enabled)} />
+        </div>)}
+        {!filtered.length ? <p className="p-6 text-sm text-muted-foreground">{state.rules.length ? 'No rules match these filters. Your draft is preserved.' : 'Create a rule or start from a captured request in Site controls.'}</p> : null}
       </div>
     </aside>
-    <div className="min-h-0 min-w-0 md:overflow-y-auto">
-      {draft ? <RuleDialog key={draft.id || 'new'} inline draft={draft} onDirtyChange={onDirtyChange}
+    <div className={cn('min-h-0 min-w-0', !draft && 'max-md:hidden')}>
+      {draft ? <WorkspaceRuleEditor key={draft.id || 'new'} draft={draft} onDirtyChange={onDirtyChange}
+        onCopy={selected ? copy : undefined} onDelete={selected ? () => setPendingDelete(selected) : undefined}
         onOpenChange={(open) => { if (!open) { onDirtyChange(false); setDraft(null); } }}
         onSaved={async (rule) => { await reload(); if (rule) setDraft(draftFromRule(rule)); setMessage('Rule saved.'); }} /> :
-        <div className="flex min-h-72 flex-col items-center justify-center gap-3 p-8 text-center"><BrandMark /><h2 className="text-lg font-medium">Choose a rule to edit</h2><p className="text-sm text-muted-foreground">Configure actions and test conditions here. Use Site controls to verify actual request effects.</p></div>}
+        <div className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center"><BrandMark /><h2 className="text-lg font-medium">Choose a rule to edit</h2><p className="max-w-sm text-sm text-muted-foreground">Search with ⌘/Ctrl K. Select a rule, configure its actions, then test its conditions.</p></div>}
     </div>
-    <Dialog open={!!pendingDelete} onOpenChange={(open) => !open && setPendingDelete(null)}><DialogContent><DialogHeader><DialogTitle>Delete proxy rule?</DialogTitle><DialogDescription>“{pendingDelete?.name}” will stop matching immediately. This cannot be undone.</DialogDescription></DialogHeader><DialogFooter><DialogClose render={<Button variant="outline" />}>Cancel</DialogClose><Button variant="destructive" disabled={busy} onClick={async () => { if (pendingDelete && await mutate('deleteProxyRule', { id: pendingDelete.id })) { if (draft?.id === pendingDelete.id) { setDraft(null); onDirtyChange(false); } setPendingDelete(null); } }}>Delete rule</Button></DialogFooter></DialogContent></Dialog>
+    {message ? <Alert role={message === 'Rule saved.' ? 'status' : 'alert'} className="pointer-events-none absolute bottom-16 right-4 max-w-[min(24rem,calc(100%-2rem))] shadow-sm"><AlertDescription>{message}</AlertDescription></Alert> : null}
+    <Dialog open={!!pendingDelete} onOpenChange={(open) => !open && setPendingDelete(null)}><DialogContent><DialogHeader><DialogTitle>Delete proxy rule?</DialogTitle><DialogDescription>“{pendingDelete?.name}” and any unsaved edits to it will be removed. This cannot be undone.</DialogDescription></DialogHeader><DialogFooter><Button variant="outline" onClick={() => setPendingDelete(null)}>Cancel</Button><Button variant="destructive" disabled={busy} onClick={async () => { if (pendingDelete && await mutate('deleteProxyRule', { id: pendingDelete.id })) { if (draft?.id === pendingDelete.id) { setDraft(null); onDirtyChange(false); } setPendingDelete(null); } }}>Delete rule</Button></DialogFooter></DialogContent></Dialog>
   </div>;
 }
 
@@ -179,26 +229,36 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState('rules');
   const [dirty, setDirty] = useState(false);
+  const [createToken, setCreateToken] = useState(0);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
   const reload = useCallback(async () => {
     try { setState(await browser.runtime.sendMessage({ type: 'getProxyState' })); setError(null); }
     catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to load proxy state.'); }
   }, []);
-  const navigate = (action: () => void) => { if (dirty) setPendingNavigation(() => action); else action(); };
+  const navigate = useCallback((action: () => void) => { if (dirty) setPendingNavigation(() => action); else action(); }, [dirty]);
   useEffect(() => {
     void reload();
     const changed = (changes: Record<string, browser.Storage.StorageChange>, area: string) => { if (area === 'local' && changes[APP_STATE_KEY]) void reload(); };
     browser.storage.onChanged.addListener(changed);
     return () => browser.storage.onChanged.removeListener(changed);
   }, [reload]);
-  return <main className="min-h-screen bg-muted/30 text-foreground">
-    <div className="mx-auto flex max-w-[1500px] flex-col gap-5 px-3 py-5 sm:px-6">
-      <header className="flex items-center justify-between gap-4"><div className="flex items-center gap-3"><BrandMark className="size-9" /><div><h1 className="text-xl font-semibold">Forth Intercept</h1><p className="text-xs text-muted-foreground">Rules workspace · {__TARGET__ === 'firefox' ? 'Firefox' : 'Chrome'}</p></div></div><Button size="sm" variant="ghost" onClick={() => void reload()}><RotateCcw data-icon="inline-start" />Refresh</Button></header>
-      {error ? <Alert variant="destructive"><AlertTitle>Unable to load</AlertTitle><AlertDescription>{error}</AlertDescription></Alert> : null}
-      {state ? <Tabs value={view} onValueChange={(value) => { if (value !== view) navigate(() => setView(value)); }}><TabsList><TabsTrigger value="rules">Rules</TabsTrigger><TabsTrigger value="data">Data & migration</TabsTrigger></TabsList>
-        <TabsContent value="rules"><ProxyRules state={state} reload={reload} navigate={navigate} onDirtyChange={setDirty} /></TabsContent>
-        <TabsContent value="data"><DataSettings state={state} reload={reload} /></TabsContent>
-      </Tabs> : null}
+  return <main className="flex h-dvh min-h-0 flex-col overflow-hidden bg-background text-foreground">
+    <header className="flex h-16 shrink-0 items-center justify-between gap-3 border-b px-4">
+      <div className="flex min-w-0 items-center gap-3"><BrandMark className="size-8" /><h1 className="truncate text-base font-semibold">Forth Intercept</h1><Badge className="max-sm:hidden" variant="outline">{__TARGET__ === 'firefox' ? 'Firefox' : 'Chrome'}</Badge></div>
+      {view === 'rules' ? <Button size="sm" disabled={!state} onClick={() => navigate(() => setCreateToken((token) => token + 1))}><Plus data-icon="inline-start" />New rule</Button> : <span className="text-sm text-muted-foreground">Data management</span>}
+    </header>
+    {error ? <Alert variant="destructive"><AlertTitle>Unable to load</AlertTitle><AlertDescription>{error}</AlertDescription></Alert> : null}
+    <div className="flex min-h-0 flex-1">
+      <nav aria-label="Workspace navigation" className="flex w-14 shrink-0 flex-col items-center gap-2 border-r bg-muted/30 py-3 sm:w-16">
+        <Button variant={view === 'rules' ? 'secondary' : 'ghost'} size="icon" aria-label="Rules" title="Rules" aria-current={view === 'rules' ? 'page' : undefined} onClick={() => { if (view !== 'rules') navigate(() => setView('rules')); }}><ListFilter /></Button>
+        <Button variant={view === 'data' ? 'secondary' : 'ghost'} size="icon" aria-label="Data & migration" title="Data & migration" aria-current={view === 'data' ? 'page' : undefined} onClick={() => { if (view !== 'data') navigate(() => setView('data')); }}><Database /></Button>
+        <span className="mt-auto text-muted-foreground" title="Local-only configuration"><Shield className="size-4" aria-label="Local only" /></span>
+      </nav>
+      <div className="min-h-0 min-w-0 flex-1">
+        {state ? view === 'rules' ? <ProxyRules state={state} reload={reload} navigate={navigate} onDirtyChange={setDirty} createToken={createToken} /> :
+          <section aria-label="Data management" className="h-full overflow-y-auto p-4 lg:p-8"><div className="mx-auto max-w-5xl"><h2 className="mb-5 text-xl font-semibold">Data & recovery</h2><DataSettings state={state} reload={reload} /></div></section> :
+          <p className="p-6 text-sm text-muted-foreground">Loading configuration…</p>}
+      </div>
     </div>
     <Dialog open={!!pendingNavigation} onOpenChange={(open) => !open && setPendingNavigation(null)}><DialogContent><DialogHeader><DialogTitle>Discard unsaved changes?</DialogTitle><DialogDescription>Save your draft or discard it before leaving.</DialogDescription></DialogHeader><DialogFooter><Button variant="outline" onClick={() => setPendingNavigation(null)}>Keep editing</Button><Button variant="destructive" onClick={() => { const action = pendingNavigation; setPendingNavigation(null); setDirty(false); action?.(); }}>Discard changes</Button></DialogFooter></DialogContent></Dialog>
   </main>;

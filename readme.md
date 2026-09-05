@@ -8,7 +8,7 @@ No native client is required. Chrome Advanced mode uses Chrome DevTools Protocol
 
 - **CORS compatibility mode** — one-click, per-origin CORS rules compiled to `declarativeNetRequest`.
 - **Advanced proxy mode** — explicit per-tab attach/detach with request and response observation.
-- **Rules workspace** — searchable, filterable rule list alongside a persistent editor; configure actions with structured forms, with JSON available as an advanced option.
+- **Rules workspace** — full-window navigation, compact searchable rule list, and a dedicated editor with Match / Actions / Test sections. Configure actions with structured forms, with JSON available as an advanced option.
 - **Rule engine** — match page origins, request URL globs, methods, and resource types; test unsaved conditions without sending requests. Actions are validated data, not arbitrary JavaScript.
 - **Actions** — CORS repair, request/response headers, redirects, blocking, static mocks, delays, and simulated network failures.
 - **Site controls** — manage the current site's rules in the side panel, create or edit rules from captured requests, and inspect recorded matches and applied changes with sensitive headers masked.
@@ -38,6 +38,8 @@ Keep the existing Chrome manifest key and Firefox Gecko ID when publishing 2.0 s
 Data & migration accepts v1 rule exports and complete v2 state exports. Import first previews added, overwritten and removed rules; choose merge-by-ID or full replacement before applying. Legacy backups are converted to v2. A `preImportBackup` snapshot is saved locally before each import and can be exported for recovery. New exports use the v2 format.
 
 The rule editor protects unsaved changes when switching rules or tabs and when closing the editor. Search and filters preserve the current draft. Browser reload/close uses the browser's native unsaved-changes prompt. The compact side-panel editor shares the same action forms and close protection.
+
+Use ⌘/Ctrl+K to search, arrow keys or Home/End on rule rows to select, and ⌘/Ctrl+S to save. Toggling another rule keeps the current draft intact. Duplicate creates a disabled draft that only becomes a stored rule after saving. Narrow windows switch between the list and editor instead of stacking them. Rule enabled state does not indicate whether an advanced-proxy tab is connected; verify actual effects in Site controls.
 
 ## Development
 
