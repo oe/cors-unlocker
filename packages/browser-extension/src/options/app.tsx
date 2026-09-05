@@ -1,8 +1,10 @@
+import { t, translateError, formatDate, initializeLocale, useLocale } from '@/common/i18n';
 import { StrictMode, useCallback, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import browser from 'webextension-polyfill';
-import { Download, Plus, ListFilter, Database, Shield, Upload } from 'lucide-react';
+import { Download, Plus, ListFilter, Database, Upload } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { LanguageSelect } from '@/components/language-select';
 import { BrandMark } from '@/components/brand-mark';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -93,18 +95,18 @@ function ProxyRules({ state, reload, navigate, onDirtyChange, createToken }: {
     });
   };
   return <div className="relative grid h-full min-h-0 min-w-0 grid-cols-1 md:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[340px_minmax(0,1fr)]">
-    <aside aria-label="Rule list" className={cn('flex min-h-0 min-w-0 flex-col border-r', draft && 'max-md:hidden')}>
+    <aside aria-label={t("Rule list")} className={cn('flex min-h-0 min-w-0 flex-col border-r', draft && 'max-md:hidden')}>
       <div className="flex shrink-0 flex-col gap-2 border-b p-3">
-        <Input ref={search} aria-label="Search rules" placeholder="Search rules · ⌘/Ctrl K" value={query} onChange={(e) => setQuery(e.target.value)} />
+        <Input ref={search} aria-label={t("Search rules")} placeholder={t("Search rules · ⌘/Ctrl K")} value={query} onChange={(e) => setQuery(e.target.value)} />
         <div className="grid grid-cols-2 gap-2">
-          <Select value={actionFilter} onValueChange={(value) => value && setActionFilter(value)}><SelectTrigger className="w-full min-w-0" aria-label="Filter actions"><SelectValue>{actionFilter === 'all' ? 'All actions' : ACTION_LABELS[actionFilter as keyof typeof ACTION_LABELS]}</SelectValue></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">All actions</SelectItem>{Object.entries(ACTION_LABELS).map(([key, label]) => <SelectItem key={key} value={key}>{label}</SelectItem>)}</SelectGroup></SelectContent></Select>
-          <Select value={resourceFilter} onValueChange={(value) => value && setResourceFilter(value)}><SelectTrigger className="w-full min-w-0" aria-label="Filter resource types"><SelectValue>{resourceFilter === 'all' ? 'All types' : resourceFilter}</SelectValue></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">All resource types</SelectItem>{RESOURCE_TYPES.map((type) => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectGroup></SelectContent></Select>
+          <Select value={actionFilter} onValueChange={(value) => value && setActionFilter(value)}><SelectTrigger className="w-full min-w-0" aria-label={t("Filter actions")}><SelectValue>{actionFilter === 'all' ? t("All actions") : t(ACTION_LABELS[actionFilter as keyof typeof ACTION_LABELS])}</SelectValue></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">{t("All actions")}</SelectItem>{Object.entries(ACTION_LABELS).map(([key, label]) => <SelectItem key={key} value={key}>{t(label)}</SelectItem>)}</SelectGroup></SelectContent></Select>
+          <Select value={resourceFilter} onValueChange={(value) => value && setResourceFilter(value)}><SelectTrigger className="w-full min-w-0" aria-label={t("Filter resource types")}><SelectValue>{resourceFilter === 'all' ? t("All types") : resourceFilter}</SelectValue></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">{t("All resource types")}</SelectItem>{RESOURCE_TYPES.map((type) => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectGroup></SelectContent></Select>
         </div>
-        <div className="flex justify-between text-xs text-muted-foreground"><span>{filtered.length} of {state.rules.length} rules</span><span>↑ ↓ to navigate</span></div>
+        <div className="flex justify-between text-xs text-muted-foreground"><span>{t('{shown} of {total} rules', { shown: filtered.length, total: state.rules.length })}</span><span>{t("↑ ↓ to navigate")}</span></div>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto" aria-label="Rules">
+      <div className="min-h-0 flex-1 overflow-y-auto" aria-label={t("Rules")}>
         {filtered.map((rule, index) => <div key={rule.id} className={cn('flex items-start gap-2 border-b px-3 py-2.5', draft?.id === rule.id && 'bg-muted')}>
-          <button type="button" data-rule-select={rule.id} aria-label={`Edit ${rule.name}`} aria-current={draft?.id === rule.id ? 'true' : undefined}
+          <button type="button" data-rule-select={rule.id} aria-label={t('Edit {name}', { name: rule.name })} aria-current={draft?.id === rule.id ? 'true' : undefined}
             className="flex min-w-0 flex-1 flex-col gap-1 rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onClick={() => select(rule)}
             onKeyDown={(event) => {
@@ -116,11 +118,11 @@ function ProxyRules({ state, reload, navigate, onDirtyChange, createToken }: {
             }}>
             <span className="w-full truncate text-sm font-medium">{rule.name}</span>
             <span className="w-full truncate font-mono text-xs text-muted-foreground" title={rule.match.urlPattern}>{rule.match.urlPattern}</span>
-            <span className="w-full truncate text-xs text-muted-foreground" title={rule.match.initiatorOrigins.join(', ')}>{rule.actions.map((action) => ACTION_LABELS[action.type]).join(' · ')} · {rule.enabled ? 'Enabled' : 'Disabled'}</span>
+            <span className="w-full truncate text-xs text-muted-foreground" title={rule.match.initiatorOrigins.join(', ')}>{rule.actions.map((action) => t(ACTION_LABELS[action.type])).join(' · ')} · {rule.enabled ? t("Enabled") : t("Disabled")}</span>
           </button>
-          <Switch checked={rule.enabled} disabled={busy} aria-label={`Toggle ${rule.name}`} onCheckedChange={(enabled) => toggle(rule, enabled)} />
+          <Switch checked={rule.enabled} disabled={busy} aria-label={t('Toggle {name}', { name: rule.name })} onCheckedChange={(enabled) => toggle(rule, enabled)} />
         </div>)}
-        {!filtered.length ? <p className="p-6 text-sm text-muted-foreground">{state.rules.length ? 'No rules match these filters. Your draft is preserved.' : 'Create a rule or start from a captured request in Site controls.'}</p> : null}
+        {!filtered.length ? <p className="p-6 text-sm text-muted-foreground">{state.rules.length ? t("No rules match these filters. Your draft is preserved.") : t("Create a rule or start from a captured request in Site controls.")}</p> : null}
       </div>
     </aside>
     <div className={cn('min-h-0 min-w-0', !draft && 'max-md:hidden')}>
@@ -128,10 +130,10 @@ function ProxyRules({ state, reload, navigate, onDirtyChange, createToken }: {
         onCopy={selected ? copy : undefined} onDelete={selected ? () => setPendingDelete(selected) : undefined}
         onOpenChange={(open) => { if (!open) { onDirtyChange(false); setDraft(null); } }}
         onSaved={async (rule) => { await reload(); if (rule) setDraft(draftFromRule(rule)); setMessage('Rule saved.'); }} /> :
-        <div className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center"><BrandMark /><h2 className="text-lg font-medium">Choose a rule to edit</h2><p className="max-w-sm text-sm text-muted-foreground">Search with ⌘/Ctrl K. Select a rule, configure its actions, then test its conditions.</p></div>}
+        <div className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center"><BrandMark /><h2 className="text-lg font-medium">{t("Choose a rule to edit")}</h2><p className="max-w-sm text-sm text-muted-foreground">{t("Search with ⌘/Ctrl K. Select a rule, configure its actions, then test its conditions.")}</p></div>}
     </div>
-    {message ? <Alert role={message === 'Rule saved.' ? 'status' : 'alert'} className="pointer-events-none absolute bottom-16 right-4 max-w-[min(24rem,calc(100%-2rem))] shadow-sm"><AlertDescription>{message}</AlertDescription></Alert> : null}
-    <Dialog open={!!pendingDelete} onOpenChange={(open) => !open && setPendingDelete(null)}><DialogContent><DialogHeader><DialogTitle>Delete proxy rule?</DialogTitle><DialogDescription>“{pendingDelete?.name}” and any unsaved edits to it will be removed. This cannot be undone.</DialogDescription></DialogHeader><DialogFooter><Button variant="outline" onClick={() => setPendingDelete(null)}>Cancel</Button><Button variant="destructive" disabled={busy} onClick={async () => { if (pendingDelete && await mutate('deleteProxyRule', { id: pendingDelete.id })) { if (draft?.id === pendingDelete.id) { setDraft(null); onDirtyChange(false); } setPendingDelete(null); } }}>Delete rule</Button></DialogFooter></DialogContent></Dialog>
+    {message ? <Alert role={message === 'Rule saved.' ? 'status' : 'alert'} className="pointer-events-none absolute bottom-16 right-4 max-w-[min(24rem,calc(100%-2rem))] shadow-sm"><AlertDescription>{translateError(message)}</AlertDescription></Alert> : null}
+    <Dialog open={!!pendingDelete} onOpenChange={(open) => !open && setPendingDelete(null)}><DialogContent><DialogHeader><DialogTitle>{t("Delete proxy rule?")}</DialogTitle><DialogDescription>{t('Delete {name} and its unsaved edits? This cannot be undone.', { name: pendingDelete?.name || '' })}</DialogDescription></DialogHeader><DialogFooter><Button variant="outline" onClick={() => setPendingDelete(null)}>{t("Cancel")}</Button><Button variant="destructive" disabled={busy} onClick={async () => { if (pendingDelete && await mutate('deleteProxyRule', { id: pendingDelete.id })) { if (draft?.id === pendingDelete.id) { setDraft(null); onDirtyChange(false); } setPendingDelete(null); } }}>{t("Delete rule")}</Button></DialogFooter></DialogContent></Dialog>
   </div>;
 }
 
@@ -178,45 +180,44 @@ function DataSettings({ state, reload }: { state: IProxyAppState; reload: () => 
     <div className="grid gap-4 md:grid-cols-2">
       <Card>
         <CardHeader>
-          <CardTitle>Upgrade status</CardTitle>
-          <CardDescription>The v1 snapshot is retained for recovery but is no longer used.</CardDescription>
+          <CardTitle>{t("Upgrade status")}</CardTitle>
+          <CardDescription>{t("The v1 snapshot is retained for recovery but is no longer used.")}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Schema</span>
+            <span className="text-sm text-muted-foreground">{t("Schema")}</span>
             <Badge variant="secondary">v{state.schemaVersion}</Badge>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Source</span>
-            <span className="text-sm font-medium">{state.migration.source}</span>
+            <span className="text-sm text-muted-foreground">{t("Source")}</span>
+            <span className="text-sm font-medium">{t(state.migration.source === 'fresh-install' ? 'Fresh install' : 'Migrated from v1')}</span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Migrated</span>
-            <span className="text-sm font-medium">{new Date(state.migration.migratedAt).toLocaleString()}</span>
+            <span className="text-sm text-muted-foreground">{t("Migrated")}</span>
+            <span className="text-sm font-medium">{formatDate(state.migration.migratedAt)}</span>
           </div>
         </CardContent>
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>Portable configuration</CardTitle>
-          <CardDescription>Export v2 state or import either a v1 or v2 backup.</CardDescription>
+          <CardTitle>{t("Portable configuration")}</CardTitle>
+          <CardDescription>{t("Export v2 state or import either a v1 or v2 backup.")}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={exportState}><Download data-icon="inline-start" />Export</Button>
+          <Button variant="outline" onClick={exportState}><Download data-icon="inline-start" />{t("Export")}</Button>
           <Button variant="outline" render={<label htmlFor="import-state" />}>
-            <Upload data-icon="inline-start" />Import
-          </Button>
+            <Upload data-icon="inline-start" />{t("Import")} </Button>
           <Input id="import-state" className="hidden" type="file" accept="application/json" onChange={importState} />
-          <Button variant="ghost" onClick={exportRecovery}>Export recovery backup</Button>
-          {incoming && counts ? <section aria-label="Import preview" className="flex w-full flex-col gap-3 rounded-lg border p-4">
-            <h3 className="font-medium">Import preview</h3>
-            <p className="text-sm">Nothing has been changed yet. Legacy backups are converted to v2.</p>
-            <Select value={merge ? 'merge' : 'replace'} onValueChange={(value) => setMerge(value === 'merge')}><SelectTrigger aria-label="Import mode"><SelectValue>{merge ? 'Merge rules' : 'Replace configuration'}</SelectValue></SelectTrigger><SelectContent><SelectGroup><SelectItem value="merge">Merge rules</SelectItem><SelectItem value="replace">Replace configuration</SelectItem></SelectGroup></SelectContent></Select>
-            <p className="text-sm">{counts.added} added · {counts.replaced} replaced · {counts.removed} removed · {counts.total} total</p>
-            <p className="text-xs text-muted-foreground">{merge ? 'Matching IDs are overwritten; current settings and profiles are retained.' : 'All current rules, settings and profiles are replaced.'} A local recovery backup is saved before applying; export it to restore through this same preview.</p>
-            <div className="flex gap-2"><Button disabled={busy} onClick={applyImport}>Apply import</Button><Button variant="outline" disabled={busy} onClick={() => setIncoming(null)}>Cancel import</Button></div>
+          <Button variant="ghost" onClick={exportRecovery}>{t("Export recovery backup")}</Button>
+          {incoming && counts ? <section aria-label={t("Import preview")} className="flex w-full flex-col gap-3 rounded-lg border p-4">
+            <h3 className="font-medium">{t("Import preview")}</h3>
+            <p className="text-sm">{t("Nothing has been changed yet. Legacy backups are converted to v2.")}</p>
+            <Select value={merge ? 'merge' : 'replace'} onValueChange={(value) => setMerge(value === 'merge')}><SelectTrigger aria-label={t("Import mode")}><SelectValue>{merge ? t("Merge rules") : t("Replace configuration")}</SelectValue></SelectTrigger><SelectContent><SelectGroup><SelectItem value="merge">{t("Merge rules")}</SelectItem><SelectItem value="replace">{t("Replace configuration")}</SelectItem></SelectGroup></SelectContent></Select>
+            <p className="text-sm">{t('{added} added · {replaced} replaced · {removed} removed · {total} total', { ...counts })}</p>
+            <p className="text-xs text-muted-foreground">{merge ? t("Matching IDs are overwritten; current settings and profiles are retained.") : t("All current rules, settings and profiles are replaced.")} {t("A local recovery backup is saved before applying; export it to restore through this same preview.")}</p>
+            <div className="flex gap-2"><Button disabled={busy} onClick={applyImport}>{t("Apply import")}</Button><Button variant="outline" disabled={busy} onClick={() => setIncoming(null)}>{t("Cancel import")}</Button></div>
           </section> : null}
-          {message ? <p className="w-full text-sm text-muted-foreground">{message}</p> : null}
+          {message ? <p className="w-full text-sm text-muted-foreground">{translateError(message)}</p> : null}
         </CardContent>
       </Card>
     </div>
@@ -225,6 +226,7 @@ function DataSettings({ state, reload }: { state: IProxyAppState; reload: () => 
 
 
 function App() {
+  useLocale();
   const [state, setState] = useState<IProxyAppState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState('rules');
@@ -243,25 +245,24 @@ function App() {
     return () => browser.storage.onChanged.removeListener(changed);
   }, [reload]);
   return <main className="flex h-dvh min-h-0 flex-col overflow-hidden bg-background text-foreground">
-    <header className="flex h-16 shrink-0 items-center justify-between gap-3 border-b px-4">
-      <div className="flex min-w-0 items-center gap-3"><BrandMark className="size-8" /><h1 className="truncate text-base font-semibold">Forth Intercept</h1><Badge className="max-sm:hidden" variant="outline">{__TARGET__ === 'firefox' ? 'Firefox' : 'Chrome'}</Badge></div>
-      {view === 'rules' ? <Button size="sm" disabled={!state} onClick={() => navigate(() => setCreateToken((token) => token + 1))}><Plus data-icon="inline-start" />New rule</Button> : <span className="text-sm text-muted-foreground">Data management</span>}
+    <header className="flex min-h-16 shrink-0 flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
+      <div className="flex min-w-0 items-center gap-3"><BrandMark className="size-8" /><h1 className="truncate text-base font-semibold">Forth Intercept</h1></div>
+      <div className="flex flex-wrap items-center gap-2"><LanguageSelect />{view === 'rules' ? <Button size="sm" disabled={!state} onClick={() => navigate(() => setCreateToken((token) => token + 1))}><Plus data-icon="inline-start" />{t("New rule")}</Button> : <span className="text-sm text-muted-foreground">{t("Data management")}</span>}</div>
     </header>
-    {error ? <Alert variant="destructive"><AlertTitle>Unable to load</AlertTitle><AlertDescription>{error}</AlertDescription></Alert> : null}
+    {error ? <Alert variant="destructive"><AlertTitle>{t("Unable to load")}</AlertTitle><AlertDescription>{translateError(error)}</AlertDescription></Alert> : null}
     <div className="flex min-h-0 flex-1">
-      <nav aria-label="Workspace navigation" className="flex w-14 shrink-0 flex-col items-center gap-2 border-r bg-muted/30 py-3 sm:w-16">
-        <Button variant={view === 'rules' ? 'secondary' : 'ghost'} size="icon" aria-label="Rules" title="Rules" aria-current={view === 'rules' ? 'page' : undefined} onClick={() => { if (view !== 'rules') navigate(() => setView('rules')); }}><ListFilter /></Button>
-        <Button variant={view === 'data' ? 'secondary' : 'ghost'} size="icon" aria-label="Data & migration" title="Data & migration" aria-current={view === 'data' ? 'page' : undefined} onClick={() => { if (view !== 'data') navigate(() => setView('data')); }}><Database /></Button>
-        <span className="mt-auto text-muted-foreground" title="Local-only configuration"><Shield className="size-4" aria-label="Local only" /></span>
+      <nav aria-label={t("Workspace navigation")} className="flex w-14 shrink-0 flex-col items-center gap-2 border-r bg-muted/30 py-3 sm:w-16">
+        <Button variant={view === 'rules' ? 'secondary' : 'ghost'} size="icon" aria-label={t("Rules")} title={t("Rules")} aria-current={view === 'rules' ? 'page' : undefined} onClick={() => { if (view !== 'rules') navigate(() => setView('rules')); }}><ListFilter /></Button>
+        <Button variant={view === 'data' ? 'secondary' : 'ghost'} size="icon" aria-label={t("Data & migration")} title={t("Data & migration")} aria-current={view === 'data' ? 'page' : undefined} onClick={() => { if (view !== 'data') navigate(() => setView('data')); }}><Database /></Button>
       </nav>
       <div className="min-h-0 min-w-0 flex-1">
         {state ? view === 'rules' ? <ProxyRules state={state} reload={reload} navigate={navigate} onDirtyChange={setDirty} createToken={createToken} /> :
-          <section aria-label="Data management" className="h-full overflow-y-auto p-4 lg:p-8"><div className="mx-auto max-w-5xl"><h2 className="mb-5 text-xl font-semibold">Data & recovery</h2><DataSettings state={state} reload={reload} /></div></section> :
-          <p className="p-6 text-sm text-muted-foreground">Loading configuration…</p>}
+          <section aria-label={t("Data management")} className="h-full overflow-y-auto p-4 lg:p-8"><div className="mx-auto max-w-5xl"><h2 className="mb-5 text-xl font-semibold">{t("Data & recovery")}</h2><DataSettings state={state} reload={reload} /></div></section> :
+          <p className="p-6 text-sm text-muted-foreground">{t("Loading configuration…")}</p>}
       </div>
     </div>
-    <Dialog open={!!pendingNavigation} onOpenChange={(open) => !open && setPendingNavigation(null)}><DialogContent><DialogHeader><DialogTitle>Discard unsaved changes?</DialogTitle><DialogDescription>Save your draft or discard it before leaving.</DialogDescription></DialogHeader><DialogFooter><Button variant="outline" onClick={() => setPendingNavigation(null)}>Keep editing</Button><Button variant="destructive" onClick={() => { const action = pendingNavigation; setPendingNavigation(null); setDirty(false); action?.(); }}>Discard changes</Button></DialogFooter></DialogContent></Dialog>
+    <Dialog open={!!pendingNavigation} onOpenChange={(open) => !open && setPendingNavigation(null)}><DialogContent><DialogHeader><DialogTitle>{t("Discard unsaved changes?")}</DialogTitle><DialogDescription>{t("Save your draft or discard it before leaving.")}</DialogDescription></DialogHeader><DialogFooter><Button variant="outline" onClick={() => setPendingNavigation(null)}>{t("Keep editing")}</Button><Button variant="destructive" onClick={() => { const action = pendingNavigation; setPendingNavigation(null); setDirty(false); action?.(); }}>{t("Discard changes")}</Button></DialogFooter></DialogContent></Dialog>
   </main>;
 }
 
-createRoot(document.getElementById('root')!).render(<StrictMode><App /></StrictMode>);
+void initializeLocale().then(() => createRoot(document.getElementById('root')!).render(<StrictMode><App /></StrictMode>));

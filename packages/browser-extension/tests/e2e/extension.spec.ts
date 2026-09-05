@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { mkdtempSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
+import { messages } from '../../src/common/locales';
 
 test.describe.configure({ mode: 'serial' });
 test.setTimeout(90_000);
@@ -52,6 +53,57 @@ async function launchContext() {
 test.afterAll(async () => {
   await context?.close();
   rmSync(userDataDir, { recursive: true, force: true });
+});
+
+test('localizes all surfaces and preserves drafts and settings across language changes', async () => {
+  const testInfo = test.info();
+  await worker.evaluate(() => chrome.storage.local.set({ uiLanguage: 'en' }));
+  await control.reload();
+  await control.setViewportSize({ width: 1440, height: 900 });
+  const original = await worker.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState);
+  await control.getByRole('button', { name: 'New rule', exact: true }).click();
+  const draftName = '用户 $& / custom draft';
+  await control.getByRole('textbox', { name: 'Name', exact: true }).fill(draftName);
+  await control.getByRole('combobox', { name: 'Language', exact: true }).click();
+  await control.getByRole('option', { name: '简体中文', exact: true }).click();
+  await expect(control.locator('html')).toHaveAttribute('lang', 'zh-CN');
+  const popup = await context.newPage();
+  await popup.goto(`chrome-extension://${extensionId}/src/popup/index.html`);
+  await popup.setViewportSize({ width: 360, height: 800 });
+  const panel = await context.newPage();
+  await panel.goto(`chrome-extension://${extensionId}/src/sidepanel/index.html`);
+  await panel.setViewportSize({ width: 420, height: 900 });
+  try {
+    for (const locale of ['en', 'zh-CN', 'ko', 'ja', 'fr', 'es']) {
+      await worker.evaluate((uiLanguage) => chrome.storage.local.set({ uiLanguage }), locale);
+      for (const page of [control, popup, panel]) await expect(page.locator('html')).toHaveAttribute('lang', locale);
+      await expect(control.getByRole('textbox', { name: messages.Name[locale], exact: true })).toHaveValue(draftName);
+      await expect(popup.getByText(messages['CORS compatibility'][locale], { exact: true })).toBeVisible();
+      await expect(panel.getByText(messages['Advanced proxy is off'][locale], { exact: true }).or(panel.getByText(messages['This page is unavailable'][locale], { exact: true }))).toBeVisible();
+      for (const [name, page] of [['options', control], ['popup', popup], ['sidepanel', panel]] as const) {
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${name} ${locale} overflow`).toBe(true);
+        await page.screenshot({ path: testInfo.outputPath(`${name}-${locale}.png`), fullPage: true });
+      }
+    }
+    await control.setViewportSize({ width: 390, height: 844 });
+    expect(await control.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    for (const tab of await control.getByRole('tab').all()) {
+      const box = await tab.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.x + box!.width).toBeLessThanOrEqual(390);
+    }
+    await expect(control.getByRole('textbox', { name: messages.Name.es, exact: true })).toHaveValue(draftName);
+    await control.screenshot({ path: testInfo.outputPath('options-es-narrow.png'), fullPage: true });
+    expect(await worker.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState)).toEqual(original);
+    await control.reload();
+    await expect(control.locator('html')).toHaveAttribute('lang', 'es');
+    await expect(control.getByRole('combobox', { name: messages.Language.es, exact: true })).toContainText('Español');
+  } finally {
+    await worker.evaluate(() => chrome.storage.local.set({ uiLanguage: 'en' }));
+    await popup.close(); await panel.close();
+    await control.setViewportSize({ width: 1440, height: 900 });
+    await control.reload();
+  }
 });
 
 test('migrates v1 storage once and keeps a recovery snapshot', async () => {

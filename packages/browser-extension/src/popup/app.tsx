@@ -1,3 +1,4 @@
+import { t, translateError, initializeLocale, useLocale } from '@/common/i18n';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { AlertCircle, ArrowUpRight, Settings } from 'lucide-react';
@@ -20,6 +21,7 @@ import '@/common/tailwind.css';
 import './style.scss';
 
 function App() {
+  useLocale();
   const isFirefox = __TARGET__ === 'firefox';
   const {
     rule,
@@ -47,10 +49,10 @@ function App() {
               <h1 className="truncate text-sm font-semibold">Forth Intercept</h1>
               <Badge variant="secondary">v2.0</Badge>
             </div>
-            <p className="truncate text-xs text-muted-foreground">Local request controls</p>
+            <p className="truncate text-xs text-muted-foreground">{t("Local request controls")}</p>
           </div>
         </div>
-        <Button size="icon-sm" variant="ghost" aria-label="Open settings" onClick={gotoOptionsPage}>
+        <Button size="icon-sm" variant="ghost" aria-label={t("Open settings")} onClick={gotoOptionsPage}>
           <Settings />
         </Button>
       </header>
@@ -58,21 +60,21 @@ function App() {
       {error ? (
         <Alert variant={errorType === 'fatal' ? 'destructive' : 'default'}>
           <AlertCircle />
-          <AlertTitle>{errorType === 'fatal' ? 'This tab is unavailable' : 'Action failed'}</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
+          <AlertTitle>{errorType === 'fatal' ? t("This tab is unavailable") : t("Action failed")}</AlertTitle>
+          <AlertDescription>{translateError(error)}</AlertDescription>
           {errorType !== 'fatal' ? (
-            <Button size="xs" variant="ghost" onClick={clearError}>Dismiss</Button>
+            <Button size="xs" variant="ghost" onClick={clearError}>{t("Dismiss")}</Button>
           ) : null}
         </Alert>
       ) : null}
 
       <Card size="sm" aria-disabled={!isSupported}>
         <CardHeader>
-          <CardTitle>CORS compatibility</CardTitle>
-          <CardDescription>Fast header rules without a debugging banner.</CardDescription>
+          <CardTitle>{t("CORS compatibility")}</CardTitle>
+          <CardDescription>{t("Fast header rules without a debugging banner.")}</CardDescription>
           <CardAction>
             <Switch
-              aria-label="Enable CORS compatibility for this site"
+              aria-label={t("Enable CORS compatibility for this site")}
               checked={ruleEnabled}
               disabled={!isSupported}
               onCheckedChange={(checked) => toggleRule({ disabled: !checked })}
@@ -83,11 +85,11 @@ function App() {
           <Separator />
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-sm font-medium">Send credentials</p>
-              <p className="text-xs text-muted-foreground">Cookies and authorization headers</p>
+              <p className="text-sm font-medium">{t("Send credentials")}</p>
+              <p className="text-xs text-muted-foreground">{t("Cookies and authorization headers")}</p>
             </div>
             <Switch
-              aria-label="Allow credentials"
+              aria-label={t("Allow credentials")}
               size="sm"
               checked={!!rule?.credentials}
               disabled={!isSupported || !ruleEnabled}
@@ -100,17 +102,17 @@ function App() {
       <Card size="sm" aria-disabled={!isSupported}>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <CardTitle>{isFirefox ? 'Intercept mode' : 'Advanced proxy'}</CardTitle>
-            {advancedEnabled ? <Badge>Connected</Badge> : null}
+            <CardTitle>{isFirefox ? t("Intercept mode") : t("Advanced proxy")}</CardTitle>
+            {advancedEnabled ? <Badge>{t("Connected")}</Badge> : null}
           </div>
           <CardDescription>
             {isFirefox
-              ? 'Captures and patches requests from this tab with Firefox WebRequest.'
-              : 'Repairs failed preflights and response headers on this tab.'}
+              ? t("Captures and patches requests from this tab with Firefox WebRequest.")
+              : t("Repairs failed preflights and response headers on this tab.")}
           </CardDescription>
           <CardAction>
             <Switch
-              aria-label="Enable advanced proxy for this tab"
+              aria-label={t("Enable advanced proxy for this tab")}
               checked={advancedEnabled}
               disabled={!isSupported || advancedProxyPending}
               onCheckedChange={toggleAdvancedProxy}
@@ -120,29 +122,27 @@ function App() {
         <CardContent>
           <p className="text-xs text-muted-foreground">
             {isFirefox
-              ? 'No debugger attachment is used; Firefox permissions are granted at install time.'
-              : 'Chrome shows a debugging banner while this mode is connected.'}
+              ? t("No debugger attachment is used; Firefox permissions are granted at install time.")
+              : t("Chrome shows a debugging banner while this mode is connected.")}
           </p>
         </CardContent>
       </Card>
 
       <footer className="flex items-center justify-between gap-2 px-1">
-        <Button size="sm" variant="outline" onClick={openInspector}>Site controls</Button>
+        <Button size="sm" variant="outline" onClick={openInspector}>{t("Site controls")}</Button>
         <Button
           size="sm"
           variant="ghost"
           onClick={gotoOptionsPage}
-        >
-          Open rules
-          <ArrowUpRight data-icon="inline-end" />
+        > {t("Open rules")} <ArrowUpRight data-icon="inline-end" />
         </Button>
       </footer>
     </main>
   );
 }
 
-createRoot(document.getElementById('root')!).render(
+void initializeLocale().then(() => createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
   </StrictMode>,
-);
+));

@@ -17,6 +17,8 @@ No native client is required. Chrome Advanced mode uses Chrome DevTools Protocol
 
 ## Architecture
 
+The extension UI supports English, Simplified Chinese, Korean, Japanese, French and Spanish. It follows the browser language by default, falling back to English. The language selector in the settings header updates the options page, popup and Site controls, including other open surfaces, without discarding drafts. The preference is saved locally as `uiLanguage`, separately from portable rule configuration and v1 migration. Rule names, URLs, HTTP/CDP identifiers and raw browser diagnostics are not translated. Website and store listing localization are separate work.
+
 | Browser path | API | Best for | Disclosure |
 | --- | --- | --- | --- |
 | Fast path | `declarativeNetRequest` | CORS, headers, redirect, block | None |

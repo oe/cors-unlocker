@@ -1,3 +1,4 @@
+import { t, translateError, initializeLocale, useLocale } from '@/common/i18n';
 import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import browser from 'webextension-polyfill';
@@ -27,6 +28,7 @@ function statusVariant(entry: IRequestLogEntry): 'default' | 'secondary' | 'dest
 }
 
 function App() {
+  useLocale();
   const requestedTabId = useMemo(() => {
     return parseInspectorTabId(location.search);
   }, []);
@@ -171,58 +173,58 @@ function App() {
         <div className="flex min-w-0 items-center gap-2">
           <BrandMark />
           <div className="min-w-0">
-            <h1 className="text-sm font-semibold">Site controls</h1>
-            <p className="truncate text-xs text-muted-foreground">{origin || 'No supported tab'}</p>
+            <h1 className="text-sm font-semibold">{t("Site controls")}</h1>
+            <p className="truncate text-xs text-muted-foreground">{origin || t("No supported tab")}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2"><span className="text-xs">Advanced proxy</span><Switch
+        <div className="flex items-center gap-2"><span className="text-xs">{t("Advanced proxy")}</span><Switch
           checked={status?.phase === 'connected'}
           disabled={busy || tabId === null || status?.phase === 'connecting'}
           onCheckedChange={toggle}
-          aria-label="Toggle advanced proxy"
+          aria-label={t("Toggle advanced proxy")}
         /></div>
       </header>
 
       {status?.phase !== 'connected' ? (
         <Alert>
           <CircleSlash2 />
-          <AlertTitle>{targetError ? 'This page is unavailable' : status?.phase === 'error' ? 'Advanced proxy could not start' : 'Advanced proxy is off'}</AlertTitle>
+          <AlertTitle>{targetError ? t("This page is unavailable") : status?.phase === 'error' ? t("Advanced proxy could not start") : t("Advanced proxy is off")}</AlertTitle>
           <AlertDescription>
-            {targetError || status?.error || (__TARGET__ === 'firefox'
-              ? 'Turn it on to apply advanced actions, repair CORS and record activity for this tab.'
-              : 'Turn it on to apply advanced actions, repair CORS and record activity. Chrome shows a debugging banner.')}
+            {targetError || status?.error ? translateError(targetError || status?.error || '') : (__TARGET__ === 'firefox'
+              ? t("Turn it on to apply advanced actions, repair CORS and record activity for this tab.")
+              : t("Turn it on to apply advanced actions, repair CORS and record activity. Chrome shows a debugging banner."))}
           </AlertDescription>
         </Alert>
       ) : null}
-      {message ? <Alert><AlertDescription>{message}</AlertDescription></Alert> : null}
+      {message ? <Alert><AlertDescription>{translateError(message)}</AlertDescription></Alert> : null}
 
-      <p className="text-xs text-muted-foreground">Advanced proxy changes requests; it is not a capture-only switch. Basic header, redirect and block rules can remain enabled when it is off.</p>
+      <p className="text-xs text-muted-foreground">{t("Advanced proxy changes requests; it is not a capture-only switch. Basic header, redirect and block rules can remain enabled when it is off.")}</p>
       <Card size="sm">
-        <CardHeader><CardTitle>Rules for this site</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{t("Rules for this site")}</CardTitle></CardHeader>
         <CardContent className="flex flex-col gap-3">
-          <Button variant="outline" disabled={tabId === null} onClick={() => setDraft({ ...EMPTY_DRAFT, origins: origin })}><Plus data-icon="inline-start" />New rule for this site</Button>
-          {!siteRules.length ? <p className="text-sm text-muted-foreground">No rules for this site yet.</p> : null}
+          <Button variant="outline" disabled={tabId === null} onClick={() => setDraft({ ...EMPTY_DRAFT, origins: origin })}><Plus data-icon="inline-start" />{t("New rule for this site")}</Button>
+          {!siteRules.length ? <p className="text-sm text-muted-foreground">{t("No rules for this site yet.")}</p> : null}
           {siteRules.map((rule) => <section key={rule.id} aria-label={rule.name} className="flex flex-col gap-2 rounded-lg border p-2">
             <div className="flex items-center justify-between gap-2">
               <Button variant="ghost" className="min-w-0 justify-start" onClick={() => setDraft(draftFromRule(rule))}><span className="truncate">{rule.name}</span></Button>
-              <Switch checked={rule.enabled} disabled={busy} aria-label={`Enable ${rule.name}`} onCheckedChange={(enabled) => void toggleRule(rule, enabled)} />
+              <Switch checked={rule.enabled} disabled={busy} aria-label={t('Enable {name}', { name: rule.name })} onCheckedChange={(enabled) => void toggleRule(rule, enabled)} />
             </div>
-            <p className="break-all text-xs text-muted-foreground">{rule.match.methods?.join(', ') || 'All methods'} · {rule.match.urlPattern}</p>
+            <p className="break-all text-xs text-muted-foreground">{rule.match.methods?.join(', ') || t("All methods")} · {rule.match.urlPattern}</p>
             <div className="flex flex-wrap gap-1">
-              <Badge variant="outline">{!rule.enabled ? 'Disabled' : status?.phase !== 'connected' && rule.actions.some((action) => ['mockResponse', 'delay', 'networkFailure'].includes(action.type)) ? 'Needs advanced proxy' : 'Enabled'}</Badge>
-              <Badge variant="secondary">{entries.filter((entry) => entry.matchedRuleIds.includes(rule.id)).length} recorded matches</Badge>
+              <Badge variant="outline">{!rule.enabled ? t("Disabled") : status?.phase !== 'connected' && rule.actions.some((action) => ['mockResponse', 'delay', 'networkFailure'].includes(action.type)) ? t("Needs advanced proxy") : t("Enabled")}</Badge>
+              <Badge variant="secondary">{t('{count} recorded matches', { count: entries.filter((entry) => entry.matchedRuleIds.includes(rule.id)).length })}</Badge>
             </div>
           </section>)}
         </CardContent>
       </Card>
-      <h2 className="text-sm font-semibold">Recent activity</h2>
-      <p className="text-xs text-muted-foreground">Advanced proxy records only. Basic browser rules may act before capture; this is not a complete network log.</p>
+      <h2 className="text-sm font-semibold">{t("Recent activity")}</h2>
+      <p className="text-xs text-muted-foreground">{t("Advanced proxy records only. Basic browser rules may act before capture; this is not a complete network log.")}</p>
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-2 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input className="pl-8" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Filter URL, method, status" />
+          <Input className="pl-8" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("Filter URL, method, status")} />
         </div>
-        <Button size="icon" variant="outline" onClick={clear} aria-label="Clear requests"><Eraser /></Button>
+        <Button size="icon" variant="outline" onClick={clear} aria-label={t("Clear requests")}><Eraser /></Button>
       </div>
 
       <ScrollArea className="h-64 rounded-lg border">
@@ -234,11 +236,11 @@ function App() {
                 <p className="truncate text-xs font-medium">{entry.url}</p>
                 <p className="text-xs text-muted-foreground">{entry.resourceType} · {entry.duration ?? 0} ms</p>
               </div>
-              <Badge variant={statusVariant(entry)}>{entry.status || entry.outcome}</Badge>
+              <Badge variant={statusVariant(entry)}>{entry.status || t(entry.outcome)}</Badge>
             </button>
           ))}
           {filtered.length === 0 ? (
-            <div className="flex min-h-40 items-center justify-center text-sm text-muted-foreground">No matching activity. Connect advanced proxy, then trigger a request on the page.</div>
+            <div className="flex min-h-40 items-center justify-center text-sm text-muted-foreground">{t("No matching activity. Connect advanced proxy, then trigger a request on the page.")}</div>
           ) : null}
         </div>
       </ScrollArea>
@@ -251,49 +253,48 @@ function App() {
           <CardContent className="flex flex-col gap-3">
             <div className="flex flex-wrap gap-2">
               <Badge variant="outline">{selected.resourceType}</Badge>
-              <Badge variant="outline">{selected.outcome}</Badge>
+              <Badge variant="outline">{t(selected.outcome)}</Badge>
               {(selected.matchedRules || selected.matchedRuleIds.map((id) => ({ id, name: id }))).map((rule) => <Badge key={rule.id} variant="secondary">{rule.name}</Badge>)}
             </div>
             {selected.diagnostics.map((diagnostic) => (
-              <Alert key={diagnostic}><AlertDescription>{diagnostic}</AlertDescription></Alert>
+              <Alert key={translateError(diagnostic)}><AlertDescription>{translateError(diagnostic)}</AlertDescription></Alert>
             ))}
-            <p className="text-xs text-muted-foreground">Rules above matched at capture. Matching does not guarantee every action ran.</p>
-            <div aria-label="Applied changes" className="flex flex-col gap-2">
+            <p className="text-xs text-muted-foreground">{t("Rules above matched at capture. Matching does not guarantee every action ran.")}</p>
+            <div aria-label={t("Applied changes")} className="flex flex-col gap-2">
               {(selected.changes || []).map((change, index) => <div key={index} className="rounded-lg border p-2 text-xs">
-                <p className="font-medium">{change.label}</p>
-                {change.before !== undefined ? <p className="break-all text-muted-foreground">Before: {change.before}</p> : null}
-                <p className="break-all">After: {change.after}</p>
+                <p className="font-medium">{translateError(change.label)}</p>
+                {change.before !== undefined ? <p className="break-all text-muted-foreground">{t("Before:")} {change.before}</p> : null}
+                <p className="break-all">{t("After:")} {change.after}</p>
               </div>)}
-              {!selected.changes?.length ? <p className="text-xs text-muted-foreground">No detailed change record for this request.</p> : null}
+              {!selected.changes?.length ? <p className="text-xs text-muted-foreground">{t("No detailed change record for this request.")}</p> : null}
             </div>
-            <details><summary className="cursor-pointer text-sm font-medium">Check against current rules</summary>
-              <p className="my-2 text-xs text-muted-foreground">Current conditions, not historical execution or priority. Trigger a new request after editing.</p>
+            <details><summary className="cursor-pointer text-sm font-medium">{t("Check against current rules")}</summary>
+              <p className="my-2 text-xs text-muted-foreground">{t("Current conditions, not historical execution or priority. Trigger a new request after editing.")}</p>
               {siteRules.map((rule) => {
                 const reasons = explainRuleMatch(rule, origin, selected, __TARGET__ === 'firefox');
                 return <div key={rule.id} className="flex flex-col gap-1 py-2">
                   <Button variant="link" className="justify-start" onClick={() => setDraft(draftFromRule(rule))}>{rule.name}</Button>
-                  <p className="text-xs">{reasons.length ? reasons.join(' · ') : 'Conditions match now; see applied changes for execution evidence.'}</p>
+                  <p className="text-xs">{reasons.length ? reasons.map((reason) => translateError(reason)).join(' · ') : t("Conditions match now; see applied changes for execution evidence.")}</p>
                 </div>;
               })}
             </details>
             <Separator />
             <details>
-              <summary className="cursor-pointer text-xs font-medium">Request headers</summary>
+              <summary className="cursor-pointer text-xs font-medium">{t("Request headers")}</summary>
               <pre className="mt-2 max-h-28 overflow-auto whitespace-pre-wrap text-xs text-muted-foreground">{JSON.stringify(selected.requestHeaders, null, 2)}</pre>
             </details>
             {selected.responseHeaders ? (
               <details>
-                <summary className="cursor-pointer text-xs font-medium">Response headers</summary>
+                <summary className="cursor-pointer text-xs font-medium">{t("Response headers")}</summary>
                 <pre className="mt-2 max-h-28 overflow-auto whitespace-pre-wrap text-xs text-muted-foreground">{JSON.stringify(selected.responseHeaders, null, 2)}</pre>
               </details>
             ) : null}
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" onClick={() => createRule(selected, 'mock')}>{__TARGET__ === 'firefox' ? 'Replace body' : 'Mock'}</Button>
-              <Button size="sm" variant="outline" onClick={() => createRule(selected, 'delay')}>Delay</Button>
-              <Button size="sm" variant="outline" onClick={() => createRule(selected, 'block')}>Block</Button>
-              <Button size="sm" variant="outline" onClick={() => createRule(selected)}>Headers</Button>
-              <Button size="sm" variant="outline" onClick={() => browser.runtime.openOptionsPage()}>
-                Open rules<ExternalLink data-icon="inline-end" />
+              <Button size="sm" onClick={() => createRule(selected, 'mock')}>{__TARGET__ === 'firefox' ? t("Replace body") : t("Mock")}</Button>
+              <Button size="sm" variant="outline" onClick={() => createRule(selected, 'delay')}>{t("Delay")}</Button>
+              <Button size="sm" variant="outline" onClick={() => createRule(selected, 'block')}>{t("Block")}</Button>
+              <Button size="sm" variant="outline" onClick={() => createRule(selected)}>{t("Headers")}</Button>
+              <Button size="sm" variant="outline" onClick={() => browser.runtime.openOptionsPage()}> {t("Open rules")}<ExternalLink data-icon="inline-end" />
               </Button>
             </div>
           </CardContent>
@@ -304,4 +305,4 @@ function App() {
   );
 }
 
-createRoot(document.getElementById('root')!).render(<StrictMode><App /></StrictMode>);
+void initializeLocale().then(() => createRoot(document.getElementById('root')!).render(<StrictMode><App /></StrictMode>));

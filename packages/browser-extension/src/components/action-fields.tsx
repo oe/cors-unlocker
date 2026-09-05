@@ -1,3 +1,4 @@
+import { t } from '@/common/i18n';
 import { useState } from 'react';
 import type { IProxyAction, ProxyHeaderMap } from '@/common/proxy-state';
 import { Button } from '@/components/ui/button';
@@ -26,15 +27,15 @@ function Headers({ value, onChange }: { value: ProxyHeaderMap; onChange: (value:
   };
   return <FieldGroup>
     {rows.map(([name, text], index) => <Field key={index}>
-      <FieldLabel>Header {index + 1}</FieldLabel>
+      <FieldLabel>{t('Header {count}', { count: index + 1 })}</FieldLabel>
       <div className="flex flex-wrap gap-2">
-        <Input className="min-w-0 flex-1" aria-label={`Header ${index + 1} name`} value={name} onChange={(e) => change(index, e.target.value, text)} placeholder="X-Debug" />
-        <Input className="min-w-0 flex-1" aria-label={`Header ${index + 1} value`} value={text} onChange={(e) => change(index, name, e.target.value)} placeholder="Value" />
-        <Button variant="ghost" aria-label={`Remove header ${index + 1}`} onClick={() => onChange(Object.fromEntries(rows.filter((_, i) => i !== index)))}>Remove</Button>
+        <Input className="min-w-0 flex-1" aria-label={t('Header {count} name', { count: index + 1 })} value={name} onChange={(e) => change(index, e.target.value, text)} placeholder="X-Debug" />
+        <Input className="min-w-0 flex-1" aria-label={t('Header {count} value', { count: index + 1 })} value={text} onChange={(e) => change(index, name, e.target.value)} placeholder={t("Value")} />
+        <Button variant="ghost" aria-label={t('Remove header {count}', { count: index + 1 })} onClick={() => onChange(Object.fromEntries(rows.filter((_, i) => i !== index)))}>{t("Remove")}</Button>
       </div>
     </Field>)}
-    {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
-    <Button variant="outline" disabled={Object.hasOwn(value, '')} onClick={() => onChange({ ...value, '': '' })}>Add header</Button>
+    {error ? <p role="alert" className="text-sm text-destructive">{t(error)}</p> : null}
+    <Button variant="outline" disabled={Object.hasOwn(value, '')} onClick={() => onChange({ ...value, '': '' })}>{t("Add header")}</Button>
   </FieldGroup>;
 }
 
@@ -45,26 +46,26 @@ export function ActionFields({ action, onChange }: { action: IProxyAction; onCha
       return <Headers value={action.headers} onChange={(headers) => onChange({ ...action, headers })} />;
     case 'mockResponse':
       return <FieldGroup>
-        <Field><FieldLabel>HTTP status</FieldLabel><Input aria-label="HTTP status" type="number" min={100} max={599} value={action.status} onChange={(e) => onChange({ ...action, status: Number(e.target.value) })} />
-          {__TARGET__ === 'firefox' ? <FieldDescription>Firefox contacts the server and preserves its status; only the response body is replaced.</FieldDescription> : null}
+        <Field><FieldLabel>{t("HTTP status")}</FieldLabel><Input aria-label={t("HTTP status")} type="number" min={100} max={599} value={action.status} onChange={(e) => onChange({ ...action, status: Number(e.target.value) })} />
+          {__TARGET__ === 'firefox' ? <FieldDescription>{t("Firefox contacts the server and preserves its status; only the response body is replaced.")}</FieldDescription> : null}
         </Field>
         <Headers value={action.headers} onChange={(headers) => onChange({ ...action, headers })} />
-        <Field><FieldLabel>Response body</FieldLabel><Textarea aria-label="Response body" className="min-h-36 font-mono" value={action.body} onChange={(e) => onChange({ ...action, body: e.target.value })} /></Field>
+        <Field><FieldLabel>{t("Response body")}</FieldLabel><Textarea aria-label={t("Response body")} className="min-h-36 font-mono" value={action.body} onChange={(e) => onChange({ ...action, body: e.target.value })} /></Field>
       </FieldGroup>;
     case 'delay':
-      return <Field><FieldLabel>Delay in milliseconds</FieldLabel><Input aria-label="Delay in milliseconds" type="number" min={0} max={30000} value={action.milliseconds} onChange={(e) => onChange({ ...action, milliseconds: Number(e.target.value) })} /><FieldDescription>0–30,000 ms. Requires advanced proxy.</FieldDescription></Field>;
+      return <Field><FieldLabel>{t("Delay in milliseconds")}</FieldLabel><Input aria-label={t("Delay in milliseconds")} type="number" min={0} max={30000} value={action.milliseconds} onChange={(e) => onChange({ ...action, milliseconds: Number(e.target.value) })} /><FieldDescription>{t("0–30,000 ms. Requires advanced proxy.")}</FieldDescription></Field>;
     case 'redirect':
-      return <Field><FieldLabel>Destination URL</FieldLabel><Input aria-label="Destination URL" value={action.url} onChange={(e) => onChange({ ...action, url: e.target.value })} placeholder="https://localhost.example/api" /></Field>;
+      return <Field><FieldLabel>{t("Destination URL")}</FieldLabel><Input aria-label={t("Destination URL")} value={action.url} onChange={(e) => onChange({ ...action, url: e.target.value })} placeholder="https://localhost.example/api" /></Field>;
     case 'networkFailure':
-      return <Field><FieldLabel>Failure reason</FieldLabel><Select value={action.reason} onValueChange={(reason) => reason && onChange({ ...action, reason })}><SelectTrigger aria-label="Failure reason"><SelectValue>{action.reason}</SelectValue></SelectTrigger><SelectContent><SelectGroup>{[...new Set([...FAILURE_REASONS, action.reason])].map((reason) => <SelectItem key={reason} value={reason}>{reason}</SelectItem>)}</SelectGroup></SelectContent></Select><FieldDescription>Chrome error reason. Firefox cancels the request.</FieldDescription></Field>;
+      return <Field><FieldLabel>{t("Failure reason")}</FieldLabel><Select value={action.reason} onValueChange={(reason) => reason && onChange({ ...action, reason })}><SelectTrigger aria-label={t("Failure reason")}><SelectValue>{action.reason}</SelectValue></SelectTrigger><SelectContent><SelectGroup>{[...new Set([...FAILURE_REASONS, action.reason])].map((reason) => <SelectItem key={reason} value={reason}>{reason}</SelectItem>)}</SelectGroup></SelectContent></Select><FieldDescription>{t("Chrome error reason. Firefox cancels the request.")}</FieldDescription></Field>;
     case 'cors':
       return <FieldGroup>
-        <Field><FieldLabel>Allow credentials</FieldLabel><Switch aria-label="Allow credentials" checked={action.allowCredentials} onCheckedChange={(allowCredentials) => onChange({ ...action, allowCredentials, allowOrigin: allowCredentials ? 'initiator' : action.allowOrigin })} /></Field>
-        <Field><FieldLabel>Echo page origin</FieldLabel><Switch aria-label="Echo page origin" disabled={action.allowCredentials} checked={action.allowOrigin === 'initiator'} onCheckedChange={(echo) => onChange({ ...action, allowOrigin: echo ? 'initiator' : '*' })} /><FieldDescription>Required when credentials are allowed.</FieldDescription></Field>
-        <Field><FieldLabel>Allowed methods</FieldLabel><Input aria-label="Allowed methods" value={action.allowMethods.join(', ')} onChange={(e) => onChange({ ...action, allowMethods: e.target.value.split(',').map((s) => s.trim().toUpperCase()) })} /></Field>
-        <Field><FieldLabel>Allowed headers</FieldLabel><Input aria-label="Allowed headers" value={action.allowHeaders.join(', ')} onChange={(e) => onChange({ ...action, allowHeaders: e.target.value.split(',').map((s) => s.trim()) })} /></Field>
+        <Field><FieldLabel>{t("Allow credentials")}</FieldLabel><Switch aria-label={t("Allow credentials")} checked={action.allowCredentials} onCheckedChange={(allowCredentials) => onChange({ ...action, allowCredentials, allowOrigin: allowCredentials ? 'initiator' : action.allowOrigin })} /></Field>
+        <Field><FieldLabel>{t("Echo page origin")}</FieldLabel><Switch aria-label={t("Echo page origin")} disabled={action.allowCredentials} checked={action.allowOrigin === 'initiator'} onCheckedChange={(echo) => onChange({ ...action, allowOrigin: echo ? 'initiator' : '*' })} /><FieldDescription>{t("Required when credentials are allowed.")}</FieldDescription></Field>
+        <Field><FieldLabel>{t("Allowed methods")}</FieldLabel><Input aria-label={t("Allowed methods")} value={action.allowMethods.join(', ')} onChange={(e) => onChange({ ...action, allowMethods: e.target.value.split(',').map((s) => s.trim().toUpperCase()) })} /></Field>
+        <Field><FieldLabel>{t("Allowed headers")}</FieldLabel><Input aria-label={t("Allowed headers")} value={action.allowHeaders.join(', ')} onChange={(e) => onChange({ ...action, allowHeaders: e.target.value.split(',').map((s) => s.trim()) })} /></Field>
       </FieldGroup>;
     case 'block':
-      return <p className="text-sm text-muted-foreground">Matching requests are blocked. No additional configuration is needed.</p>;
+      return <p className="text-sm text-muted-foreground">{t("Matching requests are blocked. No additional configuration is needed.")}</p>;
   }
 }

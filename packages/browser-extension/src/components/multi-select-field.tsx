@@ -1,3 +1,4 @@
+import { t } from '@/common/i18n';
 import { useState } from 'react';
 import { Check, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -22,7 +23,7 @@ type MultiSelectFieldProps = {
 function selectedLabel(value: string[], allLabel: string): string {
   if (value.length === 0) return allLabel;
   if (value.length <= 2) return value.join(', ');
-  return `${value.length} selected`;
+  return t('{count} selected', { count: value.length });
 }
 
 export function MultiSelectField({
@@ -60,7 +61,7 @@ export function MultiSelectField({
       <PopoverContent align="start" className="w-(--anchor-width) min-w-56 gap-1 p-1">
         <PopoverHeader className="px-2 py-1">
           <PopoverTitle>{label}</PopoverTitle>
-          <PopoverDescription>Select any combination.</PopoverDescription>
+          <PopoverDescription>{t("Select any combination.")}</PopoverDescription>
         </PopoverHeader>
         <div role="listbox" aria-label={label} aria-multiselectable="true" className="flex max-h-64 flex-col gap-0.5 overflow-y-auto">
           <Button

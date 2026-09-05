@@ -1,3 +1,4 @@
+import { t, translateError } from '@/common/i18n';
 import { useEffect, useState, type ReactNode } from 'react';
 import browser from 'webextension-polyfill';
 import { Info } from 'lucide-react';
@@ -49,7 +50,7 @@ function actionTemplateLabel(template: ActionTemplate, isFirefox: boolean): stri
     delay: 'Delay',
     failure: 'Network failure',
   };
-  return labels[template];
+  return t(labels[template]);
 }
 
 export type RuleDraft = {
@@ -230,70 +231,68 @@ export function RuleEditorForm({
 
 
   const matchFields = <FieldGroup>          <Field>
-            <FieldLabel htmlFor="rule-name">Name</FieldLabel>
+            <FieldLabel htmlFor="rule-name">{t("Name")}</FieldLabel>
             <Input id="rule-name" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field>
-              <FieldLabel htmlFor="rule-origins">Page origins</FieldLabel>
+              <FieldLabel htmlFor="rule-origins">{t("Page origins")}</FieldLabel>
               <Input id="rule-origins" value={form.origins} onChange={(event) => setForm({ ...form, origins: event.target.value })} placeholder="https://app.example.com or *" />
-              <FieldDescription>Comma-separated origins. Use * only when every page should match.</FieldDescription>
+              <FieldDescription>{t("Comma-separated origins. Use * only when every page should match.")}</FieldDescription>
             </Field>
             <Field>
-              <FieldLabel htmlFor="rule-pattern">Request URL pattern</FieldLabel>
+              <FieldLabel htmlFor="rule-pattern">{t("Request URL pattern")}</FieldLabel>
               <Input id="rule-pattern" value={form.urlPattern} onChange={(event) => setForm({ ...form, urlPattern: event.target.value })} placeholder="*://api.example.com/*" />
-              <FieldDescription>Use * as a wildcard. Matching is case-insensitive.</FieldDescription>
+              <FieldDescription>{t("Use * as a wildcard. Matching is case-insensitive.")}</FieldDescription>
             </Field>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field>
-              <FieldLabel htmlFor="rule-methods">Methods</FieldLabel>
-              <Input id="rule-methods" value={form.methods} onChange={(event) => setForm({ ...form, methods: event.target.value })} placeholder="GET, POST (blank = all)" />
-              <FieldDescription>Comma-separated HTTP methods. Leave blank to match every method.</FieldDescription>
+              <FieldLabel htmlFor="rule-methods">{t("Methods")}</FieldLabel>
+              <Input id="rule-methods" value={form.methods} onChange={(event) => setForm({ ...form, methods: event.target.value })} placeholder={t("GET, POST (blank = all)")} />
+              <FieldDescription>{t("Comma-separated HTTP methods. Leave blank to match every method.")}</FieldDescription>
             </Field>
             <Field>
-              <FieldLabel htmlFor="rule-resources">Resource types</FieldLabel>
+              <FieldLabel htmlFor="rule-resources">{t("Resource types")}</FieldLabel>
               <MultiSelectField
                 id="rule-resources"
-                label="Resource types"
+                label={t("Resource types")}
                 options={RESOURCE_TYPES}
                 value={form.resourceTypes}
-                allLabel="All resource types"
+                allLabel={t("All resource types")}
                 onChange={(resourceTypes) => setForm({ ...form, resourceTypes })}
               />
-              <FieldDescription>{isFirefox ? 'Firefox reports Fetch and XMLHttpRequest together as XHR.' : 'Choose one or more CDP resource types; no selection matches all.'}</FieldDescription>
+              <FieldDescription>{isFirefox ? t("Firefox reports Fetch and XMLHttpRequest together as XHR.") : t("Choose one or more CDP resource types; no selection matches all.")}</FieldDescription>
             </Field>
           </div>
 </FieldGroup>;
-  const actionFields = <FieldGroup>          <section aria-label="Actions" className="flex flex-col gap-4">
-            <h3 className="text-base font-semibold">Actions</h3>
-            <p className="text-xs text-muted-foreground">Actions use engine precedence, not a general-purpose script sequence. A block or mock can prevent later effects.</p>
-            {actions ? actions.map((action, index) => <section key={index} aria-label={`Action ${index + 1}`} className="flex flex-col gap-4 rounded-lg border p-4">
-              <div className="flex items-center justify-between gap-2"><h4 className="text-sm font-medium">{index + 1}. {ACTION_LABELS[action.type]}</h4>
-                <Button variant="ghost" size="sm" disabled={actions!.length === 1} onClick={() => setActions(actions!.filter((_, i) => i !== index))}>Remove action {index + 1}</Button>
+  const actionFields = <FieldGroup>          <section aria-label={t("Actions")} className="flex flex-col gap-4">
+            <h3 className="text-base font-semibold">{t("Actions")}</h3>
+            <p className="text-xs text-muted-foreground">{t("Actions use engine precedence, not a general-purpose script sequence. A block or mock can prevent later effects.")}</p>
+            {actions ? actions.map((action, index) => <section key={index} aria-label={t('Action {count}', { count: index + 1 })} className="flex flex-col gap-4 rounded-lg border p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2"><h4 className="text-sm font-medium">{index + 1}. {t(ACTION_LABELS[action.type])}</h4>
+                <Button variant="ghost" size="sm" disabled={actions!.length === 1} onClick={() => setActions(actions!.filter((_, i) => i !== index))}>{t('Remove action {count}', { count: index + 1 })}</Button>
               </div>
               <ActionFields action={action} onChange={(value) => setActions(actions!.map((item, i) => i === index ? value : item))} />
-            </section>) : <Alert variant="destructive"><AlertDescription>Invalid action structure. Correct it in Advanced JSON below.</AlertDescription></Alert>}
+            </section>) : <Alert variant="destructive"><AlertDescription>{t("Invalid action structure. Correct it in Advanced JSON below.")}</AlertDescription></Alert>}
             <div className="flex flex-wrap items-center gap-2">
               <Select value={actionTemplate} onValueChange={(value) => { if (value && value in ACTION_TEMPLATES) setActionTemplate(value); }}>
-                <SelectTrigger aria-label="Action to add"><SelectValue>{actionTemplateLabel(actionTemplate, isFirefox)}</SelectValue></SelectTrigger>
+                <SelectTrigger aria-label={t("Action to add")}><SelectValue>{actionTemplateLabel(actionTemplate, isFirefox)}</SelectValue></SelectTrigger>
                 <SelectContent><SelectGroup>{Object.keys(ACTION_TEMPLATES).map((key) => <SelectItem key={key} value={key}>{actionTemplateLabel(key, isFirefox)}</SelectItem>)}</SelectGroup></SelectContent>
               </Select>
-              <Button variant="outline" disabled={!actions} onClick={() => setActions([...(actions || []), ...structuredClone(ACTION_TEMPLATES[actionTemplate])])}>Add action</Button>
+              <Button variant="outline" disabled={!actions} onClick={() => setActions([...(actions || []), ...structuredClone(ACTION_TEMPLATES[actionTemplate])])}>{t("Add action")}</Button>
             </div>
           </section>
           {replacesResponseBody ? (
             <Alert>
               <Info />
-              <AlertTitle>Firefox response replacement</AlertTitle>
-              <AlertDescription>
-                Firefox still sends the request and preserves the server status. The JSON status value remains for portable Chrome rules and is ignored by Firefox.
-              </AlertDescription>
+              <AlertTitle>{t("Firefox response replacement")}</AlertTitle>
+              <AlertDescription> {t("Firefox still sends the request and preserves the server status. The JSON status value remains for portable Chrome rules and is ignored by Firefox.")} </AlertDescription>
             </Alert>
           ) : null}
-          <details><summary className="cursor-pointer text-sm font-medium">Advanced JSON</summary>
+          <details><summary className="cursor-pointer text-sm font-medium">{t("Advanced JSON")}</summary>
           <Field data-invalid={!!error}>
-            <FieldLabel htmlFor="rule-actions">Action script (JSON)</FieldLabel>
+            <FieldLabel htmlFor="rule-actions">{t("Action script (JSON)")}</FieldLabel>
             <Textarea
               id="rule-actions"
               className="min-h-52 font-mono text-xs"
@@ -301,23 +300,23 @@ export function RuleEditorForm({
               value={form.actions}
               onChange={(event) => setForm({ ...form, actions: event.target.value })}
             />
-            {error ? <FieldDescription className="text-destructive">{error}</FieldDescription> : null}
-            {!error ? <FieldDescription>Compose multiple validated actions without executing arbitrary JavaScript.</FieldDescription> : null}
+            {error ? <FieldDescription className="text-destructive">{translateError(error)}</FieldDescription> : null}
+            {!error ? <FieldDescription>{t("Compose multiple validated actions without executing arbitrary JavaScript.")}</FieldDescription> : null}
           </Field>
           </details>
 </FieldGroup>;
   const testFields = <>
             <FieldGroup className="mt-4">
-              <Field><FieldLabel>Test page origin</FieldLabel><Input aria-label="Test page origin" placeholder="https://app.example.com" value={testOrigin} onChange={(e) => setTestOrigin(e.target.value)} /></Field>
-              <Field><FieldLabel>Test request URL</FieldLabel><Input aria-label="Test request URL" placeholder="https://api.example.com/users" value={testUrl} onChange={(e) => setTestUrl(e.target.value)} /></Field>
-              <Field><FieldLabel>Test method</FieldLabel><Input aria-label="Test method" value={testMethod} onChange={(e) => setTestMethod(e.target.value.toUpperCase())} /></Field>
-              <Field><FieldLabel>Test resource type</FieldLabel><Select value={testType} onValueChange={(value) => value && setTestType(value)}><SelectTrigger aria-label="Test resource type"><SelectValue /></SelectTrigger><SelectContent><SelectGroup>{RESOURCE_TYPES.map((type) => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectGroup></SelectContent></Select></Field>
-              <Button variant="outline" onClick={testMatch}>Test conditions</Button>
-              {testResult ? <p role="status" className="text-sm">{testResult}</p> : null}
-              <FieldDescription>Checks unsaved conditions without sending any network requests. Uses advanced-proxy matching semantics.</FieldDescription>
+              <Field><FieldLabel>{t("Test page origin")}</FieldLabel><Input aria-label={t("Test page origin")} placeholder="https://app.example.com" value={testOrigin} onChange={(e) => setTestOrigin(e.target.value)} /></Field>
+              <Field><FieldLabel>{t("Test request URL")}</FieldLabel><Input aria-label={t("Test request URL")} placeholder="https://api.example.com/users" value={testUrl} onChange={(e) => setTestUrl(e.target.value)} /></Field>
+              <Field><FieldLabel>{t("Test method")}</FieldLabel><Input aria-label={t("Test method")} value={testMethod} onChange={(e) => setTestMethod(e.target.value.toUpperCase())} /></Field>
+              <Field><FieldLabel>{t("Test resource type")}</FieldLabel><Select value={testType} onValueChange={(value) => value && setTestType(value)}><SelectTrigger aria-label={t("Test resource type")}><SelectValue /></SelectTrigger><SelectContent><SelectGroup>{RESOURCE_TYPES.map((type) => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectGroup></SelectContent></Select></Field>
+              <Button variant="outline" onClick={testMatch}>{t("Test conditions")}</Button>
+              {testResult ? <p role="status" className="text-sm">{testResult.split(' · ').map((reason) => translateError(reason)).join(' · ')}</p> : null}
+              <FieldDescription>{t("Checks unsaved conditions without sending any network requests. Uses advanced-proxy matching semantics.")}</FieldDescription>
             </FieldGroup>
           </>;
-  const errorMessage = error ? <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : null;
+  const errorMessage = error ? <Alert variant="destructive"><AlertDescription>{translateError(error)}</AlertDescription></Alert> : null;
   const parts: RuleEditorParts = {
     name: form.name, enabled: form.enabled, dirty, pending,
     setEnabled: (enabled) => setForm({ ...form, enabled }),
@@ -329,16 +328,16 @@ export function RuleEditorForm({
     {renderWorkspace ? renderWorkspace(parts) :
       <Dialog open={!!draft} onOpenChange={(open) => { if (!open) requestClose(); }}>
         <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-2xl">
-          <DialogHeader><DialogTitle>{form.id ? 'Edit proxy rule' : 'Create proxy rule'}</DialogTitle><DialogDescription>Match traffic from a page, then configure local actions.</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>{form.id ? t("Edit proxy rule") : t("Create proxy rule")}</DialogTitle><DialogDescription>{t("Match traffic from a page, then configure local actions.")}</DialogDescription></DialogHeader>
           {matchFields}{actionFields}
-          <details><summary className="cursor-pointer text-sm font-medium">Test matching</summary>{testFields}</details>
+          <details><summary className="cursor-pointer text-sm font-medium">{t("Test matching")}</summary>{testFields}</details>
           {errorMessage}
-          <DialogFooter><Button variant="outline" disabled={pending} onClick={requestClose}>Cancel</Button><Button disabled={pending} onClick={save}>{pending ? 'Saving…' : 'Save rule'}</Button></DialogFooter>
+          <DialogFooter><Button variant="outline" disabled={pending} onClick={requestClose}>{t("Cancel")}</Button><Button disabled={pending} onClick={save}>{pending ? t("Saving…") : t("Save rule")}</Button></DialogFooter>
         </DialogContent>
       </Dialog>}
     <Dialog open={discard} onOpenChange={setDiscard}><DialogContent>
-      <DialogHeader><DialogTitle>Discard unsaved changes?</DialogTitle><DialogDescription>Your edits have not been saved.</DialogDescription></DialogHeader>
-      <DialogFooter><Button variant="outline" onClick={() => setDiscard(false)}>Keep editing</Button><Button variant="destructive" onClick={() => { setDiscard(false); onDirtyChange?.(false); onOpenChange(false); }}>Discard changes</Button></DialogFooter>
+      <DialogHeader><DialogTitle>{t("Discard unsaved changes?")}</DialogTitle><DialogDescription>{t("Your edits have not been saved.")}</DialogDescription></DialogHeader>
+      <DialogFooter><Button variant="outline" onClick={() => setDiscard(false)}>{t("Keep editing")}</Button><Button variant="destructive" onClick={() => { setDiscard(false); onDirtyChange?.(false); onOpenChange(false); }}>{t("Discard changes")}</Button></DialogFooter>
     </DialogContent></Dialog>
   </>;
 }
