@@ -8,7 +8,8 @@ No native client is required. Chrome Advanced mode uses Chrome DevTools Protocol
 
 - **CORS compatibility mode** — one-click, per-origin CORS rules compiled to `declarativeNetRequest`.
 - **Advanced proxy mode** — explicit per-tab attach/detach with request and response observation.
-- **Rule engine** — match page origins, request URL globs, methods, and resource types; compose validated JSON action scripts without arbitrary code execution.
+- **Rules workspace** — searchable, filterable rule list alongside a persistent editor; configure actions with structured forms, with JSON available as an advanced option.
+- **Rule engine** — match page origins, request URL globs, methods, and resource types; test unsaved conditions without sending requests. Actions are validated data, not arbitrary JavaScript.
 - **Actions** — CORS repair, request/response headers, redirects, blocking, static mocks, delays, and simulated network failures.
 - **Site controls** — manage the current site's rules in the side panel, create or edit rules from captured requests, and inspect recorded matches and applied changes with sensitive headers masked.
 - **Local-only operation** — rules and logs stay in the extension; logs are held in memory and cleared when the service worker stops.
@@ -34,7 +35,9 @@ Keep the existing Chrome manifest key and Firefox Gecko ID when publishing 2.0 s
 4. The write is read back and validated.
 5. All later reads and writes use only `proxyAppState`; v1 keys are not dual-written or used as runtime configuration.
 
-The Rules screen imports both v1 rule exports and complete v2 state exports. New exports use the v2 format.
+Data & migration accepts v1 rule exports and complete v2 state exports. Import first previews added, overwritten and removed rules; choose merge-by-ID or full replacement before applying. Legacy backups are converted to v2. A `preImportBackup` snapshot is saved locally before each import and can be exported for recovery. New exports use the v2 format.
+
+The rule editor protects unsaved changes when switching rules or tabs and when closing the editor. Search and filters preserve the current draft. Browser reload/close uses the browser's native unsaved-changes prompt. The compact side-panel editor shares the same action forms and close protection.
 
 ## Development
 
@@ -72,6 +75,9 @@ The check runs TypeScript, ESLint, unit tests, the production Chrome build, and 
 
 - a v1 profile upgrades automatically and retains a recovery snapshot;
 - the popup and workspace render;
+- resource types support consecutive selections and persist after saving;
+- structured multi-action forms, condition testing, draft protection and import preview/recovery work;
+- editing a mock in Site controls changes the next real response, and disabling it restores the server response;
 - a genuinely failing CORS preflight succeeds only after advanced mode attaches;
 - preflight and response activity appears in the request log;
 - static mocks, DNR request headers, blocking, delay, and network failure work in-browser.

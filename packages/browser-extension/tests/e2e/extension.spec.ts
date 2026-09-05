@@ -125,7 +125,7 @@ test('renders the shadcn proxy workspace and popup', async () => {
   await expect(control.getByRole('heading', { name: 'Forth Intercept' })).toBeVisible();
   await expect(control.getByRole('tab', { name: 'Rules' })).toBeVisible();
   await control.getByRole('button', { name: 'New rule' }).click();
-  await control.getByLabel('Name').fill('Resource picker QA');
+  await control.getByLabel('Name', { exact: true }).fill('Resource picker QA');
   const resources = control.getByRole('button', { name: 'Resource types: XHR, Fetch' });
   await resources.click();
   const resourceList = control.getByRole('listbox', { name: 'Resource types' });
@@ -152,7 +152,7 @@ test('renders the shadcn proxy workspace and popup', async () => {
   await expect(savedResourceList.getByRole('option', { name: 'Script' })).toHaveAttribute('aria-selected', 'true');
   await expect(savedResourceList.getByRole('option', { name: 'XHR' })).toHaveAttribute('aria-selected', 'false');
   await control.keyboard.press('Escape');
-  await control.getByRole('button', { name: 'Cancel' }).click();
+  await control.getByRole('button', { name: 'Close editor' }).click();
   await control.screenshot({ path: 'test-results/forth-intercept-options.png', fullPage: true });
 
   const inspectedTab = await context.newPage();
@@ -195,6 +195,63 @@ test('renders the shadcn proxy workspace and popup', async () => {
   await inspectedTab.close();
 });
 
+test('edits structured actions, protects drafts and previews imports', async () => {
+  await control.reload();
+  await control.getByRole('button', { name: 'New rule' }).click();
+  await control.getByLabel('Name', { exact: true }).fill('Workspace QA');
+  await control.getByLabel('Page origins').fill('http://console.localhost:3000');
+  await control.getByLabel('URL pattern').fill('*://console.localhost:3000/health*');
+  await control.getByLabel('Header 1 name', { exact: true }).fill('X-Workspace-QA');
+  await control.getByLabel('Header 1 value', { exact: true }).fill('verified');
+  await control.getByLabel('Action to add').click();
+  await control.getByRole('option', { name: 'Delay', exact: true }).click();
+  await control.getByRole('button', { name: 'Add action', exact: true }).click();
+  await control.getByLabel('Delay in milliseconds').fill('125');
+  await control.getByText('Test matching', { exact: true }).click();
+  await control.getByLabel('Test page origin').fill('http://console.localhost:3000');
+  await control.getByLabel('Test request URL').fill('http://console.localhost:3000/health');
+  await control.getByRole('button', { name: 'Test conditions' }).click();
+  await expect(control.getByText(/^Conditions match/)).toBeVisible();
+  await control.getByLabel('Test page origin').fill('http://other.localhost:3000');
+  await control.getByRole('button', { name: 'Test conditions' }).click();
+  await expect(control.getByRole('status')).toContainText('origin');
+  await control.getByLabel('Search rules').fill('no-such-rule');
+  await expect(control.getByLabel('Name', { exact: true })).toHaveValue('Workspace QA');
+  await control.getByRole('tab', { name: 'Data & migration' }).click();
+  await expect(control.getByRole('dialog', { name: 'Discard unsaved changes?' })).toBeVisible();
+  await control.getByRole('button', { name: 'Keep editing' }).click();
+  await control.getByRole('button', { name: 'Save rule', exact: true }).click();
+  await control.getByLabel('Search rules').fill('');
+  await expect(control.getByRole('button', { name: 'Edit Workspace QA' })).toBeVisible();
+  await control.getByLabel('Name', { exact: true }).fill('Discard me');
+  await control.getByRole('button', { name: 'New rule' }).click();
+  await control.getByRole('button', { name: 'Discard changes', exact: true }).click();
+  await expect(control.getByLabel('Name', { exact: true })).toHaveValue('New proxy rule');
+  await control.getByRole('button', { name: 'Close editor' }).click();
+  await control.getByRole('button', { name: 'Edit Workspace QA' }).click();
+  await expect(control.getByLabel('Delay in milliseconds')).toHaveValue('125');
+  await expect(control.getByLabel('Header 1 name', { exact: true })).toHaveValue('X-Workspace-QA');
+  await control.screenshot({ path: 'test-results/forth-intercept-workspace.png', fullPage: true });
+  await control.getByRole('tab', { name: 'Data & migration' }).click();
+  const before = await worker.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState);
+  const incoming = structuredClone(before);
+  incoming.rules = [{ ...incoming.rules[0], id: 'import-preview-qa', name: 'Imported QA', enabled: false }];
+  await control.locator('#import-state').setInputFiles({ name: 'backup.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ version: '2.0', state: incoming })) });
+  await expect(control.getByRole('region', { name: 'Import preview' })).toContainText('1 added');
+  expect(await worker.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState)).toEqual(before);
+  await control.getByLabel('Import mode').click();
+  await control.getByRole('option', { name: 'Replace configuration' }).click();
+  await expect(control.getByRole('region', { name: 'Import preview' })).toContainText(`${before.rules.length} removed`);
+  await control.getByLabel('Import mode').click();
+  await control.getByRole('option', { name: 'Merge rules' }).click();
+  await control.getByRole('button', { name: 'Apply import' }).click();
+  await expect(control.getByText(/Import completed/)).toBeVisible();
+  const after = await worker.evaluate(async () => chrome.storage.local.get(['proxyAppState', 'preImportBackup']));
+  expect(after.proxyAppState.rules).toHaveLength(before.rules.length + 1);
+  expect(after.preImportBackup.state).toEqual(before);
+  await control.getByRole('tab', { name: 'Rules' }).click();
+});
+
 test('controls site rules inline and verifies actual request effects', async () => {
   const target = await context.newPage();
   await target.goto('http://console.localhost:3000/');
@@ -217,7 +274,8 @@ test('controls site rules inline and verifies actual request effects', async () 
   await expect(panel.getByRole('dialog')).toBeVisible();
   await expect(panel.getByLabel('Page origins')).toHaveValue('http://console.localhost:3000');
   await panel.getByLabel('Name', { exact: true }).fill('Console mock QA');
-  await panel.getByLabel('Action script (JSON)').fill(JSON.stringify([{ type: 'mockResponse', status: 201, headers: { 'Content-Type': 'application/json' }, body: '{"source":"sidepanel"}' }]));
+  await panel.getByLabel('HTTP status', { exact: true }).fill('201');
+  await panel.getByLabel('Response body', { exact: true }).fill('{"source":"sidepanel"}');
   await panel.getByRole('button', { name: 'Save rule', exact: true }).click();
   await expect(panel.getByRole('switch', { name: 'Enable Console mock QA' })).toBeChecked();
   await expect.poll(fetchHealth).toEqual({ status: 201, body: { source: 'sidepanel' } });
@@ -233,7 +291,8 @@ test('controls site rules inline and verifies actual request effects', async () 
   // Edit within the same side-panel dialog, then verify the next real response.
   await panel.getByRole('button', { name: 'Console mock QA', exact: true }).first().click();
   await expect(panel.getByRole('heading', { name: 'Edit proxy rule' })).toBeVisible();
-  await panel.getByLabel('Action script (JSON)').fill(JSON.stringify([{ type: 'mockResponse', status: 202, headers: { 'Content-Type': 'application/json' }, body: '{"source":"edited"}' }]));
+  await panel.getByLabel('HTTP status', { exact: true }).fill('202');
+  await panel.getByLabel('Response body', { exact: true }).fill('{"source":"edited"}');
   await panel.getByRole('button', { name: 'Save rule', exact: true }).click();
   await panel.getByRole('switch', { name: 'Enable Console mock QA' }).click();
   await expect.poll(fetchHealth).toEqual({ status: 202, body: { source: 'edited' } });

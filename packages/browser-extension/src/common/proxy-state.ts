@@ -191,7 +191,7 @@ function isHeaderMap(value: unknown): value is ProxyHeaderMap {
       && typeof headerValue === 'string');
 }
 
-function isProxyAction(value: unknown): value is IProxyAction {
+export function isProxyAction(value: unknown): value is IProxyAction {
   if (!value || typeof value !== 'object' || !('type' in value)) return false;
   const action = value as Record<string, unknown>;
   switch (action.type) {
