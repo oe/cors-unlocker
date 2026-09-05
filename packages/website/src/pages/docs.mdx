@@ -52,9 +52,15 @@ A rule contains a page-origin match, request URL glob, optional HTTP methods and
 
 Available actions are `cors`, `setRequestHeaders`, `setResponseHeaders`, `redirect`, `block`, `mockResponse`, `delay`, and `networkFailure`. Action scripts are validated JSON; arbitrary JavaScript is not evaluated.
 
-## Traffic inspector
+## Site controls
 
-Open **Inspect traffic** from the popup, enable Advanced mode for the current HTTP or HTTPS tab, and reproduce the request. The inspector shows method, URL, resource type, outcome, status, duration, matched rules, response headers, and CORS diagnostics. Authorization, Cookie, Proxy-Authorization, and Set-Cookie values are masked by default.
+Open **Site controls** from the popup to manage rules for the current HTTP or HTTPS page. Toggle rules or click their names to edit them directly in the side panel. New rules default to the current page origin.
+
+Enable **Advanced proxy**, then reproduce a request on the page. This switch enables request modifications and CORS repair as well as activity capture. Select a captured request to create a Mock, Delay, Block, or Headers rule without leaving the panel. Save, trigger the request again, and inspect the recorded result.
+
+Activity shows captured rule names and applied changes, including header before/after values, redirects, delays, and local mocks. **Check against current rules** explains disabled rules and mismatched URL, method, or resource type conditions; it does not reconstruct historical rule priority. Authorization, Cookie, Proxy-Authorization, and Set-Cookie values are masked.
+
+Basic browser rules can act before activity capture, so this is not a complete network log. Use DevTools Network for detailed response and timing analysis. Recorded matches are evidence of condition matching, not proof that every configured action executed.
 
 ## SDK
 

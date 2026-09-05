@@ -181,8 +181,8 @@ test('renders the shadcn proxy workspace and popup', async () => {
 
   const inspector = await context.newPage();
   await inspector.goto(`chrome-extension://${extensionId}/src/sidepanel/index.html?tabId=${inspectedTabId}`);
-  await expect(inspector.getByRole('heading', { name: 'Traffic inspector' })).toBeVisible();
-  await expect(inspector.getByText('http://test.localhost:3000')).toBeVisible();
+  await expect(inspector.getByRole('heading', { name: 'Site controls' })).toBeVisible();
+  await expect(inspector.getByText('http://test.localhost:3000', { exact: true })).toBeVisible();
   const inspectorToggle = inspector.getByRole('switch', { name: 'Toggle advanced proxy' });
   await expect(inspectorToggle).toBeEnabled();
   await inspectorToggle.click();
@@ -193,6 +193,56 @@ test('renders the shadcn proxy workspace and popup', async () => {
   await inspector.screenshot({ path: 'test-results/forth-intercept-inspector.png', fullPage: true });
   await inspector.close();
   await inspectedTab.close();
+});
+
+test('controls site rules inline and verifies actual request effects', async () => {
+  const target = await context.newPage();
+  await target.goto('http://console.localhost:3000/');
+  const tabId = await getTabId('http://console.localhost:3000/');
+  const panel = await context.newPage();
+  const errors: string[] = [];
+  panel.on('pageerror', (error) => errors.push(error.message));
+  await panel.setViewportSize({ width: 420, height: 820 });
+  await panel.goto(`chrome-extension://${extensionId}/src/sidepanel/index.html?tabId=${tabId}`);
+  await expect(panel.getByRole('heading', { name: 'Site controls' })).toBeVisible();
+  await panel.getByRole('switch', { name: 'Toggle advanced proxy' }).click();
+  await expect(panel.getByRole('switch', { name: 'Toggle advanced proxy' })).toBeChecked();
+  const fetchHealth = () => target.evaluate(async () => {
+    const response = await fetch('/health');
+    return { status: response.status, body: await response.json() };
+  });
+  expect((await fetchHealth()).body.data.status).toBe('healthy');
+  await panel.getByRole('button', { name: /GET.*console.localhost:3000\/health/ }).first().click();
+  await panel.getByRole('button', { name: 'Mock', exact: true }).click();
+  await expect(panel.getByRole('dialog')).toBeVisible();
+  await expect(panel.getByLabel('Page origins')).toHaveValue('http://console.localhost:3000');
+  await panel.getByLabel('Name', { exact: true }).fill('Console mock QA');
+  await panel.getByLabel('Action script (JSON)').fill(JSON.stringify([{ type: 'mockResponse', status: 201, headers: { 'Content-Type': 'application/json' }, body: '{"source":"sidepanel"}' }]));
+  await panel.getByRole('button', { name: 'Save rule', exact: true }).click();
+  await expect(panel.getByRole('switch', { name: 'Enable Console mock QA' })).toBeChecked();
+  await expect.poll(fetchHealth).toEqual({ status: 201, body: { source: 'sidepanel' } });
+  await panel.getByRole('button', { name: /GET.*console.localhost:3000\/health/ }).first().click();
+  await expect(panel.getByText('Local mock', { exact: true })).toBeVisible();
+  await expect(panel.getByText(/HTTP 201;.*server not contacted/)).toBeVisible();
+  await panel.screenshot({ path: '/tmp/forth-site-controls-mock.png', fullPage: true });
+  await panel.getByRole('switch', { name: 'Enable Console mock QA' }).click();
+  await expect.poll(async () => (await fetchHealth()).body.data?.status).toBe('healthy');
+  await panel.getByRole('button', { name: /GET.*console.localhost:3000\/health/ }).first().click();
+  await panel.getByText('Check against current rules', { exact: true }).click();
+  await expect(panel.getByText('Rule is disabled', { exact: true })).toBeVisible();
+  // Edit within the same side-panel dialog, then verify the next real response.
+  await panel.getByRole('button', { name: 'Console mock QA', exact: true }).first().click();
+  await expect(panel.getByRole('heading', { name: 'Edit proxy rule' })).toBeVisible();
+  await panel.getByLabel('Action script (JSON)').fill(JSON.stringify([{ type: 'mockResponse', status: 202, headers: { 'Content-Type': 'application/json' }, body: '{"source":"edited"}' }]));
+  await panel.getByRole('button', { name: 'Save rule', exact: true }).click();
+  await panel.getByRole('switch', { name: 'Enable Console mock QA' }).click();
+  await expect.poll(fetchHealth).toEqual({ status: 202, body: { source: 'edited' } });
+  expect(await panel.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  expect(errors).toEqual([]);
+  await panel.getByRole('switch', { name: 'Enable Console mock QA' }).click();
+  await panel.getByRole('switch', { name: 'Toggle advanced proxy' }).click();
+  await panel.close();
+  await target.close();
 });
 
 test('exposes an origin-scoped SDK bridge with consent and disabled drafts', async () => {

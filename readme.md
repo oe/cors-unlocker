@@ -10,7 +10,7 @@ No native client is required. Chrome Advanced mode uses Chrome DevTools Protocol
 - **Advanced proxy mode** — explicit per-tab attach/detach with request and response observation.
 - **Rule engine** — match page origins, request URL globs, methods, and resource types; compose validated JSON action scripts without arbitrary code execution.
 - **Actions** — CORS repair, request/response headers, redirects, blocking, static mocks, delays, and simulated network failures.
-- **Request inspector** — redacted headers, status/outcome, CORS diagnostics, filtering, and rule creation from a captured request.
+- **Site controls** — manage the current site's rules in the side panel, create or edit rules from captured requests, and inspect recorded matches and applied changes with sensitive headers masked.
 - **Local-only operation** — rules and logs stay in the extension; logs are held in memory and cleared when the service worker stops.
 - **Safe v1 upgrade** — the first 2.0 startup migrates `allowedOrigins` and `extConfig` into the v2 schema and stores a recovery snapshot. After migration, v2 storage is the only source of truth.
 

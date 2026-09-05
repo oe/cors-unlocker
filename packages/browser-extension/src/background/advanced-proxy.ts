@@ -34,6 +34,8 @@ export interface IRequestLogEntry {
   requestHeaders: ProxyHeaderMap;
   responseHeaders?: ProxyHeaderMap;
   matchedRuleIds: string[];
+  matchedRules?: Array<{ id: string; name: string }>;
+  changes?: Array<{ label: string; before?: string; after: string }>;
   diagnostics: string[];
   outcome: 'pending' | 'continued' | 'mocked' | 'blocked' | 'failed';
 }
@@ -111,6 +113,8 @@ function recordRequest(tabId: number, params: IRequestPausedParams, rules: IProx
     startedAt: Date.now(),
     requestHeaders: redactHeaders(params.request.headers),
     matchedRuleIds: rules.map((rule) => rule.id),
+    matchedRules: rules.map(({ id, name }) => ({ id, name })),
+    changes: [],
     diagnostics: [],
     outcome: 'pending',
   };
@@ -231,6 +235,7 @@ async function handleRequestPaused(tabId: number, params: IRequestPausedParams) 
         resolve,
         Math.min(Math.max(delayAction.milliseconds, 0), 30_000),
       ));
+      entry?.changes?.push({ label: 'Delay', after: `${Math.min(Math.max(delayAction.milliseconds, 0), 30_000)} ms` });
     }
 
     if (actionOfType(actions, 'block')) {
@@ -238,7 +243,11 @@ async function handleRequestPaused(tabId: number, params: IRequestPausedParams) 
         requestId: params.requestId,
         errorReason: 'BlockedByClient',
       });
-      if (entry) entry.outcome = 'blocked';
+      if (entry) {
+        entry.outcome = 'blocked';
+        entry.duration = Date.now() - entry.startedAt;
+        entry.changes?.push({ label: 'Request blocked', after: 'BlockedByClient' });
+      }
       notifyLogChanged(tabId);
       return;
     }
@@ -250,6 +259,7 @@ async function handleRequestPaused(tabId: number, params: IRequestPausedParams) 
         errorReason: failureAction.reason || 'Failed',
       });
       if (entry) entry.outcome = 'failed';
+      entry?.changes?.push({ label: 'Simulated failure', after: failureAction.reason || 'Failed' });
       notifyLogChanged(tabId);
       return;
     }
@@ -269,7 +279,8 @@ async function handleRequestPaused(tabId: number, params: IRequestPausedParams) 
       });
       if (entry) {
         entry.status = mockAction.status;
-        entry.responseHeaders = mockHeaders;
+        entry.responseHeaders = redactHeaders(mockHeaders);
+        entry.changes?.push({ label: 'Local mock', after: `HTTP ${mockAction.status}; ${new TextEncoder().encode(mockAction.body).length} bytes; server not contacted` });
         entry.outcome = 'mocked';
         entry.duration = Date.now() - entry.startedAt;
       }
@@ -310,6 +321,12 @@ async function handleRequestPaused(tabId: number, params: IRequestPausedParams) 
       ...(requestHeaderActions.length > 0 ? { headers: toHeaderEntries(mergedRequestHeaders) } : {}),
     });
     if (entry) entry.outcome = 'continued';
+    if (redirectAction) entry?.changes?.push({ label: 'Redirect', before: params.request.url, after: redirectAction.url });
+    for (const action of requestHeaderActions) {
+      for (const [name, value] of Object.entries(action.headers)) {
+        entry?.changes?.push({ label: `Request header: ${name}`, before: redactHeaders({ [name]: getHeader(params.request.headers, name) || '(absent)' })[name], after: redactHeaders({ [name]: value })[name] });
+      }
+    }
     notifyLogChanged(tabId);
     return;
   }
@@ -344,6 +361,10 @@ async function handleRequestPaused(tabId: number, params: IRequestPausedParams) 
       responseHeaders: headers,
     });
     updateRequestLog(tabId, { ...params, responseHeaders: headers }, 'continued');
+    const original = headersToMap(params.responseHeaders || []);
+    for (const { name, value } of headers) {
+      if (getHeader(original, name) !== value) entry?.changes?.push({ label: `Response header: ${name}`, before: redactHeaders({ [name]: getHeader(original, name) || '(absent)' })[name], after: redactHeaders({ [name]: value })[name] });
+    }
     const logged = requestIndexes.get(`${tabId}:${params.requestId}`);
     logged?.diagnostics.push('CORS response headers were repaired before browser enforcement.');
   } catch (error) {

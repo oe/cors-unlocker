@@ -32,6 +32,8 @@ export interface IRequestLogEntry {
   requestHeaders: ProxyHeaderMap;
   responseHeaders?: ProxyHeaderMap;
   matchedRuleIds: string[];
+  matchedRules?: Array<{ id: string; name: string }>;
+  changes?: Array<{ label: string; before?: string; after: string }>;
   diagnostics: string[];
   outcome: 'pending' | 'continued' | 'mocked' | 'blocked' | 'failed';
 }
@@ -166,6 +168,8 @@ function recordRequest(details: RequestDetails, rules: IProxyRule[]): IRequestLo
     startedAt: Date.now(),
     requestHeaders: {},
     matchedRuleIds: rules.map((rule) => rule.id),
+    matchedRules: rules.map(({ id, name }) => ({ id, name })),
+    changes: [],
     diagnostics: [],
     outcome: 'pending',
   };
@@ -219,6 +223,7 @@ function installMockFilter(
     filter.write(new TextEncoder().encode(mock.body));
     filter.close();
     entry.outcome = 'mocked';
+    entry.changes?.push({ label: 'Response body replacement', after: 'Local body delivered; server was contacted and original status preserved' });
     entry.duration = Date.now() - entry.startedAt;
     entry.diagnostics.push('Firefox replaced the response body; the original HTTP status was preserved.');
     mockActions.delete(key);
@@ -243,15 +248,18 @@ async function onBeforeRequest(details: RequestDetails) {
       resolve,
       Math.min(Math.max(delay.milliseconds, 0), 30_000),
     ));
+    entry.changes?.push({ label: 'Delay', after: `${Math.min(Math.max(delay.milliseconds, 0), 30_000)} ms` });
   }
   if (actionOfType(actions, 'block')) {
     entry.outcome = 'blocked';
+    entry.changes?.push({ label: 'Request blocked', after: 'Cancelled' });
     entry.duration = Date.now() - entry.startedAt;
     notifyLogChanged(details.tabId);
     return { cancel: true };
   }
   const failure = actionOfType(actions, 'networkFailure');
   if (failure) {
+    entry.changes?.push({ label: 'Simulated failure', after: 'Cancelled' });
     entry.outcome = 'failed';
     entry.duration = Date.now() - entry.startedAt;
     entry.diagnostics.push(`Firefox cancelled this request: ${failure.reason}`);
@@ -266,6 +274,7 @@ async function onBeforeRequest(details: RequestDetails) {
   }
   const redirect = actionOfType(actions, 'redirect');
   if (redirect) {
+    entry.changes?.push({ label: 'Redirect', before: details.url, after: redirect.url });
     entry.outcome = 'continued';
     entry.diagnostics.push(`Redirected to ${redirect.url}`);
     notifyLogChanged(details.tabId);
@@ -291,6 +300,9 @@ function onBeforeSendHeaders(details: RequestDetails) {
   );
   const entry = requestIndexes.get(keyFor(details));
   if (entry) entry.requestHeaders = redactHeaders(merged);
+  for (const [name, value] of Object.entries(merged)) {
+    if (getHeader(original, name) !== value) entry?.changes?.push({ label: `Request header: ${name}`, before: redactHeaders({ [name]: getHeader(original, name) || '(absent)' })[name], after: redactHeaders({ [name]: value })[name] });
+  }
   return headerActions.length > 0 ? { requestHeaders: mapToHeaders(merged) } : {};
 }
 
@@ -326,6 +338,10 @@ function onHeadersReceived(details: RequestDetails) {
   const entry = requestIndexes.get(key);
   if (entry) {
     entry.status = details.statusCode;
+    const original = headersToMap(details.responseHeaders);
+    for (const [name, value] of Object.entries(headersToMap(headers))) {
+      if (getHeader(original, name) !== value) entry.changes?.push({ label: `Response header: ${name}`, before: redactHeaders({ [name]: getHeader(original, name) || '(absent)' })[name], after: redactHeaders({ [name]: value })[name] });
+    }
     entry.responseHeaders = redactHeaders(headersToMap(headers));
     entry.duration = Date.now() - entry.startedAt;
     notifyLogChanged(details.tabId);

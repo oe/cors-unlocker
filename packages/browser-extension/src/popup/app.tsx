@@ -127,7 +127,7 @@ function App() {
       </Card>
 
       <footer className="flex items-center justify-between gap-2 px-1">
-        <Button size="sm" variant="outline" onClick={openInspector}>Inspect traffic</Button>
+        <Button size="sm" variant="outline" onClick={openInspector}>Site controls</Button>
         <Button
           size="sm"
           variant="ghost"
