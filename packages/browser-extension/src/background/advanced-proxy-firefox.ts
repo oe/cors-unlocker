@@ -410,6 +410,7 @@ export async function enableAdvancedProxy(
   options: { quickControls?: QuickControls } = {},
 ): Promise<IAdvancedProxyStatus> {
   const quickControls = options.quickControls ? parseQuickControls(options.quickControls) : { ...EMPTY_QUICK_CONTROLS };
+  if (quickControls.disableCache) throw new Error('Cache control is available in Chrome only.');
   const tab = await browser.tabs.get(tabId);
   if (!tab.url) throw new Error('The active tab URL is unavailable.');
   const url = new URL(tab.url);
@@ -444,6 +445,7 @@ export async function enableAdvancedProxy(
 
 export async function updateQuickControls(tabId: number, value: unknown): Promise<IAdvancedProxyStatus> {
   const quickControls = parseQuickControls(value);
+  if (quickControls.disableCache) throw new Error('Cache control is available in Chrome only.');
   const session = sessions.get(tabId);
   if (!session) throw new Error('Start a proxy session first.');
   session.quickControls = quickControls;

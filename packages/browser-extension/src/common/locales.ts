@@ -2311,5 +2311,69 @@ export const messages: Record<string, Record<string, string>> = {
     "ja": "プロキシセッションを開始できません。",
     "fr": "Impossible de démarrer la session proxy.",
     "es": "No se pudo iniciar la sesión de proxy."
+  },
+  "Disable cache": {
+    "en": "Disable cache",
+    "zh-CN": "禁用缓存",
+    "ko": "캐시 비활성화",
+    "ja": "キャッシュを無効化",
+    "fr": "Désactiver le cache",
+    "es": "Desactivar caché"
+  },
+  "This tab · temporary": {
+    "en": "This tab · temporary",
+    "zh-CN": "当前页 · 临时",
+    "ko": "현재 탭 · 임시",
+    "ja": "このタブ · 一時的",
+    "fr": "Cet onglet · temporaire",
+    "es": "Esta pestaña · temporal"
+  },
+  "Enabling starts Chrome debugging.": {
+    "en": "Enabling starts Chrome debugging.",
+    "zh-CN": "启用后 Chrome 会显示调试提示。",
+    "ko": "활성화하면 Chrome 디버깅이 시작됩니다.",
+    "ja": "有効にすると Chrome のデバッグが開始されます。",
+    "fr": "L’activation lance le débogage Chrome.",
+    "es": "Activar inicia la depuración de Chrome."
+  },
+  "Firefox CORS: response headers only.": {
+    "en": "Firefox CORS: response headers only.",
+    "zh-CN": "Firefox CORS：仅修改响应头。",
+    "ko": "Firefox CORS: 응답 헤더만 수정.",
+    "ja": "Firefox CORS: 応答ヘッダーのみ。",
+    "fr": "CORS Firefox : en-têtes de réponse uniquement.",
+    "es": "CORS en Firefox: solo cabeceras de respuesta."
+  },
+  "Pin saved rules for quick access.": {
+    "en": "Pin saved rules for quick access.",
+    "zh-CN": "固定已保存的规则，便于快速切换。",
+    "ko": "빠른 접근을 위해 저장된 규칙을 고정하세요.",
+    "ja": "保存済みルールを固定して素早く切り替え。",
+    "fr": "Épinglez vos règles pour un accès rapide.",
+    "es": "Fija reglas guardadas para acceder rápidamente."
+  },
+  "{count} saved rules on · stop resets temporary controls": {
+    "en": "{count} saved rules on · stop resets temporary controls",
+    "zh-CN": "已启用 {count} 条持久规则 · 停止仅重置临时控制",
+    "ko": "저장된 규칙 {count}개 켜짐 · 중지 시 임시 제어만 초기화",
+    "ja": "保存ルール {count} 件が有効 · 停止で一時操作を解除",
+    "fr": "{count} règles actives · arrêt : contrôles temporaires effacés",
+    "es": "{count} reglas activas · detener restablece controles temporales"
+  },
+  "Cache control is available in Chrome only.": {
+    "en": "Cache control is available in Chrome only.",
+    "zh-CN": "禁用缓存目前仅支持 Chrome。",
+    "ko": "캐시 제어는 Chrome에서만 지원됩니다.",
+    "ja": "キャッシュ制御は Chrome のみ対応しています。",
+    "fr": "Le contrôle du cache est disponible uniquement dans Chrome.",
+    "es": "El control de caché solo está disponible en Chrome."
+  },
+  "Bypass HTTP cache for this tab. Does not clear stored data or bypass service workers.": {
+    "en": "Bypass HTTP cache for this tab. Does not clear stored data or bypass service workers.",
+    "zh-CN": "绕过当前标签页的 HTTP 缓存，不清除已存储数据，也不绕过 Service Worker。",
+    "ko": "현재 탭의 HTTP 캐시를 우회합니다. 저장된 데이터를 지우거나 서비스 워커를 우회하지 않습니다.",
+    "ja": "このタブの HTTP キャッシュを回避します。保存データの削除や Service Worker の回避は行いません。",
+    "fr": "Contourne le cache HTTP de cet onglet, sans effacer les données ni contourner les service workers.",
+    "es": "Omite la caché HTTP de esta pestaña sin borrar datos ni omitir service workers."
   }
 };

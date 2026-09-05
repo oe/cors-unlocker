@@ -6,6 +6,7 @@ export interface QuickControls {
   credentials: boolean;
   delayMs: number;
   failure: boolean;
+  disableCache: boolean;
 }
 
 export const EMPTY_QUICK_CONTROLS: QuickControls = {
@@ -13,6 +14,7 @@ export const EMPTY_QUICK_CONTROLS: QuickControls = {
   credentials: false,
   delayMs: 0,
   failure: false,
+  disableCache: false,
 };
 
 export const PINNED_RULES_KEY = 'popupPinnedRuleIds';
@@ -20,10 +22,11 @@ export const PINNED_RULES_KEY = 'popupPinnedRuleIds';
 export function parseQuickControls(value: unknown): QuickControls {
   const input = value as Partial<QuickControls> | null;
   if (!input || typeof input.cors !== 'boolean' || typeof input.credentials !== 'boolean'
+    || (input.disableCache !== undefined && typeof input.disableCache !== 'boolean')
     || typeof input.failure !== 'boolean' || ![0, 500, 1000, 3000].includes(input.delayMs as number)) {
     throw new Error('Invalid quick controls.');
   }
-  return { cors: input.cors, credentials: input.credentials, delayMs: input.delayMs!, failure: input.failure };
+  return { cors: input.cors, credentials: input.credentials, delayMs: input.delayMs!, failure: input.failure, disableCache: input.disableCache === true };
 }
 
 export function quickControlRules(origin: string, controls: QuickControls): IProxyRule[] {

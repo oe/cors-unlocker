@@ -18,10 +18,15 @@ No native client is required. Chrome Advanced mode uses Chrome DevTools Protocol
 ## Popup debugging controls
 
 The popup is a developer control surface for the current tab, with an Inspector entry point,
-CORS repair, Fetch/XHR delay (500 ms, 1 s, or 3 s), and simulated Fetch/XHR failures.
+CORS repair with visible credential controls, Chrome HTTP-cache bypass, Fetch/XHR delay
+(500 ms, 1 s, or 3 s), and simulated Fetch/XHR failures.
 Enabling a quick control starts a proxy session explicitly; Chrome displays its debugging banner.
 Connecting the proxy alone observes traffic and applies enabled saved rules, without automatically
 repairing CORS. Cross-origin mocks need a matching CORS rule/control or appropriate mock headers.
+
+Disable cache bypasses HTTP cache in the attached Chrome tab without clearing stored cache or
+bypassing service workers. Turning it off or stopping the session restores normal cache use. Firefox
+shows this switch as unavailable rather than substituting a global cache clear.
 
 Quick controls live only in the background session and reset on stop, tab close, or cross-origin
 navigation. They never create persistent rules. Existing CORS site rules remain available separately;

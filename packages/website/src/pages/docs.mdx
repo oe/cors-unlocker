@@ -30,9 +30,13 @@ Interception stops when you switch it off, close the tab, or the top-level page 
 Open **Inspector** to inspect the current tab, or use **Start proxy session** to begin capture.
 Connecting alone does not enable CORS repair: it captures traffic and applies your enabled saved rules.
 
-**Quick debug** offers CORS repair, a 500 ms / 1 s / 3 s request delay, and simulated request failure.
+**Quick debug** offers CORS repair, **Disable cache**, a 500 ms / 1 s / 3 s request delay, and simulated request failure.
 Delay and failure affect only Fetch/XHR requests in this tab. Enabling a quick control starts the proxy;
-Chrome displays its debugging banner. Credential support is under **CORS options**.
+Chrome displays its debugging banner. **Allow credentials** is directly below the CORS switch.
+
+**Disable cache** bypasses HTTP cache for the current Chrome tab. It does not clear browser data or
+bypass service workers. Turning the switch off restores normal cache use. This control is marked
+unavailable in Firefox.
 
 **Stop this session**, closing the tab, or navigating to another origin clears these temporary controls.
 Existing site CORS rules are separate persistent rules and remain enabled until you turn them off.

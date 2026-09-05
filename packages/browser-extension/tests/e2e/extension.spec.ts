@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { mkdtempSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
+import { createServer } from 'node:http';
 import { messages } from '../../src/common/locales';
 
 test.describe.configure({ mode: 'serial' });
@@ -227,7 +228,7 @@ test('renders the shadcn proxy workspace and popup', async () => {
   const popup = await context.newPage();
   await popup.goto(`chrome-extension://${extensionId}/src/popup/index.html`);
   await expect(popup.getByRole('button', { name: 'Open Inspector' })).toBeVisible();
-  await expect(popup.getByText('In-browser proxy for developers')).toBeVisible();
+  await expect(popup.getByRole('heading', { name: 'Forth Intercept' })).toBeVisible();
   await popup.screenshot({ path: 'test-results/forth-intercept-popup.png', fullPage: true });
   await popup.close();
 
@@ -490,7 +491,7 @@ test('repairs a genuinely failing preflight and records the request', async () =
   const tabId = await getTabId('http://test.localhost:3000/');
   const status = await control.evaluate(async (id) => chrome.runtime.sendMessage({
     type: 'enableAdvancedProxy',
-    payload: { tabId: id, quickControls: { cors: true, credentials: true, delayMs: 0, failure: false } },
+    payload: { tabId: id, quickControls: { disableCache: false, cors: true, credentials: true, delayMs: 0, failure: false } },
   }), tabId);
   expect(status.phase).toBe('connected');
 
@@ -734,16 +735,22 @@ test('popup controls are temporary, tab-scoped, and independent from saved rules
   expect(await target.evaluate(async () => (await fetch('/health')).headers.get('X-Popup-Preset'))).toBe('enabled');
   await popup.evaluate(() => window.scrollTo(0, 0));
   await expect(popup.getByRole('switch', { name: 'Request delay', exact: true })).not.toBeChecked();
+  await popup.setViewportSize({ width: 360, height: Math.ceil((await popup.locator('main').boundingBox())!.height) });
   await popup.screenshot({ path: '/tmp/forth-intercept-popup-en.png', fullPage: true, animations: 'disabled' });
+  await popup.setViewportSize({ width: 360, height: 600 });
   for (const locale of ['en', 'zh-CN', 'ko', 'ja', 'fr', 'es']) {
     await worker.evaluate((uiLanguage) => chrome.storage.local.set({ uiLanguage }), locale);
     await expect(popup.locator('html')).toHaveAttribute('lang', locale);
     expect(await popup.evaluate(() => document.documentElement.scrollWidth <= innerWidth), locale).toBe(true);
+    expect(await popup.locator('main').evaluate((element) => element.scrollHeight), `${locale} compact height`).toBeLessThanOrEqual(560);
+    await expect(popup.getByRole('switch', { name: messages['Allow credentials'][locale], exact: true })).toBeVisible();
     await expect(popup.getByRole('switch', { name: messages['CORS repair'][locale], exact: true })).toBeVisible();
   }
   await worker.evaluate(() => chrome.storage.local.set({ uiLanguage: 'zh-CN' }));
   await expect(popup.locator('html')).toHaveAttribute('lang', 'zh-CN');
+  await popup.setViewportSize({ width: 360, height: Math.ceil((await popup.locator('main').boundingBox())!.height) });
   await popup.screenshot({ path: '/tmp/forth-intercept-popup-zh.png', fullPage: true, animations: 'disabled' });
+  await popup.setViewportSize({ width: 360, height: 600 });
   await worker.evaluate(() => chrome.storage.local.set({ uiLanguage: 'en' }));
   await expect(popup.locator('html')).toHaveAttribute('lang', 'en');
   await popup.getByRole('switch', { name: 'Simulate failure', exact: true }).click();
@@ -755,4 +762,68 @@ test('popup controls are temporary, tab-scoped, and independent from saved rules
   await control.evaluate(async (id) => chrome.runtime.sendMessage({ type: 'deleteProxyRule', payload: { id } }), saved.rule.id);
   await worker.evaluate(() => chrome.storage.local.remove('popupPinnedRuleIds'));
   await popup.close(); await other.close(); await target.close();
+});
+
+
+test('disable cache bypasses real HTTP cache for one tab and restores it on stop', async () => {
+  const hits = new Map<string, number>();
+  const server = createServer((request, response) => {
+    const url = request.url || '/';
+    if (url === '/') {
+      response.writeHead(200, { 'Content-Type': 'text/html' });
+      response.end('<title>Cache test</title><p>Cache fixture</p>');
+      return;
+    }
+    const count = (hits.get(url) || 0) + 1;
+    hits.set(url, count);
+    response.writeHead(200, { 'Content-Type': 'text/plain', 'Cache-Control': 'public, max-age=3600' });
+    response.end(String(count));
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  if (!address || typeof address === 'string') throw new Error('Cache fixture failed.');
+  const origin = `http://127.0.0.1:${address.port}`;
+  const target = await context.newPage();
+  const other = await context.newPage();
+  const popup = await context.newPage();
+  const read = (page: Page, url: string) => page.evaluate(async (path) => (await fetch(path)).text(), url);
+  try {
+    await target.goto(origin);
+    await other.goto(origin);
+    const tabId = await getTabId(origin);
+    expect(await read(target, '/asset')).toBe('1');
+    expect(await read(target, '/asset')).toBe('1');
+    expect(await read(other, '/other')).toBe('1');
+    await popup.goto(`chrome-extension://${extensionId}/src/popup/index.html?tabId=${tabId}`);
+    await popup.getByRole('switch', { name: 'Disable cache', exact: true }).click();
+    await expect(popup.getByRole('switch', { name: 'Disable cache', exact: true })).toBeChecked();
+    expect(await read(target, '/asset')).toBe('2');
+    expect(await read(target, '/asset')).toBe('3');
+    await target.reload();
+    expect(await read(target, '/asset')).toBe('4');
+    expect(await read(other, '/other')).toBe('1');
+    await popup.reload();
+    await expect(popup.getByRole('switch', { name: 'Disable cache', exact: true })).toBeChecked();
+    await popup.getByRole('switch', { name: 'Disable cache', exact: true }).click();
+    await expect(popup.getByRole('switch', { name: 'Disable cache', exact: true })).not.toBeChecked();
+    const restored = await read(target, '/restored');
+    expect(await read(target, '/restored')).toBe(restored);
+    await popup.getByRole('switch', { name: 'Disable cache', exact: true }).click();
+    await expect(popup.getByRole('switch', { name: 'Disable cache', exact: true })).toBeChecked();
+    await popup.getByRole('button', { name: 'Stop this session' }).click();
+    await expect(popup.getByRole('switch', { name: 'Disable cache', exact: true })).not.toBeChecked();
+    const stopped = await read(target, '/stopped');
+    expect(await read(target, '/stopped')).toBe(stopped);
+    // Origin changes detach the session and restore caching as well.
+    await popup.getByRole('switch', { name: 'Disable cache', exact: true }).click();
+    await expect(popup.getByRole('switch', { name: 'Disable cache', exact: true })).toBeChecked();
+    await target.goto('http://localhost:3000/');
+    await expect(popup.getByRole('switch', { name: 'Disable cache', exact: true })).not.toBeChecked();
+    await target.goto(origin);
+    const navigated = await read(target, '/navigated');
+    expect(await read(target, '/navigated')).toBe(navigated);
+  } finally {
+    await popup.close(); await other.close(); await target.close();
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
 });

@@ -1,10 +1,9 @@
 import { t, translateError, initializeLocale, useLocale } from '@/common/i18n';
 import { StrictMode, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { AlertCircle, ArrowUpRight, ChevronRight, Settings, Activity, Pin, PinOff } from 'lucide-react';
+import { AlertCircle, ArrowUpRight, Settings, Activity, Pin, PinOff } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { BrandMark } from '@/components/brand-mark';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { needsProxy } from '@/common/quick-controls';
@@ -23,13 +22,12 @@ function App() {
     : 'Persistent · across tabs');
 
   return (
-    <main className="flex min-h-full flex-col gap-4 bg-background p-4 text-foreground">
+    <main className="flex min-h-full flex-col gap-2.5 bg-background p-3 text-foreground">
       <header className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2.5">
           <BrandMark />
           <div className="min-w-0">
             <h1 className="text-sm font-semibold">Forth Intercept</h1>
-            <p className="text-xs text-muted-foreground">{t('In-browser proxy for developers')}</p>
           </div>
         </div>
         <Button size="icon-sm" variant="ghost" aria-label={t('Open settings')} onClick={vm.gotoOptionsPage}><Settings /></Button>
@@ -41,43 +39,43 @@ function App() {
         <Button size="xs" variant="ghost" onClick={vm.clearError}>{t('Dismiss')}</Button>
       </Alert> : null}
 
-      <section className="rounded-xl border bg-muted/30 p-3" aria-label={t('Current tab')}>
-        <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
+      <section className="rounded-lg border bg-muted/20 px-2.5 py-2" aria-label={t('Current tab')}>
+        <div className="control-row">
+          <p className="min-w-0 flex-1 truncate text-sm font-medium" title={vm.origin}>{vm.origin || t(vm.ready ? 'Select an HTTP or HTTPS tab.' : 'Loading…')}</p>
+          <Button size="xs" disabled={disabled} aria-label={t('Open Inspector')} onClick={vm.openInspector}><Activity />Inspector<ArrowUpRight /></Button>
+        </div>
+        <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
           <span className={`size-1.5 shrink-0 rounded-full ${vm.connected ? 'bg-emerald-500' : 'bg-muted-foreground/50'}`} />
           <span>{t(vm.connected ? 'Proxy connected' : 'Proxy off')}</span>
           <Button className="ml-auto" size="xs" variant="ghost" disabled={disabled} onClick={vm.toggleSession}>{t(vm.connected ? 'Stop this session' : 'Start proxy session')}</Button>
         </div>
-        <p className="break-all text-sm font-medium">{vm.origin || t(vm.ready ? 'Select an HTTP or HTTPS tab.' : 'Loading…')}</p>
-        <Button className="mt-3 w-full" disabled={disabled} onClick={vm.openInspector}>
-          <Activity />{t('Open Inspector')}<ArrowUpRight data-icon="inline-end" />
-        </Button>
       </section>
 
       <section aria-labelledby="quick-heading">
-        <div className="flex items-center justify-between gap-2">
-          <h2 id="quick-heading" className="text-xs font-semibold uppercase tracking-wide">{t('Quick debug')}</h2>
-          <Badge variant="outline">{t('This session')}</Badge>
+        <div className="control-row text-xs">
+          <h2 id="quick-heading" className="font-semibold">{t('Quick debug')}</h2>
+          <span className="text-muted-foreground">{t('This tab · temporary')}</span>
         </div>
-        <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{t(__TARGET__ === 'chrome'
-          ? 'Quick controls start the proxy. Chrome shows a debugging banner.'
-          : 'Quick controls start interception for this tab.')}</p>
         <div className="mt-1 divide-y">
-          <div className="py-3">
-            <div className="control-row">
-              <div><p className="text-sm font-medium">{t('CORS repair')}</p><p className="control-description">{t('Allow cross-origin API requests')}</p></div>
+          <div className="py-1.5">
+            <div className="control-row min-h-7">
+              <span className="text-sm">{t('CORS repair')}</span>
               <Switch aria-label={t('CORS repair')} checked={vm.quickControls.cors} disabled={disabled} onCheckedChange={(cors) => vm.setQuickControls({ cors })} />
             </div>
-            <details className="mt-1.5 text-xs text-muted-foreground">
-              <summary className="inline-flex cursor-pointer items-center gap-1 rounded focus-visible:outline-2"><ChevronRight className="size-3" />{t('CORS options')}</summary>
-              <div className="control-row mt-2 rounded-lg bg-muted/40 p-2">
-                <span>{t('Allow credentials')}</span>
-                <Switch size="sm" aria-label={t('Allow credentials')} checked={vm.quickControls.credentials} disabled={disabled || !vm.quickControls.cors} onCheckedChange={(credentials) => vm.setQuickControls({ credentials })} />
-              </div>
-              {__TARGET__ === 'firefox' ? <p className="mt-2">{t('Firefox patches headers; failed preflights may still fail.')}</p> : null}
-            </details>
+            <div className="control-row min-h-6 pl-3 text-xs text-muted-foreground">
+              <span>{t('Allow credentials')}</span>
+              <Switch size="sm" aria-label={t('Allow credentials')} checked={vm.quickControls.credentials} disabled={disabled || !vm.quickControls.cors} onCheckedChange={(credentials) => vm.setQuickControls({ credentials })} />
+            </div>
           </div>
-          <div className="control-row py-3">
-            <div className="min-w-0"><p className="text-sm font-medium">{t('Request delay')}</p><p className="control-description">Fetch / XHR</p></div>
+          <div className="control-row min-h-10" title={t(__TARGET__ === 'chrome' ? 'Bypass HTTP cache for this tab. Does not clear stored data or bypass service workers.' : 'Cache control is available in Chrome only.')}>
+            <span className="text-sm">{t('Disable cache')}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">{__TARGET__ === 'chrome' ? 'HTTP' : 'Chrome'}</span>
+              <Switch aria-label={t('Disable cache')} checked={vm.quickControls.disableCache} disabled={disabled || __TARGET__ !== 'chrome'} onCheckedChange={(disableCache) => vm.setQuickControls({ disableCache })} />
+            </div>
+          </div>
+          <div className="control-row min-h-10" title="Fetch / XHR">
+            <span className="text-sm">{t('Request delay')}</span>
             <div className="flex shrink-0 items-center gap-2">
               <select className="rounded-md border bg-background px-1.5 py-1 text-xs" aria-label={t('Delay duration')} disabled={disabled} value={vm.quickControls.delayMs || delay} onChange={(event) => {
                 const milliseconds = Number(event.target.value); setDelay(milliseconds);
@@ -91,24 +89,26 @@ function App() {
               }} />
             </div>
           </div>
-          <div className="control-row py-3">
-            <div><p className="text-sm font-medium">{t('Simulate failure')}</p><p className="control-description">{t('Fail Fetch / XHR requests')}</p></div>
-            <Switch aria-label={t('Simulate failure')} checked={vm.quickControls.failure} disabled={disabled} onCheckedChange={(failure) => vm.setQuickControls({ failure })} />
+          <div className="control-row min-h-10" title="Fetch / XHR">
+            <span className="text-sm">{t('Simulate failure')}</span>
+            <div className="flex items-center gap-2"><span className="text-xs text-muted-foreground">Fetch / XHR</span>
+              <Switch aria-label={t('Simulate failure')} checked={vm.quickControls.failure} disabled={disabled} onCheckedChange={(failure) => vm.setQuickControls({ failure })} />
+            </div>
           </div>
         </div>
-        <p className="text-xs leading-relaxed text-muted-foreground">{t('Cleared on stop, tab close, or navigation to another origin.')}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{t(__TARGET__ === 'chrome' ? 'Enabling starts Chrome debugging.' : 'Firefox CORS: response headers only.')}</p>
       </section>
 
-      <section className="border-t pt-3" aria-labelledby="pinned-heading">
+      <section className="border-t pt-2" aria-labelledby="pinned-heading">
         <div className="flex items-center justify-between gap-2">
-          <h2 id="pinned-heading" className="text-xs font-semibold uppercase tracking-wide">{t('Pinned rules')}</h2>
+          <h2 id="pinned-heading" className="text-xs font-semibold">{t('Pinned rules')}</h2>
           <Button size="xs" variant="ghost" onClick={vm.gotoOptionsPage}>{t('Manage rules')}<ArrowUpRight /></Button>
         </div>
-        {vm.pinnedRules.length ? <div className="mt-1 divide-y">{vm.pinnedRules.map((rule) => <div className="control-row py-2.5" key={rule.id}>
+        {vm.pinnedRules.length ? <div className="mt-1 divide-y">{vm.pinnedRules.map((rule) => <div className="control-row py-1.5" key={rule.id}>
           <div className="min-w-0 flex-1"><p className="break-words text-sm font-medium">{rule.name}</p><p className="control-description">{scope(needsProxy(rule))}</p></div>
           <Switch aria-label={rule.name} checked={rule.enabled} disabled={disabled} onCheckedChange={(enabled) => vm.toggleRule(rule, enabled)} />
           <Button size="icon-xs" variant="ghost" aria-label={t('Unpin {name}', { name: rule.name })} disabled={disabled} onClick={() => vm.pinRule(rule.id, false)}><PinOff /></Button>
-        </div>)}</div> : <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{t('Pin a saved Mock, Header, or Redirect rule for quick access.')}</p>}
+        </div>)}</div> : <p className="mt-1 text-xs text-muted-foreground">{t('Pin saved rules for quick access.')}</p>}
         {vm.pinnableRules.length ? <details className="mt-2 text-xs">
           <summary className="cursor-pointer text-muted-foreground">{t('Choose pinned rules')}</summary>
           <div className="mt-2 space-y-1">{vm.pinnableRules.map((rule) => <div className="control-row" key={rule.id}>
@@ -124,8 +124,8 @@ function App() {
           </div>)}
         </details> : null}
       </section>
-      <footer className="border-t pt-3">
-        <p className=" text-xs leading-relaxed text-muted-foreground">{t('{count} saved rules enabled for this site. Stopping clears only session controls.', { count: activeSaved })}</p>
+      <footer className="border-t pt-2">
+        <p className="text-xs text-muted-foreground">{t('{count} saved rules on · stop resets temporary controls', { count: activeSaved })}</p>
       </footer>
     </main>
   );

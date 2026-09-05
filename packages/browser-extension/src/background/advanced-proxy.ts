@@ -465,6 +465,8 @@ export async function enableAdvancedProxy(
       origin: url.origin,
       quickControls,
     });
+    await chrome.debugger.sendCommand({ tabId }, 'Network.enable');
+    await chrome.debugger.sendCommand({ tabId }, 'Network.setCacheDisabled', { cacheDisabled: quickControls.disableCache });
     await chrome.debugger.sendCommand({ tabId }, 'Fetch.enable', {
       patterns: [
         { urlPattern: '*', requestStage: 'Request' },
@@ -492,6 +494,10 @@ export async function updateQuickControls(tabId: number, value: unknown): Promis
   const quickControls = parseQuickControls(value);
   const session = sessions.get(tabId);
   if (!session) throw new Error('Start a proxy session first.');
+  if (session.quickControls.disableCache !== quickControls.disableCache) {
+    await chrome.debugger.sendCommand({ tabId }, 'Network.setCacheDisabled', { cacheDisabled: quickControls.disableCache });
+    if (sessions.get(tabId) !== session) throw new Error('Start a proxy session first.');
+  }
   session.quickControls = quickControls;
   const status = { tabId, phase: 'connected', origin: session.origin, quickControls } satisfies IAdvancedProxyStatus;
   await notifyStatus(status);
@@ -499,8 +505,12 @@ export async function updateQuickControls(tabId: number, value: unknown): Promis
 }
 
 export async function disableAdvancedProxy(tabId: number): Promise<IAdvancedProxyStatus> {
+  const session = sessions.get(tabId);
   sessions.delete(tabId);
   if (__TARGET__ === 'chrome') {
+    if (session?.quickControls.disableCache) {
+      await chrome.debugger.sendCommand({ tabId }, 'Network.setCacheDisabled', { cacheDisabled: false }).catch(() => undefined);
+    }
     await chrome.debugger.detach({ tabId }).catch(() => undefined);
   }
   const status = { tabId, phase: 'disabled' } satisfies IAdvancedProxyStatus;

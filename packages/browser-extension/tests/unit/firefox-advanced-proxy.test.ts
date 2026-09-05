@@ -91,7 +91,7 @@ describe('Firefox WebRequest interception engine', () => {
         { type: 'setResponseHeaders', headers: { 'X-Forth': 'response' } },
       ]),
     });
-    await engine.enableAdvancedProxy(8, { quickControls: { cors: true, credentials: false, delayMs: 0, failure: false } });
+    await engine.enableAdvancedProxy(8, { quickControls: { disableCache: false, cors: true, credentials: false, delayMs: 0, failure: false } });
     const details = requestDetails(8, 'headers');
     await listener(browser.webRequest.onBeforeRequest)(details);
 
@@ -239,7 +239,7 @@ describe('Firefox session controls', () => {
 
   it('does not apply pending failure after stopping a delayed session', async () => {
     vi.mocked(browser.storage.local.get).mockResolvedValue({ proxyAppState: state([]) });
-    await engine.enableAdvancedProxy(33, { quickControls: { cors: false, credentials: false, delayMs: 500, failure: true } });
+    await engine.enableAdvancedProxy(33, { quickControls: { disableCache: false, cors: false, credentials: false, delayMs: 500, failure: true } });
     const pending = listener(browser.webRequest.onBeforeRequest)(requestDetails(33, 'pending'));
     await engine.disableAdvancedProxy(33);
     expect(await pending).toEqual({});
@@ -248,9 +248,20 @@ describe('Firefox session controls', () => {
 
   it('clears quick controls on cross-origin navigation', async () => {
     vi.mocked(browser.storage.local.get).mockResolvedValue({ proxyAppState: state([]) });
-    await engine.enableAdvancedProxy(34, { quickControls: { cors: true, credentials: false, delayMs: 0, failure: false } });
+    await engine.enableAdvancedProxy(34, { quickControls: { disableCache: false, cors: true, credentials: false, delayMs: 0, failure: false } });
     const onUpdated = browser.tabs.onUpdated.addListener.mock.calls[0][0];
     onUpdated(34, { url: 'http://other.localhost:3000/' });
     expect(engine.getAdvancedProxyStatus(34).phase).toBe('disabled');
   });
+});
+
+
+it('rejects unsupported Firefox cache controls without changing the active session', async () => {
+  vi.mocked(browser.storage.local.get).mockResolvedValue({ proxyAppState: state([]) });
+  await engine.enableAdvancedProxy(41);
+  const controls = { disableCache: true, cors: false, credentials: false, delayMs: 0, failure: false };
+  await expect(engine.updateQuickControls(41, controls)).rejects.toThrow('Cache control is available in Chrome only.');
+  expect(engine.getAdvancedProxyStatus(41).quickControls?.disableCache).toBe(false);
+  await expect(engine.enableAdvancedProxy(42, { quickControls: controls })).rejects.toThrow('Cache control is available in Chrome only.');
+  expect(engine.getAdvancedProxyStatus(42).phase).toBe('disabled');
 });
