@@ -10,6 +10,7 @@ import {
   type ProxyHeaderMap,
 } from '@/common/proxy-state';
 import { normalizeResourceType } from '@/common/request-match';
+import { EMPTY_QUICK_CONTROLS, parseQuickControls, quickControlRules, type QuickControls } from '@/common/quick-controls';
 
 export type AdvancedProxyPhase = 'disabled' | 'connecting' | 'connected' | 'error';
 
@@ -18,6 +19,7 @@ export interface IAdvancedProxyStatus {
   phase: AdvancedProxyPhase;
   origin?: string;
   error?: string;
+  quickControls?: QuickControls;
 }
 
 export interface IRequestLogEntry {
@@ -40,8 +42,7 @@ export interface IRequestLogEntry {
 
 interface Session {
   origin: string;
-  credentials: boolean;
-  extraHeaders?: string;
+  quickControls: QuickControls;
 }
 
 interface HeaderEntry {
@@ -108,7 +109,7 @@ function globMatches(pattern: string, value: string): boolean {
 function matchingRules(session: Session, details: RequestDetails): IProxyRule[] {
   const method = details.method.toUpperCase();
   const resourceType = normalizeFirefoxResourceType(details.type);
-  return cachedRules.filter((rule) => rule.enabled
+  return [...quickControlRules(session.origin, session.quickControls), ...cachedRules].filter((rule) => rule.enabled
     && rule.match.initiatorOrigins.some((origin) => origin === '*' || origin === session.origin)
     && globMatches(rule.match.urlPattern, details.url)
     && (!rule.match.methods?.length || rule.match.methods.includes(method))
@@ -144,17 +145,17 @@ function getHeader(headers: ProxyHeaderMap, name: string): string | undefined {
   return Object.entries(headers).find(([header]) => header.toLowerCase() === target)?.[1];
 }
 
-function corsHeaders(session: Session, headers: ProxyHeaderMap): HeaderEntry[] {
+function corsHeaders(session: Session, headers: ProxyHeaderMap, cors: Extract<IProxyAction, { type: 'cors' }>): HeaderEntry[] {
   const origin = getHeader(headers, 'origin') || session.origin;
   const requestedMethod = getHeader(headers, 'access-control-request-method');
   const requestedHeaders = getHeader(headers, 'access-control-request-headers');
   const result: HeaderEntry[] = [
-    { name: 'Access-Control-Allow-Origin', value: session.credentials ? origin : '*' },
-    { name: 'Access-Control-Allow-Methods', value: requestedMethod || 'GET, POST, PUT, DELETE, OPTIONS, PATCH' },
-    { name: 'Access-Control-Allow-Headers', value: requestedHeaders || mergeHeaders(session.extraHeaders).join(', ') },
+    { name: 'Access-Control-Allow-Origin', value: (cors.allowCredentials || cors.allowOrigin === 'initiator') ? origin : '*' },
+    { name: 'Access-Control-Allow-Methods', value: requestedMethod || cors.allowMethods.join(', ') },
+    { name: 'Access-Control-Allow-Headers', value: requestedHeaders || mergeHeaders(cors.allowHeaders.join(',')).join(', ') },
     { name: 'Access-Control-Max-Age', value: '600' },
   ];
-  if (session.credentials) result.push({ name: 'Access-Control-Allow-Credentials', value: 'true' });
+  if (cors.allowCredentials) result.push({ name: 'Access-Control-Allow-Credentials', value: 'true' });
   return result;
 }
 
@@ -250,6 +251,7 @@ async function onBeforeRequest(details: RequestDetails) {
     ));
     entry.changes?.push({ label: 'Delay', after: `${Math.min(Math.max(delay.milliseconds, 0), 30_000)} ms` });
   }
+  if (sessions.get(details.tabId) !== session) return {};
   if (actionOfType(actions, 'block')) {
     entry.outcome = 'blocked';
     entry.changes?.push({ label: 'Request blocked', after: 'Cancelled' });
@@ -313,8 +315,9 @@ function onHeadersReceived(details: RequestDetails) {
   const sentHeaders = requestHeaders.get(key) || {};
   const { actions } = actionsFor(session, details);
   let headers = details.responseHeaders || [];
-  if (normalizeFirefoxResourceType(details.type) === 'XHR') {
-    for (const header of corsHeaders(session, sentHeaders)) {
+  const cors = actionOfType(actions, 'cors');
+  if (cors) {
+    for (const header of corsHeaders(session, sentHeaders, cors)) {
       if (header.value) headers = upsertHeader(headers, header.name, header.value);
     }
   }
@@ -404,8 +407,9 @@ browser.storage.onChanged.addListener((changes, areaName) => {
 
 export async function enableAdvancedProxy(
   tabId: number,
-  options: { credentials?: boolean; extraHeaders?: string } = {},
+  options: { quickControls?: QuickControls } = {},
 ): Promise<IAdvancedProxyStatus> {
+  const quickControls = options.quickControls ? parseQuickControls(options.quickControls) : { ...EMPTY_QUICK_CONTROLS };
   const tab = await browser.tabs.get(tabId);
   if (!tab.url) throw new Error('The active tab URL is unavailable.');
   const url = new URL(tab.url);
@@ -420,10 +424,9 @@ export async function enableAdvancedProxy(
     requestLogLimit = state.settings.requestLogLimit;
     sessions.set(tabId, {
       origin: url.origin,
-      credentials: !!options.credentials,
-      extraHeaders: options.extraHeaders,
+      quickControls,
     });
-    const status = { tabId, phase: 'connected', origin: url.origin } satisfies IAdvancedProxyStatus;
+    const status = { tabId, phase: 'connected', origin: url.origin, quickControls } satisfies IAdvancedProxyStatus;
     await notifyStatus(status);
     return status;
   } catch (error) {
@@ -437,6 +440,16 @@ export async function enableAdvancedProxy(
     await notifyStatus(status);
     return status;
   }
+}
+
+export async function updateQuickControls(tabId: number, value: unknown): Promise<IAdvancedProxyStatus> {
+  const quickControls = parseQuickControls(value);
+  const session = sessions.get(tabId);
+  if (!session) throw new Error('Start a proxy session first.');
+  session.quickControls = quickControls;
+  const status = { tabId, phase: 'connected', origin: session.origin, quickControls } satisfies IAdvancedProxyStatus;
+  await notifyStatus(status);
+  return status;
 }
 
 export async function disableAdvancedProxy(tabId: number): Promise<IAdvancedProxyStatus> {

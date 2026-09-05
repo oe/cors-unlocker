@@ -1,326 +1,135 @@
 import browser from 'webextension-polyfill';
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { isSupportedProtocol } from '@/common/utils';
-import { logger } from '@/common/logger';
-import { extConfig } from '@/common/ext-config';
-import { inspectorPathForTab } from '@/common/inspector-target';
-import type { IRuleItem } from '@/types';
+import { inspectorPathForTab, parseInspectorTabId } from '@/common/inspector-target';
+import { APP_STATE_KEY, type IProxyRule } from '@/common/proxy-state';
+import { EMPTY_QUICK_CONTROLS, PINNED_RULES_KEY, type QuickControls } from '@/common/quick-controls';
+import { ruleAppliesToOrigin } from '@/common/rule-explanation';
 import type { IAdvancedProxyStatus } from '@/background/advanced-proxy';
 
-interface ViewModelState {
-  rule: IRuleItem | null;
-  isSupported: boolean;
-  error: string | null;
-  errorType: 'recoverable' | 'fatal' | null;
-  advancedProxy: IAdvancedProxyStatus | null;
-  advancedProxyPending: boolean;
-}
-
 export function useViewModel() {
-  const [state, setState] = useState<ViewModelState>({
-    rule: null,
-    isSupported: false,
-    error: null,
-    errorType: null,
-    advancedProxy: null,
-    advancedProxyPending: false,
-  });
-  
-  const tabOrigin = useRef('');
+  const [origin, setOrigin] = useState('');
+  const [rules, setRules] = useState<IProxyRule[]>([]);
+  const [pinnedIds, setPinnedIds] = useState<string[]>([]);
+  const [status, setStatus] = useState<IAdvancedProxyStatus | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [ready, setReady] = useState(false);
   const tabId = useRef<number | null>(null);
-  const mounted = useRef(true);
+  const mounted = useRef(false);
+  const busyRef = useRef(false);
+  const version = useRef(0);
 
-  const syncRule = useCallback(async () => {
-    try {
-      setState(prev => ({ ...prev, error: null, errorType: null }));
-      
-      const win = await browser.windows.getCurrent();
-      const [result, advancedProxy] = await Promise.all([
-        browser.runtime.sendMessage({
-          type: 'getCurrentTabRule',
-          windowId: win.id
-        }),
-        typeof tabId.current === 'number'
-          ? browser.runtime.sendMessage({
-            type: 'getAdvancedProxyStatus',
-            payload: { tabId: tabId.current },
-          })
-          : Promise.resolve(null),
-      ]);
-      
-      if (mounted.current) {
-        setState(prev => ({ 
-          ...prev, 
-          rule: result,
-          advancedProxy,
-        }));
-      }
-    } catch (error) {
-      logger.error('Failed to sync rule:', error);
-      if (mounted.current) {
-        setState(prev => ({ 
-          ...prev,
-          error: 'Failed to load rule data',
-          errorType: 'recoverable'
-        }));
-      }
-    }
+  const sync = useCallback(async () => {
+    const current = ++version.current;
+    if (tabId.current === null) return;
+    const [tab, nextStatus, state, pins] = await Promise.all([
+      browser.tabs.get(tabId.current),
+      browser.runtime.sendMessage({ type: 'getAdvancedProxyStatus', payload: { tabId: tabId.current } }),
+      browser.runtime.sendMessage({ type: 'getProxyState' }),
+      browser.storage.local.get(PINNED_RULES_KEY),
+    ]);
+    if (!mounted.current || current !== version.current) return;
+    const url = tab.url ? new URL(tab.url) : null;
+    setOrigin(url && isSupportedProtocol(url.protocol) ? url.origin : '');
+    if (!state?.rules) throw new Error(state?.error || 'Failed to load rule data');
+    setRules(state.rules);
+    setStatus(nextStatus);
+    setPinnedIds(Array.isArray(pins[PINNED_RULES_KEY]) ? pins[PINNED_RULES_KEY].filter((id: unknown) => typeof id === 'string') : []);
+    setReady(true);
   }, []);
 
   useEffect(() => {
     mounted.current = true;
-    
-    const onRuntimeMessage = (
-      message: any,
-      _: browser.Runtime.MessageSender
-    ) => {
-      if (!message) return;
-      if (message.type === 'activeTabRuleChange') {
-        logger.debug('Active tab rule changed, syncing...');
-        void syncRule();
-      }
-      if (
-        message.type === 'advancedProxyStatusChange'
-        && message.payload?.tabId === tabId.current
-      ) {
-        setState((previous) => ({
-          ...previous,
-          advancedProxy: message.payload,
-          advancedProxyPending: false,
-        }));
-      }
+    const refresh = () => { void sync().catch((cause) => { if (mounted.current) setError(String(cause)); }); };
+    const onMessage = (message: any) => {
+      if (message?.type === 'advancedProxyStatusChange' && message.payload?.tabId === tabId.current) refresh();
     };
-
-    // Initialize
-    const initialize = async () => {
-      try {
-        const tabs = await browser.tabs.query({ active: true, currentWindow: true });
-        
-        if (!mounted.current) return;
-        
-        if (!tabs.length || !tabs[0].url) {
-          setState(prev => ({ 
-            ...prev, 
-            isSupported: false,
-            error: 'No active tab found or tab URL is unavailable',
-            errorType: 'fatal'
-          }));
-          return;
-        }
-
-        const url = tabs[0].url;
-        tabId.current = tabs[0].id ?? null;
-        
-        // Better URL validation and error handling
-        try {
-          const uu = new URL(url);
-          tabOrigin.current = uu.origin;
-          const isOriginSupported = isSupportedProtocol(uu.protocol);
-          
-          setState(prev => ({ 
-            ...prev, 
-            isSupported: isOriginSupported 
-          }));
-
-          if (isOriginSupported) {
-            browser.runtime.onMessage.addListener(onRuntimeMessage);
-            await syncRule();
-          } else {
-            setState(prev => ({ 
-              ...prev,
-              error: `${uu.protocol} protocol is not supported. Only http:// and https:// are supported.`,
-              errorType: 'fatal'
-            }));
-          }
-        } catch (urlError) {
-          logger.error('Failed to parse tab URL:', urlError);
-          setState(prev => ({ 
-            ...prev,
-            isSupported: false,
-            error: 'Invalid or malformed URL in active tab',
-            errorType: 'fatal'
-          }));
-          return;
-        }
-      } catch (error) {
-        logger.error('Failed to initialize popup:', error);
-        if (mounted.current) {
-          setState(prev => ({ 
-            ...prev,
-            error: 'Failed to initialize',
-            errorType: 'fatal'
-          }));
-        }
-      }
+    const onStorage = (changes: Record<string, browser.Storage.StorageChange>, area: string) => {
+      if (area === 'local' && (changes[APP_STATE_KEY] || changes[PINNED_RULES_KEY])) refresh();
     };
-
-    initialize();
-
+    const onUpdated = (id: number, change: browser.Tabs.OnUpdatedChangeInfoType) => {
+      if (id === tabId.current && change.url) refresh();
+    };
+    const onRemoved = (id: number) => {
+      if (id === tabId.current) { ++version.current; tabId.current = null; setOrigin(''); setStatus(null); }
+    };
+    browser.runtime.onMessage.addListener(onMessage);
+    browser.storage.onChanged.addListener(onStorage);
+    browser.tabs.onUpdated.addListener(onUpdated);
+    browser.tabs.onRemoved.addListener(onRemoved);
+    void (async () => {
+      // Explicit targets also let the popup be opened as a standalone control surface.
+      const requested = parseInspectorTabId(location.search);
+      const tab = requested === null
+        ? (await browser.tabs.query({ active: true, currentWindow: true }))[0]
+        : await browser.tabs.get(requested);
+      if (!mounted.current) return;
+      if (typeof tab?.id !== 'number') throw new Error('No active tab found or tab URL is unavailable');
+      tabId.current = tab.id;
+      await sync();
+    })().catch((cause) => { if (mounted.current) { setError(String(cause)); setReady(true); } });
     return () => {
       mounted.current = false;
-      browser.runtime.onMessage.removeListener(onRuntimeMessage);
+      ++version.current;
+      browser.runtime.onMessage.removeListener(onMessage);
+      browser.storage.onChanged.removeListener(onStorage);
+      browser.tabs.onUpdated.removeListener(onUpdated);
+      browser.tabs.onRemoved.removeListener(onRemoved);
     };
-  }, [syncRule]);
+  }, [sync]);
 
-  const toggleRule = useCallback(
-    async (payload: { disabled?: boolean; credentials?: boolean }) => {
-      if (!tabOrigin.current) {
-        logger.warn('No tab origin available for toggle');
-        return;
-      }
+  const run = async (action: () => Promise<void>) => {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true); setError(null);
+    try { await action(); await sync(); }
+    catch (cause) { if (mounted.current) setError(cause instanceof Error ? cause.message : String(cause)); }
+    finally { busyRef.current = false; if (mounted.current) setBusy(false); }
+  };
 
-      try {
-        setState(prev => ({ ...prev, error: null }));
-        
-        // If enabling CORS (disabled: false) and no explicit credentials setting,
-        // apply default credentials configuration
-        const finalPayload = { ...payload };
-        if (payload.disabled === false && typeof payload.credentials === 'undefined') {
-          const config = extConfig.get();
-          finalPayload.credentials = config.dftEnableCredentials;
-        }
-        
-        const result = await browser.runtime.sendMessage({
-          type: 'toggleRuleViaAction',
-          payload: {
-            origin: tabOrigin.current,
-            ...finalPayload,
-          }
-        });
-
-        if (!result?.success) {
-          throw new Error(result?.error || 'Failed to toggle rule');
-        }
-        
-        logger.debug('Rule toggled successfully');
-      } catch (error) {
-        logger.error('Failed to toggle rule:', error);
-        setState(prev => ({ 
-          ...prev, 
-          error: error instanceof Error ? error.message : 'Failed to update rule',
-          errorType: 'recoverable'
-        }));
-      }
-    },
-    []
-  );
-
-  const gotoOptionsPage = useCallback(async () => {
-    try {
-      await browser.runtime.openOptionsPage();
-      
-      // In Firefox, popup doesn't close automatically when opening options page
-      // We need to close it manually
-      if (__TARGET__ === 'firefox') {
-        window.close();
-      }
-    } catch (error) {
-      logger.error('Failed to open options page:', error);
-      setState(prev => ({ 
-        ...prev, 
-        error: 'Failed to open options page' 
-      }));
+  const connected = status?.phase === 'connected';
+  const quickControls = connected ? status.quickControls || EMPTY_QUICK_CONTROLS : EMPTY_QUICK_CONTROLS;
+  const sendSession = async (type: string, controls?: QuickControls) => {
+    if (tabId.current === null) throw new Error('No active tab found or tab URL is unavailable');
+    const next = await browser.runtime.sendMessage({ type, payload: { tabId: tabId.current, quickControls: controls } });
+    if (!next?.phase || next.phase === 'error' || next.error) throw new Error(next?.error || 'Unable to start proxy session.');
+    if (mounted.current) setStatus(next);
+  };
+  const setQuickControls = (patch: Partial<QuickControls>) => run(async () => {
+    const controls = { ...quickControls, ...patch };
+    await sendSession(connected ? 'updateQuickControls' : 'enableAdvancedProxy', controls);
+  });
+  const toggleSession = () => run(() => sendSession(connected ? 'disableAdvancedProxy' : 'enableAdvancedProxy'));
+  const toggleRule = (rule: IProxyRule, enabled: boolean) => run(async () => {
+    const result = await browser.runtime.sendMessage({ type: 'saveProxyRule', payload: { rule: { id: rule.id, enabled } } });
+    if (!result?.success) throw new Error(result?.error || 'Failed to update rule');
+  });
+  const pinRule = (id: string, pinned: boolean) => run(async () => {
+    const next = pinned ? [...new Set([...pinnedIds, id])] : pinnedIds.filter((value) => value !== id);
+    await browser.storage.local.set({ [PINNED_RULES_KEY]: next });
+  });
+  const gotoOptionsPage = () => run(async () => { await browser.runtime.openOptionsPage(); window.close(); });
+  const openInspector = () => run(async () => {
+    if (tabId.current === null) return;
+    if (__TARGET__ === 'chrome') {
+      await chrome.sidePanel.setOptions({ tabId: tabId.current, path: inspectorPathForTab(tabId.current), enabled: true });
+      await chrome.sidePanel.open({ tabId: tabId.current });
+    } else {
+      await browser.runtime.sendMessage({ type: 'openSidePanel', payload: { tabId: tabId.current } });
     }
-  }, []);
+    window.close();
+  });
 
-  const openInspector = useCallback(async () => {
-    if (typeof tabId.current !== 'number') return;
-    try {
-      if (__TARGET__ === 'chrome') {
-        await chrome.sidePanel.setOptions({
-          tabId: tabId.current,
-          path: inspectorPathForTab(tabId.current),
-          enabled: true,
-        });
-        // Keep sidePanel.open in the popup click handler so Chrome retains the
-        // user gesture required to reveal the panel.
-        await chrome.sidePanel.open({ tabId: tabId.current });
-      } else {
-        await browser.runtime.sendMessage({
-          type: 'openSidePanel',
-          payload: { tabId: tabId.current },
-        });
-      }
-      window.close();
-    } catch (error) {
-      logger.error('Failed to open traffic inspector:', error);
-      setState((previous) => ({
-        ...previous,
-        error: error instanceof Error ? error.message : 'Unable to open traffic inspector',
-        errorType: 'recoverable',
-      }));
-    }
-  }, []);
-
-  /**
-   * Navigate to options page and open edit dialog for specific rule
-   */
-  const gotoEditRule = useCallback(async (ruleId: number) => {
-    try {
-      // Create URL with hash for rule editing
-      const optionsUrl = browser.runtime.getURL('src/options/index.html') + `#rules?edit=${ruleId}`;
-      
-      // Open in new tab for better user experience
-      await browser.tabs.create({ url: optionsUrl });
-      
-      // Close popup
-      window.close();
-    } catch (error) {
-      logger.error('Failed to open rule edit page:', error);
-      setState(prev => ({ 
-        ...prev, 
-        error: 'Failed to open rule edit page'
-      }));
-    }
-  }, []);
-
-  const clearError = useCallback(() => {
-    setState(prev => ({ ...prev, error: null }));
-  }, []);
-
-  const toggleAdvancedProxy = useCallback(async (enabled: boolean) => {
-    if (typeof tabId.current !== 'number') return;
-    setState((previous) => ({ ...previous, advancedProxyPending: true, error: null }));
-    try {
-      const advancedProxy = await browser.runtime.sendMessage({
-        type: enabled ? 'enableAdvancedProxy' : 'disableAdvancedProxy',
-        payload: {
-          tabId: tabId.current,
-          credentials: !!state.rule?.credentials,
-          extraHeaders: state.rule?.extraHeaders,
-        },
-      }) as IAdvancedProxyStatus;
-      setState((previous) => ({
-        ...previous,
-        advancedProxy,
-        advancedProxyPending: false,
-        error: advancedProxy.phase === 'error'
-          ? advancedProxy.error || 'Unable to start advanced proxy'
-          : null,
-        errorType: advancedProxy.phase === 'error' ? 'recoverable' : null,
-      }));
-    } catch (error) {
-      setState((previous) => ({
-        ...previous,
-        advancedProxyPending: false,
-        error: error instanceof Error ? error.message : 'Unable to update advanced proxy',
-        errorType: 'recoverable',
-      }));
-    }
-  }, [state.rule?.credentials, state.rule?.extraHeaders]);
-
-  // rule is enabled when it's not disabled and has an id
-  const ruleEnabled = !!state.rule && !state.rule.disabled && !!state.rule.id;
-
+  const siteRules = rules.filter((rule) => ruleAppliesToOrigin(rule, origin));
   return {
-    ...state,
-    ruleEnabled,
-    toggleRule,
-    gotoOptionsPage,
-    openInspector,
-    gotoEditRule,
-    clearError,
-    toggleAdvancedProxy,
-    retry: syncRule,
+    origin, ready, busy, error, connected, quickControls, status,
+    isSupported: ready && !!origin,
+    siteRules,
+    pinnedRules: siteRules.filter((rule) => pinnedIds.includes(rule.id)),
+    pinnableRules: siteRules.filter((rule) => rule.source === 'user'),
+    legacyCorsRules: siteRules.filter((rule) => rule.source === 'legacy-cors'),
+    pinnedIds, setQuickControls, toggleSession, toggleRule, pinRule, openInspector, gotoOptionsPage,
+    clearError: () => setError(null),
   };
 }

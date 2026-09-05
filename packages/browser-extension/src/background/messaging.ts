@@ -15,6 +15,7 @@ import {
   enableAdvancedProxy,
   getAdvancedProxyStatus,
   getRequestLog,
+  updateQuickControls,
 } from '@/background/advanced-proxy';
 import { PRODUCT_CAPABILITIES } from '@/common/capabilities';
 import { inspectorPathForTab } from '@/common/inspector-target';
@@ -354,6 +355,13 @@ export async function onRuntimeMessage(
     switch (message.type) {
       case 'sdkRequest':
         return handleSdkRequest(message, sender);
+
+      case 'updateQuickControls': {
+        if (!isValidExtensionSender(sender)) throw new Error('Quick controls require an extension page.');
+        const tabId = message.payload?.tabId;
+        if (!Number.isInteger(tabId) || tabId < 0) throw new Error('Missing tab ID.');
+        return updateQuickControls(tabId, message.payload?.quickControls);
+      }
 
       case 'getAdvancedProxyStatus': {
         const tabId = message.payload?.tabId;

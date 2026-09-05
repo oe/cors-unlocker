@@ -1,12 +1,12 @@
 html,
 body,
 #root {
-  width: 340px;
+  width: 360px;
   min-height: 420px;
   margin: 0;
 }
 
-button,
-[role='switch'] {
-  cursor: pointer;
-}
+body { max-height: 600px; overflow-y: auto; }
+button, [role='switch'] { cursor: pointer; }
+.control-row { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
+.control-description { font-size: 0.75rem; line-height: 1.5; color: var(--muted-foreground); }

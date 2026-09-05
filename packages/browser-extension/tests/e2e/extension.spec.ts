@@ -78,7 +78,7 @@ test('localizes all surfaces and preserves drafts and settings across language c
       await worker.evaluate((uiLanguage) => chrome.storage.local.set({ uiLanguage }), locale);
       for (const page of [control, popup, panel]) await expect(page.locator('html')).toHaveAttribute('lang', locale);
       await expect(control.getByRole('textbox', { name: messages.Name[locale], exact: true })).toHaveValue(draftName);
-      await expect(popup.getByText(messages['CORS compatibility'][locale], { exact: true })).toBeVisible();
+      await expect(popup.getByText(messages['Quick debug'][locale], { exact: true })).toBeVisible();
       await expect(panel.getByText(messages['Advanced proxy is off'][locale], { exact: true }).or(panel.getByText(messages['This page is unavailable'][locale], { exact: true }))).toBeVisible();
       for (const [name, page] of [['options', control], ['popup', popup], ['sidepanel', panel]] as const) {
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${name} ${locale} overflow`).toBe(true);
@@ -226,8 +226,8 @@ test('renders the shadcn proxy workspace and popup', async () => {
 
   const popup = await context.newPage();
   await popup.goto(`chrome-extension://${extensionId}/src/popup/index.html`);
-  await expect(popup.getByText('Advanced proxy')).toBeVisible();
-  await expect(popup.getByText('v2.0')).toBeVisible();
+  await expect(popup.getByRole('button', { name: 'Open Inspector' })).toBeVisible();
+  await expect(popup.getByText('In-browser proxy for developers')).toBeVisible();
   await popup.screenshot({ path: 'test-results/forth-intercept-popup.png', fullPage: true });
   await popup.close();
 
@@ -490,7 +490,7 @@ test('repairs a genuinely failing preflight and records the request', async () =
   const tabId = await getTabId('http://test.localhost:3000/');
   const status = await control.evaluate(async (id) => chrome.runtime.sendMessage({
     type: 'enableAdvancedProxy',
-    payload: { tabId: id, credentials: true, extraHeaders: 'X-Blocked-Preflight' },
+    payload: { tabId: id, quickControls: { cors: true, credentials: true, delayMs: 0, failure: false } },
   }), tabId);
   expect(status.phase).toBe('connected');
 
@@ -535,7 +535,7 @@ test('mocks a response from a captured-rule-compatible matcher', async () => {
         actions: [{
           type: 'mockResponse',
           status: 202,
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
           body: '{"source":"forth-intercept"}',
         }],
       },
@@ -610,8 +610,8 @@ test('applies CDP delay and simulated network failure', async () => {
   const target = await context.newPage();
   await target.goto('http://test.localhost:3000/');
   const tabId = await getTabId('http://test.localhost:3000/');
-  const delayUrl = 'http://api.localhost:3000/time';
-  const failureUrl = 'http://api.localhost:3000/api/error/503';
+  const delayUrl = 'http://test.localhost:3000/time';
+  const failureUrl = 'http://test.localhost:3000/api/error/503';
   for (const rule of [
     {
       name: 'CDP delay',
@@ -651,4 +651,108 @@ test('applies CDP delay and simulated network failure', async () => {
     type: 'disableAdvancedProxy', payload: { tabId: id },
   }), tabId);
   await target.close();
+});
+
+test('popup controls are temporary, tab-scoped, and independent from saved rules', async () => {
+  const target = await context.newPage();
+  const other = await context.newPage();
+  await target.goto('http://popup.localhost:3000/');
+  await other.goto('http://popup.localhost:3000/health');
+  const tabId = await getTabId('http://popup.localhost:3000/');
+  const saved = await control.evaluate(async () => chrome.runtime.sendMessage({
+    type: 'saveProxyRule', payload: { rule: {
+      name: 'Popup header preset', enabled: false, source: 'user',
+      match: { initiatorOrigins: ['http://popup.localhost:3000'], urlPattern: '*://popup.localhost:3000/health*' },
+      actions: [{ type: 'setResponseHeaders', headers: { 'X-Popup-Preset': 'enabled' } }],
+    } },
+  }));
+  const before = await worker.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState);
+  const popup = await context.newPage();
+  const errors: string[] = [];
+  popup.on('pageerror', (error) => errors.push(error.message));
+  popup.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
+  const popupUrl = `chrome-extension://${extensionId}/src/popup/index.html?tabId=${tabId}`;
+  await popup.goto(popupUrl);
+  await popup.setViewportSize({ width: 360, height: 600 });
+  await expect(popup).toHaveTitle(/Forth Intercept/);
+  await expect(popup.getByText('http://popup.localhost:3000', { exact: true })).toBeVisible();
+  await expect(popup.getByRole('button', { name: 'Open Inspector' })).toBeEnabled();
+  await popup.getByRole('button', { name: 'Start proxy session' }).click();
+  await expect(popup.getByText('Proxy connected', { exact: true })).toBeVisible();
+  // Merely connecting must not repair CORS.
+  const crossRequest = () => target.evaluate(async () => {
+    try {
+      await fetch(`http://api.localhost:3000/api/custom-headers?popup=${Date.now()}`, { headers: { 'X-Popup-Test': 'yes' } });
+      return true;
+    } catch { return false; }
+  });
+  expect(await crossRequest()).toBe(false);
+  await popup.getByRole('switch', { name: 'CORS repair', exact: true }).click();
+  await expect(popup.getByRole('switch', { name: 'CORS repair', exact: true })).toBeChecked();
+  expect(await crossRequest()).toBe(true);
+  await popup.getByLabel('Delay duration').selectOption('500');
+  await popup.getByRole('switch', { name: 'Request delay', exact: true }).click();
+  await expect(popup.getByRole('switch', { name: 'Request delay', exact: true })).toBeChecked();
+  const duration = await target.evaluate(async () => {
+    const start = performance.now(); await fetch('/health'); return performance.now() - start;
+  });
+  expect(duration).toBeGreaterThanOrEqual(450);
+  // Reopening the popup reads the same background session, not component state.
+  await popup.reload();
+  await expect(popup.getByLabel('Delay duration')).toHaveValue('500');
+  await popup.getByRole('switch', { name: 'Request delay', exact: true }).click();
+  await popup.getByRole('switch', { name: 'Simulate failure', exact: true }).click();
+  await expect(popup.getByRole('switch', { name: 'Simulate failure', exact: true })).toBeChecked();
+  expect(await target.evaluate(async () => { try { await fetch('/health'); return false; } catch { return true; } })).toBe(true);
+  expect(await other.evaluate(async () => (await fetch('/health')).ok)).toBe(true);
+  await target.evaluate(() => new Promise<void>((resolve) => {
+    const img = new Image(); img.onload = () => resolve(); img.onerror = () => resolve(); img.src = '/health?image-scope';
+  }));
+  const logs = await control.evaluate(async (id) => chrome.runtime.sendMessage({ type: 'getAdvancedProxyLog', payload: { tabId: id } }), tabId);
+  const imageLog = logs.find((entry: any) => entry.url.includes('image-scope'));
+  expect(imageLog).toMatchObject({ resourceType: 'Image', outcome: 'continued' });
+  expect(imageLog.matchedRuleIds.filter((id: string) => id.startsWith('session:'))).toEqual([]);
+  expect(await worker.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState)).toEqual(before);
+  await popup.getByRole('button', { name: 'Stop this session' }).click();
+  for (const name of ['CORS repair', 'Request delay', 'Simulate failure']) await expect(popup.getByRole('switch', { name, exact: true })).not.toBeChecked();
+  expect(await crossRequest()).toBe(false);
+  expect(await target.evaluate(async () => (await fetch('/health')).ok)).toBe(true);
+
+  // Pinning is metadata; enabling a saved rule persists across stopping/reopening.
+  await popup.getByText('Choose pinned rules', { exact: true }).click();
+  await popup.getByRole('button', { name: 'Pin Popup header preset', exact: true }).click();
+  await expect(popup.getByRole('switch', { name: 'Popup header preset', exact: true })).toBeVisible();
+  await popup.getByRole('switch', { name: 'Popup header preset', exact: true }).click();
+  await expect(popup.getByRole('switch', { name: 'Popup header preset', exact: true })).toBeChecked();
+  await expect.poll(() => target.evaluate(async () => (await fetch('/health')).headers.get('X-Popup-Preset'))).toBe('enabled');
+  await popup.reload();
+  await expect(popup.getByRole('switch', { name: 'Popup header preset', exact: true })).toBeChecked();
+  await popup.getByRole('switch', { name: 'Request delay', exact: true }).click();
+  await expect(popup.getByText('Proxy connected', { exact: true })).toBeVisible();
+  await popup.getByRole('button', { name: 'Stop this session' }).click();
+  await expect(popup.getByRole('switch', { name: 'Popup header preset', exact: true })).toBeChecked();
+  expect(await target.evaluate(async () => (await fetch('/health')).headers.get('X-Popup-Preset'))).toBe('enabled');
+  await popup.evaluate(() => window.scrollTo(0, 0));
+  await expect(popup.getByRole('switch', { name: 'Request delay', exact: true })).not.toBeChecked();
+  await popup.screenshot({ path: '/tmp/forth-intercept-popup-en.png', fullPage: true, animations: 'disabled' });
+  for (const locale of ['en', 'zh-CN', 'ko', 'ja', 'fr', 'es']) {
+    await worker.evaluate((uiLanguage) => chrome.storage.local.set({ uiLanguage }), locale);
+    await expect(popup.locator('html')).toHaveAttribute('lang', locale);
+    expect(await popup.evaluate(() => document.documentElement.scrollWidth <= innerWidth), locale).toBe(true);
+    await expect(popup.getByRole('switch', { name: messages['CORS repair'][locale], exact: true })).toBeVisible();
+  }
+  await worker.evaluate(() => chrome.storage.local.set({ uiLanguage: 'zh-CN' }));
+  await expect(popup.locator('html')).toHaveAttribute('lang', 'zh-CN');
+  await popup.screenshot({ path: '/tmp/forth-intercept-popup-zh.png', fullPage: true, animations: 'disabled' });
+  await worker.evaluate(() => chrome.storage.local.set({ uiLanguage: 'en' }));
+  await expect(popup.locator('html')).toHaveAttribute('lang', 'en');
+  await popup.getByRole('switch', { name: 'Simulate failure', exact: true }).click();
+  await expect(popup.getByRole('switch', { name: 'Simulate failure', exact: true })).toBeChecked();
+  await target.goto('http://elsewhere.localhost:3000/');
+  await expect(popup.getByText('http://elsewhere.localhost:3000', { exact: true })).toBeVisible();
+  await expect(popup.getByRole('switch', { name: 'Simulate failure', exact: true })).not.toBeChecked();
+  expect(errors).toEqual([]);
+  await control.evaluate(async (id) => chrome.runtime.sendMessage({ type: 'deleteProxyRule', payload: { id } }), saved.rule.id);
+  await worker.evaluate(() => chrome.storage.local.remove('popupPinnedRuleIds'));
+  await popup.close(); await other.close(); await target.close();
 });

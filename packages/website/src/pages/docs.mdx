@@ -6,7 +6,7 @@ description: Install Forth Intercept, choose the right interception mode, and co
 
 # Forth Intercept documentation
 
-Forth Intercept is a browser-native request lab. It changes requests inside Chrome or Firefox; it is not an IP proxy, VPN, or system-wide traffic capture tool.
+Forth Intercept is an in-browser proxy for developers. It changes requests inside Chrome or Firefox; it is not an IP proxy, VPN, or system-wide traffic capture tool.
 
 ## Install
 
@@ -24,6 +24,21 @@ Firefox support is currently distributed as a beta build artifact from CI. Load 
 | Browser disclosure | None | Standard debugging banner while attached | Install-time permissions; no debugger banner |
 
 Interception stops when you switch it off, close the tab, or the top-level page navigates to a different origin. Chrome Advanced mode also detaches when another debugger takes over.
+
+## Popup quick controls
+
+Open **Inspector** to inspect the current tab, or use **Start proxy session** to begin capture.
+Connecting alone does not enable CORS repair: it captures traffic and applies your enabled saved rules.
+
+**Quick debug** offers CORS repair, a 500 ms / 1 s / 3 s request delay, and simulated request failure.
+Delay and failure affect only Fetch/XHR requests in this tab. Enabling a quick control starts the proxy;
+Chrome displays its debugging banner. Credential support is under **CORS options**.
+
+**Stop this session**, closing the tab, or navigating to another origin clears these temporary controls.
+Existing site CORS rules are separate persistent rules and remain enabled until you turn them off.
+Pin named saved rules for quick access. Their switches change saved configuration; stopping the proxy
+does not disable saved rules, and DNR rules can continue across tabs. Saved mocks, delays, and failures
+need an active proxy session. Firefox CORS repair patches headers but cannot synthesize failed preflights.
 
 ## Rules
 
@@ -43,7 +58,7 @@ A rule contains a page-origin match, request URL glob, optional HTTP methods and
     {
       "type": "mockResponse",
       "status": 200,
-      "headers": { "Content-Type": "application/json" },
+      "headers": { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
       "body": "{\"id\":123,\"state\":\"preview\"}"
     }
   ]
@@ -54,9 +69,9 @@ Available actions are `cors`, `setRequestHeaders`, `setResponseHeaders`, `redire
 
 ## Site controls
 
-Open **Site controls** from the popup to manage rules for the current HTTP or HTTPS page. Toggle rules or click their names to edit them directly in the side panel. New rules default to the current page origin.
+Choose **Open Inspector** from the popup to manage rules for the current HTTP or HTTPS page. Toggle rules or click their names to edit them directly in the side panel. New rules default to the current page origin.
 
-Enable **Advanced proxy**, then reproduce a request on the page. This switch enables request modifications and CORS repair as well as activity capture. Select a captured request to create a Mock, Delay, Block, or Headers rule without leaving the panel. Save, trigger the request again, and inspect the recorded result.
+Enable **Advanced proxy**, then reproduce a request on the page. This switch starts activity capture and applies enabled saved rules. Enable **CORS repair** separately in the popup, or use a saved CORS rule when needed. Select a captured request to create a Mock, Delay, Block, or Headers rule without leaving the panel. Save, trigger the request again, and inspect the recorded result.
 
 Activity shows captured rule names and applied changes, including header before/after values, redirects, delays, and local mocks. **Check against current rules** explains disabled rules and mismatched URL, method, or resource type conditions; it does not reconstruct historical rule priority. Authorization, Cookie, Proxy-Authorization, and Set-Cookie values are masked.
 

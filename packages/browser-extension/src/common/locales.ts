@@ -2023,5 +2023,293 @@ export const messages: Record<string, Record<string, string>> = {
     "ja": "Firefox はレスポンス本文を置換できませんでした。",
     "fr": "Firefox n’a pas pu remplacer le corps de la réponse.",
     "es": "Firefox no pudo sustituir el cuerpo de la respuesta."
+  },
+  "In-browser proxy for developers": {
+    "en": "In-browser proxy for developers",
+    "zh-CN": "开发者的浏览器内代理",
+    "ko": "개발자용 브라우저 내 프록시",
+    "ja": "開発者向けブラウザー内プロキシ",
+    "fr": "Proxy dans le navigateur pour développeurs",
+    "es": "Proxy en el navegador para desarrolladores"
+  },
+  "Current tab": {
+    "en": "Current tab",
+    "zh-CN": "当前标签页",
+    "ko": "현재 탭",
+    "ja": "現在のタブ",
+    "fr": "Onglet actuel",
+    "es": "Pestaña actual"
+  },
+  "Proxy connected": {
+    "en": "Proxy connected",
+    "zh-CN": "代理已连接",
+    "ko": "프록시 연결됨",
+    "ja": "プロキシ接続中",
+    "fr": "Proxy connecté",
+    "es": "Proxy conectado"
+  },
+  "Proxy off": {
+    "en": "Proxy off",
+    "zh-CN": "代理未连接",
+    "ko": "프록시 꺼짐",
+    "ja": "プロキシ未接続",
+    "fr": "Proxy déconnecté",
+    "es": "Proxy desconectado"
+  },
+  "Select an HTTP or HTTPS tab.": {
+    "en": "Select an HTTP or HTTPS tab.",
+    "zh-CN": "请选择 HTTP 或 HTTPS 标签页。",
+    "ko": "HTTP 또는 HTTPS 탭을 선택하세요.",
+    "ja": "HTTP または HTTPS のタブを選択してください。",
+    "fr": "Sélectionnez un onglet HTTP ou HTTPS.",
+    "es": "Selecciona una pestaña HTTP o HTTPS."
+  },
+  "Loading…": {
+    "en": "Loading…",
+    "zh-CN": "正在加载…",
+    "ko": "불러오는 중…",
+    "ja": "読み込み中…",
+    "fr": "Chargement…",
+    "es": "Cargando…"
+  },
+  "Open Inspector": {
+    "en": "Open Inspector",
+    "zh-CN": "打开 Inspector",
+    "ko": "Inspector 열기",
+    "ja": "Inspector を開く",
+    "fr": "Ouvrir Inspector",
+    "es": "Abrir Inspector"
+  },
+  "Quick debug": {
+    "en": "Quick debug",
+    "zh-CN": "快捷调试",
+    "ko": "빠른 디버깅",
+    "ja": "クイックデバッグ",
+    "fr": "Débogage rapide",
+    "es": "Depuración rápida"
+  },
+  "This session": {
+    "en": "This session",
+    "zh-CN": "本次会话",
+    "ko": "현재 세션",
+    "ja": "このセッション",
+    "fr": "Cette session",
+    "es": "Esta sesión"
+  },
+  "Quick controls start the proxy. Chrome shows a debugging banner.": {
+    "en": "Quick controls start the proxy. Chrome shows a debugging banner.",
+    "zh-CN": "启用快捷功能会连接代理，Chrome 将显示调试提示。",
+    "ko": "빠른 제어를 켜면 프록시가 시작되고 Chrome에 디버깅 배너가 표시됩니다.",
+    "ja": "クイック操作を有効にするとプロキシが起動し、Chrome にデバッグ通知が表示されます。",
+    "fr": "Ces commandes démarrent le proxy. Chrome affiche une bannière de débogage.",
+    "es": "Estos controles inician el proxy. Chrome muestra un aviso de depuración."
+  },
+  "Quick controls start interception for this tab.": {
+    "en": "Quick controls start interception for this tab.",
+    "zh-CN": "启用快捷功能会开始拦截当前标签页的请求。",
+    "ko": "빠른 제어를 켜면 현재 탭의 요청 가로채기가 시작됩니다.",
+    "ja": "クイック操作でこのタブのリクエストの傍受を開始します。",
+    "fr": "Ces commandes démarrent l’interception pour cet onglet.",
+    "es": "Estos controles inician la interceptación en esta pestaña."
+  },
+  "CORS repair": {
+    "en": "CORS repair",
+    "zh-CN": "CORS 修复",
+    "ko": "CORS 수정",
+    "ja": "CORS 修正",
+    "fr": "Correction CORS",
+    "es": "Corrección CORS"
+  },
+  "Allow cross-origin API requests": {
+    "en": "Allow cross-origin API requests",
+    "zh-CN": "允许跨域 API 请求",
+    "ko": "교차 출처 API 요청 허용",
+    "ja": "クロスオリジン API リクエストを許可",
+    "fr": "Autoriser les requêtes API cross-origin",
+    "es": "Permitir solicitudes API entre orígenes"
+  },
+  "CORS options": {
+    "en": "CORS options",
+    "zh-CN": "CORS 选项",
+    "ko": "CORS 옵션",
+    "ja": "CORS オプション",
+    "fr": "Options CORS",
+    "es": "Opciones CORS"
+  },
+  "Firefox patches headers; failed preflights may still fail.": {
+    "en": "Firefox patches headers; failed preflights may still fail.",
+    "zh-CN": "Firefox 仅修改响应头，失败的预检仍可能无法通过。",
+    "ko": "Firefox는 헤더를 수정하며 실패한 사전 요청은 계속 실패할 수 있습니다.",
+    "ja": "Firefox はヘッダーを修正しますが、失敗したプリフライトは解決しない場合があります。",
+    "fr": "Firefox modifie les en-têtes ; les prérequêtes peuvent toujours échouer.",
+    "es": "Firefox modifica cabeceras; las solicitudes previas pueden seguir fallando."
+  },
+  "Request delay": {
+    "en": "Request delay",
+    "zh-CN": "请求延迟",
+    "ko": "요청 지연",
+    "ja": "リクエスト遅延",
+    "fr": "Délai des requêtes",
+    "es": "Retardo de solicitudes"
+  },
+  "Delay duration": {
+    "en": "Delay duration",
+    "zh-CN": "延迟时长",
+    "ko": "지연 시간",
+    "ja": "遅延時間",
+    "fr": "Durée du délai",
+    "es": "Duración del retardo"
+  },
+  "Simulate failure": {
+    "en": "Simulate failure",
+    "zh-CN": "模拟请求失败",
+    "ko": "실패 시뮬레이션",
+    "ja": "失敗をシミュレート",
+    "fr": "Simuler un échec",
+    "es": "Simular un fallo"
+  },
+  "Fail Fetch / XHR requests": {
+    "en": "Fail Fetch / XHR requests",
+    "zh-CN": "使 Fetch / XHR 请求失败",
+    "ko": "Fetch / XHR 요청 실패 처리",
+    "ja": "Fetch / XHR リクエストを失敗させる",
+    "fr": "Faire échouer les requêtes Fetch / XHR",
+    "es": "Hacer fallar solicitudes Fetch / XHR"
+  },
+  "Cleared on stop, tab close, or navigation to another origin.": {
+    "en": "Cleared on stop, tab close, or navigation to another origin.",
+    "zh-CN": "停止会话、关闭标签页或切换到其他源时清除。",
+    "ko": "중지, 탭 닫기 또는 다른 출처로 이동 시 초기화됩니다.",
+    "ja": "停止、タブを閉じる、別のオリジンに移動すると解除されます。",
+    "fr": "Réinitialisé à l’arrêt, à la fermeture de l’onglet ou au changement d’origine.",
+    "es": "Se borra al detener, cerrar la pestaña o cambiar de origen."
+  },
+  "Pinned rules": {
+    "en": "Pinned rules",
+    "zh-CN": "固定规则",
+    "ko": "고정된 규칙",
+    "ja": "固定したルール",
+    "fr": "Règles épinglées",
+    "es": "Reglas fijadas"
+  },
+  "Manage rules": {
+    "en": "Manage rules",
+    "zh-CN": "管理规则",
+    "ko": "규칙 관리",
+    "ja": "ルールを管理",
+    "fr": "Gérer les règles",
+    "es": "Gestionar reglas"
+  },
+  "Pin a saved Mock, Header, or Redirect rule for quick access.": {
+    "en": "Pin a saved Mock, Header, or Redirect rule for quick access.",
+    "zh-CN": "固定已保存的 Mock、Header 或 Redirect 规则，便于快速切换。",
+    "ko": "저장된 Mock, Header 또는 Redirect 규칙을 고정해 빠르게 사용하세요.",
+    "ja": "保存した Mock、Header、Redirect ルールを固定して素早く切り替えられます。",
+    "fr": "Épinglez une règle Mock, Header ou Redirect enregistrée pour un accès rapide.",
+    "es": "Fija una regla Mock, Header o Redirect guardada para acceder rápidamente."
+  },
+  "Choose pinned rules": {
+    "en": "Choose pinned rules",
+    "zh-CN": "选择固定规则",
+    "ko": "고정할 규칙 선택",
+    "ja": "固定するルールを選択",
+    "fr": "Choisir les règles à épingler",
+    "es": "Elegir reglas para fijar"
+  },
+  "Pin {name}": {
+    "en": "Pin {name}",
+    "zh-CN": "固定 {name}",
+    "ko": "{name} 고정",
+    "ja": "{name} を固定",
+    "fr": "Épingler {name}",
+    "es": "Fijar {name}"
+  },
+  "Unpin {name}": {
+    "en": "Unpin {name}",
+    "zh-CN": "取消固定 {name}",
+    "ko": "{name} 고정 해제",
+    "ja": "{name} の固定を解除",
+    "fr": "Désépingler {name}",
+    "es": "Desfijar {name}"
+  },
+  "Existing site CORS rules": {
+    "en": "Existing site CORS rules",
+    "zh-CN": "已有站点 CORS 规则",
+    "ko": "기존 사이트 CORS 규칙",
+    "ja": "既存のサイト CORS ルール",
+    "fr": "Règles CORS existantes du site",
+    "es": "Reglas CORS existentes del sitio"
+  },
+  "Persistent · across tabs": {
+    "en": "Persistent · across tabs",
+    "zh-CN": "持久规则 · 跨标签页",
+    "ko": "지속 규칙 · 여러 탭",
+    "ja": "永続ルール · タブ間で適用",
+    "fr": "Persistante · plusieurs onglets",
+    "es": "Persistente · entre pestañas"
+  },
+  "Saved · proxy active": {
+    "en": "Saved · proxy active",
+    "zh-CN": "已保存 · 代理已连接",
+    "ko": "저장됨 · 프록시 활성",
+    "ja": "保存済み · プロキシ接続中",
+    "fr": "Enregistrée · proxy actif",
+    "es": "Guardada · proxy activo"
+  },
+  "Saved · needs proxy": {
+    "en": "Saved · needs proxy",
+    "zh-CN": "已保存 · 需要连接代理",
+    "ko": "저장됨 · 프록시 필요",
+    "ja": "保存済み · プロキシが必要",
+    "fr": "Enregistrée · proxy requis",
+    "es": "Guardada · requiere proxy"
+  },
+  "Stop this session": {
+    "en": "Stop this session",
+    "zh-CN": "停止本次会话",
+    "ko": "현재 세션 중지",
+    "ja": "このセッションを停止",
+    "fr": "Arrêter cette session",
+    "es": "Detener esta sesión"
+  },
+  "Start proxy session": {
+    "en": "Start proxy session",
+    "zh-CN": "开始代理会话",
+    "ko": "프록시 세션 시작",
+    "ja": "プロキシセッションを開始",
+    "fr": "Démarrer une session proxy",
+    "es": "Iniciar sesión de proxy"
+  },
+  "{count} saved rules enabled for this site. Stopping clears only session controls.": {
+    "en": "{count} saved rules enabled for this site. Stopping clears only session controls.",
+    "zh-CN": "本站有 {count} 条已保存规则处于启用状态。停止仅清除会话控制。",
+    "ko": "이 사이트에 저장된 규칙 {count}개가 활성화되어 있습니다. 중지하면 세션 제어만 초기화됩니다.",
+    "ja": "このサイトで保存済みルール {count} 件が有効です。停止するとセッション操作のみ解除されます。",
+    "fr": "{count} règles enregistrées activées pour ce site. L’arrêt efface seulement les contrôles de session.",
+    "es": "{count} reglas guardadas activadas para este sitio. Detener solo borra los controles de sesión."
+  },
+  "Invalid quick controls.": {
+    "en": "Invalid quick controls.",
+    "zh-CN": "快捷控制参数无效。",
+    "ko": "빠른 제어 값이 올바르지 않습니다.",
+    "ja": "クイック操作の値が無効です。",
+    "fr": "Commandes rapides invalides.",
+    "es": "Controles rápidos no válidos."
+  },
+  "Start a proxy session first.": {
+    "en": "Start a proxy session first.",
+    "zh-CN": "请先开始代理会话。",
+    "ko": "먼저 프록시 세션을 시작하세요.",
+    "ja": "先にプロキシセッションを開始してください。",
+    "fr": "Démarrez d’abord une session proxy.",
+    "es": "Inicia primero una sesión de proxy."
+  },
+  "Unable to start proxy session.": {
+    "en": "Unable to start proxy session.",
+    "zh-CN": "无法开始代理会话。",
+    "ko": "프록시 세션을 시작할 수 없습니다.",
+    "ja": "プロキシセッションを開始できません。",
+    "fr": "Impossible de démarrer la session proxy.",
+    "es": "No se pudo iniciar la sesión de proxy."
   }
 };

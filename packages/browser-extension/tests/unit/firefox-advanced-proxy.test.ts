@@ -37,7 +37,7 @@ function state(actions: IProxyAction[]): IProxyAppState {
       autoCleanupDays: 30,
     },
     profiles: [],
-    rules: [rule(actions)],
+    rules: actions.length ? [rule(actions)] : [],
     migration: { source: 'fresh-install', migratedAt: 1 },
   };
 }
@@ -91,7 +91,7 @@ describe('Firefox WebRequest interception engine', () => {
         { type: 'setResponseHeaders', headers: { 'X-Forth': 'response' } },
       ]),
     });
-    await engine.enableAdvancedProxy(8);
+    await engine.enableAdvancedProxy(8, { quickControls: { cors: true, credentials: false, delayMs: 0, failure: false } });
     const details = requestDetails(8, 'headers');
     await listener(browser.webRequest.onBeforeRequest)(details);
 
@@ -216,5 +216,41 @@ describe('Firefox WebRequest interception engine', () => {
 
     expect(result).toEqual({});
     expect(browser.webRequest.filterResponseData).toHaveBeenCalledWith('precedence');
+  });
+});
+
+
+describe('Firefox session controls', () => {
+  it('observes without changing CORS and confines quick failure to one tab and API traffic', async () => {
+    vi.mocked(browser.storage.local.get).mockResolvedValue({ proxyAppState: state([]) });
+    await engine.enableAdvancedProxy(31);
+    const details = requestDetails(31, 'observe');
+    await listener(browser.webRequest.onBeforeRequest)(details);
+    expect(listener(browser.webRequest.onHeadersReceived)({ ...details, responseHeaders: [], statusCode: 200 }).responseHeaders).toEqual([]);
+    await engine.updateQuickControls(31, { cors: false, credentials: false, delayMs: 0, failure: true });
+    expect(await listener(browser.webRequest.onBeforeRequest)(requestDetails(31, 'fail'))).toEqual({ cancel: true });
+    expect(await listener(browser.webRequest.onBeforeRequest)({ ...requestDetails(31, 'image'), type: 'image' })).toEqual({});
+    expect(await listener(browser.webRequest.onBeforeRequest)(requestDetails(32, 'other-tab'))).toEqual({});
+    await engine.disableAdvancedProxy(31);
+    await engine.enableAdvancedProxy(31);
+    expect(engine.getAdvancedProxyStatus(31).quickControls?.failure).toBe(false);
+    expect(await listener(browser.webRequest.onBeforeRequest)(requestDetails(31, 'restored'))).toEqual({});
+  });
+
+  it('does not apply pending failure after stopping a delayed session', async () => {
+    vi.mocked(browser.storage.local.get).mockResolvedValue({ proxyAppState: state([]) });
+    await engine.enableAdvancedProxy(33, { quickControls: { cors: false, credentials: false, delayMs: 500, failure: true } });
+    const pending = listener(browser.webRequest.onBeforeRequest)(requestDetails(33, 'pending'));
+    await engine.disableAdvancedProxy(33);
+    expect(await pending).toEqual({});
+    await expect(engine.updateQuickControls(33, { cors: true, credentials: false, delayMs: 0, failure: false })).rejects.toThrow('Start a proxy session first.');
+  });
+
+  it('clears quick controls on cross-origin navigation', async () => {
+    vi.mocked(browser.storage.local.get).mockResolvedValue({ proxyAppState: state([]) });
+    await engine.enableAdvancedProxy(34, { quickControls: { cors: true, credentials: false, delayMs: 0, failure: false } });
+    const onUpdated = browser.tabs.onUpdated.addListener.mock.calls[0][0];
+    onUpdated(34, { url: 'http://other.localhost:3000/' });
+    expect(engine.getAdvancedProxyStatus(34).phase).toBe('disabled');
   });
 });

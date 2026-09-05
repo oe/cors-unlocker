@@ -15,6 +15,23 @@ No native client is required. Chrome Advanced mode uses Chrome DevTools Protocol
 - **Local-only operation** — rules and logs stay in the extension; logs are held in memory and cleared when the service worker stops.
 - **Safe v1 upgrade** — the first 2.0 startup migrates `allowedOrigins` and `extConfig` into the v2 schema and stores a recovery snapshot. After migration, v2 storage is the only source of truth.
 
+## Popup debugging controls
+
+The popup is a developer control surface for the current tab, with an Inspector entry point,
+CORS repair, Fetch/XHR delay (500 ms, 1 s, or 3 s), and simulated Fetch/XHR failures.
+Enabling a quick control starts a proxy session explicitly; Chrome displays its debugging banner.
+Connecting the proxy alone observes traffic and applies enabled saved rules, without automatically
+repairing CORS. Cross-origin mocks need a matching CORS rule/control or appropriate mock headers.
+
+Quick controls live only in the background session and reset on stop, tab close, or cross-origin
+navigation. They never create persistent rules. Existing CORS site rules remain available separately;
+turning off session CORS does not disable an independently enabled site rule.
+
+Saved rules can be pinned to the popup. Pinning only changes the shortcut list; toggling a pinned
+rule changes its saved enabled state. Header/redirect/block rules can continue across tabs through
+DNR. Mocks, delays, failures, and advanced CORS need an active proxy session. Stopping a session
+clears temporary controls without disabling saved rules. Browser-specific interception limits still apply.
+
 ## Architecture
 
 The extension UI supports English, Simplified Chinese, Korean, Japanese, French and Spanish. It follows the browser language by default, falling back to English. The language selector in the settings header updates the options page, popup and Site controls, including other open surfaces, without discarding drafts. The preference is saved locally as `uiLanguage`, separately from portable rule configuration and v1 migration. Rule names, URLs, HTTP/CDP identifiers and raw browser diagnostics are not translated. Website and store listing localization are separate work.

@@ -10,6 +10,7 @@ import {
   type ProxyHeaderMap,
 } from '@/common/proxy-state';
 import { normalizeResourceType } from '@/common/request-match';
+import { EMPTY_QUICK_CONTROLS, parseQuickControls, quickControlRules, type QuickControls } from '@/common/quick-controls';
 
 const PROTOCOL_VERSION = '1.3';
 
@@ -20,6 +21,7 @@ export interface IAdvancedProxyStatus {
   phase: AdvancedProxyPhase;
   origin?: string;
   error?: string;
+  quickControls?: QuickControls;
 }
 
 export interface IRequestLogEntry {
@@ -42,8 +44,7 @@ export interface IRequestLogEntry {
 
 interface IAdvancedProxySession {
   origin: string;
-  credentials: boolean;
-  extraHeaders?: string;
+  quickControls: QuickControls;
 }
 
 interface IHeaderEntry {
@@ -94,7 +95,7 @@ function globMatches(pattern: string, value: string): boolean {
 function matchingRules(session: IAdvancedProxySession, params: IRequestPausedParams): IProxyRule[] {
   const method = params.request.method.toUpperCase();
   const resourceType = normalizeResourceType(params.resourceType);
-  return cachedRules.filter((rule) => rule.enabled
+  return [...quickControlRules(session.origin, session.quickControls), ...cachedRules].filter((rule) => rule.enabled
     && rule.match.initiatorOrigins.some((origin) => origin === '*' || origin === session.origin)
     && globMatches(rule.match.urlPattern, params.request.url)
     && (!rule.match.methods?.length || rule.match.methods.includes(method))
@@ -169,17 +170,18 @@ function upsertHeader(
 function createCorsHeaders(
   session: IAdvancedProxySession,
   requestHeaders: Record<string, string>,
+  cors: Extract<IProxyAction, { type: 'cors' }>,
 ): IHeaderEntry[] {
   const requestOrigin = getHeader(requestHeaders, 'origin') || session.origin;
   const requestedMethod = getHeader(requestHeaders, 'access-control-request-method');
   const requestedHeaders = getHeader(requestHeaders, 'access-control-request-headers');
   const headers: IHeaderEntry[] = [
-    { name: 'Access-Control-Allow-Origin', value: session.credentials ? requestOrigin : '*' },
-    { name: 'Access-Control-Allow-Methods', value: requestedMethod || 'GET, POST, PUT, DELETE, OPTIONS, PATCH' },
-    { name: 'Access-Control-Allow-Headers', value: requestedHeaders || mergeHeaders(session.extraHeaders).join(', ') },
+    { name: 'Access-Control-Allow-Origin', value: (cors.allowCredentials || cors.allowOrigin === 'initiator') ? requestOrigin : '*' },
+    { name: 'Access-Control-Allow-Methods', value: requestedMethod || cors.allowMethods.join(', ') },
+    { name: 'Access-Control-Allow-Headers', value: requestedHeaders || mergeHeaders(cors.allowHeaders.join(',')).join(', ') },
     { name: 'Access-Control-Max-Age', value: '600' },
   ];
-  if (session.credentials) {
+  if (cors.allowCredentials) {
     headers.push({ name: 'Access-Control-Allow-Credentials', value: 'true' });
   }
   return headers;
@@ -221,6 +223,7 @@ async function handleRequestPaused(tabId: number, params: IRequestPausedParams) 
   const isResponseStage = typeof params.responseStatusCode === 'number';
   const rules = matchingRules(session, params);
   const actions = allActions(rules);
+  const cors = actionOfType(actions, 'cors');
   const entry = isResponseStage
     ? requestIndexes.get(`${tabId}:${params.requestId}`)
     : recordRequest(tabId, params, rules);
@@ -237,6 +240,8 @@ async function handleRequestPaused(tabId: number, params: IRequestPausedParams) 
       ));
       entry?.changes?.push({ label: 'Delay', after: `${Math.min(Math.max(delayAction.milliseconds, 0), 30_000)} ms` });
     }
+
+    if (sessions.get(tabId) !== session) return;
 
     if (actionOfType(actions, 'block')) {
       await chrome.debugger.sendCommand({ tabId }, 'Fetch.failRequest', {
@@ -268,7 +273,7 @@ async function handleRequestPaused(tabId: number, params: IRequestPausedParams) 
     if (mockAction) {
       const mockHeaders = {
         'Content-Type': 'application/json; charset=utf-8',
-        ...headersToMap(createCorsHeaders(session, params.request.headers)),
+        ...(cors ? headersToMap(createCorsHeaders(session, params.request.headers, cors)) : {}),
         ...mockAction.headers,
       };
       await chrome.debugger.sendCommand({ tabId }, 'Fetch.fulfillRequest', {
@@ -289,12 +294,12 @@ async function handleRequestPaused(tabId: number, params: IRequestPausedParams) 
     }
   }
 
-  if (isCorsPreflight) {
+  if (isCorsPreflight && cors) {
     await chrome.debugger.sendCommand({ tabId }, 'Fetch.fulfillRequest', {
       requestId: params.requestId,
       responseCode: 204,
       responsePhrase: 'No Content',
-      responseHeaders: createCorsHeaders(session, params.request.headers),
+      responseHeaders: createCorsHeaders(session, params.request.headers, cors),
     });
     if (entry) {
       entry.status = 204;
@@ -332,7 +337,7 @@ async function handleRequestPaused(tabId: number, params: IRequestPausedParams) 
   }
 
   const shouldPatchResponse = isResponseStage
-    && (params.resourceType === 'XHR' || params.resourceType === 'Fetch');
+    && (!!cors || actions.some((action) => action.type === 'setResponseHeaders'));
   if (!shouldPatchResponse) {
     updateRequestLog(tabId, params, 'continued');
     await continueUnchanged(tabId, params.requestId);
@@ -341,7 +346,7 @@ async function handleRequestPaused(tabId: number, params: IRequestPausedParams) 
   }
 
   let headers = params.responseHeaders || [];
-  for (const header of createCorsHeaders(session, params.request.headers)) {
+  for (const header of cors ? createCorsHeaders(session, params.request.headers, cors) : []) {
     headers = upsertHeader(headers, header.name, header.value);
   }
   const responseHeaderActions = actions.filter(
@@ -366,7 +371,7 @@ async function handleRequestPaused(tabId: number, params: IRequestPausedParams) 
       if (getHeader(original, name) !== value) entry?.changes?.push({ label: `Response header: ${name}`, before: redactHeaders({ [name]: getHeader(original, name) || '(absent)' })[name], after: redactHeaders({ [name]: value })[name] });
     }
     const logged = requestIndexes.get(`${tabId}:${params.requestId}`);
-    logged?.diagnostics.push('CORS response headers were repaired before browser enforcement.');
+    if (cors) logged?.diagnostics.push('CORS response headers were repaired before browser enforcement.');
   } catch (error) {
     logger.warn('Unable to patch response headers, continuing unchanged:', error);
     await continueUnchanged(tabId, params.requestId);
@@ -438,11 +443,12 @@ if (__TARGET__ === 'chrome') {
 
 export async function enableAdvancedProxy(
   tabId: number,
-  options: { credentials?: boolean; extraHeaders?: string } = {},
+  options: { quickControls?: QuickControls } = {},
 ): Promise<IAdvancedProxyStatus> {
   if (__TARGET__ !== 'chrome') {
     return { tabId, phase: 'error', error: 'Advanced proxy is currently available in Chrome only.' };
   }
+  const quickControls = options.quickControls ? parseQuickControls(options.quickControls) : { ...EMPTY_QUICK_CONTROLS };
   const tab = await browser.tabs.get(tabId);
   if (!tab.url) throw new Error('The active tab URL is unavailable.');
   const url = new URL(tab.url);
@@ -457,8 +463,7 @@ export async function enableAdvancedProxy(
     await chrome.debugger.attach({ tabId }, PROTOCOL_VERSION);
     sessions.set(tabId, {
       origin: url.origin,
-      credentials: !!options.credentials,
-      extraHeaders: options.extraHeaders,
+      quickControls,
     });
     await chrome.debugger.sendCommand({ tabId }, 'Fetch.enable', {
       patterns: [
@@ -466,7 +471,7 @@ export async function enableAdvancedProxy(
         { urlPattern: '*', requestStage: 'Response' },
       ],
     });
-    const status = { tabId, phase: 'connected', origin: url.origin } satisfies IAdvancedProxyStatus;
+    const status = { tabId, phase: 'connected', origin: url.origin, quickControls } satisfies IAdvancedProxyStatus;
     await notifyStatus(status);
     return status;
   } catch (error) {
@@ -481,6 +486,16 @@ export async function enableAdvancedProxy(
     await notifyStatus(status);
     return status;
   }
+}
+
+export async function updateQuickControls(tabId: number, value: unknown): Promise<IAdvancedProxyStatus> {
+  const quickControls = parseQuickControls(value);
+  const session = sessions.get(tabId);
+  if (!session) throw new Error('Start a proxy session first.');
+  session.quickControls = quickControls;
+  const status = { tabId, phase: 'connected', origin: session.origin, quickControls } satisfies IAdvancedProxyStatus;
+  await notifyStatus(status);
+  return status;
 }
 
 export async function disableAdvancedProxy(tabId: number): Promise<IAdvancedProxyStatus> {

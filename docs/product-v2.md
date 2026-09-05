@@ -2,7 +2,7 @@
 
 ## Decision
 
-The product is **Forth Intercept**, described as **a browser-native request lab** for Chrome and Firefox.
+The product is **Forth Intercept**, described as **an in-browser proxy for developers** for Chrome and Firefox.
 
 “Browser Proxy” is not the brand. It is too generic, overlaps with IP/VPN proxy products, and incorrectly suggests system-wide routing. “Forth Intercept” is tied to the existing forth.ink identity while describing what the extension actually does: intercept and patch request behavior inside a browser tab.
 
@@ -78,3 +78,15 @@ Before expanding breadth, validate:
 - demand for request/response body transforms and reusable profiles.
 
 Do not add cloud sync, team collaboration, arbitrary scripts, or a native client until real usage proves they are worth the additional trust and maintenance surface.
+
+## Product family and popup boundary
+
+RequestOrbit serves ordinary users who want to DIY link redirects: source URL, destination URL,
+examples, and a safe way to test the result. Forth Intercept serves developers reproducing API
+behavior inside a browser tab. Intercept is a browser request proxy, not an IP proxy or a system VPN.
+
+Its popup prioritizes the current tab, Inspector, and session-only quick controls. CORS is one
+capability alongside API delay and failure simulation. Configurable mocks, headers, and redirects
+become shortcuts by pinning named saved rules, not by adding ambiguous category-wide toggles.
+Persistent site rules are labeled separately and remain unchanged when a debugging session stops.
+Cache control is deferred until its browser-specific behavior has been implemented and verified.
