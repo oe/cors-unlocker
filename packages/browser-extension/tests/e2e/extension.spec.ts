@@ -878,3 +878,47 @@ test('activity empty states replace rows cleanly after reconnecting and filterin
   expect(errors).toEqual([]);
   await panel.close(); await target.close();
 });
+
+test('reloading from the extensions manager releases active proxy sessions', async () => {
+  const target = await context.newPage();
+  await target.goto('http://reload.localhost:3000/');
+  const tabId = await getTabId('http://reload.localhost:3000/');
+  const original = await worker.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState);
+  const manager = await context.newPage();
+  await manager.goto('chrome://extensions');
+  if (await manager.locator('#devMode').getAttribute('aria-pressed') !== 'true') {
+    await manager.locator('#devMode').click();
+  }
+  for (const mode of ['observe', 'cache', 'pending', 'cors']) {
+    const status = await control.evaluate(async ({ tabId, mode }) => chrome.runtime.sendMessage({
+      type: 'enableAdvancedProxy', payload: { tabId, quickControls: {
+        cors: mode === 'cors', credentials: false, delayMs: mode === 'pending' ? 3000 : 0,
+        failure: false, disableCache: mode === 'cache',
+      } },
+    }), { tabId, mode });
+    expect(status.phase).toBe('connected');
+    const popup = await context.newPage();
+    await popup.goto(`chrome-extension://${extensionId}/src/popup/index.html?tabId=${tabId}`);
+    await popup.getByRole('button', { name: 'Open Inspector' }).click();
+    await target.bringToFront();
+    await target.evaluate(() => { void fetch('/health').catch(() => undefined); });
+    await expect.poll(() => control.evaluate(async (id) => {
+      const log = await chrome.runtime.sendMessage({ type: 'getAdvancedProxyLog', payload: { tabId: id } });
+      return log.some((entry: any) => entry.url.endsWith('/health'));
+    }, tabId)).toBe(true);
+    await manager.bringToFront();
+    await manager.locator('extensions-item').locator('#dev-reload-button').click();
+    await expect.poll(() => target.evaluate(async () => (await fetch('/health')).ok).catch(() => false)).toBe(true);
+    await control.close();
+    control = await context.newPage();
+    await expect(async () => {
+      await control.goto(`chrome-extension://${extensionId}/src/options/index.html`);
+      await expect(control.getByRole('button', { name: 'New rule', exact: true })).toBeVisible();
+    }).toPass({ timeout: 10_000 });
+    worker = await currentWorker();
+    const state = await control.evaluate(async (id) => chrome.runtime.sendMessage({ type: 'getAdvancedProxyStatus', payload: { tabId: id } }), tabId);
+    expect(state.phase).toBe('disabled');
+    expect(await worker.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState)).toEqual(original);
+  }
+  await manager.close(); await target.close();
+});
