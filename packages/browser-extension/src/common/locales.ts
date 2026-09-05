@@ -2375,5 +2375,45 @@ export const messages: Record<string, Record<string, string>> = {
     "ja": "このタブの HTTP キャッシュを回避します。保存データの削除や Service Worker の回避は行いません。",
     "fr": "Contourne le cache HTTP de cet onglet, sans effacer les données ni contourner les service workers.",
     "es": "Omite la caché HTTP de esta pestaña sin borrar datos ni omitir service workers."
+  },
+  "No requests match this filter.": {
+    "en": "No requests match this filter.",
+    "zh-CN": "没有符合筛选条件的请求。",
+    "ko": "필터에 맞는 요청이 없습니다.",
+    "ja": "このフィルターに一致するリクエストはありません。",
+    "fr": "Aucune requête ne correspond à ce filtre.",
+    "es": "Ninguna solicitud coincide con este filtro."
+  },
+  "No activity recorded yet.": {
+    "en": "No activity recorded yet.",
+    "zh-CN": "尚未记录请求。",
+    "ko": "아직 기록된 요청이 없습니다.",
+    "ja": "まだリクエストは記録されていません。",
+    "fr": "Aucune requête enregistrée pour le moment.",
+    "es": "Todavía no hay solicitudes registradas."
+  },
+  "Clear filter": {
+    "en": "Clear filter",
+    "zh-CN": "清除筛选",
+    "ko": "필터 지우기",
+    "ja": "フィルターをクリア",
+    "fr": "Effacer le filtre",
+    "es": "Borrar filtro"
+  },
+  "Trigger a request on the page to see it here.": {
+    "en": "Trigger a request on the page to see it here.",
+    "zh-CN": "在页面中触发请求，即可在这里查看。",
+    "ko": "페이지에서 요청을 실행하면 여기에 표시됩니다.",
+    "ja": "ページでリクエストを発生させると、ここに表示されます。",
+    "fr": "Déclenchez une requête sur la page pour la voir ici.",
+    "es": "Genera una solicitud en la página para verla aquí."
+  },
+  "Start the proxy to record requests from this tab.": {
+    "en": "Start the proxy to record requests from this tab.",
+    "zh-CN": "启动代理以记录当前标签页的请求。",
+    "ko": "프록시를 시작해 현재 탭의 요청을 기록하세요.",
+    "ja": "プロキシを開始して、このタブのリクエストを記録します。",
+    "fr": "Démarrez le proxy pour enregistrer les requêtes de cet onglet.",
+    "es": "Inicia el proxy para registrar solicitudes de esta pestaña."
   }
 };

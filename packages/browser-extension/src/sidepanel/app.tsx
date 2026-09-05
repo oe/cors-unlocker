@@ -37,7 +37,6 @@ function App() {
   const [status, setStatus] = useState<IAdvancedProxyStatus | null>(null);
   const [entries, setEntries] = useState<IRequestLogEntry[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const selected = entries.find((entry) => entry.id === selectedId);
   const [rules, setRules] = useState<IProxyRule[]>([]);
   const [draft, setDraft] = useState<RuleDraft | null>(null);
   const [busy, setBusy] = useState(false);
@@ -132,6 +131,7 @@ function App() {
       ? entries.filter((entry) => `${entry.method} ${entry.url} ${entry.status || ''}`.toLowerCase().includes(query))
       : entries;
   }, [entries, search]);
+  const selected = filtered.find((entry) => entry.id === selectedId);
 
   const toggle = async (enabled: boolean) => {
     if (tabId === null) return;
@@ -222,27 +222,37 @@ function App() {
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-2 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input className="pl-8" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("Filter URL, method, status")} />
+          <Input aria-label={t("Filter URL, method, status")} className="pl-8" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("Filter URL, method, status")} />
         </div>
         <Button size="icon" variant="outline" onClick={clear} aria-label={t("Clear requests")}><Eraser /></Button>
       </div>
 
-      <ScrollArea className="h-64 rounded-lg border">
-        <div className="flex flex-col">
-          {filtered.map((entry) => (
-            <button key={entry.id} className="flex items-center gap-2 p-2 text-left hover:bg-muted" onClick={() => setSelectedId(entry.id)}>
-              <Badge variant="secondary">{entry.method}</Badge>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-medium">{entry.url}</p>
-                <p className="text-xs text-muted-foreground">{entry.resourceType} · {entry.duration ?? 0} ms</p>
-              </div>
-              <Badge variant={statusVariant(entry)}>{entry.status || t(entry.outcome)}</Badge>
-            </button>
-          ))}
-          {filtered.length === 0 ? (
-            <div className="flex min-h-40 items-center justify-center text-sm text-muted-foreground">{t("No matching activity. Connect advanced proxy, then trigger a request on the page.")}</div>
-          ) : null}
-        </div>
+      <ScrollArea className="h-64 rounded-lg border" aria-label={t('Recent activity')}>
+        {filtered.length > 0 ? (
+          <div key="activity-rows" className="flex flex-col gap-1 p-2">
+            {filtered.map((entry) => (
+              <button key={entry.id} aria-pressed={selectedId === entry.id} className="flex items-center gap-2 rounded-md p-2.5 text-left hover:bg-muted aria-pressed:bg-muted focus-visible:outline-2 focus-visible:outline-ring" onClick={() => setSelectedId(entry.id)}>
+                <Badge variant="secondary">{entry.method}</Badge>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-medium">{entry.url}</p>
+                  <p className="text-xs text-muted-foreground">{entry.resourceType} · {entry.duration ?? 0} ms</p>
+                </div>
+                <Badge variant={statusVariant(entry)}>{entry.status || t(entry.outcome)}</Badge>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div key="activity-empty" role="status" className="flex min-h-60 flex-col items-center justify-center gap-2 p-6 text-center text-sm text-muted-foreground">
+            <p>{t(entries.length > 0 ? 'No requests match this filter.' : 'No activity recorded yet.')}</p>
+            {entries.length > 0 ? (
+              <Button size="sm" variant="ghost" onClick={() => setSearch('')}>{t('Clear filter')}</Button>
+            ) : (
+              <p className="text-xs leading-relaxed">{t(status?.phase === 'connected'
+                ? 'Trigger a request on the page to see it here.'
+                : 'Start the proxy to record requests from this tab.')}</p>
+            )}
+          </div>
+        )}
       </ScrollArea>
 
       {selected ? (

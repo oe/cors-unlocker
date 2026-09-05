@@ -827,3 +827,54 @@ test('disable cache bypasses real HTTP cache for one tab and restores it on stop
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   }
 });
+
+test('activity empty states replace rows cleanly after reconnecting and filtering', async () => {
+  const target = await context.newPage();
+  await target.goto('http://activity.localhost:3000/');
+  const tabId = await getTabId('http://activity.localhost:3000/');
+  const panel = await context.newPage();
+  const errors: string[] = [];
+  panel.on('pageerror', (error) => errors.push(error.message));
+  await panel.setViewportSize({ width: 360, height: 800 });
+  await panel.goto(`chrome-extension://${extensionId}/src/sidepanel/index.html?tabId=${tabId}`);
+  const activity = panel.locator('[data-slot="scroll-area"]');
+  const empty = activity.getByRole('status');
+  await expect(empty).toContainText('No activity recorded yet.');
+  expect(await empty.evaluate((element) => getComputedStyle(element).paddingLeft)).toBe('24px');
+  const toggle = panel.getByRole('switch', { name: 'Toggle advanced proxy' });
+  for (let pass = 0; pass < 2; pass++) {
+    await toggle.click();
+    await expect(toggle).toBeChecked();
+    await target.evaluate(async () => { await fetch('/health'); });
+    await expect(panel.getByRole('button', { name: /GET.*activity.localhost:3000\/health/ }).first()).toBeVisible();
+    await toggle.click();
+    await expect(toggle).not.toBeChecked();
+  }
+  const logs = await control.evaluate(async (id) => chrome.runtime.sendMessage({ type: 'getAdvancedProxyLog', payload: { tabId: id } }), tabId);
+  expect(new Set(logs.map((entry: any) => entry.id)).size).toBe(logs.length);
+  await expect(empty).toHaveCount(0);
+  const firstRow = panel.getByRole('button', { name: /GET.*activity.localhost:3000\/health/ }).first();
+  await firstRow.click();
+  await expect(panel.getByText('Check against current rules', { exact: true })).toBeVisible();
+  const listBox = (await activity.boundingBox())!;
+  const rowBox = (await firstRow.boundingBox())!;
+  expect(rowBox.x - listBox.x).toBeGreaterThanOrEqual(8);
+  expect(rowBox.y - listBox.y).toBeGreaterThanOrEqual(8);
+  await activity.screenshot({ path: '/tmp/intercept-activity-populated.png' });
+  await panel.getByPlaceholder('Filter URL, method, status').fill('no-such-request');
+  await expect(empty).toContainText('No requests match this filter.');
+  await expect(panel.getByText('Check against current rules', { exact: true })).toHaveCount(0);
+  await activity.screenshot({ path: '/tmp/intercept-activity-filter.png' });
+  await expect(panel.getByRole('button', { name: /GET.*activity.localhost:3000\/health/ })).toHaveCount(0);
+  await activity.getByRole('button', { name: 'Clear filter', exact: true }).click();
+  await expect(empty).toHaveCount(0);
+  await expect(panel.getByRole('button', { name: /GET.*activity.localhost:3000\/health/ })).toHaveCount(2);
+  await panel.getByRole('button', { name: 'Clear requests' }).click();
+  await expect(empty).toContainText('No activity recorded yet.');
+  await expect(activity.getByRole('button')).toHaveCount(0);
+  await expect(panel.getByText('Check against current rules', { exact: true })).toHaveCount(0);
+  await activity.screenshot({ path: '/tmp/intercept-activity-empty.png' });
+  expect(await panel.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  expect(errors).toEqual([]);
+  await panel.close(); await target.close();
+});
