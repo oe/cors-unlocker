@@ -89,4 +89,4 @@ Its popup prioritizes the current tab, Inspector, and session-only quick control
 capability alongside API delay and failure simulation. Configurable mocks, headers, and redirects
 become shortcuts by pinning named saved rules, not by adding ambiguous category-wide toggles.
 Persistent site rules are labeled separately and remain unchanged when a debugging session stops.
-Chrome offers a session-only Disable cache switch using CDP HTTP-cache control. Firefox marks it as unsupported. It does not clear browser data or bypass service workers.
+Chrome offers a session-only Disable cache switch using CDP HTTP-cache control. Firefox hides this unsupported control. It does not clear browser data or bypass service workers.

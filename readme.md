@@ -25,8 +25,7 @@ Connecting the proxy alone observes traffic and applies enabled saved rules, wit
 repairing CORS. Cross-origin mocks need a matching CORS rule/control or appropriate mock headers.
 
 Disable cache bypasses HTTP cache in the attached Chrome tab without clearing stored cache or
-bypassing service workers. Turning it off or stopping the session restores normal cache use. Firefox
-shows this switch as unavailable rather than substituting a global cache clear.
+bypassing service workers. Turning it off or stopping the session restores normal cache use. Firefox hides this unsupported control.
 
 Quick controls live only in the background session and reset on stop, tab close, or cross-origin
 navigation. They never create persistent rules. Existing CORS site rules remain available separately;

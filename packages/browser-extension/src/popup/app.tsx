@@ -67,13 +67,13 @@ function App() {
               <Switch size="sm" aria-label={t('Allow credentials')} checked={vm.quickControls.credentials} disabled={disabled || !vm.quickControls.cors} onCheckedChange={(credentials) => vm.setQuickControls({ credentials })} />
             </div>
           </div>
-          <div className="control-row min-h-10" title={t(__TARGET__ === 'chrome' ? 'Bypass HTTP cache for this tab. Does not clear stored data or bypass service workers.' : 'Cache control is available in Chrome only.')}>
+          {__TARGET__ === 'chrome' ? <div className="control-row min-h-10" title={t('Bypass HTTP cache for this tab. Does not clear stored data or bypass service workers.')}>
             <span className="text-sm">{t('Disable cache')}</span>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">{__TARGET__ === 'chrome' ? 'HTTP' : 'Chrome'}</span>
-              <Switch aria-label={t('Disable cache')} checked={vm.quickControls.disableCache} disabled={disabled || __TARGET__ !== 'chrome'} onCheckedChange={(disableCache) => vm.setQuickControls({ disableCache })} />
+              <span className="text-xs text-muted-foreground">HTTP</span>
+              <Switch aria-label={t('Disable cache')} checked={vm.quickControls.disableCache} disabled={disabled} onCheckedChange={(disableCache) => vm.setQuickControls({ disableCache })} />
             </div>
-          </div>
+          </div> : null}
           <div className="control-row min-h-10" title="Fetch / XHR">
             <span className="text-sm">{t('Request delay')}</span>
             <div className="flex shrink-0 items-center gap-2">
