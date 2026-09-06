@@ -321,28 +321,28 @@ export const messages: Record<string, Record<string, string>> = {
     "es": "Ninguna regla coincide. Se conserva tu borrador."
   },
   "Create a rule or start from a captured request in Site controls.": {
-    "en": "Create a rule or start from a captured request in Site controls.",
-    "zh-CN": "新建规则，或从站点控制中捕获的请求开始。",
-    "ko": "규칙을 만들거나 사이트 제어에서 캡처한 요청으로 시작하세요.",
-    "ja": "ルールを作成するか、サイト制御で取得したリクエストから開始します。",
-    "fr": "Créez une règle ou partez d’une requête capturée dans les contrôles du site.",
-    "es": "Crea una regla o parte de una solicitud capturada en los controles del sitio."
+    "en": "Create a rule or start from a captured request in Inspector.",
+    "zh-CN": "新建规则，或从请求检查器中捕获的请求开始。",
+    "ko": "규칙을 만들거나 요청 검사기에서 캡처한 요청으로 시작하세요.",
+    "ja": "ルールを作成するか、リクエストインスペクターで取得したリクエストから開始します。",
+    "fr": "Créez une règle ou partez d’une requête capturée dans l’inspecteur.",
+    "es": "Crea una regla o parte de una solicitud capturada en el Inspector."
   },
   "Requires a connected tab in Site controls. Enabled does not mean attached.": {
-    "en": "Requires a connected tab in Site controls. Enabled does not mean attached.",
-    "zh-CN": "需要在站点控制中连接标签页。规则启用不代表代理已连接。",
-    "ko": "사이트 제어에서 탭을 연결해야 합니다. 규칙 활성화는 연결을 의미하지 않습니다.",
-    "ja": "サイト制御でタブの接続が必要です。ルールの有効化と接続は異なります。",
-    "fr": "Un onglet doit être connecté dans les contrôles du site. Activée ne signifie pas connectée.",
-    "es": "Requiere una pestaña conectada en los controles del sitio. Activada no significa conectada."
+    "en": "Requires a connected tab in Inspector. Enabled does not mean attached.",
+    "zh-CN": "需要在请求检查器中连接标签页。规则启用不代表代理已连接。",
+    "ko": "요청 검사기에서 탭을 연결해야 합니다. 규칙 활성화는 연결을 의미하지 않습니다.",
+    "ja": "リクエストインスペクターでタブの接続が必要です。ルールの有効化と接続は異なります。",
+    "fr": "Un onglet doit être connecté dans l’inspecteur. Activée ne signifie pas connectée.",
+    "es": "Requiere una pestaña conectada en el Inspector. Activada no significa conectada."
   },
   "Basic actions use browser rules. Verify actual effects in Site controls.": {
-    "en": "Basic actions use browser rules. Verify actual effects in Site controls.",
-    "zh-CN": "基础动作使用浏览器规则。请在站点控制中验证实际效果。",
-    "ko": "기본 동작은 브라우저 규칙을 사용합니다. 사이트 제어에서 실제 효과를 확인하세요.",
-    "ja": "基本アクションはブラウザーのルールを使用します。実際の結果はサイト制御で確認してください。",
-    "fr": "Les actions de base utilisent les règles du navigateur. Vérifiez leurs effets dans les contrôles du site.",
-    "es": "Las acciones básicas usan reglas del navegador. Comprueba sus efectos en los controles del sitio."
+    "en": "Basic actions use browser rules. Verify actual effects in Inspector.",
+    "zh-CN": "基础动作使用浏览器规则。请在请求检查器中验证实际效果。",
+    "ko": "기본 동작은 브라우저 규칙을 사용합니다. 요청 검사기에서 실제 효과를 확인하세요.",
+    "ja": "基本アクションはブラウザーのルールを使用します。実際の結果はリクエストインスペクターで確認してください。",
+    "fr": "Les actions de base utilisent les règles du navigateur. Vérifiez leurs effets dans l’inspecteur.",
+    "es": "Las acciones básicas usan reglas del navegador. Comprueba sus efectos en el Inspector."
   },
   "Delete proxy rule?": {
     "en": "Delete proxy rule?",
@@ -1441,12 +1441,12 @@ export const messages: Record<string, Record<string, string>> = {
     "es": "Chrome muestra un aviso de depuración mientras este modo está conectado."
   },
   "Site controls": {
-    "en": "Site controls",
-    "zh-CN": "站点控制",
-    "ko": "사이트 제어",
-    "ja": "サイト制御",
-    "fr": "Contrôles du site",
-    "es": "Controles del sitio"
+    "en": "Inspector",
+    "zh-CN": "请求检查器",
+    "ko": "요청 검사기",
+    "ja": "リクエストインスペクター",
+    "fr": "Inspecteur",
+    "es": "Inspector"
   },
   "Open rules": {
     "en": "Open rules",
@@ -1722,7 +1722,7 @@ export const messages: Record<string, Record<string, string>> = {
   },
   "Select a regular HTTP or HTTPS tab, then reopen the inspector.": {
     "en": "Select a regular HTTP or HTTPS tab, then reopen the inspector.",
-    "zh-CN": "请选择普通 HTTP 或 HTTPS 标签页，再打开站点控制。",
+    "zh-CN": "请选择普通 HTTP 或 HTTPS 标签页，再打开请求检查器。",
     "ko": "일반 HTTP 또는 HTTPS 탭을 선택한 뒤 검사기를 다시 여세요.",
     "ja": "通常の HTTP/HTTPS タブを選択し、インスペクターを開き直してください。",
     "fr": "Sélectionnez un onglet HTTP ou HTTPS normal, puis rouvrez l’inspecteur.",
@@ -1842,11 +1842,11 @@ export const messages: Record<string, Record<string, string>> = {
   },
   "Unable to open traffic inspector": {
     "en": "Unable to open traffic inspector",
-    "zh-CN": "无法打开站点控制面板",
-    "ko": "사이트 제어판을 열 수 없습니다",
-    "ja": "サイトコントロールを開けません",
-    "fr": "Impossible d’ouvrir le panneau du site",
-    "es": "No se pudo abrir el panel del sitio"
+    "zh-CN": "无法打开请求检查器面板",
+    "ko": "요청 검사기를 열 수 없습니다",
+    "ja": "リクエストインスペクターを開けません",
+    "fr": "Impossible d’ouvrir l’inspecteur",
+    "es": "No se pudo abrir el Inspector"
   },
   "Unable to start advanced proxy": {
     "en": "Unable to start advanced proxy",
@@ -2415,5 +2415,69 @@ export const messages: Record<string, Record<string, string>> = {
     "ja": "プロキシを開始して、このタブのリクエストを記録します。",
     "fr": "Démarrez le proxy pour enregistrer les requêtes de cet onglet.",
     "es": "Inicia el proxy para registrar solicitudes de esta pestaña."
+  },
+  "Inspector": {
+    "en": "Inspector",
+    "zh-CN": "请求检查器",
+    "ko": "요청 검사기",
+    "ja": "リクエストインスペクター",
+    "fr": "Inspecteur",
+    "es": "Inspector"
+  },
+  "Start the proxy, then trigger a request on the page. Enabled rules also apply.": {
+    "en": "Start the proxy, then trigger a request on the page. Enabled rules also apply.",
+    "zh-CN": "启动代理后，在页面触发请求。已启用的规则也会生效。",
+    "ko": "프록시를 시작한 후 페이지에서 요청을 실행하세요. 활성화된 규칙도 적용됩니다.",
+    "ja": "プロキシを開始し、ページでリクエストを発生させてください。有効なルールも適用されます。",
+    "fr": "Démarrez le proxy, puis déclenchez une requête sur la page. Les règles activées s’appliquent aussi.",
+    "es": "Inicia el proxy y realiza una solicitud en la página. También se aplican las reglas activadas."
+  },
+  "Select a request to mock its response or change its behavior.": {
+    "en": "Select a request to mock its response or change its behavior.",
+    "zh-CN": "选择一条请求，模拟响应或修改请求行为。",
+    "ko": "요청을 선택하여 응답을 모킹하거나 동작을 변경하세요.",
+    "ja": "リクエストを選択して応答をモックするか、動作を変更します。",
+    "fr": "Sélectionnez une requête pour simuler sa réponse ou modifier son comportement.",
+    "es": "Selecciona una solicitud para simular su respuesta o cambiar su comportamiento."
+  },
+  "Saved. Trigger the request again on the page to verify it.": {
+    "en": "Saved. Trigger the request again on the page to verify it.",
+    "zh-CN": "已保存。请在页面再次触发请求，验证效果。",
+    "ko": "저장되었습니다. 페이지에서 요청을 다시 실행하여 확인하세요.",
+    "ja": "保存しました。ページでリクエストを再実行して確認してください。",
+    "fr": "Enregistré. Déclenchez à nouveau la requête sur la page pour vérifier.",
+    "es": "Guardado. Repite la solicitud en la página para comprobar el resultado."
+  },
+  "New matching request recorded. Inspect its applied changes.": {
+    "en": "New matching request recorded. Inspect its applied changes.",
+    "zh-CN": "已记录新的匹配请求，请查看实际修改。",
+    "ko": "새 일치 요청이 기록되었습니다. 적용된 변경 사항을 확인하세요.",
+    "ja": "新しい一致リクエストを記録しました。適用された変更を確認してください。",
+    "fr": "Nouvelle requête correspondante enregistrée. Consultez les modifications appliquées.",
+    "es": "Se registró una nueva solicitud coincidente. Revisa los cambios aplicados."
+  },
+  "View request": {
+    "en": "View request",
+    "zh-CN": "查看请求",
+    "ko": "요청 보기",
+    "ja": "リクエストを表示",
+    "fr": "Voir la requête",
+    "es": "Ver solicitud"
+  },
+  "Request matching": {
+    "en": "Request matching",
+    "zh-CN": "请求匹配范围",
+    "ko": "요청 일치 조건",
+    "ja": "リクエストの一致条件",
+    "fr": "Conditions de correspondance",
+    "es": "Condiciones de coincidencia"
+  },
+  "Matches the captured URL, including query parameters. Edit the pattern to change its scope.": {
+    "en": "Matches the captured URL, including query parameters. Edit the pattern to change its scope.",
+    "zh-CN": "默认匹配捕获的完整 URL，包含查询参数。可编辑匹配模式调整范围。",
+    "ko": "쿼리 매개변수를 포함한 캡처 URL과 일치합니다. 패턴을 편집하여 범위를 변경하세요.",
+    "ja": "クエリを含む取得したURLに一致します。パターンを編集して範囲を変更できます。",
+    "fr": "Correspond à l’URL capturée, paramètres inclus. Modifiez le motif pour ajuster la portée.",
+    "es": "Coincide con la URL capturada, incluidos sus parámetros. Edita el patrón para cambiar el alcance."
   }
 };

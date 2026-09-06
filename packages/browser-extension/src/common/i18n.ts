@@ -37,7 +37,7 @@ function apply(value: unknown) {
   preference = typeof value === 'string' && (value === 'auto' || Object.hasOwn(LANGUAGES, value)) ? value as LanguagePreference : 'auto';
   locale = preference === 'auto' ? resolveLocale(navigator.language) : preference;
   document.documentElement.lang = locale;
-  document.title = `Forth Intercept · ${t(location.pathname.includes('sidepanel') ? 'Site controls' : location.pathname.includes('options') ? 'Rules' : 'Local request controls')}`;
+  document.title = `Forth Intercept · ${t(location.pathname.includes('sidepanel') ? 'Inspector' : location.pathname.includes('options') ? 'Rules' : 'Local request controls')}`;
   listeners.forEach((listener) => listener());
 }
 let initialized: Promise<void> | undefined;

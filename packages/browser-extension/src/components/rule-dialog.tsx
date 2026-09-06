@@ -54,6 +54,7 @@ function actionTemplateLabel(template: ActionTemplate, isFirefox: boolean): stri
 }
 
 export type RuleDraft = {
+  capturedRequest?: string;
   id?: string;
   source?: IProxyRule['source'];
   legacyRuleId?: number;
@@ -329,7 +330,14 @@ export function RuleEditorForm({
       <Dialog open={!!draft} onOpenChange={(open) => { if (!open) requestClose(); }}>
         <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader><DialogTitle>{form.id ? t("Edit proxy rule") : t("Create proxy rule")}</DialogTitle><DialogDescription>{t("Match traffic from a page, then configure local actions.")}</DialogDescription></DialogHeader>
-          {matchFields}{actionFields}
+          {form.capturedRequest ? <>
+            <p className="break-all text-xs text-muted-foreground">{form.methods} {form.capturedRequest}</p>
+            {actionFields}
+            <details><summary className="cursor-pointer text-sm font-medium">{t('Request matching')}</summary>
+              <p className="my-2 text-xs text-muted-foreground">{t('Matches the captured URL, including query parameters. Edit the pattern to change its scope.')}</p>
+              {matchFields}
+            </details>
+          </> : <>{matchFields}{actionFields}</>}
           <details><summary className="cursor-pointer text-sm font-medium">{t("Test matching")}</summary>{testFields}</details>
           {errorMessage}
           <DialogFooter><Button variant="outline" disabled={pending} onClick={requestClose}>{t("Cancel")}</Button><Button disabled={pending} onClick={save}>{pending ? t("Saving…") : t("Save rule")}</Button></DialogFooter>

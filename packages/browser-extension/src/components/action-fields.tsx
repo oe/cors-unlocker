@@ -46,11 +46,11 @@ export function ActionFields({ action, onChange }: { action: IProxyAction; onCha
       return <Headers value={action.headers} onChange={(headers) => onChange({ ...action, headers })} />;
     case 'mockResponse':
       return <FieldGroup>
+        <Field><FieldLabel>{t("Response body")}</FieldLabel><Textarea aria-label={t("Response body")} className="min-h-36 font-mono" value={action.body} onChange={(e) => onChange({ ...action, body: e.target.value })} /></Field>
         <Field><FieldLabel>{t("HTTP status")}</FieldLabel><Input aria-label={t("HTTP status")} type="number" min={100} max={599} value={action.status} onChange={(e) => onChange({ ...action, status: Number(e.target.value) })} />
           {__TARGET__ === 'firefox' ? <FieldDescription>{t("Firefox contacts the server and preserves its status; only the response body is replaced.")}</FieldDescription> : null}
         </Field>
         <Headers value={action.headers} onChange={(headers) => onChange({ ...action, headers })} />
-        <Field><FieldLabel>{t("Response body")}</FieldLabel><Textarea aria-label={t("Response body")} className="min-h-36 font-mono" value={action.body} onChange={(e) => onChange({ ...action, body: e.target.value })} /></Field>
       </FieldGroup>;
     case 'delay':
       return <Field><FieldLabel>{t("Delay in milliseconds")}</FieldLabel><Input aria-label={t("Delay in milliseconds")} type="number" min={0} max={30000} value={action.milliseconds} onChange={(e) => onChange({ ...action, milliseconds: Number(e.target.value) })} /><FieldDescription>{t("0–30,000 ms. Requires advanced proxy.")}</FieldDescription></Field>;

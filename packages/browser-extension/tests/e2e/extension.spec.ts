@@ -234,7 +234,7 @@ test('renders the shadcn proxy workspace and popup', async () => {
 
   const inspector = await context.newPage();
   await inspector.goto(`chrome-extension://${extensionId}/src/sidepanel/index.html?tabId=${inspectedTabId}`);
-  await expect(inspector.getByRole('heading', { name: 'Site controls' })).toBeVisible();
+  await expect(inspector.getByRole('heading', { name: 'Inspector' })).toBeVisible();
   await expect(inspector.getByText('http://test.localhost:3000', { exact: true })).toBeVisible();
   const inspectorToggle = inspector.getByRole('switch', { name: 'Toggle advanced proxy' });
   await expect(inspectorToggle).toBeEnabled();
@@ -363,7 +363,7 @@ test('controls site rules inline and verifies actual request effects', async () 
   panel.on('pageerror', (error) => errors.push(error.message));
   await panel.setViewportSize({ width: 420, height: 820 });
   await panel.goto(`chrome-extension://${extensionId}/src/sidepanel/index.html?tabId=${tabId}`);
-  await expect(panel.getByRole('heading', { name: 'Site controls' })).toBeVisible();
+  await expect(panel.getByRole('heading', { name: 'Inspector' })).toBeVisible();
   await panel.getByRole('switch', { name: 'Toggle advanced proxy' }).click();
   await expect(panel.getByRole('switch', { name: 'Toggle advanced proxy' })).toBeChecked();
   const fetchHealth = () => target.evaluate(async () => {
@@ -374,13 +374,16 @@ test('controls site rules inline and verifies actual request effects', async () 
   await panel.getByRole('button', { name: /GET.*console.localhost:3000\/health/ }).first().click();
   await panel.getByRole('button', { name: 'Mock', exact: true }).click();
   await expect(panel.getByRole('dialog')).toBeVisible();
+  await panel.getByText('Request matching', { exact: true }).click();
   await expect(panel.getByLabel('Page origins')).toHaveValue('http://console.localhost:3000');
   await panel.getByLabel('Name', { exact: true }).fill('Console mock QA');
   await panel.getByLabel('HTTP status', { exact: true }).fill('201');
   await panel.getByLabel('Response body', { exact: true }).fill('{"source":"sidepanel"}');
   await panel.getByRole('button', { name: 'Save rule', exact: true }).click();
   await expect(panel.getByRole('switch', { name: 'Enable Console mock QA' })).toBeChecked();
+  await expect(panel.getByText('Saved. Trigger the request again on the page to verify it.', { exact: true })).toBeVisible();
   await expect.poll(fetchHealth).toEqual({ status: 201, body: { source: 'sidepanel' } });
+  await panel.getByRole('button', { name: 'View request', exact: true }).click();
   await panel.getByRole('button', { name: /GET.*console.localhost:3000\/health/ }).first().click();
   await expect(panel.getByText('Local mock', { exact: true })).toBeVisible();
   await expect(panel.getByText(/HTTP 201;.*server not contacted/)).toBeVisible();

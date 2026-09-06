@@ -36,6 +36,20 @@ rule changes its saved enabled state. Header/redirect/block rules can continue a
 DNR. Mocks, delays, failures, and advanced CORS need an active proxy session. Stopping a session
 clears temporary controls without disabling saved rules. Browser-specific interception limits still apply.
 
+## First request: mock an API response
+
+1. Open your application tab, then choose **Inspector** from the popup.
+2. Start the proxy session and trigger the API request in your application.
+3. Select the request in **Recent activity**, then choose **Mock** (Chrome) or **Replace body** (Firefox).
+4. Enter the response body and save. The captured page origin, URL, method, and resource type are already filled in.
+   Expand **Request matching** to rename the rule or change its scope; the default URL includes query parameters.
+5. Trigger the request again. **View request** opens a new recorded match so you can inspect the applied changes.
+   A recorded match alone does not prove that every action ran. Old records are not used to verify a new save.
+
+Saved site rules appear below the request details. Stopping the proxy clears temporary controls;
+header, redirect, and block rules may continue until their saved switches are disabled.
+Firefox response replacement still contacts the server and preserves its status.
+
 ## Architecture
 
 The extension UI supports English, Simplified Chinese, Korean, Japanese, French and Spanish. It follows the browser language by default, falling back to English. The language selector in the settings header updates the options page, popup and Site controls, including other open surfaces, without discarding drafts. The preference is saved locally as `uiLanguage`, separately from portable rule configuration and v1 migration. Rule names, URLs, HTTP/CDP identifiers and raw browser diagnostics are not translated. Website and store listing localization are separate work.
