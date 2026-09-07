@@ -1,4 +1,4 @@
-import { test, expect, chromium, type BrowserContext, type Page, type Worker } from '@playwright/test';
+import { test, expect, chromium, type BrowserContext, type Page } from '@playwright/test';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { mkdtempSync, rmSync } from 'fs';
@@ -11,7 +11,6 @@ test.setTimeout(90_000);
 
 let context: BrowserContext;
 const extensionId = 'knhlkjdfmgkmelcjfnbbhpphkmjjacng';
-let worker: Worker;
 let control: Page;
 let extensionPath: string;
 const userDataDir = mkdtempSync(path.join(tmpdir(), 'forth-intercept-e2e-'));
@@ -22,7 +21,7 @@ async function currentWorker() {
 }
 
 async function getTabId(urlPrefix: string): Promise<number> {
-  return worker.evaluate(async (prefix) => {
+  return control.evaluate(async (prefix) => {
     const tabs = await chrome.tabs.query({});
     const tab = tabs.find((item) => item.url?.startsWith(prefix));
     if (typeof tab?.id !== 'number') throw new Error(`Tab not found: ${prefix}`);
@@ -46,10 +45,25 @@ async function launchContext() {
       `--load-extension=${extensionPath}`,
     ],
   });
+  context.setDefaultTimeout(15_000);
+  context.setDefaultNavigationTimeout(20_000);
+  await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
   control = await context.newPage();
+  // Intentional test reloads discard the native beforeunload prompt, not the app's draft dialog.
+  control.on('dialog', (dialog) => void (dialog.type() === 'beforeunload' ? dialog.accept() : dialog.dismiss()));
   await control.goto(`chrome-extension://${extensionId}/src/options/index.html`);
-  worker = await currentWorker();
+  await currentWorker();
 }
+
+test.beforeEach(async () => {
+  await context.tracing.startChunk();
+});
+
+test.afterEach(async () => {
+  const testInfo = test.info();
+  // This suite creates its own persistent context; Playwright's fixture trace does not capture it.
+  await context.tracing.stopChunk({ path: testInfo.outputPath('extension-trace.zip') }).catch(() => undefined);
+});
 
 test.afterAll(async () => {
   await context?.close();
@@ -58,10 +72,10 @@ test.afterAll(async () => {
 
 test('localizes all surfaces and preserves drafts and settings across language changes', async () => {
   const testInfo = test.info();
-  await worker.evaluate(() => chrome.storage.local.set({ uiLanguage: 'en' }));
+  await control.evaluate(() => chrome.storage.local.set({ uiLanguage: 'en' }));
   await control.reload();
   await control.setViewportSize({ width: 1440, height: 900 });
-  const original = await worker.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState);
+  const original = await control.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState);
   await control.getByRole('button', { name: 'New rule', exact: true }).click();
   const draftName = '用户 $& / custom draft';
   await control.getByRole('textbox', { name: 'Name', exact: true }).fill(draftName);
@@ -76,7 +90,7 @@ test('localizes all surfaces and preserves drafts and settings across language c
   await panel.setViewportSize({ width: 420, height: 900 });
   try {
     for (const locale of ['en', 'zh-CN', 'ko', 'ja', 'fr', 'es']) {
-      await worker.evaluate((uiLanguage) => chrome.storage.local.set({ uiLanguage }), locale);
+      await control.evaluate((uiLanguage) => chrome.storage.local.set({ uiLanguage }), locale);
       for (const page of [control, popup, panel]) await expect(page.locator('html')).toHaveAttribute('lang', locale);
       await expect(control.getByRole('textbox', { name: messages.Name[locale], exact: true })).toHaveValue(draftName);
       await expect(popup.getByText(messages['Quick debug'][locale], { exact: true })).toBeVisible();
@@ -95,12 +109,12 @@ test('localizes all surfaces and preserves drafts and settings across language c
     }
     await expect(control.getByRole('textbox', { name: messages.Name.es, exact: true })).toHaveValue(draftName);
     await control.screenshot({ path: testInfo.outputPath('options-es-narrow.png'), fullPage: true });
-    expect(await worker.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState)).toEqual(original);
+    expect(await control.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState)).toEqual(original);
     await control.reload();
     await expect(control.locator('html')).toHaveAttribute('lang', 'es');
     await expect(control.getByRole('combobox', { name: messages.Language.es, exact: true })).toContainText('Español');
   } finally {
-    await worker.evaluate(() => chrome.storage.local.set({ uiLanguage: 'en' }));
+    await control.evaluate(() => chrome.storage.local.set({ uiLanguage: 'en' }));
     await popup.close(); await panel.close();
     await control.setViewportSize({ width: 1440, height: 900 });
     await control.reload();
@@ -109,11 +123,11 @@ test('localizes all surfaces and preserves drafts and settings across language c
 
 test('migrates v1 storage once and keeps a recovery snapshot', async () => {
   expect(extensionId).toBe('knhlkjdfmgkmelcjfnbbhpphkmjjacng');
-  await expect.poll(async () => worker.evaluate(async () => {
+  await expect.poll(async () => control.evaluate(async () => {
     const values = await chrome.storage.local.get('proxyAppState');
     return values.proxyAppState?.schemaVersion;
   })).toBe(2);
-  await worker.evaluate(async () => {
+  await control.evaluate(async () => {
     await chrome.storage.local.clear();
     await chrome.storage.local.set({
       allowedOrigins: [{
@@ -136,7 +150,7 @@ test('migrates v1 storage once and keeps a recovery snapshot', async () => {
   });
   await context.close();
   await launchContext();
-  await expect.poll(async () => worker.evaluate(async () => {
+  await expect.poll(async () => control.evaluate(async () => {
     const values = await chrome.storage.local.get(['proxyAppState', 'legacyBackupV1']);
     return {
       schema: values.proxyAppState?.schemaVersion,
@@ -146,7 +160,7 @@ test('migrates v1 storage once and keeps a recovery snapshot', async () => {
     };
   })).toEqual({ schema: 2, ruleId: 'legacy-cors-9', maxRules: 250, backupRuleId: 9 });
 
-  await worker.evaluate(async () => {
+  await control.evaluate(async () => {
     await chrome.storage.local.set({
       allowedOrigins: [{
         id: 999,
@@ -163,7 +177,7 @@ test('migrates v1 storage once and keeps a recovery snapshot', async () => {
   });
   await context.close();
   await launchContext();
-  await expect.poll(async () => worker.evaluate(async () => {
+  await expect.poll(async () => control.evaluate(async () => {
     const values = await chrome.storage.local.get(['proxyAppState', 'legacyBackupV1']);
     return {
       ruleIds: values.proxyAppState?.rules?.map((rule: any) => rule.id),
@@ -289,12 +303,12 @@ test('edits structured actions, protects drafts and previews imports', async () 
   await expect(control.getByLabel('Header 1 name', { exact: true })).toHaveValue('X-Workspace-QA');
   await control.screenshot({ path: 'test-results/forth-intercept-workspace.png', fullPage: true });
   await control.getByRole('button', { name: 'Data & migration' }).click();
-  const before = await worker.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState);
+  const before = await control.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState);
   const incoming = structuredClone(before);
   incoming.rules = [{ ...incoming.rules[0], id: 'import-preview-qa', name: 'Imported QA', enabled: false }];
   await control.locator('#import-state').setInputFiles({ name: 'backup.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ version: '2.0', state: incoming })) });
   await expect(control.getByRole('region', { name: 'Import preview' })).toContainText('1 added');
-  expect(await worker.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState)).toEqual(before);
+  expect(await control.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState)).toEqual(before);
   await control.getByLabel('Import mode').click();
   await control.getByRole('option', { name: 'Replace configuration' }).click();
   await expect(control.getByRole('region', { name: 'Import preview' })).toContainText(`${before.rules.length} removed`);
@@ -302,7 +316,7 @@ test('edits structured actions, protects drafts and previews imports', async () 
   await control.getByRole('option', { name: 'Merge rules' }).click();
   await control.getByRole('button', { name: 'Apply import' }).click();
   await expect(control.getByText(/Import completed/)).toBeVisible();
-  const after = await worker.evaluate(async () => chrome.storage.local.get(['proxyAppState', 'preImportBackup']));
+  const after = await control.evaluate(async () => chrome.storage.local.get(['proxyAppState', 'preImportBackup']));
   expect(after.proxyAppState.rules).toHaveLength(before.rules.length + 1);
   expect(after.preImportBackup.state).toEqual(before);
   await control.getByRole('button', { name: 'Rules', exact: true }).click();
@@ -670,7 +684,7 @@ test('popup controls are temporary, tab-scoped, and independent from saved rules
       actions: [{ type: 'setResponseHeaders', headers: { 'X-Popup-Preset': 'enabled' } }],
     } },
   }));
-  const before = await worker.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState);
+  const before = await control.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState);
   const popup = await context.newPage();
   const errors: string[] = [];
   popup.on('pageerror', (error) => errors.push(error.message));
@@ -716,7 +730,7 @@ test('popup controls are temporary, tab-scoped, and independent from saved rules
   const imageLog = logs.find((entry: any) => entry.url.includes('image-scope'));
   expect(imageLog).toMatchObject({ resourceType: 'Image', outcome: 'continued' });
   expect(imageLog.matchedRuleIds.filter((id: string) => id.startsWith('session:'))).toEqual([]);
-  expect(await worker.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState)).toEqual(before);
+  expect(await control.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState)).toEqual(before);
   await popup.getByRole('button', { name: 'Stop this session' }).click();
   for (const name of ['CORS repair', 'Request delay', 'Simulate failure']) await expect(popup.getByRole('switch', { name, exact: true })).not.toBeChecked();
   expect(await crossRequest()).toBe(false);
@@ -742,19 +756,19 @@ test('popup controls are temporary, tab-scoped, and independent from saved rules
   await popup.screenshot({ path: '/tmp/forth-intercept-popup-en.png', fullPage: true, animations: 'disabled' });
   await popup.setViewportSize({ width: 360, height: 600 });
   for (const locale of ['en', 'zh-CN', 'ko', 'ja', 'fr', 'es']) {
-    await worker.evaluate((uiLanguage) => chrome.storage.local.set({ uiLanguage }), locale);
+    await control.evaluate((uiLanguage) => chrome.storage.local.set({ uiLanguage }), locale);
     await expect(popup.locator('html')).toHaveAttribute('lang', locale);
     expect(await popup.evaluate(() => document.documentElement.scrollWidth <= innerWidth), locale).toBe(true);
     expect(await popup.locator('main').evaluate((element) => element.scrollHeight), `${locale} compact height`).toBeLessThanOrEqual(560);
     await expect(popup.getByRole('switch', { name: messages['Allow credentials'][locale], exact: true })).toBeVisible();
     await expect(popup.getByRole('switch', { name: messages['CORS repair'][locale], exact: true })).toBeVisible();
   }
-  await worker.evaluate(() => chrome.storage.local.set({ uiLanguage: 'zh-CN' }));
+  await control.evaluate(() => chrome.storage.local.set({ uiLanguage: 'zh-CN' }));
   await expect(popup.locator('html')).toHaveAttribute('lang', 'zh-CN');
   await popup.setViewportSize({ width: 360, height: Math.ceil((await popup.locator('main').boundingBox())!.height) });
   await popup.screenshot({ path: '/tmp/forth-intercept-popup-zh.png', fullPage: true, animations: 'disabled' });
   await popup.setViewportSize({ width: 360, height: 600 });
-  await worker.evaluate(() => chrome.storage.local.set({ uiLanguage: 'en' }));
+  await control.evaluate(() => chrome.storage.local.set({ uiLanguage: 'en' }));
   await expect(popup.locator('html')).toHaveAttribute('lang', 'en');
   await popup.getByRole('switch', { name: 'Simulate failure', exact: true }).click();
   await expect(popup.getByRole('switch', { name: 'Simulate failure', exact: true })).toBeChecked();
@@ -763,7 +777,7 @@ test('popup controls are temporary, tab-scoped, and independent from saved rules
   await expect(popup.getByRole('switch', { name: 'Simulate failure', exact: true })).not.toBeChecked();
   expect(errors).toEqual([]);
   await control.evaluate(async (id) => chrome.runtime.sendMessage({ type: 'deleteProxyRule', payload: { id } }), saved.rule.id);
-  await worker.evaluate(() => chrome.storage.local.remove('popupPinnedRuleIds'));
+  await control.evaluate(() => chrome.storage.local.remove('popupPinnedRuleIds'));
   await popup.close(); await other.close(); await target.close();
 });
 
@@ -789,11 +803,11 @@ test('disable cache bypasses real HTTP cache for one tab and restores it on stop
   const target = await context.newPage();
   const other = await context.newPage();
   const popup = await context.newPage();
-  const read = (page: Page, url: string) => page.evaluate(async (path) => (await fetch(path)).text(), url);
+  const read = (page: Page, url: string) => test.step(`Read cache fixture ${url}`, () => page.evaluate(async (path) => (await fetch(path, { signal: AbortSignal.timeout(10_000) })).text(), url), { timeout: 15_000 });
   try {
-    await target.goto(origin);
-    await other.goto(origin);
-    const tabId = await getTabId(origin);
+    await target.goto(`${origin}/#target`);
+    await other.goto(`${origin}/#other`);
+    const tabId = await getTabId(`${origin}/#target`);
     expect(await read(target, '/asset')).toBe('1');
     expect(await read(target, '/asset')).toBe('1');
     expect(await read(other, '/other')).toBe('1');
@@ -826,8 +840,11 @@ test('disable cache bypasses real HTTP cache for one tab and restores it on stop
     const navigated = await read(target, '/navigated');
     expect(await read(target, '/navigated')).toBe(navigated);
   } finally {
-    await popup.close(); await other.close(); await target.close();
-    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+    // Close fixture sockets before browser cleanup, including pending or keep-alive requests.
+    const closed = new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+    server.closeAllConnections();
+    await Promise.allSettled([popup.close(), other.close(), target.close()]);
+    await closed;
   }
 });
 
@@ -886,7 +903,7 @@ test('reloading from the extensions manager releases active proxy sessions', asy
   const target = await context.newPage();
   await target.goto('http://reload.localhost:3000/');
   const tabId = await getTabId('http://reload.localhost:3000/');
-  const original = await worker.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState);
+  const original = await control.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState);
   const manager = await context.newPage();
   await manager.goto('chrome://extensions');
   if (await manager.locator('#devMode').getAttribute('aria-pressed') !== 'true') {
@@ -918,10 +935,10 @@ test('reloading from the extensions manager releases active proxy sessions', asy
       await control.goto(`chrome-extension://${extensionId}/src/options/index.html`);
       await expect(control.getByRole('button', { name: 'New rule', exact: true })).toBeVisible();
     }).toPass({ timeout: 10_000 });
-    worker = await currentWorker();
+    await currentWorker();
     const state = await control.evaluate(async (id) => chrome.runtime.sendMessage({ type: 'getAdvancedProxyStatus', payload: { tabId: id } }), tabId);
     expect(state.phase).toBe('disabled');
-    expect(await worker.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState)).toEqual(original);
+    expect(await control.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState)).toEqual(original);
   }
   await manager.close(); await target.close();
 });

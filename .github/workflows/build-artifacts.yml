@@ -53,6 +53,15 @@ jobs:
           pnpm --filter browser-cors-unlocker exec playwright install --with-deps chromium
           xvfb-run -a pnpm --filter browser-cors-unlocker test:e2e
 
+      - name: Upload E2E diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-e2e-diagnostics-${{ github.sha }}
+          path: packages/browser-extension/test-results
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Verify and package Firefox extension
         run: pnpm --filter browser-cors-unlocker check:firefox
 
