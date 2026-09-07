@@ -94,13 +94,30 @@ export function Inspector() {
     setEntries(nextEntries || []);
   }, [requestedTabId]);
 
+  const logRefresh = useRef({ running: false, again: false });
+  const refreshLogs = useCallback(async () => {
+    if (logRefresh.current.running) { logRefresh.current.again = true; return; }
+    logRefresh.current.running = true;
+    try {
+      do {
+        logRefresh.current.again = false;
+        const version = syncVersion.current;
+        const currentTarget = target.current;
+        const id = Number(currentTarget.split(':')[0]);
+        if (!currentTarget) return;
+        const next = await browser.runtime.sendMessage({ type: 'getAdvancedProxyLog', payload: { tabId: id } });
+        if (version === syncVersion.current && currentTarget === target.current) setEntries(next || []);
+      } while (logRefresh.current.again);
+    } catch (error) { setMessage(String(error)); }
+    finally { logRefresh.current.running = false; }
+  }, []);
+
   useEffect(() => {
     void sync().catch((error) => setMessage(String(error)));
     const listener = (message: any) => {
-      if (
-        (message?.type === 'advancedProxyLogChange' || message?.type === 'advancedProxyStatusChange')
-        && message.payload?.tabId === tabId
-      ) void sync();
+      if (message?.payload?.tabId !== tabId) return;
+      if (message.type === 'advancedProxyLogChange') void refreshLogs();
+      if (message.type === 'advancedProxyStatusChange') void sync();
     };
     const onTabUpdated = (updatedTabId: number, changeInfo: browser.Tabs.OnUpdatedChangeInfoType) => {
       if (!changeInfo.url) return;
@@ -121,7 +138,7 @@ export function Inspector() {
       browser.tabs.onUpdated.removeListener(onTabUpdated);
       if (requestedTabId === null) browser.tabs.onActivated.removeListener(sync);
     };
-  }, [requestedTabId, sync, tabId]);
+  }, [requestedTabId, sync, tabId, refreshLogs]);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -200,6 +217,7 @@ export function Inspector() {
       </AlertDescription></Alert> : null}
       {message ? <Alert><AlertDescription>{translateError(message)}</AlertDescription></Alert> : null}
 
+      {status?.phase === 'connected' && status.captureEnabled === false ? <Button disabled={busy} onClick={() => void toggle(true)}>{t('Start recording requests')}</Button> : null}
       <h2 className="text-sm font-semibold">{t("Recent activity")}</h2>
       <p className="text-xs text-muted-foreground">{t("Advanced proxy records only. Basic browser rules may act before capture; this is not a complete network log.")}</p>
       <div className="flex items-center gap-2">
@@ -231,7 +249,7 @@ export function Inspector() {
               <Button size="sm" variant="ghost" onClick={() => setSearch('')}>{t('Clear filter')}</Button>
             ) : (
               <p className="text-xs leading-relaxed">{t(status?.phase === 'connected'
-                ? 'Trigger a request on the page to see it here.'
+                ? (status.captureEnabled === false ? 'Start recording requests' : 'Trigger a request on the page to see it here.')
                 : 'Start the proxy to record requests from this tab.')}</p>
             )}
             {entries.length === 0 && status?.phase !== 'connected' && tabId !== null ? <Button size="sm" disabled={busy || status?.phase === 'connecting'} onClick={() => void toggle(true)}>{t('Start proxy session')}</Button> : null}

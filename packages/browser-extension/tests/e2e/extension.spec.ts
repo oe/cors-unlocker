@@ -918,10 +918,14 @@ test('reloading from the extensions manager releases active proxy sessions', asy
     await popup.getByRole('button', { name: 'Open Inspector' }).click();
     await target.bringToFront();
     await target.evaluate(() => { void fetch('/health').catch(() => undefined); });
-    await expect.poll(() => control.evaluate(async (id) => {
-      const log = await chrome.runtime.sendMessage({ type: 'getAdvancedProxyLog', payload: { tabId: id } });
-      return log.some((entry: any) => entry.url.endsWith('/health'));
-    }, tabId)).toBe(true);
+    if (status.captureEnabled) {
+      await expect.poll(() => control.evaluate(async (id) => {
+        const log = await chrome.runtime.sendMessage({ type: 'getAdvancedProxyLog', payload: { tabId: id } });
+        return log.some((entry: any) => entry.url.endsWith('/health'));
+      }, tabId)).toBe(true);
+    } else {
+      expect(await target.evaluate(async () => (await fetch('/health')).ok)).toBe(true);
+    }
     await manager.bringToFront();
     await manager.locator('extensions-item').locator('#dev-reload-button').click();
     await expect.poll(() => target.evaluate(async () => (await fetch('/health')).ok).catch(() => false)).toBe(true);

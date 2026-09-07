@@ -68,7 +68,9 @@ describe('request-first inspector', () => {
     expect(rules[0]).not.toHaveProperty('capturedRequest');
     // Old records and new unrelated traffic do not verify the saved rule.
     entries = [entry('old-match', { matchedRuleIds: ['saved'] }), entry('unrelated', { startedAt: Date.now() + 1 })];
+    const stateReads = vi.mocked(browser.runtime.sendMessage).mock.calls.filter(([message]) => (message as any).type === 'getProxyState').length;
     await sync();
+    expect(vi.mocked(browser.runtime.sendMessage).mock.calls.filter(([message]) => (message as any).type === 'getProxyState')).toHaveLength(stateReads);
     expect(screen.queryByRole('button', { name: 'View request' })).not.toBeInTheDocument();
     entries = [entry('fresh-match', { startedAt: Date.now() + 1, matchedRuleIds: ['saved'], outcome: 'mocked', changes: [{ label: 'Local mock', after: 'HTTP 200; server not contacted' }] }), ...entries];
     await sync();

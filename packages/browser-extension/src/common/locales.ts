@@ -2479,5 +2479,13 @@ export const messages: Record<string, Record<string, string>> = {
     "ja": "クエリを含む取得したURLに一致します。パターンを編集して範囲を変更できます。",
     "fr": "Correspond à l’URL capturée, paramètres inclus. Modifiez le motif pour ajuster la portée.",
     "es": "Coincide con la URL capturada, incluidos sus parámetros. Edita el patrón para cambiar el alcance."
+  },
+  "Start recording requests": {
+    "en": "Start recording requests",
+    "zh-CN": "开始记录请求",
+    "ko": "요청 기록 시작",
+    "ja": "リクエストの記録を開始",
+    "fr": "Enregistrer les requêtes",
+    "es": "Empezar a registrar solicitudes"
   }
 };

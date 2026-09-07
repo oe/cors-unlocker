@@ -265,3 +265,16 @@ it('rejects unsupported Firefox cache controls without changing the active sessi
   await expect(engine.enableAdvancedProxy(42, { quickControls: controls })).rejects.toThrow('Cache control is available in Chrome only.');
   expect(engine.getAdvancedProxyStatus(42).phase).toBe('disabled');
 });
+
+it('evicts completed request indexes along with the visible Firefox log', async () => {
+  vi.mocked(browser.storage.local.get).mockResolvedValue({ proxyAppState: state([]) });
+  await engine.enableAdvancedProxy(71);
+  const before = listener(browser.webRequest.onBeforeRequest);
+  await before(requestDetails(71, 'evicted'));
+  const old = engine.getRequestLog(71)[0];
+  for (let i = 0; i < 70; i++) await before(requestDetails(71, String(i)));
+  expect(engine.getRequestLog(71)).toHaveLength(50);
+  listener(browser.webRequest.onCompleted)({ ...requestDetails(71, 'evicted'), statusCode: 201 });
+  expect(old.status).toBeUndefined();
+  await engine.disableAdvancedProxy(71);
+});

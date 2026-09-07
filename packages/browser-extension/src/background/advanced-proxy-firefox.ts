@@ -1,3 +1,4 @@
+import { batchTabNotifications, waitForDelay } from './session-work';
 import browser from 'webextension-polyfill';
 import { logger } from '@/common/logger';
 import { mergeHeaders } from '@/common/rules';
@@ -41,6 +42,7 @@ export interface IRequestLogEntry {
 }
 
 interface Session {
+  abort: AbortController;
   origin: string;
   quickControls: QuickControls;
 }
@@ -176,18 +178,19 @@ function recordRequest(details: RequestDetails, rules: IProxyRule[]): IRequestLo
   };
   const entries = requestLogs.get(details.tabId) || [];
   entries.unshift(entry);
-  entries.splice(requestLogLimit);
+  for (const evicted of entries.splice(requestLogLimit)) {
+    const key = `${details.tabId}:${evicted.id}`;
+    if (requestIndexes.get(key) === evicted) requestIndexes.delete(key);
+  }
   requestLogs.set(details.tabId, entries);
   requestIndexes.set(keyFor(details), entry);
   return entry;
 }
 
-function notifyLogChanged(tabId: number) {
-  void browser.runtime.sendMessage({
-    type: 'advancedProxyLogChange',
-    payload: { tabId },
-  }).catch(() => undefined);
-}
+const logNotifications = batchTabNotifications((tabId) => {
+  void browser.runtime.sendMessage({ type: 'advancedProxyLogChange', payload: { tabId } }).catch(() => undefined);
+});
+const notifyLogChanged = (tabId: number) => logNotifications.notify(tabId);
 
 async function notifyStatus(status: IAdvancedProxyStatus) {
   statuses.set(status.tabId, status);
@@ -245,10 +248,7 @@ async function onBeforeRequest(details: RequestDetails) {
   const entry = recordRequest(details, rules);
   const delay = actionOfType(actions, 'delay');
   if (delay) {
-    await new Promise((resolve) => setTimeout(
-      resolve,
-      Math.min(Math.max(delay.milliseconds, 0), 30_000),
-    ));
+    if (!await waitForDelay(delay.milliseconds, session.abort.signal)) return {};
     entry.changes?.push({ label: 'Delay', after: `${Math.min(Math.max(delay.milliseconds, 0), 30_000)} ms` });
   }
   if (sessions.get(details.tabId) !== session) return {};
@@ -371,14 +371,16 @@ function finish(details: RequestDetails, error?: string) {
 }
 
 const filter = { urls: ['<all_urls>'] };
-browser.webRequest.onBeforeRequest.addListener(onBeforeRequest as never, filter, ['blocking', 'requestBody']);
+browser.webRequest.onBeforeRequest.addListener(onBeforeRequest as never, filter, ['blocking']);
 browser.webRequest.onBeforeSendHeaders.addListener(onBeforeSendHeaders as never, filter, ['blocking', 'requestHeaders']);
 browser.webRequest.onHeadersReceived.addListener(onHeadersReceived as never, filter, ['blocking', 'responseHeaders']);
 browser.webRequest.onCompleted.addListener(((details: RequestDetails) => finish(details)) as never, filter);
 browser.webRequest.onErrorOccurred.addListener(((details: RequestDetails) => finish(details, details.error)) as never, filter);
 
 browser.tabs.onRemoved.addListener((tabId) => {
-  sessions.delete(tabId);
+  logNotifications.cancel(tabId);
+  sessions.get(tabId)?.abort.abort();
+    sessions.delete(tabId);
   statuses.delete(tabId);
   requestLogs.delete(tabId);
   for (const store of [requestIndexes, requestHeaders, mockActions]) {
@@ -424,6 +426,7 @@ export async function enableAdvancedProxy(
     cachedRules = state.rules;
     requestLogLimit = state.settings.requestLogLimit;
     sessions.set(tabId, {
+      abort: new AbortController(),
       origin: url.origin,
       quickControls,
     });
@@ -431,6 +434,7 @@ export async function enableAdvancedProxy(
     await notifyStatus(status);
     return status;
   } catch (error) {
+    sessions.get(tabId)?.abort.abort();
     sessions.delete(tabId);
     const status = {
       tabId,
@@ -455,6 +459,7 @@ export async function updateQuickControls(tabId: number, value: unknown): Promis
 }
 
 export async function disableAdvancedProxy(tabId: number): Promise<IAdvancedProxyStatus> {
+  sessions.get(tabId)?.abort.abort();
   sessions.delete(tabId);
   const status = { tabId, phase: 'disabled' } satisfies IAdvancedProxyStatus;
   await notifyStatus(status);

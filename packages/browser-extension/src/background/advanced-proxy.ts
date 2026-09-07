@@ -1,3 +1,4 @@
+import { batchTabNotifications, waitForDelay } from './session-work';
 import browser from 'webextension-polyfill';
 import { logger } from '@/common/logger';
 import { mergeHeaders } from '@/common/rules';
@@ -22,6 +23,7 @@ export interface IAdvancedProxyStatus {
   origin?: string;
   error?: string;
   quickControls?: QuickControls;
+  captureEnabled?: boolean;
 }
 
 export interface IRequestLogEntry {
@@ -43,8 +45,11 @@ export interface IRequestLogEntry {
 }
 
 interface IAdvancedProxySession {
+  abort: AbortController;
   origin: string;
   startedByQuickControls: boolean;
+  captureEnabled: boolean;
+  captureStarting?: Promise<void>;
   quickControls: QuickControls;
 }
 
@@ -122,7 +127,10 @@ function recordRequest(tabId: number, params: IRequestPausedParams, rules: IProx
   };
   const entries = requestLogs.get(tabId) || [];
   entries.unshift(entry);
-  entries.splice(requestLogLimit);
+  for (const evicted of entries.splice(requestLogLimit)) {
+    const key = `${tabId}:${evicted.id}`;
+    if (requestIndexes.get(key) === evicted) requestIndexes.delete(key);
+  }
   requestLogs.set(tabId, entries);
   requestIndexes.set(`${tabId}:${params.requestId}`, entry);
   return entry;
@@ -207,12 +215,10 @@ function encodeBody(body: string): string {
   return btoa(binary);
 }
 
-function notifyLogChanged(tabId: number) {
-  void browser.runtime.sendMessage({
-    type: 'advancedProxyLogChange',
-    payload: { tabId },
-  }).catch(() => undefined);
-}
+const logNotifications = batchTabNotifications((tabId) => {
+  void browser.runtime.sendMessage({ type: 'advancedProxyLogChange', payload: { tabId } }).catch(() => undefined);
+});
+const notifyLogChanged = (tabId: number) => logNotifications.notify(tabId);
 
 async function handleRequestPaused(tabId: number, params: IRequestPausedParams) {
   const session = sessions.get(tabId);
@@ -235,10 +241,7 @@ async function handleRequestPaused(tabId: number, params: IRequestPausedParams) 
   if (!isResponseStage) {
     const delayAction = actionOfType(actions, 'delay');
     if (delayAction) {
-      await new Promise((resolve) => setTimeout(
-        resolve,
-        Math.min(Math.max(delayAction.milliseconds, 0), 30_000),
-      ));
+      if (!await waitForDelay(delayAction.milliseconds, session.abort.signal)) return;
       entry?.changes?.push({ label: 'Delay', after: `${Math.min(Math.max(delayAction.milliseconds, 0), 30_000)} ms` });
     }
 
@@ -398,12 +401,31 @@ async function onDebuggerEvent(
 
 function onDebuggerDetach(source: chrome.debugger.Debuggee, reason: string) {
   if (typeof source.tabId !== 'number') return;
+  sessions.get(source.tabId)?.abort.abort();
   sessions.delete(source.tabId);
   void notifyStatus({
     tabId: source.tabId,
     phase: 'disabled',
     error: reason === 'canceled_by_user' ? 'Chrome debugging was stopped by the user.' : undefined,
   });
+}
+
+function requiresCapture(session: IAdvancedProxySession, controls = session.quickControls): boolean {
+  return controls.cors || controls.delayMs > 0 || controls.failure || cachedRules.some((rule) =>
+    rule.enabled && rule.match.initiatorOrigins.some((origin) => origin === '*' || origin === session.origin));
+}
+
+async function startCapture(tabId: number, session: IAdvancedProxySession): Promise<void> {
+  if (session.captureEnabled) return;
+  if (session.captureStarting) return session.captureStarting;
+  session.captureStarting = (async () => {
+    await chrome.debugger.sendCommand({ tabId }, 'Fetch.enable', {
+      patterns: [{ urlPattern: '*', requestStage: 'Request' }, { urlPattern: '*', requestStage: 'Response' }],
+    });
+    if (sessions.get(tabId) !== session) throw new Error('Start a proxy session first.');
+    session.captureEnabled = true;
+  })();
+  try { await session.captureStarting; } finally { session.captureStarting = undefined; }
 }
 
 async function refreshRuleCache() {
@@ -416,6 +438,8 @@ if (__TARGET__ === 'chrome') {
   chrome.debugger.onEvent.addListener(onDebuggerEvent);
   chrome.debugger.onDetach.addListener(onDebuggerDetach);
   chrome.tabs.onRemoved.addListener((tabId) => {
+    logNotifications.cancel(tabId);
+    sessions.get(tabId)?.abort.abort();
     sessions.delete(tabId);
     statuses.delete(tabId);
     requestLogs.delete(tabId);
@@ -439,6 +463,12 @@ if (__TARGET__ === 'chrome') {
     if (areaName !== 'local' || !isProxyAppState(value)) return;
     cachedRules = value.rules;
     requestLogLimit = value.settings.requestLogLimit;
+    for (const [tabId, session] of sessions) {
+      if (!session.captureEnabled && requiresCapture(session)) {
+        void startCapture(tabId, session).then(() => notifyStatus({ ...getAdvancedProxyStatus(tabId), captureEnabled: true }))
+          .catch((error) => { logger.warn('Unable to start request capture:', error); void disableAdvancedProxy(tabId); });
+      }
+    }
   });
 }
 
@@ -459,7 +489,11 @@ export async function enableAdvancedProxy(
   const existing = sessions.get(tabId);
   if (existing) {
     // An explicit start takes ownership of an already-running automatic session.
-    if (!options.quickControls) existing.startedByQuickControls = false;
+    if (!options.quickControls) {
+      await startCapture(tabId, existing);
+      existing.startedByQuickControls = false;
+      await notifyStatus({ ...getAdvancedProxyStatus(tabId), captureEnabled: true });
+    }
     return getAdvancedProxyStatus(tabId);
   }
 
@@ -468,22 +502,21 @@ export async function enableAdvancedProxy(
     await refreshRuleCache();
     await chrome.debugger.attach({ tabId }, PROTOCOL_VERSION);
     sessions.set(tabId, {
+      abort: new AbortController(),
+      captureEnabled: false,
       startedByQuickControls: !!options.quickControls,
       origin: url.origin,
       quickControls,
     });
     await chrome.debugger.sendCommand({ tabId }, 'Network.enable');
     await chrome.debugger.sendCommand({ tabId }, 'Network.setCacheDisabled', { cacheDisabled: quickControls.disableCache });
-    await chrome.debugger.sendCommand({ tabId }, 'Fetch.enable', {
-      patterns: [
-        { urlPattern: '*', requestStage: 'Request' },
-        { urlPattern: '*', requestStage: 'Response' },
-      ],
-    });
-    const status = { tabId, phase: 'connected', origin: url.origin, quickControls } satisfies IAdvancedProxyStatus;
+    const session = sessions.get(tabId)!;
+    if (!options.quickControls || !quickControls.disableCache || requiresCapture(session)) await startCapture(tabId, session);
+    const status = { tabId, phase: 'connected', origin: url.origin, quickControls, captureEnabled: session.captureEnabled } satisfies IAdvancedProxyStatus;
     await notifyStatus(status);
     return status;
   } catch (error) {
+    sessions.get(tabId)?.abort.abort();
     sessions.delete(tabId);
     await chrome.debugger.detach({ tabId }).catch(() => undefined);
     const status = {
@@ -508,14 +541,17 @@ export async function updateQuickControls(tabId: number, value: unknown): Promis
     await chrome.debugger.sendCommand({ tabId }, 'Network.setCacheDisabled', { cacheDisabled: quickControls.disableCache });
     if (sessions.get(tabId) !== session) throw new Error('Start a proxy session first.');
   }
+  if (requiresCapture(session, quickControls)) await startCapture(tabId, session);
+  if (sessions.get(tabId) !== session) throw new Error('Start a proxy session first.');
   session.quickControls = quickControls;
-  const status = { tabId, phase: 'connected', origin: session.origin, quickControls } satisfies IAdvancedProxyStatus;
+  const status = { tabId, phase: 'connected', origin: session.origin, quickControls, captureEnabled: session.captureEnabled } satisfies IAdvancedProxyStatus;
   await notifyStatus(status);
   return status;
 }
 
 export async function disableAdvancedProxy(tabId: number): Promise<IAdvancedProxyStatus> {
   const session = sessions.get(tabId);
+  sessions.get(tabId)?.abort.abort();
   sessions.delete(tabId);
   if (__TARGET__ === 'chrome') {
     if (session?.quickControls.disableCache) {

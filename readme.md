@@ -146,3 +146,14 @@ Forth Intercept is a development tool, not a system VPN: it affects matching bro
 ## License
 
 MIT
+
+## Runtime resource use
+
+A Chrome session started with only Disable cache uses the Network domain without pausing requests,
+provided no enabled rule applies to the site. Inspector offers **Start recording requests** to enable
+capture. Enabling another request-changing control or adding an applicable rule also enables capture;
+once enabled, capture remains active until that session stops.
+
+Both engines evict internal log indexes along with visible records. Log notifications are combined in
+100 ms windows per tab; Inspector refreshes logs without rereading rule storage on every notification.
+Stopping a session cancels outstanding delay timers immediately.
