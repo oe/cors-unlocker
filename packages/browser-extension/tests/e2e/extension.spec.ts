@@ -881,7 +881,8 @@ test('activity empty states replace rows cleanly after reconnecting and filterin
   await expect(panel.getByRole('button', { name: /GET.*activity.localhost:3000\/health/ })).toHaveCount(2);
   await panel.getByRole('button', { name: 'Clear requests' }).click();
   await expect(empty).toContainText('No activity recorded yet.');
-  await expect(activity.getByRole('button')).toHaveCount(0);
+  await expect(activity.locator('button[aria-pressed]')).toHaveCount(0);
+  await expect(activity.getByRole('button', { name: 'Start proxy session', exact: true })).toBeEnabled();
   await expect(panel.getByText('Check against current rules', { exact: true })).toHaveCount(0);
   await activity.screenshot({ path: '/tmp/intercept-activity-empty.png' });
   expect(await panel.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
