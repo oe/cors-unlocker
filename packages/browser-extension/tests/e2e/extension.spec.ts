@@ -47,23 +47,12 @@ async function launchContext() {
   });
   context.setDefaultTimeout(15_000);
   context.setDefaultNavigationTimeout(20_000);
-  await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
   control = await context.newPage();
   // Intentional test reloads discard the native beforeunload prompt, not the app's draft dialog.
   control.on('dialog', (dialog) => void (dialog.type() === 'beforeunload' ? dialog.accept() : dialog.dismiss()));
   await control.goto(`chrome-extension://${extensionId}/src/options/index.html`);
   await currentWorker();
 }
-
-test.beforeEach(async () => {
-  await context.tracing.startChunk();
-});
-
-test.afterEach(async () => {
-  const testInfo = test.info();
-  // This suite creates its own persistent context; Playwright's fixture trace does not capture it.
-  await context.tracing.stopChunk({ path: testInfo.outputPath('extension-trace.zip') }).catch(() => undefined);
-});
 
 test.afterAll(async () => {
   await context?.close();
@@ -128,7 +117,6 @@ test('migrates v1 storage once and keeps a recovery snapshot', async () => {
     return values.proxyAppState?.schemaVersion;
   })).toBe(2);
   await control.evaluate(async () => {
-    await chrome.storage.local.clear();
     await chrome.storage.local.set({
       allowedOrigins: [{
         id: 9,
@@ -147,6 +135,8 @@ test('migrates v1 storage once and keeps a recovery snapshot', async () => {
         autoCleanupDays: 14,
       },
     });
+    // Publish legacy input before removing v2: open UI listeners may immediately request migration.
+    await chrome.storage.local.remove(['proxyAppState', 'legacyBackupV1']);
   });
   await context.close();
   await launchContext();
