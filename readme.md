@@ -27,6 +27,10 @@ repairing CORS. Cross-origin mocks need a matching CORS rule/control or appropri
 Disable cache bypasses HTTP cache in the attached Chrome tab without clearing stored cache or
 bypassing service workers. Turning it off or stopping the session restores normal cache use. Firefox hides this unsupported control.
 
+On Chrome, a session started by a quick control disconnects when its last active control is turned off,
+removing the debugging banner. A manually started proxy session stays connected until explicitly stopped.
+Other active quick controls also keep the connection alive.
+
 Quick controls live only in the background session and reset on stop, tab close, or cross-origin
 navigation. They never create persistent rules. Existing CORS site rules remain available separately;
 turning off session CORS does not disable an independently enabled site rule.

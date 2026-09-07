@@ -813,6 +813,11 @@ test('disable cache bypasses real HTTP cache for one tab and restores it on stop
     await expect(popup.getByRole('switch', { name: 'Disable cache', exact: true })).toBeChecked();
     await popup.getByRole('switch', { name: 'Disable cache', exact: true }).click();
     await expect(popup.getByRole('switch', { name: 'Disable cache', exact: true })).not.toBeChecked();
+    await expect(popup.getByText('Proxy off', { exact: true })).toBeVisible();
+    await expect.poll(() => control.evaluate(async (id) => {
+      const targets = await chrome.debugger.getTargets();
+      return targets.find((target) => target.tabId === id)?.attached;
+    }, tabId)).toBe(false);
     const restored = await read(target, '/restored');
     expect(await read(target, '/restored')).toBe(restored);
     await popup.getByRole('switch', { name: 'Disable cache', exact: true }).click();

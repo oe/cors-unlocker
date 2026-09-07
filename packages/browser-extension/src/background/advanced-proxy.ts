@@ -10,7 +10,7 @@ import {
   type ProxyHeaderMap,
 } from '@/common/proxy-state';
 import { normalizeResourceType } from '@/common/request-match';
-import { EMPTY_QUICK_CONTROLS, parseQuickControls, quickControlRules, type QuickControls } from '@/common/quick-controls';
+import { EMPTY_QUICK_CONTROLS, hasActiveQuickControls, parseQuickControls, quickControlRules, type QuickControls } from '@/common/quick-controls';
 
 const PROTOCOL_VERSION = '1.3';
 
@@ -44,6 +44,7 @@ export interface IRequestLogEntry {
 
 interface IAdvancedProxySession {
   origin: string;
+  startedByQuickControls: boolean;
   quickControls: QuickControls;
 }
 
@@ -455,13 +456,19 @@ export async function enableAdvancedProxy(
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
     throw new Error('Advanced proxy only supports HTTP and HTTPS tabs.');
   }
-  if (sessions.has(tabId)) return getAdvancedProxyStatus(tabId);
+  const existing = sessions.get(tabId);
+  if (existing) {
+    // An explicit start takes ownership of an already-running automatic session.
+    if (!options.quickControls) existing.startedByQuickControls = false;
+    return getAdvancedProxyStatus(tabId);
+  }
 
   await notifyStatus({ tabId, phase: 'connecting', origin: url.origin });
   try {
     await refreshRuleCache();
     await chrome.debugger.attach({ tabId }, PROTOCOL_VERSION);
     sessions.set(tabId, {
+      startedByQuickControls: !!options.quickControls,
       origin: url.origin,
       quickControls,
     });
@@ -494,6 +501,9 @@ export async function updateQuickControls(tabId: number, value: unknown): Promis
   const quickControls = parseQuickControls(value);
   const session = sessions.get(tabId);
   if (!session) throw new Error('Start a proxy session first.');
+  if (session.startedByQuickControls && !hasActiveQuickControls(quickControls)) {
+    return disableAdvancedProxy(tabId);
+  }
   if (session.quickControls.disableCache !== quickControls.disableCache) {
     await chrome.debugger.sendCommand({ tabId }, 'Network.setCacheDisabled', { cacheDisabled: quickControls.disableCache });
     if (sessions.get(tabId) !== session) throw new Error('Start a proxy session first.');

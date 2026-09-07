@@ -49,3 +49,8 @@ export function quickControlRules(origin: string, controls: QuickControls): IPro
 export function needsProxy(rule: IProxyRule): boolean {
   return rule.actions.some((action) => ['cors', 'delay', 'networkFailure', 'mockResponse'].includes(action.type));
 }
+
+/** Credentials modify CORS; by themselves they do not require interception. */
+export function hasActiveQuickControls(controls: QuickControls): boolean {
+  return controls.cors || controls.disableCache || controls.delayMs > 0 || controls.failure;
+}
