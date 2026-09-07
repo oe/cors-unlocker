@@ -482,7 +482,9 @@ test('exposes an origin-scoped SDK bridge with consent and disabled drafts', asy
 
 test('repairs a genuinely failing preflight and records the request', async () => {
   const target = await context.newPage();
-  await target.goto('http://test.localhost:3000/');
+  // Keep migrated site rules and previous preflight caches out of this baseline.
+  const origin = `http://preflight-${test.info().workerIndex}-${test.info().retry}.localhost:3000`;
+  await target.goto(`${origin}/`);
   const apiUrl = 'http://api.localhost:3000/api/custom-headers';
 
   const before = await target.evaluate(async (url) => {
@@ -495,7 +497,7 @@ test('repairs a genuinely failing preflight and records the request', async () =
   }, apiUrl);
   expect(before).not.toBe('unexpected-success');
 
-  const tabId = await getTabId('http://test.localhost:3000/');
+  const tabId = await getTabId(`${origin}/`);
   const status = await control.evaluate(async (id) => chrome.runtime.sendMessage({
     type: 'enableAdvancedProxy',
     payload: { tabId: id, quickControls: { disableCache: false, cors: true, credentials: true, delayMs: 0, failure: false } },
@@ -814,10 +816,15 @@ test('disable cache bypasses real HTTP cache for one tab and restores it on stop
     await popup.getByRole('switch', { name: 'Disable cache', exact: true }).click();
     await expect(popup.getByRole('switch', { name: 'Disable cache', exact: true })).not.toBeChecked();
     await expect(popup.getByText('Proxy off', { exact: true })).toBeVisible();
+    // getTargets().attached also sees Playwright's own connection. Verify this extension's access.
     await expect.poll(() => control.evaluate(async (id) => {
-      const targets = await chrome.debugger.getTargets();
-      return targets.find((target) => target.tabId === id)?.attached;
-    }, tabId)).toBe(false);
+      try {
+        await chrome.debugger.sendCommand({ tabId: id }, 'Runtime.getIsolateId');
+        return 'extension-still-attached';
+      } catch (error) {
+        return error instanceof Error ? error.message : String(error);
+      }
+    }, tabId)).toMatch(/not attached/i);
     const restored = await read(target, '/restored');
     expect(await read(target, '/restored')).toBe(restored);
     await popup.getByRole('switch', { name: 'Disable cache', exact: true }).click();
