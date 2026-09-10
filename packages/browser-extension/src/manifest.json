@@ -19,6 +19,11 @@
   },
   "options_page": "src/options/index.html",
   "action": {
+    "default_icon": {
+      "16": "icon/16.png",
+      "32": "icon/32.png",
+      "128": "icon/128.png"
+    },
     "default_popup": "src/popup/index.html"
   },
   "{{chrome}}.side_panel": {
