@@ -7,8 +7,10 @@ import type { IRuleItem } from '@/types';
  * @returns rules that need to be updated
  */
 export function diffRules(newRules?: IRuleItem[], oldRules?: IRuleItem[]) {
-  if (!oldRules || !oldRules.length || !newRules || !newRules.length)
+  if (!oldRules || !oldRules.length)
     return newRules || [];
+
+  newRules = newRules || [];
 
   const updatedRules = newRules.filter((newRule) => {
     const rule = oldRules.find((oldRule) => newRule.id === oldRule.id);

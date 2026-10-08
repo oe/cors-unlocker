@@ -66,6 +66,28 @@ The extension UI supports English, Simplified Chinese, Korean, Japanese, French 
 
 Interception is deliberately tab-scoped. It stops when disabled, when the tab closes, or when the tab navigates to a different top-level origin. Chrome Advanced mode also detaches when another debugger takes over.
 
+## Rule reliability and recovery
+
+Saved page scopes use the complete top-level HTTP(S) origin, including protocol and port.
+The fast path installs session DNR rules bound to matching tab IDs and refreshes them on
+navigation and tab closure. Saved configuration remains local and persistent; browser
+rules are rebuilt at startup. Older dynamic rules are removed during reconciliation.
+Fast rules combine Fetch, XHR and EventSource into the browser's `xmlhttprequest` type;
+Advanced mode can distinguish Chrome resource types.
+
+URL globs use anchored, case-insensitive matching in the editor and interception engines,
+and are compiled to equivalent DNR regex filters. Only `*` is a wildcard; punctuation in
+URLs and query strings is literal. Invalid scopes and headers are rejected before saving.
+
+Rules, settings and imports are updated by a single background writer. Concurrent edits
+to different rules are preserved, additions share the configured rule quota, and an import
+checks its preview against the latest state before creating a recovery backup. Browser
+rule installation errors return to the caller and restore the previous configuration.
+
+Invalid or newer stored schemas are preserved instead of being replaced by a fresh v1
+migration. The workspace offers an export of the original data and a validated backup
+restore flow. A separate `preRecoveryBackup` retains the data replaced by an explicit restore.
+
 ## Upgrade behavior
 
 Keep the existing Chrome manifest key and Firefox Gecko ID when publishing 2.0 so each browser treats it as an update. On first startup:

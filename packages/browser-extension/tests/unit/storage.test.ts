@@ -135,6 +135,7 @@ describe('storage.ts', () => {
         'legacyBackupV1',
         'allowedOrigins',
         'extConfig',
+        'invalidProxyStateBackup',
       ])
       expect(result).toEqual(mockRules)
     })

@@ -1,7 +1,9 @@
 import browser from 'webextension-polyfill';
-import type { IProxyAction, IProxyRule } from '@/common/proxy-state';
+import { isProxyRule, type IProxyAction, type IProxyRule } from '@/common/proxy-state';
 import { logger } from '@/common/logger';
-import { toDnrResourceTypes } from '@/common/request-match';
+import { globToRegex, toDnrResourceTypes } from '@/common/request-match';
+import { mergeHeaderMaps } from '@/common/validation';
+import { mergeHeaders } from '@/common/rules';
 
 const RULE_ID_BASE = 1_000_000;
 const RULE_ID_RANGE = 1_000_000_000;
@@ -15,37 +17,34 @@ function hashId(value: string): number {
   return RULE_ID_BASE + (hash >>> 0) % RULE_ID_RANGE;
 }
 
-function asDomains(origins: string[]): string[] | undefined {
-  const domains = origins.flatMap((origin) => {
-    if (origin === '*') return [];
-    try { return [new URL(origin).hostname]; } catch { return []; }
-  });
-  return domains.length > 0 ? [...new Set(domains)] : undefined;
-}
+type ScopedTab = Pick<browser.Tabs.Tab, 'id' | 'url'>;
 
-function createCondition(rule: IProxyRule): chrome.declarativeNetRequest.RuleCondition {
+function createCondition(rule: IProxyRule, tabs: ScopedTab[]): chrome.declarativeNetRequest.RuleCondition | null {
+  const global = rule.match.initiatorOrigins.includes('*');
+  const tabIds = tabs.flatMap((tab) => {
+    if (typeof tab.id !== 'number' || !tab.url) return [];
+    try { return rule.match.initiatorOrigins.includes(new URL(tab.url).origin) ? [tab.id] : []; }
+    catch { return []; }
+  });
+  if (!global && tabIds.length === 0) return null;
   return {
-    urlFilter: rule.match.urlPattern || '*',
-    initiatorDomains: asDomains(rule.match.initiatorOrigins),
-    requestMethods: rule.match.methods?.map((method) => method.toLowerCase()) as chrome.declarativeNetRequest.RequestMethod[] | undefined,
+    ...(rule.match.urlPattern === '*' ? { urlFilter: '*' } : { regexFilter: globToRegex(rule.match.urlPattern) }),
+    isUrlFilterCaseSensitive: false,
+    ...(!global ? { tabIds } : {}),
+    requestMethods: rule.match.methods?.length ? rule.match.methods.map((method) => method.toLowerCase()) as chrome.declarativeNetRequest.RequestMethod[] : undefined,
     resourceTypes: toDnrResourceTypes(rule.match.resourceTypes),
   };
 }
 
-function headerActions(
-  actions: IProxyAction[],
-  type: 'setRequestHeaders' | 'setResponseHeaders',
-): chrome.declarativeNetRequest.ModifyHeaderInfo[] {
-  return actions
-    .filter((action): action is Extract<IProxyAction, { type: typeof type }> => action.type === type)
-    .flatMap((action) => Object.entries(action.headers).map(([header, value]) => ({
-      header,
-      operation: 'set' as chrome.declarativeNetRequest.HeaderOperation,
-      value,
-    })));
+function headerActions(actions: IProxyAction[], type: 'setRequestHeaders' | 'setResponseHeaders') {
+  const maps = actions.flatMap((action) => action.type === type ? [action.headers] : []);
+  return Object.entries(mergeHeaderMaps(...maps)).map(([header, value]) => ({
+    header, operation: 'set' as chrome.declarativeNetRequest.HeaderOperation, value,
+  }));
 }
 
-export function compileProxyRules(rules: IProxyRule[]): browser.DeclarativeNetRequest.Rule[] {
+/** Session rules retain the complete top-level origin instead of broadening it to a hostname. */
+export function compileProxyRules(rules: IProxyRule[], tabs: ScopedTab[] = []): browser.DeclarativeNetRequest.Rule[] {
   const usedIds = new Set<number>();
   const allocateId = (ruleId: string) => {
     let id = hashId(ruleId);
@@ -53,51 +52,55 @@ export function compileProxyRules(rules: IProxyRule[]): browser.DeclarativeNetRe
     usedIds.add(id);
     return id;
   };
-
-  return rules.flatMap((rule) => {
-    if (!rule.enabled || rule.source === 'legacy-cors') return [];
-    const condition = createCondition(rule);
-    if (rule.match.resourceTypes?.length && !condition.resourceTypes?.length) return [];
-    const block = rule.actions.find((action) => action.type === 'block');
-    if (block) return [{
-      id: allocateId(`${rule.id}:block`),
-      priority: 100,
-      condition,
-      action: { type: 'block' },
+  return rules.flatMap((rule, index) => {
+    if (!isProxyRule(rule) || !rule.enabled) return [];
+    const condition = createCondition(rule, tabs);
+    if (!condition || (rule.match.resourceTypes?.length && !condition.resourceTypes?.length)) return [];
+    if (rule.source === 'legacy-cors') {
+      const cors = rule.actions.find((action) => action.type === 'cors');
+      const origin = rule.match.initiatorOrigins[0];
+      if (!cors || origin === '*') return [];
+      return [{ id: allocateId(`${rule.id}:cors`), priority: 1, condition,
+        action: { type: 'modifyHeaders', responseHeaders: Object.entries({
+          'Access-Control-Allow-Origin': cors.allowCredentials ? origin : '*',
+          'Access-Control-Allow-Credentials': cors.allowCredentials ? 'true' : 'false',
+          'Access-Control-Allow-Methods': cors.allowMethods.join(', '),
+          'Access-Control-Allow-Headers': cors.allowCredentials ? mergeHeaders(cors.allowHeaders.join(',')).join(', ') : '*',
+        }).map(([header, value]) => ({ header, operation: 'set', value })) },
+      } as browser.DeclarativeNetRequest.Rule];
+    }
+    // Saved order is deterministic: earlier terminal rules win; later header actions win.
+    const terminalPriority = rules.length - index + 10_000;
+    if (rule.actions.some((action) => action.type === 'block')) return [{
+      id: allocateId(`${rule.id}:block`), priority: terminalPriority + 10_000, condition, action: { type: 'block' },
     } as browser.DeclarativeNetRequest.Rule];
-
-    const redirect = rule.actions.find(
-      (action): action is Extract<IProxyAction, { type: 'redirect' }> => action.type === 'redirect',
-    );
+    const redirect = rule.actions.find((action) => action.type === 'redirect');
     if (redirect) return [{
-      id: allocateId(`${rule.id}:redirect`),
-      priority: 100,
-      condition,
+      id: allocateId(`${rule.id}:redirect`), priority: terminalPriority, condition,
       action: { type: 'redirect', redirect: { url: redirect.url } },
     } as browser.DeclarativeNetRequest.Rule];
-
     const requestHeaders = headerActions(rule.actions, 'setRequestHeaders');
     const responseHeaders = headerActions(rule.actions, 'setResponseHeaders');
-    if (requestHeaders.length === 0 && responseHeaders.length === 0) return [];
-    return [{
-      id: allocateId(`${rule.id}:headers`),
-      priority: 10,
-      condition,
-      action: {
-        type: 'modifyHeaders',
-        ...(requestHeaders.length > 0 ? { requestHeaders } : {}),
-        ...(responseHeaders.length > 0 ? { responseHeaders } : {}),
-      },
+    if (!requestHeaders.length && !responseHeaders.length) return [];
+    return [{ id: allocateId(`${rule.id}:headers`), priority: index + 10, condition,
+      action: { type: 'modifyHeaders', ...(requestHeaders.length ? { requestHeaders } : {}),
+        ...(responseHeaders.length ? { responseHeaders } : {}) },
     } as browser.DeclarativeNetRequest.Rule];
   });
 }
 
-export async function reconcileProxyDnrRules(rules: IProxyRule[]): Promise<void> {
-  const existing = await browser.declarativeNetRequest.getDynamicRules();
-  const removeRuleIds = existing
-    .filter((rule) => rule.id >= RULE_ID_BASE)
-    .map((rule) => rule.id);
-  const addRules = compileProxyRules(rules);
-  await browser.declarativeNetRequest.updateDynamicRules({ removeRuleIds, addRules });
-  logger.info(`Reconciled ${addRules.length} proxy DNR rules.`);
+let reconcileQueue: Promise<unknown> = Promise.resolve();
+export function reconcileProxyDnrRules(rules: IProxyRule[]): Promise<void> {
+  const run = reconcileQueue.then(async () => {
+    const [dynamic, session, tabs] = await Promise.all([
+      browser.declarativeNetRequest.getDynamicRules(), browser.declarativeNetRequest.getSessionRules(), browser.tabs.query({}),
+    ]);
+    const addRules = compileProxyRules(rules, tabs);
+    // Clear persisted v1/v2 dynamic rules as well, including a previously deleted last CORS rule.
+    await browser.declarativeNetRequest.updateDynamicRules({ removeRuleIds: dynamic.map((rule) => rule.id) });
+    await browser.declarativeNetRequest.updateSessionRules({ removeRuleIds: session.map((rule) => rule.id), addRules });
+    logger.info(`Reconciled ${addRules.length} tab-scoped browser rules.`);
+  });
+  reconcileQueue = run.catch(() => undefined);
+  return run;
 }

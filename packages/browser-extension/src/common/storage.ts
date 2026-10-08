@@ -1,17 +1,15 @@
 import { IRuleItem } from '@/types';
-import { type ICreateRuleOptions, createRule } from './rules';
-import { isSameRule } from './utils';
+import { type ICreateRuleOptions } from './rules';
 import browser from 'webextension-polyfill';
 import { logger } from './logger';
 
 import { extConfig } from './ext-config';
+import { parseImport } from './import-preview';
 import {
   APP_STATE_KEY,
   ensureProxyAppState,
   getCorsCompatibilityRules,
-  isProxyAppState,
-  saveProxyAppState,
-  withLegacyRules,
+  performProxyStateOperation,
 } from './proxy-state';
 
 let lastRules: IRuleItem[] | undefined;
@@ -20,6 +18,7 @@ let maxId = 0;
 // Debounce saves to avoid too frequent storage writes
 let saveTimeout: NodeJS.Timeout | null = null;
 const SAVE_DEBOUNCE_MS = 500;
+let pendingSaves: Array<{ resolve: () => void; reject: (error: unknown) => void }> = [];
 
 export const dataStorage = {
   updateCachedRules(rules: IRuleItem[]) {
@@ -55,20 +54,21 @@ export const dataStorage = {
   },
   
   saveRules(rules: IRuleItem[], debounce: boolean = false): Promise<void> {
-    lastRules = rules;
-    
     if (debounce) {
       return new Promise((resolve, reject) => {
         if (saveTimeout) {
           clearTimeout(saveTimeout);
         }
         
+        pendingSaves.push({ resolve, reject });
         saveTimeout = setTimeout(async () => {
+          saveTimeout = null;
+          const pending = pendingSaves; pendingSaves = [];
           try {
             await this._saveRulesImmediate(rules);
-            resolve();
+            pending.forEach((save) => save.resolve());
           } catch (error) {
-            reject(error);
+            pending.forEach((save) => save.reject(error));
           }
         }, SAVE_DEBOUNCE_MS);
       });
@@ -79,10 +79,8 @@ export const dataStorage = {
 
   async _saveRulesImmediate(rules: IRuleItem[]): Promise<void> {
     try {
-      const state = await ensureProxyAppState();
-      await browser.storage.local.set({
-        [APP_STATE_KEY]: withLegacyRules(state, rules),
-      });
+      const state = await performProxyStateOperation({ kind: 'legacyRules', rules });
+      this.updateCachedRules(getCorsCompatibilityRules(state));
       logger.debug('Saved rules to storage:', rules.length);
     } catch (error) {
       logger.error('Failed to save rules to storage:', error);
@@ -102,78 +100,23 @@ export const dataStorage = {
   },
 
   async addRule(options: ICreateRuleOptions): Promise<boolean> {
-    try {
-      const rules = await this.getRules();
-      const config = extConfig.get();
-      
-      // Check maxRules limit
-      if (rules.length >= config.maxRules) {
-        logger.warn(`Cannot add rule: maximum limit of ${config.maxRules} rules reached`);
-        throw new Error(`Maximum limit of ${config.maxRules} rules reached`);
-      }
-      
-      const newRule = createRule(options);
-      
-      // Check for duplicate origin using cached rules
-      const existingRule = rules.find(r => r.origin === newRule.origin);
-      if (existingRule) {
-        logger.warn('Rule with origin already exists:', newRule.origin);
-        throw new Error(`Rule for origin "${newRule.origin}" already exists`);
-      }
-      
-      const newRules = [...rules, newRule];
-      await this.saveRules(newRules);
-      logger.info('Added new rule:', newRule.origin);
-      return true;
-    } catch (error) {
-      logger.error('Failed to add rule:', error);
-      throw error;
-    }
+    const state = await performProxyStateOperation({ kind: 'legacyPatch', intent: 'add', rule: options });
+    this.updateCachedRules(getCorsCompatibilityRules(state));
+    return true;
   },
 
   async removeRule(id: number): Promise<boolean> {
-    try {
-      const rules = await this.getRules(); // Always get fresh rules
-      const newRules = rules.filter((r) => r.id !== id);
-      if (newRules.length === rules.length) {
-        logger.warn('Rule not found for removal:', id);
-        return false;
-      }
-      await this.saveRules(newRules);
-      logger.info('Removed rule:', id);
-      return true;
-    } catch (error) {
-      logger.error('Failed to remove rule:', error);
-      return false;
-    }
+    const state = await performProxyStateOperation({ kind: 'legacyPatch', intent: 'remove', rule: { id } });
+    this.updateCachedRules(getCorsCompatibilityRules(state));
+    return true;
   },
-  
-  async updateRule(newRule: Partial<IRuleItem>): Promise<boolean> {
-    try {
-      const rules = await this.getRules(); // Always get fresh rules
-      let updated = false;
-      const newRules = rules.map((item) => {
-        if (isSameRule(item, newRule)) {
-          updated = true;
-          return { ...item, ...newRule, updatedAt: Date.now() };
-        }
-        return item;
-      });
-      
-      if (!updated) {
-        logger.warn('Rule not found for update:', newRule.id);
-        throw new Error(`Rule with ID "${newRule.id}" not found`);
-      }
-      
-      await this.saveRules(newRules);
-      logger.info('Updated rule:', newRule.id);
-      return true;
-    } catch (error) {
-      logger.error('Failed to update rule:', error);
-      throw error;
-    }
+
+  async updateRule(rule: Partial<IRuleItem>): Promise<boolean> {
+    const state = await performProxyStateOperation({ kind: 'legacyPatch', intent: 'update', rule });
+    this.updateCachedRules(getCorsCompatibilityRules(state));
+    return true;
   },
-  
+
   onRulesChange(
     callback: (newRules?: IRuleItem[], oldRules?: IRuleItem[]) => void
   ) {
@@ -213,61 +156,12 @@ export const dataStorage = {
     }
   },
 
-  async importRules(data: string, merge: boolean = false): Promise<boolean> {
-    try {
-      const parsed = JSON.parse(data);
-      if (parsed.version === '2.0' && isProxyAppState(parsed.state)) {
-        if (merge) {
-          const current = await ensureProxyAppState();
-          const rulesById = new Map(current.rules.map((rule) => [rule.id, rule]));
-          for (const rule of parsed.state.rules) rulesById.set(rule.id, rule);
-          await saveProxyAppState({
-            ...current,
-            rules: [...rulesById.values()],
-          });
-        } else {
-          await saveProxyAppState(parsed.state);
-        }
-        lastRules = undefined;
-        logger.info('Imported v2 proxy state successfully');
-        return true;
-      }
-      if (!parsed.rules || !Array.isArray(parsed.rules)) {
-        throw new Error('Invalid export format');
-      }
-
-      const importedRules = parsed.rules as IRuleItem[];
-      let finalRules: IRuleItem[];
-
-      if (merge) {
-        const existingRules = await this.getRules();
-        const mergedRules = [...existingRules];
-        
-        for (const importedRule of importedRules) {
-          const existingIndex = mergedRules.findIndex(r => r.origin === importedRule.origin);
-          if (existingIndex >= 0) {
-            // Update existing rule
-            mergedRules[existingIndex] = { ...importedRule, id: mergedRules[existingIndex].id };
-          } else {
-            // Add new rule with new ID
-            mergedRules.push({ ...importedRule, id: genRuleId() });
-          }
-        }
-        finalRules = mergedRules;
-      } else {
-        // Replace all rules, reassign IDs
-        finalRules = importedRules.map((rule, index) => ({ ...rule, id: index + 1 }));
-        maxId = finalRules.length;
-      }
-
-      await this.saveRules(finalRules);
-      logger.info('Imported rules successfully:', finalRules.length);
-      return true;
-    } catch (error) {
-      logger.error('Failed to import rules:', error);
-      return false;
-    }
+  async importRules(data: string, merge: boolean = false, expectedState?: import('./proxy-state').IProxyAppState): Promise<boolean> {
+    const state = await performProxyStateOperation({ kind: 'import', state: parseImport(data), merge, expectedState });
+    this.updateCachedRules(getCorsCompatibilityRules(state));
+    return true;
   }
+
 };
 
 function updateMaxId(rules: IRuleItem[]) {
@@ -309,58 +203,18 @@ export function removeCurrentTabRule(winId: number) {
 }
 
 export async function toggleRuleViaOrigin(rule: Partial<IRuleItem>): Promise<boolean> {
-  // Always get fresh rules instead of using cached ones
-  const rules = await dataStorage.getRules();
-  const existRule = rules.find((r) => r.origin === rule.origin);
-  
-  if (existRule) {
-    await dataStorage.updateRule({ ...existRule, ...rule });
-    return true;
-  } else {
-    await dataStorage.addRule(rule as ICreateRuleOptions);
-    return true;
-  }
+  const state = await performProxyStateOperation({ kind: 'legacyPatch', intent: 'upsert', rule });
+  dataStorage.updateCachedRules(getCorsCompatibilityRules(state));
+  return true;
 }
 
 /**
  * Auto-cleanup disabled rules older than specified days
  */
 export async function autoCleanupDisabledRules(): Promise<number> {
-  try {
-    const config = extConfig.get();
-    
-    // Skip cleanup if disabled (0 days) or no cleanup period set
-    if (!config.autoCleanupDays || config.autoCleanupDays <= 0) {
-      logger.debug('Auto-cleanup disabled');
-      return 0;
-    }
-
-    const rules = await dataStorage.getRules();
-    const cutoffTime = Date.now() - (config.autoCleanupDays * 24 * 60 * 60 * 1000);
-    
-    // Find disabled rules older than cutoff time
-    const rulesToCleanup = rules.filter(rule => 
-      rule.disabled && 
-      (rule.updatedAt || rule.createdAt) < cutoffTime
-    );
-    
-    if (rulesToCleanup.length === 0) {
-      logger.debug('No rules to cleanup');
-      return 0;
-    }
-
-    // Remove old disabled rules
-    const remainingRules = rules.filter(rule => 
-      !rule.disabled || 
-      (rule.updatedAt || rule.createdAt) >= cutoffTime
-    );
-    
-    await dataStorage.saveRules(remainingRules);
-    
-    logger.info(`Auto-cleanup: removed ${rulesToCleanup.length} disabled rules older than ${config.autoCleanupDays} days`);
-    return rulesToCleanup.length;
-  } catch (error) {
-    logger.error('Failed to auto-cleanup disabled rules:', error);
-    return 0;
-  }
+  const before = await dataStorage.getRules();
+  const state = await performProxyStateOperation({ kind: 'cleanup' });
+  const rules = getCorsCompatibilityRules(state);
+  dataStorage.updateCachedRules(rules);
+  return before.length - rules.length;
 }

@@ -10,7 +10,7 @@
     "dev:cors-unlocker": "turbo dev --filter=cors-unlocker",
     "dev:website": "turbo dev --filter=website",
     "test": "turbo test",
-    "test:run": "turbo test:run",
+    "test:run": "turbo test:run && pnpm --filter forth-intercept test && pnpm --filter forth-intercept build && pnpm --filter cors-unlocker test",
     "test:coverage": "turbo test:coverage",
     "test:e2e": "turbo test:e2e",
     "lint": "turbo lint"

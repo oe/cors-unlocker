@@ -1,20 +1,19 @@
+import './state-writer';
 import browser from 'webextension-polyfill';
-import {
-  diffRules,
-  reorderRules,
-} from './user-rule';
 import { dataStorage, autoCleanupDisabledRules } from '@/common/storage';
 import { onTabActiveChange } from './on-tab-change';
-import { batchUpdateRules } from './declarative-rules';
 import {
   onExternalMessage,
   onRuntimeMessage,
   onWindowClose,
 } from './messaging';
 import { logger } from '@/common/logger';
-import { ensureProxyAppState } from '@/common/proxy-state';
+import { ensureProxyAppState, initializeProxyStateWriter, isProxyAppState } from '@/common/proxy-state';
 import '@/background/advanced-proxy';
 import { reconcileProxyDnrRules } from './proxy-dnr';
+import { createFirefoxMessageRouter } from './message-routing';
+
+initializeProxyStateWriter((state) => reconcileProxyDnrRules(state.rules));
 
 // Simple delay utility function
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -22,13 +21,10 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 async function bootstrap() {
   try {
     const state = await ensureProxyAppState();
-    const rules = await dataStorage.getRules();
-    await Promise.all([
-      rules.length > 0 ? batchUpdateRules(rules) : Promise.resolve(),
-      reconcileProxyDnrRules(state.rules),
-    ]);
+    await reconcileProxyDnrRules(state.rules);
   } catch (error) {
     logger.error('Extension bootstrap failed:', error);
+    await reconcileProxyDnrRules([]).catch(() => undefined);
   }
 }
 
@@ -53,16 +49,8 @@ browser.runtime.onStartup.addListener(async () => {
       logger.info(`Auto-cleanup: removed ${cleanedCount} old disabled rules`);
     }
     
-    const rules = await dataStorage.getRules();
-    if (!rules || !rules.length) return;
-    
-    const orderedRules = reorderRules(rules);
-    // order changed, update storage then trigger event
-    if (orderedRules) {
-      await dataStorage.saveRules(orderedRules);
-    } else {
-      await batchUpdateRules(rules);
-    }
+    const state = await ensureProxyAppState();
+    await reconcileProxyDnrRules(state.rules);
   } catch (error) {
     logger.error('Error during startup rule initialization:', error);
   }
@@ -70,9 +58,8 @@ browser.runtime.onStartup.addListener(async () => {
 
 
 // Update rules when storage changes
-dataStorage.onRulesChange(async (newRules, oldRules) => {
+dataStorage.onRulesChange(async (newRules) => {
   try {
-    await batchUpdateRules(diffRules(newRules, oldRules));
     dataStorage.updateCachedRules(newRules || []);
     // update current active tab, in case of rule for current tab changed
     setTimeout(async () => {
@@ -94,8 +81,12 @@ dataStorage.onRulesChange(async (newRules, oldRules) => {
 
 browser.storage.onChanged.addListener((changes, areaName) => {
   const state = changes.proxyAppState?.newValue;
-  if (areaName !== 'local' || !state?.rules) return;
-  void reconcileProxyDnrRules(state.rules).catch((error) => {
+  if (areaName !== 'local' || !changes.proxyAppState) return;
+  if (state !== undefined && !isProxyAppState(state)) {
+    void reconcileProxyDnrRules([]).catch((error) => logger.error('Unable to clear invalid rules:', error));
+    return;
+  }
+  void reconcileProxyDnrRules(state?.rules || []).catch((error) => {
     logger.error('Unable to reconcile proxy DNR rules:', error);
   });
 });
@@ -112,6 +103,7 @@ browser.tabs.onActivated.addListener(async (activeInfo) => {
 browser.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   try {
     await onTabActiveChange(tab);
+    if (changeInfo.url) await refreshTabRules();
   } catch (error) {
     logger.error('Error handling tab update:', error);
   }
@@ -122,27 +114,15 @@ if (__TARGET__ === 'chrome') {
   browser.runtime.onMessageExternal.addListener(onExternalMessage);
   browser.runtime.onMessage.addListener(onRuntimeMessage);
 } else {
-  // Firefox: unified message handler since no onMessageExternal
-  browser.runtime.onMessage.addListener((message, sender) => {
-    logger.debug('Firefox message received:', message, sender);
-    
-    // Check if sender is from extension internal pages (popup, options, etc.)
-    if (sender.url && sender.url.startsWith('moz-extension://')) {
-      // Internal extension message (popup, options)
-      logger.debug('Routing to onRuntimeMessage (internal)');
-      return onRuntimeMessage(message, sender);
-    }
-    
-    // Check if sender is from content script (our firefox-bridge)
-    if (sender.tab && sender.tab.url && sender.url) {
-      // Message from content script on web page
-      logger.debug('Routing to onExternalMessage (content script)');
-      return onExternalMessage(message, sender);
-    }
-    
-    // logger.warn('Unknown message sender type:', sender);
-    return Promise.resolve();
-  });
+  browser.runtime.onMessage.addListener(createFirefoxMessageRouter(
+    onRuntimeMessage, onExternalMessage, browser.runtime.getURL(''),
+  ));
 }
 // clear cached currentTabRule after window closed
 browser.windows.onRemoved.addListener(onWindowClose);
+
+async function refreshTabRules() {
+  const state = await ensureProxyAppState();
+  await reconcileProxyDnrRules(state.rules);
+}
+browser.tabs.onRemoved.addListener(() => { void refreshTabRules().catch((error) => logger.error('Unable to refresh tab rules:', error)); });

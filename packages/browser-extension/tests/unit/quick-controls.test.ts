@@ -22,3 +22,10 @@ describe('temporary quick controls', () => {
 it('defaults omitted cache flags to off for existing v2 session callers', () => {
   expect(parseQuickControls({ cors: false, credentials: false, delayMs: 0, failure: false }).disableCache).toBe(false);
 });
+
+it('requires a proxy for native CORS while preserving the compatibility fast path', async () => {
+  const { needsProxy } = await import('../../src/common/quick-controls');
+  const actions = quickControlRules('https://example.com', { ...EMPTY_QUICK_CONTROLS, cors: true })[0].actions;
+  expect(needsProxy({ source: 'user', actions })).toBe(true);
+  expect(needsProxy({ source: 'legacy-cors', actions })).toBe(false);
+});

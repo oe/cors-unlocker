@@ -1,5 +1,21 @@
 // English source keys are the fallback. Technical values and user content are never translated.
 export const messages: Record<string, Record<string, string>> = {
+  "Export original data": {
+    "en": "Export original data",
+    "zh-CN": "导出原始数据",
+    "ko": "원본 데이터 내보내기",
+    "ja": "元のデータをエクスポート",
+    "fr": "Exporter les données originales",
+    "es": "Exportar los datos originales"
+  },
+  "Original data is preserved. Export it before restoring a valid backup.": {
+    "en": "Original data is preserved. Export it before restoring a valid backup.",
+    "zh-CN": "原始数据已保留。恢复有效备份前，请先导出原始数据。",
+    "ko": "원본 데이터가 보존되었습니다. 유효한 백업을 복원하기 전에 내보내세요.",
+    "ja": "元のデータは保持されています。有効なバックアップを復元する前にエクスポートしてください。",
+    "fr": "Les données originales sont conservées. Exportez-les avant de restaurer une sauvegarde valide.",
+    "es": "Los datos originales se conservan. Expórtalos antes de restaurar una copia válida."
+  },
   "Language": {
     "en": "Language",
     "zh-CN": "语言",

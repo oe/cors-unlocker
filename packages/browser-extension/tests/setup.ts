@@ -64,6 +64,7 @@ vi.mock('webextension-polyfill', () => ({
       }
     },
     runtime: {
+      getURL: vi.fn((path: string) => `chrome-extension://test-extension-id/${path}`),
       sendMessage: vi.fn(() => Promise.resolve()),
       onMessage: {
         addListener: vi.fn(),
@@ -88,7 +89,9 @@ vi.mock('webextension-polyfill', () => ({
     },
     declarativeNetRequest: {
       updateDynamicRules: vi.fn(),
-      getDynamicRules: vi.fn(() => Promise.resolve([]))
+      getDynamicRules: vi.fn(() => Promise.resolve([])),
+      updateSessionRules: vi.fn(() => Promise.resolve()),
+      getSessionRules: vi.fn(() => Promise.resolve([]))
     },
     webRequest: {
       filterResponseData: vi.fn(),

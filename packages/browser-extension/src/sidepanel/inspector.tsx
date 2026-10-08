@@ -1,3 +1,4 @@
+import { needsProxy } from '@/common/quick-controls';
 import { t, translateError, useLocale } from '@/common/i18n';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import browser from 'webextension-polyfill';
@@ -212,7 +213,7 @@ export function Inspector() {
         </Alert>
       ) : null}
       {savedRule ? <Alert role="status"><AlertTitle>{savedRule.name}</AlertTitle><AlertDescription>
-        {!savedRule.enabled ? t('Disabled') : savedRule.actions.some((action) => ['mockResponse', 'delay', 'networkFailure'].includes(action.type)) && status?.phase !== 'connected' ? t('Needs advanced proxy') : verifiedRequest ? t('New matching request recorded. Inspect its applied changes.') : t('Saved. Trigger the request again on the page to verify it.')}
+        {!savedRule.enabled ? t('Disabled') : needsProxy(savedRule) && status?.phase !== 'connected' ? t('Needs advanced proxy') : verifiedRequest ? t('New matching request recorded. Inspect its applied changes.') : t('Saved. Trigger the request again on the page to verify it.')}
         {verifiedRequest ? <Button size="sm" variant="outline" onClick={() => { setSearch(''); setSelectedId(verifiedRequest.id); }}>{t('View request')}</Button> : null}
       </AlertDescription></Alert> : null}
       {message ? <Alert><AlertDescription>{translateError(message)}</AlertDescription></Alert> : null}
@@ -329,7 +330,7 @@ export function Inspector() {
             </div>
             <p className="break-all text-xs text-muted-foreground">{rule.match.methods?.join(', ') || t("All methods")} · {rule.match.urlPattern}</p>
             <div className="flex flex-wrap gap-1">
-              <Badge variant="outline">{!rule.enabled ? t("Disabled") : status?.phase !== 'connected' && rule.actions.some((action) => ['mockResponse', 'delay', 'networkFailure'].includes(action.type)) ? t("Needs advanced proxy") : t("Enabled")}</Badge>
+              <Badge variant="outline">{!rule.enabled ? t("Disabled") : status?.phase !== 'connected' && needsProxy(rule) ? t("Needs advanced proxy") : t("Enabled")}</Badge>
               <Badge variant="secondary">{t('{count} recorded matches', { count: entries.filter((entry) => entry.matchedRuleIds.includes(rule.id)).length })}</Badge>
             </div>
           </section>)}

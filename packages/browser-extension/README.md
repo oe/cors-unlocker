@@ -29,3 +29,10 @@ Production archives are written to `dist/forth-intercept-chrome-v2.0.0.zip` and 
 ## Privacy boundary
 
 Rules are stored locally. Traffic logs are in-memory. Sensitive headers are redacted by default. Interception stops on disable, tab close, and top-level cross-origin navigation; Chrome also detaches when another debugger takes over.
+
+
+State mutations run through `performProxyStateOperation` in the background. Extension pages
+must submit operations rather than writing `proxyAppState` directly. Add a new operation to
+that dispatcher when extending settings or rule editing; keep validation and quotas there.
+DNR session rules are rebuilt from complete page origins and current tabs. Do not reintroduce
+hostname-only dynamic rules or per-window CORS switching.

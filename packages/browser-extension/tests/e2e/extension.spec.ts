@@ -295,7 +295,7 @@ test('edits structured actions, protects drafts and previews imports', async () 
   await control.getByRole('button', { name: 'Data & migration' }).click();
   const before = await control.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState);
   const incoming = structuredClone(before);
-  incoming.rules = [{ ...incoming.rules[0], id: 'import-preview-qa', name: 'Imported QA', enabled: false }];
+  incoming.rules = [{ ...incoming.rules[0], id: 'import-preview-qa', source: 'user', legacyRuleId: undefined, name: 'Imported QA', enabled: false }];
   await control.locator('#import-state').setInputFiles({ name: 'backup.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ version: '2.0', state: incoming })) });
   await expect(control.getByRole('region', { name: 'Import preview' })).toContainText('1 added');
   expect(await control.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState)).toEqual(before);
@@ -457,6 +457,7 @@ test('exposes an origin-scoped SDK bridge with consent and disabled drafts', asy
 
   target.once('dialog', (dialog) => dialog.accept());
   const enabled = await sdkRequest('requestCors', { reason: 'E2E consent check' });
+  expect(enabled.error).toBeUndefined();
   expect(enabled.data.cors).toEqual({ enabled: true, credentials: false });
 
   const draft = await sdkRequest('createRuleDraft', {
@@ -948,4 +949,116 @@ test('reloading from the extensions manager releases active proxy sessions', asy
     expect(await control.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState)).toEqual(original);
   }
   await manager.close(); await target.close();
+});
+
+test('keeps DNR scopes isolated by origin and matches complete URLs', async () => {
+  const servers: ReturnType<typeof createServer>[] = [];
+  const pages: Page[] = [];
+  const original = await control.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState);
+  const serve = async () => {
+    const server = createServer((request, response) => {
+      response.setHeader('Content-Type', 'application/json');
+      response.setHeader('Cache-Control', 'no-store');
+      response.end(JSON.stringify({ header: request.headers['x-origin-test'] || null }));
+    });
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    servers.push(server);
+    return `http://localhost:${(server.address() as { port: number }).port}`;
+  };
+  try {
+    const a = await serve(); const b = await serve();
+    const pageA = await context.newPage(); const pageB = await context.newPage();
+    pages.push(pageA, pageB);
+    await pageA.goto(a); await pageB.goto(b);
+    const result = await control.evaluate(async ({ a }) => chrome.runtime.sendMessage({ type: 'saveProxyRule', payload: { rule: {
+      name: 'Exact origin regression', source: 'user', enabled: true,
+      match: { initiatorOrigins: [a], urlPattern: `${a}/api` },
+      actions: [{ type: 'setRequestHeaders', headers: { 'X-Origin-Test': 'active' } }],
+    } } }), { a });
+    expect(result.success).toBe(true);
+    const header = (page: Page, path = '/api') => page.evaluate(async (url) => (await (await fetch(url, { cache: 'no-store' })).json()).header, path);
+    expect(await header(pageA)).toBe('active');
+    expect(await header(pageA, '/api-extra')).toBeNull();
+    expect(await header(pageB)).toBeNull();
+    await pageA.goto(b);
+    await expect.poll(() => header(pageA)).toBeNull();
+    const anotherA = await context.newPage(); pages.push(anotherA); await anotherA.goto(a);
+    await expect.poll(() => header(anotherA)).toBe('active');
+    const invalid = await control.evaluate(async () => chrome.runtime.sendMessage({ type: 'saveProxyRule', payload: { rule: {
+      name: 'Invalid scope', source: 'user', enabled: true, match: { initiatorOrigins: ['localhost'], urlPattern: '*' }, actions: [{ type: 'block' }],
+    } } }));
+    expect(invalid.success).not.toBe(true);
+  } finally {
+    await control.evaluate((state) => chrome.storage.local.set({ proxyAppState: state }), original);
+    await Promise.all(pages.map((page) => page.close()));
+    await Promise.all(servers.map((server) => new Promise<void>((resolve, reject) => {
+      server.close((error) => error ? reject(error) : resolve());
+      server.closeAllConnections();
+    })));
+  }
+});
+
+test('removes the final CORS rule and stale persisted rules from real browser enforcement', async () => {
+  const original = await control.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState);
+  const server = createServer((_request, response) => { response.setHeader('Cache-Control', 'no-store'); response.end('server'); });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const port = (server.address() as { port: number }).port;
+  const origin = `http://localhost:${port}`;
+  const api = `http://127.0.0.1:${port}/api`;
+  const page = await context.newPage();
+  try {
+    await page.goto(origin);
+    await control.evaluate(async (state) => chrome.runtime.sendMessage({ type: 'proxyStateOperation', payload: {
+      kind: 'import', state: { ...state, rules: [], profiles: [] }, merge: false,
+    } }), original);
+    const cors = await control.evaluate(async (origin) => chrome.runtime.sendMessage({ type: 'toggleRuleViaAction', payload: { origin, disabled: false, credentials: false } }), origin);
+    expect(cors.success).toBe(true);
+    expect(await page.evaluate(async (url) => (await fetch(url, { cache: 'no-store' })).text(), api)).toBe('server');
+    // Reproduce an orphan left by a pre-upgrade build.
+    await control.evaluate(async () => chrome.declarativeNetRequest.updateDynamicRules({ addRules: [{
+      id: 7, priority: 1, action: { type: 'modifyHeaders', responseHeaders: [{ header: 'Access-Control-Allow-Origin', operation: 'set', value: '*' }] },
+      condition: { urlFilter: '*', resourceTypes: ['xmlhttprequest'] },
+    }] }));
+    const removed = await control.evaluate(async () => {
+      const { proxyAppState } = await chrome.storage.local.get('proxyAppState');
+      return chrome.runtime.sendMessage({ type: 'deleteProxyRule', payload: { id: proxyAppState.rules[0].id } });
+    });
+    expect(removed.success).toBe(true);
+    expect(await control.evaluate(() => chrome.declarativeNetRequest.getDynamicRules())).toEqual([]);
+    expect(await control.evaluate(() => chrome.declarativeNetRequest.getSessionRules())).toEqual([]);
+    expect(await page.evaluate(async (url) => { try { await fetch(url, { cache: 'no-store' }); return false; } catch { return true; } }, api)).toBe(true);
+  } finally {
+    await control.evaluate((state) => chrome.storage.local.set({ proxyAppState: state }), original);
+    await page.close();
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => error ? reject(error) : resolve());
+      server.closeAllConnections();
+    });
+  }
+});
+
+test('preserves simultaneous background writes and recovers damaged data through the workspace', async () => {
+  const original = await control.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState);
+  try {
+    const results = await control.evaluate(async () => Promise.all(['one', 'two', 'three'].map((name) => chrome.runtime.sendMessage({
+      type: 'saveProxyRule', payload: { rule: { name: `Concurrent ${name}`, source: 'user', enabled: false,
+        match: { initiatorOrigins: ['*'], urlPattern: '*' }, actions: [{ type: 'block' }] } },
+    }))));
+    expect(results.every((result) => result.success)).toBe(true);
+    const ids = results.map((result) => result.rule.id);
+    expect(await control.evaluate(async (ids) => (await chrome.storage.local.get('proxyAppState')).proxyAppState.rules.filter((rule: any) => ids.includes(rule.id)).length, ids)).toBe(3);
+    const damaged = { schemaVersion: 99, rules: ['preserve original'] };
+    await control.evaluate((state) => chrome.storage.local.set({ proxyAppState: state }), damaged);
+    await expect(control.getByRole('region', { name: 'Data & recovery' })).toBeVisible();
+    expect(await control.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState)).toEqual(damaged);
+    await control.getByLabel('Import', { exact: true }).setInputFiles({ name: 'recovery.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ version: '2.0', state: original })) });
+    await expect(control.getByRole('region', { name: 'Import preview' })).toBeVisible();
+    expect(await control.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState)).toEqual(damaged);
+    await control.getByRole('button', { name: 'Apply import' }).click();
+    await expect(control.getByRole('region', { name: 'Data & recovery' })).not.toBeVisible();
+    expect(await control.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState)).toEqual(original);
+    expect(await control.evaluate(async () => (await chrome.storage.local.get('preRecoveryBackup')).preRecoveryBackup.state)).toEqual(damaged);
+  } finally {
+    await control.evaluate((state) => chrome.storage.local.set({ proxyAppState: state }), original);
+  }
 });

@@ -4,7 +4,7 @@ import {
   APP_STATE_KEY,
   ensureProxyAppState,
   isProxyAppState,
-  withLegacyConfig,
+  performProxyStateOperation,
 } from './proxy-state';
 
 export interface IExtConfig {
@@ -53,14 +53,10 @@ export const extConfig = {
 
   async save(newConfig: Partial<IExtConfig>): Promise<void> {
     try {
-      // Validate config values
-      const validatedConfig = this.validateConfig({ ...config, ...newConfig });
-      const state = await ensureProxyAppState();
-      config = validatedConfig;
-      await browser.storage.local.set({
-        [APP_STATE_KEY]: withLegacyConfig(state, config as unknown as Record<string, unknown>),
-      });
-      
+      const validated = this.validateConfig({ ...config, ...newConfig });
+      const patch = Object.fromEntries(Object.keys(newConfig).map((key) => [key, validated[key as keyof IExtConfig]]));
+      const state = await performProxyStateOperation({ kind: 'config', config: patch });
+      config = this.validateConfig(state.settings);
       logger.debug('Config saved:', config);
     } catch (error) {
       logger.error('Failed to save config:', error);
