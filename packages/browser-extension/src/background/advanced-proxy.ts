@@ -2,6 +2,7 @@ import { batchTabNotifications, waitForDelay } from './session-work';
 import browser from 'webextension-polyfill';
 import { logger } from '@/common/logger';
 import { mergeHeaders } from '@/common/rules';
+import { mergeHeaderMaps } from '@/common/validation';
 import {
   APP_STATE_KEY,
   ensureProxyAppState,
@@ -10,7 +11,7 @@ import {
   type IProxyRule,
   type ProxyHeaderMap,
 } from '@/common/proxy-state';
-import { normalizeResourceType } from '@/common/request-match';
+import { globMatches, normalizeResourceType } from '@/common/request-match';
 import { EMPTY_QUICK_CONTROLS, hasActiveQuickControls, parseQuickControls, quickControlRules, type QuickControls } from '@/common/quick-controls';
 
 const PROTOCOL_VERSION = '1.3';
@@ -92,11 +93,6 @@ function redactHeaders(headers: ProxyHeaderMap): ProxyHeaderMap {
   ]));
 }
 
-function globMatches(pattern: string, value: string): boolean {
-  if (!pattern || pattern === '*') return true;
-  const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
-  return new RegExp(`^${escaped}$`, 'i').test(value);
-}
 
 function matchingRules(session: IAdvancedProxySession, params: IRequestPausedParams): IProxyRule[] {
   const method = params.request.method.toUpperCase();
@@ -275,11 +271,11 @@ async function handleRequestPaused(tabId: number, params: IRequestPausedParams) 
 
     const mockAction = actionOfType(actions, 'mockResponse');
     if (mockAction) {
-      const mockHeaders = {
-        'Content-Type': 'application/json; charset=utf-8',
-        ...(cors ? headersToMap(createCorsHeaders(session, params.request.headers, cors)) : {}),
-        ...mockAction.headers,
-      };
+      const mockHeaders = mergeHeaderMaps(
+        { 'Content-Type': 'application/json; charset=utf-8' },
+        cors ? headersToMap(createCorsHeaders(session, params.request.headers, cors)) : {},
+        mockAction.headers,
+      );
       await chrome.debugger.sendCommand({ tabId }, 'Fetch.fulfillRequest', {
         requestId: params.requestId,
         responseCode: Math.min(Math.max(mockAction.status, 100), 599),
@@ -321,7 +317,7 @@ async function handleRequestPaused(tabId: number, params: IRequestPausedParams) 
       (action): action is Extract<IProxyAction, { type: 'setRequestHeaders' }> => action.type === 'setRequestHeaders',
     );
     const mergedRequestHeaders = requestHeaderActions.reduce(
-      (headers, action) => ({ ...headers, ...action.headers }),
+      (headers, action) => mergeHeaderMaps(headers, action.headers),
       { ...params.request.headers },
     );
     await chrome.debugger.sendCommand({ tabId }, 'Fetch.continueRequest', {
@@ -460,7 +456,12 @@ if (__TARGET__ === 'chrome') {
   });
   browser.storage.onChanged.addListener((changes, areaName) => {
     const value = changes[APP_STATE_KEY]?.newValue;
-    if (areaName !== 'local' || !isProxyAppState(value)) return;
+    if (areaName !== 'local' || !changes[APP_STATE_KEY]) return;
+    if (!isProxyAppState(value)) {
+      cachedRules = [];
+      for (const tabId of sessions.keys()) void disableAdvancedProxy(tabId);
+      return;
+    }
     cachedRules = value.rules;
     requestLogLimit = value.settings.requestLogLimit;
     for (const [tabId, session] of sessions) {

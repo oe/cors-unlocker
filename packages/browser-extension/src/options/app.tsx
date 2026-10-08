@@ -15,8 +15,9 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { WorkspaceRuleEditor } from './workspace-rule-editor';
+import { RecoveryPanel } from './recovery-panel';
 import { dataStorage } from '@/common/storage';
-import { APP_STATE_KEY, type IProxyAppState, type IProxyRule } from '@/common/proxy-state';
+import { APP_STATE_KEY, isProxyAppState, type IProxyAppState, type IProxyRule } from '@/common/proxy-state';
 import { draftFromRule, EMPTY_DRAFT, type RuleDraft } from '@/components/rule-dialog';
 import { ACTION_LABELS } from '@/components/action-fields';
 import { RESOURCE_TYPES } from '@/common/request-match';
@@ -80,7 +81,7 @@ function ProxyRules({ state, reload, navigate, onDirtyChange, createToken }: {
     finally { setBusy(false); }
   };
   const toggle = (rule: IProxyRule, enabled: boolean) => {
-    const apply = () => void mutate('saveProxyRule', { rule: { ...rule, enabled } }).then((result) => {
+    const apply = () => void mutate('saveProxyRule', { rule: { id: rule.id, enabled } }).then((result) => {
       if (result && draft?.id === rule.id) setDraft(draftFromRule(typeof result === 'object' ? result : { ...rule, enabled }));
     });
     if (draft?.id === rule.id) leave(() => { setDraft(draftFromRule(rule)); apply(); });
@@ -149,8 +150,7 @@ function DataSettings({ state, reload }: { state: IProxyAppState; reload: () => 
     try {
       const current = await browser.runtime.sendMessage({ type: 'getProxyState' });
       if (JSON.stringify(current) !== JSON.stringify(state)) { await reload(); throw new Error('Configuration changed. Review the updated preview and try again.'); }
-      await browser.storage.local.set({ preImportBackup: { version: '2.0', state: current, timestamp: Date.now() } });
-      if (!await dataStorage.importRules(JSON.stringify({ version: '2.0', state: incoming }), merge)) throw new Error('Import failed.');
+      if (!await dataStorage.importRules(JSON.stringify({ version: '2.0', state: incoming }), merge, state)) throw new Error('Import failed.');
       setIncoming(null); setMessage('Import completed. A pre-import recovery backup was saved locally.'); await reload();
     } catch (error) { setMessage(String(error)); }
     finally { setBusy(false); }
@@ -225,6 +225,7 @@ function DataSettings({ state, reload }: { state: IProxyAppState; reload: () => 
 }
 
 
+
 function App() {
   useLocale();
   const [state, setState] = useState<IProxyAppState | null>(null);
@@ -234,8 +235,12 @@ function App() {
   const [createToken, setCreateToken] = useState(0);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
   const reload = useCallback(async () => {
-    try { setState(await browser.runtime.sendMessage({ type: 'getProxyState' })); setError(null); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to load proxy state.'); }
+    try {
+      const next = await browser.runtime.sendMessage({ type: 'getProxyState' });
+      if (!isProxyAppState(next)) throw new Error(next?.error || 'Unable to load proxy state.');
+      setState(next); setError(null);
+    }
+    catch (cause) { setState(null); setError(cause instanceof Error ? cause.message : 'Unable to load proxy state.'); }
   }, []);
   const navigate = useCallback((action: () => void) => { if (dirty) setPendingNavigation(() => action); else action(); }, [dirty]);
   useEffect(() => {
@@ -258,7 +263,7 @@ function App() {
       <div className="min-h-0 min-w-0 flex-1">
         {state ? view === 'rules' ? <ProxyRules state={state} reload={reload} navigate={navigate} onDirtyChange={setDirty} createToken={createToken} /> :
           <section aria-label={t("Data management")} className="h-full overflow-y-auto p-4 lg:p-8"><div className="mx-auto max-w-5xl"><h2 className="mb-5 text-xl font-semibold">{t("Data & recovery")}</h2><DataSettings state={state} reload={reload} /></div></section> :
-          <p className="p-6 text-sm text-muted-foreground">{t("Loading configuration…")}</p>}
+          <>{error ? <RecoveryPanel reload={reload} /> : <p className="p-6 text-sm text-muted-foreground">{t("Loading configuration…")}</p>}</>}
       </div>
     </div>
     <Dialog open={!!pendingNavigation} onOpenChange={(open) => !open && setPendingNavigation(null)}><DialogContent><DialogHeader><DialogTitle>{t("Discard unsaved changes?")}</DialogTitle><DialogDescription>{t("Save your draft or discard it before leaving.")}</DialogDescription></DialogHeader><DialogFooter><Button variant="outline" onClick={() => setPendingNavigation(null)}>{t("Keep editing")}</Button><Button variant="destructive" onClick={() => { const action = pendingNavigation; setPendingNavigation(null); setDirty(false); action?.(); }}>{t("Discard changes")}</Button></DialogFooter></DialogContent></Dialog>

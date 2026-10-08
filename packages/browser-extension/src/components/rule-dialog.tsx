@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { isProxyAction, type IProxyAction, type IProxyRule } from '@/common/proxy-state';
 import { ActionFields, ACTION_LABELS } from '@/components/action-fields';
 import { explainRuleMatch } from '@/common/rule-explanation';
+import { needsProxy } from '@/common/quick-controls';
 import { RESOURCE_TYPES } from '@/common/request-match';
 
 export const ACTION_TEMPLATES: Record<string, IProxyAction[]> = {
@@ -206,7 +207,7 @@ export function RuleEditorForm({
             ...(form.id ? { id: form.id } : {}),
             name: form.name.trim(),
             enabled: form.enabled,
-            source: form.source || 'user',
+            source: form.source === 'legacy-cors' && actions.length === 1 && actions[0].type === 'cors' ? 'legacy-cors' : 'user',
             ...(form.legacyRuleId !== undefined ? { legacyRuleId: form.legacyRuleId } : {}),
             match: {
               initiatorOrigins: origins,
@@ -323,7 +324,7 @@ export function RuleEditorForm({
     setEnabled: (enabled) => setForm({ ...form, enabled }),
     save: () => void save(), close: requestClose,
     matchFields, actionFields, testFields, errorMessage,
-    requiresAdvanced: !!actions?.some((action) => ['mockResponse', 'delay', 'networkFailure'].includes(action.type)),
+    requiresAdvanced: !!actions && needsProxy({ source: form.source === 'legacy-cors' && actions.length === 1 && actions[0].type === 'cors' ? 'legacy-cors' : 'user', actions }),
   };
   return <>
     {renderWorkspace ? renderWorkspace(parts) :

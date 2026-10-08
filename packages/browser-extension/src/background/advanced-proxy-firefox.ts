@@ -2,6 +2,7 @@ import { batchTabNotifications, waitForDelay } from './session-work';
 import browser from 'webextension-polyfill';
 import { logger } from '@/common/logger';
 import { mergeHeaders } from '@/common/rules';
+import { mergeHeaderMaps } from '@/common/validation';
 import {
   APP_STATE_KEY,
   ensureProxyAppState,
@@ -10,7 +11,7 @@ import {
   type IProxyRule,
   type ProxyHeaderMap,
 } from '@/common/proxy-state';
-import { normalizeResourceType } from '@/common/request-match';
+import { globMatches, normalizeResourceType } from '@/common/request-match';
 import { EMPTY_QUICK_CONTROLS, parseQuickControls, quickControlRules, type QuickControls } from '@/common/quick-controls';
 
 export type AdvancedProxyPhase = 'disabled' | 'connecting' | 'connected' | 'error';
@@ -102,11 +103,6 @@ function redactHeaders(headers: ProxyHeaderMap): ProxyHeaderMap {
   ]));
 }
 
-function globMatches(pattern: string, value: string): boolean {
-  if (!pattern || pattern === '*') return true;
-  const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
-  return new RegExp(`^${escaped}$`, 'i').test(value);
-}
 
 function matchingRules(session: Session, details: RequestDetails): IProxyRule[] {
   const method = details.method.toUpperCase();
@@ -297,7 +293,7 @@ function onBeforeSendHeaders(details: RequestDetails) {
     (action): action is Extract<IProxyAction, { type: 'setRequestHeaders' }> => action.type === 'setRequestHeaders',
   );
   const merged = headerActions.reduce(
-    (headers, action) => ({ ...headers, ...action.headers }),
+    (headers, action) => mergeHeaderMaps(headers, action.headers),
     original,
   );
   const entry = requestIndexes.get(keyFor(details));
@@ -402,7 +398,12 @@ browser.tabs.onUpdated.addListener((tabId, changeInfo) => {
 
 browser.storage.onChanged.addListener((changes, areaName) => {
   const value = changes[APP_STATE_KEY]?.newValue;
-  if (areaName !== 'local' || !isProxyAppState(value)) return;
+  if (areaName !== 'local' || !changes[APP_STATE_KEY]) return;
+  if (!isProxyAppState(value)) {
+    cachedRules = [];
+    for (const tabId of sessions.keys()) void disableAdvancedProxy(tabId);
+    return;
+  }
   cachedRules = value.rules;
   requestLogLimit = value.settings.requestLogLimit;
 });

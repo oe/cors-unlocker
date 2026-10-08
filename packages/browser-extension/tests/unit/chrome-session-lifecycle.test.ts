@@ -105,3 +105,11 @@ it('starts interception when a saved site rule becomes enabled during cache-only
   await vi.waitFor(() => expect(engine.getAdvancedProxyStatus(9).captureEnabled).toBe(true));
   expect(debuggerApi.sendCommand.mock.calls.filter((call) => call[1] === 'Fetch.enable')).toHaveLength(1);
 });
+
+it('stops interception when stored configuration becomes invalid', async () => {
+  await engine.enableAdvancedProxy(9);
+  storageChanged({ proxyAppState: { newValue: { schemaVersion: 99 } } }, 'local');
+  expect(debuggerApi.detach).toHaveBeenCalledWith({ tabId: 9 });
+  await Promise.resolve(); await Promise.resolve();
+  expect(engine.getAdvancedProxyStatus(9).phase).toBe('disabled');
+});

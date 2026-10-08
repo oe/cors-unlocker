@@ -1,5 +1,7 @@
 import browser from 'webextension-polyfill';
 import type { IRuleItem } from '@/types';
+import { HTTP_TOKEN, isHttpOrigin, isHttpUrl } from './validation';
+import { RESOURCE_TYPES } from './request-match';
 
 export const APP_STATE_KEY = 'proxyAppState';
 export const LEGACY_BACKUP_KEY = 'legacyBackupV1';
@@ -161,6 +163,7 @@ export function isProxyAppState(value: unknown): value is IProxyAppState {
     && isSettings(state.settings)
     && Array.isArray(state.rules)
     && state.rules.every(isProxyRule)
+    && new Set(state.rules.map((rule) => rule.id)).size === state.rules.length
     && Array.isArray(state.profiles)
     && state.profiles.every((profile) => !!profile
       && typeof profile === 'object'
@@ -187,8 +190,10 @@ function isHeaderMap(value: unknown): value is ProxyHeaderMap {
   return !!value
     && typeof value === 'object'
     && !Array.isArray(value)
-    && Object.entries(value).every(([name, headerValue]) => name.length > 0
-      && typeof headerValue === 'string');
+    && new Set(Object.keys(value).map((name) => name.toLowerCase())).size === Object.keys(value).length
+    && Object.entries(value).every(([name, headerValue]) => HTTP_TOKEN.test(name)
+      // eslint-disable-next-line no-control-regex
+      && typeof headerValue === 'string' && !/[\x00-\x08\x0a-\x1f\x7f]/.test(headerValue));
 }
 
 export function isProxyAction(value: unknown): value is IProxyAction {
@@ -198,17 +203,18 @@ export function isProxyAction(value: unknown): value is IProxyAction {
     case 'cors':
       return typeof action.allowCredentials === 'boolean'
         && (action.allowOrigin === '*' || action.allowOrigin === 'initiator')
-        && isStringArray(action.allowMethods)
-        && isStringArray(action.allowHeaders);
+        && isStringArray(action.allowMethods) && action.allowMethods.every((method) => HTTP_TOKEN.test(method))
+        && isStringArray(action.allowHeaders) && action.allowHeaders.every((name) => HTTP_TOKEN.test(name));
     case 'setRequestHeaders':
     case 'setResponseHeaders':
       return isHeaderMap(action.headers);
     case 'redirect':
-      return typeof action.url === 'string' && /^https?:\/\//i.test(action.url);
+      return typeof action.url === 'string' && isHttpUrl(action.url);
     case 'block':
       return true;
     case 'mockResponse':
       return isFiniteNumber(action.status)
+        && Number.isInteger(action.status)
         && action.status >= 100
         && action.status <= 599
         && isHeaderMap(action.headers)
@@ -218,13 +224,16 @@ export function isProxyAction(value: unknown): value is IProxyAction {
         && action.milliseconds >= 0
         && action.milliseconds <= 30_000;
     case 'networkFailure':
-      return typeof action.reason === 'string' && action.reason.length > 0;
+      return typeof action.reason === 'string' && ['Failed', 'Aborted', 'TimedOut', 'AccessDenied',
+        'ConnectionClosed', 'ConnectionReset', 'ConnectionRefused', 'ConnectionAborted',
+        'ConnectionFailed', 'NameNotResolved', 'InternetDisconnected', 'AddressUnreachable',
+        'BlockedByClient', 'BlockedByResponse'].includes(action.reason);
     default:
       return false;
   }
 }
 
-function isProxyRule(value: unknown): value is IProxyRule {
+export function isProxyRule(value: unknown): value is IProxyRule {
   if (!value || typeof value !== 'object') return false;
   const rule = value as Partial<IProxyRule>;
   return typeof rule.id === 'string'
@@ -237,13 +246,21 @@ function isProxyRule(value: unknown): value is IProxyRule {
     && !!rule.match
     && typeof rule.match === 'object'
     && isStringArray(rule.match.initiatorOrigins)
+    && rule.match.initiatorOrigins.length > 0
+    && rule.match.initiatorOrigins.every((origin) => origin === '*' || isHttpOrigin(origin))
+    && (rule.source !== 'legacy-cors' || (rule.match.initiatorOrigins.length === 1
+      && isHttpOrigin(rule.match.initiatorOrigins[0]) && Number.isInteger(rule.legacyRuleId)
+      && (rule.legacyRuleId || 0) > 0 && (rule.legacyRuleId || 0) < 1_000_000))
     && typeof rule.match.urlPattern === 'string'
     && rule.match.urlPattern.length > 0
-    && (rule.match.methods === undefined || isStringArray(rule.match.methods))
-    && (rule.match.resourceTypes === undefined || isStringArray(rule.match.resourceTypes))
+    && (rule.match.methods === undefined || (isStringArray(rule.match.methods)
+      && rule.match.methods.every((method) => HTTP_TOKEN.test(method) && method === method.toUpperCase())))
+    && (rule.match.resourceTypes === undefined || (isStringArray(rule.match.resourceTypes)
+      && rule.match.resourceTypes.every((type) => RESOURCE_TYPES.includes(type as typeof RESOURCE_TYPES[number]))))
     && Array.isArray(rule.actions)
     && rule.actions.length > 0
     && rule.actions.every(isProxyAction)
+    && (rule.source !== 'legacy-cors' || (rule.actions.length === 1 && rule.actions[0].type === 'cors'))
     && isFiniteNumber(rule.createdAt)
     && isFiniteNumber(rule.updatedAt);
 }
@@ -255,12 +272,14 @@ function isSettings(value: unknown): value is IProxySettings {
     && typeof settings.redactSensitiveHeaders === 'boolean'
     && isFiniteNumber(settings.requestLogLimit)
     && settings.requestLogLimit > 0
+    && Number.isInteger(settings.requestLogLimit) && settings.requestLogLimit <= 5000
     && typeof settings.dftEnableCredentials === 'boolean'
     && typeof settings.debugMode === 'boolean'
     && isFiniteNumber(settings.maxRules)
     && settings.maxRules > 0
+    && Number.isInteger(settings.maxRules) && settings.maxRules <= 1000
     && isFiniteNumber(settings.autoCleanupDays)
-    && settings.autoCleanupDays >= 0;
+    && Number.isInteger(settings.autoCleanupDays) && settings.autoCleanupDays >= 0 && settings.autoCleanupDays <= 365;
 }
 
 export function withLegacyRules(
@@ -335,54 +354,158 @@ export function getCorsCompatibilityRules(state: IProxyAppState): IRuleItem[] {
   });
 }
 
-export async function saveProxyAppState(state: IProxyAppState): Promise<void> {
-  if (!isProxyAppState(state)) throw new Error('Invalid proxy state.');
-  await browser.storage.local.set({ [APP_STATE_KEY]: state });
+export type ProxyStateOperation =
+  | { kind: 'get' }
+  | { kind: 'recover'; state: IProxyAppState }
+  | { kind: 'add'; input: Omit<IProxyRule, 'id' | 'createdAt' | 'updatedAt'> }
+  | { kind: 'update'; id: string; update: Partial<Omit<IProxyRule, 'id'>> }
+  | { kind: 'remove'; id: string }
+  | { kind: 'replace'; state: IProxyAppState }
+  | { kind: 'import'; state: IProxyAppState; merge: boolean; expectedState?: IProxyAppState }
+  | { kind: 'legacyRules'; rules: IRuleItem[] }
+  | { kind: 'legacyPatch'; intent: 'add' | 'update' | 'upsert' | 'remove'; rule: Partial<IRuleItem> }
+  | { kind: 'config'; config: Record<string, unknown> }
+  | { kind: 'cleanup' };
+
+let backgroundWriter = false;
+let writeQueue: Promise<unknown> = Promise.resolve();
+let onStateSaved: ((state: IProxyAppState) => Promise<void>) | undefined;
+
+/** Only the background installs the writer. Extension pages send operations to it. */
+export function initializeProxyStateWriter(onSaved?: (state: IProxyAppState) => Promise<void>) {
+  backgroundWriter = true;
+  onStateSaved = onSaved;
 }
 
-export async function addProxyRule(
-  input: Omit<IProxyRule, 'id' | 'createdAt' | 'updatedAt'>,
-): Promise<IProxyRule> {
-  const state = await ensureProxyAppState();
-  const now = Date.now();
-  const rule: IProxyRule = {
-    ...input,
-    id: crypto.randomUUID(),
-    createdAt: now,
-    updatedAt: now,
-  };
-  await saveProxyAppState({
-    ...state,
-    rules: [...state.rules, rule],
-  });
-  return rule;
+function forwardToBackground(): boolean {
+  return !backgroundWriter && typeof location !== 'undefined'
+    && ['chrome-extension:', 'moz-extension:'].includes(location.protocol);
 }
 
-export async function updateProxyRule(
-  id: string,
-  update: Partial<Omit<IProxyRule, 'id'>>,
-): Promise<IProxyRule> {
-  const state = await ensureProxyAppState();
-  const existing = state.rules.find((rule) => rule.id === id);
-  if (!existing) throw new Error(`Proxy rule not found: ${id}`);
-  const next = { ...existing, ...update, id, updatedAt: Date.now() };
-  await saveProxyAppState({
-    ...state,
-    rules: state.rules.map((rule) => rule.id === id ? next : rule),
-  });
+export async function performProxyStateOperation(operation: ProxyStateOperation): Promise<IProxyAppState> {
+  if (forwardToBackground()) {
+    const response = await browser.runtime.sendMessage({ type: 'proxyStateOperation', payload: operation });
+    if (!isProxyAppState(response?.state)) throw new Error(response?.error || 'Unable to update proxy state.');
+    return response.state;
+  }
+  const run = writeQueue.then(() => applyStateOperation(operation));
+  // A failed operation must not poison later writes.
+  writeQueue = run.catch(() => undefined);
+  return run;
+}
+
+async function applyStateOperation(operation: ProxyStateOperation): Promise<IProxyAppState> {
+  if (operation?.kind === 'recover') {
+    if (!isProxyAppState(operation.state) || operation.state.rules.length > operation.state.settings.maxRules) {
+      throw new Error('Invalid recovery configuration.');
+    }
+    const raw = await browser.storage.local.get(APP_STATE_KEY);
+    if (isProxyAppState(raw[APP_STATE_KEY])) throw new Error('Configuration already recovered. Reload before making further changes.');
+    await browser.storage.local.set({ preRecoveryBackup: { capturedAt: Date.now(), state: raw[APP_STATE_KEY] } });
+    await browser.storage.local.set({ [APP_STATE_KEY]: operation.state });
+    try { await onStateSaved?.(operation.state); }
+    catch (error) { await browser.storage.local.set(raw); throw error; }
+    return operation.state;
+  }
+  const current = await ensureProxyAppState();
+  let next = current;
+  switch (operation?.kind) {
+    case 'get': return current;
+    case 'add': {
+      const now = Date.now();
+      next = { ...current, rules: [...current.rules, { ...operation.input,
+        id: crypto.randomUUID(), createdAt: now, updatedAt: now }] };
+      break;
+    }
+    case 'update': {
+      if (!current.rules.some((rule) => rule.id === operation.id)) throw new Error(`Proxy rule not found: ${operation.id}`);
+      next = { ...current, rules: current.rules.map((rule) => rule.id === operation.id
+        ? { ...rule, ...operation.update, id: rule.id, updatedAt: Date.now() } : rule) };
+      break;
+    }
+    case 'remove':
+      next = { ...current, rules: current.rules.filter((rule) => rule.id !== operation.id),
+        profiles: current.profiles.map((profile) => ({ ...profile, ruleIds: profile.ruleIds.filter((id) => id !== operation.id) })) };
+      break;
+    case 'replace': next = operation.state; break;
+    case 'import': {
+      if (!isProxyAppState(operation.state)) throw new Error('Invalid v2 configuration.');
+      if (operation.expectedState && JSON.stringify(operation.expectedState) !== JSON.stringify(current)) {
+        throw new Error('Configuration changed. Review the updated preview and try again.');
+      }
+      const rules = new Map(current.rules.map((rule) => [rule.id, rule]));
+      for (const rule of operation.state.rules) rules.set(rule.id, rule);
+      next = operation.merge ? { ...current, rules: [...rules.values()] } : operation.state;
+      break;
+    }
+    case 'legacyRules': next = withLegacyRules(current, operation.rules); break;
+    case 'legacyPatch': {
+      const rules = getCorsCompatibilityRules(current);
+      const patch = operation.rule;
+      const existing = rules.find((rule) => operation.intent === 'upsert'
+        ? rule.origin === patch.origin : rule.id === patch.id);
+      if (operation.intent === 'remove') {
+        next = withLegacyRules(current, rules.filter((rule) => rule.id !== patch.id));
+        break;
+      }
+      if (operation.intent === 'update' && !existing) throw new Error(`Rule not found: ${patch.id}`);
+      if (operation.intent === 'add' && rules.some((rule) => rule.origin === patch.origin)) {
+        throw new Error(`Rule for origin "${patch.origin}" already exists`);
+      }
+      if (!existing && (!patch.origin || !isHttpOrigin(patch.origin))) throw new Error('A valid HTTP(S) page origin is required.');
+      const now = Date.now();
+      const rule = existing ? { ...existing, ...patch, id: existing.id, updatedAt: now }
+        : { credentials: current.settings.dftEnableCredentials, disabled: false, ...patch,
+          id: Math.max(0, ...rules.map((item) => item.id)) + 1, createdAt: patch.createdAt ?? now,
+          updatedAt: now, domain: new URL(patch.origin!).hostname } as IRuleItem;
+      next = withLegacyRules(current, existing ? rules.map((item) => item.id === existing.id ? rule : item) : [...rules, rule]);
+      break;
+    }
+    case 'config': next = withLegacyConfig(current, operation.config); break;
+    case 'cleanup': {
+      if (!current.settings.autoCleanupDays) return current;
+      const cutoff = Date.now() - current.settings.autoCleanupDays * 86400000;
+      const rules = getCorsCompatibilityRules(current).filter((rule) => !rule.disabled || rule.updatedAt >= cutoff);
+      next = withLegacyRules(current, rules);
+      break;
+    }
+    default: throw new Error('Unsupported proxy state operation.');
+  }
+  if (!isProxyAppState(next)) throw new Error('Invalid rule or configuration. Use HTTP(S) page origins, valid headers and supported actions.');
+  if (next.rules.length > next.settings.maxRules && next.rules.length > current.rules.length) {
+    throw new Error(`Maximum limit of ${next.settings.maxRules} rules reached`);
+  }
+  if (operation.kind === 'import') {
+    await browser.storage.local.set({ preImportBackup: { version: '2.0', state: current, timestamp: Date.now() } });
+  }
+  await browser.storage.local.set({ [APP_STATE_KEY]: next });
+  try {
+    await onStateSaved?.(next);
+  } catch (error) {
+    // Keep storage and browser rules at the previous configuration if application fails.
+    await browser.storage.local.set({ [APP_STATE_KEY]: current });
+    await onStateSaved?.(current).catch(() => undefined);
+    throw error;
+  }
   return next;
 }
 
+export async function saveProxyAppState(state: IProxyAppState): Promise<void> {
+  await performProxyStateOperation({ kind: 'replace', state });
+}
+
+export async function addProxyRule(input: Omit<IProxyRule, 'id' | 'createdAt' | 'updatedAt'>): Promise<IProxyRule> {
+  const state = await performProxyStateOperation({ kind: 'add', input });
+  return state.rules[state.rules.length - 1];
+}
+
+export async function updateProxyRule(id: string, update: Partial<Omit<IProxyRule, 'id'>>): Promise<IProxyRule> {
+  const state = await performProxyStateOperation({ kind: 'update', id, update });
+  return state.rules.find((rule) => rule.id === id)!;
+}
+
 export async function removeProxyRule(id: string): Promise<void> {
-  const state = await ensureProxyAppState();
-  await saveProxyAppState({
-    ...state,
-    rules: state.rules.filter((rule) => rule.id !== id),
-    profiles: state.profiles.map((profile) => ({
-      ...profile,
-      ruleIds: profile.ruleIds.filter((ruleId) => ruleId !== id),
-    })),
-  });
+  await performProxyStateOperation({ kind: 'remove', id });
 }
 
 let migrationInFlight: Promise<IProxyAppState> | undefined;
@@ -393,10 +516,18 @@ async function ensureProxyAppStateInternal(): Promise<IProxyAppState> {
     LEGACY_BACKUP_KEY,
     LEGACY_RULES_KEY,
     LEGACY_CONFIG_KEY,
+    'invalidProxyStateBackup',
   ]);
 
   if (isProxyAppState(stored[APP_STATE_KEY])) {
     return stored[APP_STATE_KEY];
+  }
+
+  if (stored[APP_STATE_KEY] !== undefined) {
+    if (!stored.invalidProxyStateBackup) {
+      await browser.storage.local.set({ invalidProxyStateBackup: { capturedAt: Date.now(), state: stored[APP_STATE_KEY] } });
+    }
+    throw new Error('CORRUPTION: Proxy state is invalid or uses an unsupported schema. Original data was preserved. Restore a valid backup to recover.');
   }
 
   const legacyRules = Array.isArray(stored[LEGACY_RULES_KEY])
@@ -419,6 +550,7 @@ async function ensureProxyAppStateInternal(): Promise<IProxyAppState> {
     } satisfies ILegacyBackup;
   }
 
+  if (!isProxyAppState(state)) throw new Error('Invalid legacy data. Original data was preserved.');
   await browser.storage.local.set(values);
   const verification = await browser.storage.local.get(APP_STATE_KEY);
   if (!isProxyAppState(verification[APP_STATE_KEY])) {
@@ -428,6 +560,7 @@ async function ensureProxyAppStateInternal(): Promise<IProxyAppState> {
 }
 
 export async function ensureProxyAppState(): Promise<IProxyAppState> {
+  if (forwardToBackground()) return performProxyStateOperation({ kind: 'get' });
   if (migrationInFlight) return migrationInFlight;
   const operation = ensureProxyAppStateInternal();
   migrationInFlight = operation;

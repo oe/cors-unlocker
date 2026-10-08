@@ -83,3 +83,13 @@ export function toDnrResourceTypes(types?: string[]): chrome.declarativeNetReque
   const values = [...new Set(types.flatMap((type) => mapping[normalizeResourceType(type)]))];
   return values as unknown as chrome.declarativeNetRequest.ResourceType[];
 }
+
+/** Shared anchored glob semantics for the editor, CDP, Firefox and DNR's RE2 filter. */
+export function globToRegex(pattern: string): string {
+  const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
+  return `^${escaped}$`;
+}
+
+export function globMatches(pattern: string, value: string): boolean {
+  return new RegExp(globToRegex(pattern), 'i').test(value);
+}

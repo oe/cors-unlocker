@@ -46,7 +46,8 @@ export function quickControlRules(origin: string, controls: QuickControls): IPro
   ];
 }
 
-export function needsProxy(rule: IProxyRule): boolean {
+export function needsProxy(rule: Pick<IProxyRule, 'source' | 'actions'>): boolean {
+  if (rule.source === 'legacy-cors') return false;
   return rule.actions.some((action) => ['cors', 'delay', 'networkFailure', 'mockResponse'].includes(action.type));
 }
 

@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- Preserve concurrent rule/settings writes with a single background mutation queue and shared quotas.
+- Reconcile tab-scoped DNR rules using full page origins; remove obsolete dynamic rules and stale CORS rules.
+- Use matching URL glob semantics across browser engines and the rule tester; validate HTTP headers and actions.
+- Route Firefox SDK requests correctly while keeping privileged operations limited to extension pages.
+- Preserve damaged/newer local configuration and provide explicit backup export and recovery.
+- Fix CORS session requirements in the editor and inspector, root test commands and draft-release packaging.
+
+
 All notable changes to this project will be documented in this file.
 
 ## v1.1.0

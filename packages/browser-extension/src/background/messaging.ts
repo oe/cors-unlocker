@@ -24,6 +24,7 @@ import {
   ensureProxyAppState,
   removeProxyRule,
   updateProxyRule,
+  performProxyStateOperation,
 } from '@/common/proxy-state';
 
 // Allowed external origins for security
@@ -79,26 +80,7 @@ function isValidExtensionSender(sender: browser.Runtime.MessageSender): boolean 
   if (!sender.url) return false;
   
   // Chrome extension URLs
-  if (sender.url.startsWith('chrome-extension://')) {
-    return true;
-  }
-  
-  // Firefox extension URLs (moz-extension://)
-  if (sender.url.startsWith('moz-extension://')) {
-    return true;
-  }
-  
-  // Safari extension URLs (safari-web-extension://)
-  if (sender.url.startsWith('safari-web-extension://')) {
-    return true;
-  }
-  
-  // Edge extension URLs (ms-browser-extension://)
-  if (sender.url.startsWith('ms-browser-extension://')) {
-    return true;
-  }
-  
-  return false;
+  return sender.url.startsWith(browser.runtime.getURL(''));
 }
 
 /**
@@ -347,7 +329,7 @@ export async function onRuntimeMessage(
     logger.debug('Runtime message received:', message, sender);
 
     // Validate internal message sender
-    if (!sender.tab && !isValidExtensionSender(sender)) {
+    if (message.type !== 'sdkRequest' && !isValidExtensionSender(sender)) {
       logger.warn('Unauthorized internal message sender:', sender);
       return;
     }
@@ -355,6 +337,10 @@ export async function onRuntimeMessage(
     switch (message.type) {
       case 'sdkRequest':
         return handleSdkRequest(message, sender);
+
+      case 'proxyStateOperation':
+        if (!isValidExtensionSender(sender)) throw new Error('State changes require an extension page.');
+        return { state: await performProxyStateOperation(message.payload) };
 
       case 'updateQuickControls': {
         if (!isValidExtensionSender(sender)) throw new Error('Quick controls require an extension page.');
