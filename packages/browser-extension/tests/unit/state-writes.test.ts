@@ -52,6 +52,28 @@ describe('serialized state writes', () => {
     await removeProxyRule(stored[APP_STATE_KEY].rules[0].id);
     expect((await addProxyRule(input('after failure'))).name).toBe('after failure');
   });
+  it('rejects a merged import with duplicate compatibility IDs before changing storage', async () => {
+    const state = migrateLegacyState([{ id: 9, origin: 'https://app.example', domain: 'app.example', createdAt: 1, updatedAt: 1 }], {}, 1);
+    stored[APP_STATE_KEY] = state;
+    const incoming = { ...state, rules: [{ ...state.rules[0], id: 'imported-copy' }] };
+    await expect(performProxyStateOperation({ kind: 'import', state: incoming, merge: true })).rejects.toThrow('Invalid rule');
+    expect(stored[APP_STATE_KEY]).toEqual(state);
+    expect(stored.preImportBackup).toBeUndefined();
+  });
+  it('preserves imported rule IDs and profile references through compatibility edits', async () => {
+    const state = migrateLegacyState([{ id: 9, origin: 'https://app.example', domain: 'app.example', createdAt: 1, updatedAt: 1 }], {}, 1);
+    state.rules[0].id = 'imported-original';
+    state.profiles[0].ruleIds = ['imported-original'];
+    stored[APP_STATE_KEY] = state;
+    await performProxyStateOperation({ kind: 'legacyPatch', intent: 'upsert', rule: { origin: 'https://app.example', credentials: true } });
+    expect(stored[APP_STATE_KEY].rules[0]).toMatchObject({ id: 'imported-original', actions: [{ type: 'cors', allowCredentials: true }] });
+    expect(stored[APP_STATE_KEY].profiles[0].ruleIds).toEqual(['imported-original']);
+  });
+  it('allocates compatibility IDs without colliding with converted user rules', async () => {
+    stored[APP_STATE_KEY].rules = [{ ...input('converted'), id: 'legacy-cors-1', createdAt: 1, updatedAt: 1 }];
+    const next = await performProxyStateOperation({ kind: 'legacyPatch', intent: 'upsert', rule: { origin: 'https://app.example' } });
+    expect(next.rules.map((rule) => rule.id)).toEqual(['legacy-cors-1', 'legacy-cors-2']);
+  });
   it('rolls back persisted state when browser rule application fails and permits subsequent writes', async () => {
     const before = structuredClone(stored[APP_STATE_KEY]);
     const apply = vi.fn().mockRejectedValueOnce(new Error('invalid browser rule')).mockResolvedValue(undefined);

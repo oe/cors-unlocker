@@ -164,6 +164,8 @@ export function isProxyAppState(value: unknown): value is IProxyAppState {
     && Array.isArray(state.rules)
     && state.rules.every(isProxyRule)
     && new Set(state.rules.map((rule) => rule.id)).size === state.rules.length
+    && new Set(state.rules.filter((rule) => rule.source === 'legacy-cors').map((rule) => rule.legacyRuleId)).size
+      === state.rules.filter((rule) => rule.source === 'legacy-cors').length
     && Array.isArray(state.profiles)
     && state.profiles.every((profile) => !!profile
       && typeof profile === 'object'
@@ -286,7 +288,10 @@ export function withLegacyRules(
   state: IProxyAppState,
   legacyRules: IRuleItem[],
 ): IProxyAppState {
-  const migratedRules = legacyRules.map(legacyRuleToProxyRule);
+  const existingIds = new Map(state.rules.filter((rule) => rule.source === 'legacy-cors')
+    .map((rule) => [rule.legacyRuleId, rule.id]));
+  const migratedRules = legacyRules.map((rule) => ({ ...legacyRuleToProxyRule(rule),
+    id: existingIds.get(rule.id) ?? `legacy-cors-${rule.id}` }));
   const userRules = state.rules.filter((rule) => rule.source !== 'legacy-cors');
   const migratedProfile = state.profiles.find((profile) => profile.id === 'migrated-cors-rules');
   const otherProfiles = state.profiles.filter((profile) => profile.id !== 'migrated-cors-rules');
@@ -454,9 +459,12 @@ async function applyStateOperation(operation: ProxyStateOperation): Promise<IPro
       }
       if (!existing && (!patch.origin || !isHttpOrigin(patch.origin))) throw new Error('A valid HTTP(S) page origin is required.');
       const now = Date.now();
+      let nextLegacyId = Math.max(0, ...rules.map((item) => item.id)) + 1;
+      const usedIds = new Set(current.rules.map((item) => item.id));
+      while (usedIds.has(`legacy-cors-${nextLegacyId}`)) nextLegacyId += 1;
       const rule = existing ? { ...existing, ...patch, id: existing.id, updatedAt: now }
         : { credentials: current.settings.dftEnableCredentials, disabled: false, ...patch,
-          id: Math.max(0, ...rules.map((item) => item.id)) + 1, createdAt: patch.createdAt ?? now,
+          id: nextLegacyId, createdAt: patch.createdAt ?? now,
           updatedAt: now, domain: new URL(patch.origin!).hostname } as IRuleItem;
       next = withLegacyRules(current, existing ? rules.map((item) => item.id === existing.id ? rule : item) : [...rules, rule]);
       break;

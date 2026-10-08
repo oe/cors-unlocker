@@ -295,7 +295,7 @@ test('edits structured actions, protects drafts and previews imports', async () 
   await control.getByRole('button', { name: 'Data & migration' }).click();
   const before = await control.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState);
   const incoming = structuredClone(before);
-  incoming.rules = [{ ...incoming.rules[0], id: 'import-preview-qa', name: 'Imported QA', enabled: false }];
+  incoming.rules = [{ ...incoming.rules[0], id: 'import-preview-qa', source: 'user', legacyRuleId: undefined, name: 'Imported QA', enabled: false }];
   await control.locator('#import-state').setInputFiles({ name: 'backup.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ version: '2.0', state: incoming })) });
   await expect(control.getByRole('region', { name: 'Import preview' })).toContainText('1 added');
   expect(await control.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState)).toEqual(before);
@@ -457,6 +457,7 @@ test('exposes an origin-scoped SDK bridge with consent and disabled drafts', asy
 
   target.once('dialog', (dialog) => dialog.accept());
   const enabled = await sdkRequest('requestCors', { reason: 'E2E consent check' });
+  expect(enabled.error).toBeUndefined();
   expect(enabled.data.cors).toEqual({ enabled: true, credentials: false });
 
   const draft = await sdkRequest('createRuleDraft', {
