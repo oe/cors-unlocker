@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - codex/ci-build-artifacts
+      - main
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
