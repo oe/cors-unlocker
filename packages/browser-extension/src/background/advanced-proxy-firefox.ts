@@ -1,0 +1,485 @@
+import { batchTabNotifications, waitForDelay } from './session-work';
+import browser from 'webextension-polyfill';
+import { logger } from '@/common/logger';
+import { mergeHeaders } from '@/common/rules';
+import {
+  APP_STATE_KEY,
+  ensureProxyAppState,
+  isProxyAppState,
+  type IProxyAction,
+  type IProxyRule,
+  type ProxyHeaderMap,
+} from '@/common/proxy-state';
+import { normalizeResourceType } from '@/common/request-match';
+import { EMPTY_QUICK_CONTROLS, parseQuickControls, quickControlRules, type QuickControls } from '@/common/quick-controls';
+
+export type AdvancedProxyPhase = 'disabled' | 'connecting' | 'connected' | 'error';
+
+export interface IAdvancedProxyStatus {
+  tabId: number;
+  phase: AdvancedProxyPhase;
+  origin?: string;
+  error?: string;
+  quickControls?: QuickControls;
+}
+
+export interface IRequestLogEntry {
+  id: string;
+  tabId: number;
+  url: string;
+  method: string;
+  resourceType: string;
+  status?: number;
+  startedAt: number;
+  duration?: number;
+  requestHeaders: ProxyHeaderMap;
+  responseHeaders?: ProxyHeaderMap;
+  matchedRuleIds: string[];
+  matchedRules?: Array<{ id: string; name: string }>;
+  changes?: Array<{ label: string; before?: string; after: string }>;
+  diagnostics: string[];
+  outcome: 'pending' | 'continued' | 'mocked' | 'blocked' | 'failed';
+}
+
+interface Session {
+  abort: AbortController;
+  origin: string;
+  quickControls: QuickControls;
+}
+
+interface HeaderEntry {
+  name: string;
+  value?: string;
+  binaryValue?: number[];
+}
+
+interface RequestDetails {
+  requestId: string;
+  tabId: number;
+  url: string;
+  method: string;
+  type: string;
+  requestHeaders?: HeaderEntry[];
+  responseHeaders?: HeaderEntry[];
+  statusCode?: number;
+  error?: string;
+}
+
+const sessions = new Map<number, Session>();
+const statuses = new Map<number, IAdvancedProxyStatus>();
+const requestLogs = new Map<number, IRequestLogEntry[]>();
+const requestIndexes = new Map<string, IRequestLogEntry>();
+const requestHeaders = new Map<string, ProxyHeaderMap>();
+const mockActions = new Map<string, Extract<IProxyAction, { type: 'mockResponse' }>>();
+let cachedRules: IProxyRule[] = [];
+let requestLogLimit = 500;
+
+const SENSITIVE_HEADERS = new Set(['authorization', 'cookie', 'proxy-authorization', 'set-cookie']);
+
+function normalizeFirefoxResourceType(resourceType?: string): string {
+  const normalized = normalizeResourceType(resourceType);
+  return normalized === 'Fetch' ? 'XHR' : normalized;
+}
+
+function keyFor(details: RequestDetails): string {
+  return `${details.tabId}:${details.requestId}`;
+}
+
+function headersToMap(headers: HeaderEntry[] = []): ProxyHeaderMap {
+  return Object.fromEntries(headers.flatMap((header) => (
+    typeof header.value === 'string' ? [[header.name, header.value]] : []
+  )));
+}
+
+function mapToHeaders(headers: ProxyHeaderMap): HeaderEntry[] {
+  return Object.entries(headers).map(([name, value]) => ({ name, value }));
+}
+
+function redactHeaders(headers: ProxyHeaderMap): ProxyHeaderMap {
+  return Object.fromEntries(Object.entries(headers).map(([name, value]) => [
+    name,
+    SENSITIVE_HEADERS.has(name.toLowerCase()) ? '••••••••' : value,
+  ]));
+}
+
+function globMatches(pattern: string, value: string): boolean {
+  if (!pattern || pattern === '*') return true;
+  const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
+  return new RegExp(`^${escaped}$`, 'i').test(value);
+}
+
+function matchingRules(session: Session, details: RequestDetails): IProxyRule[] {
+  const method = details.method.toUpperCase();
+  const resourceType = normalizeFirefoxResourceType(details.type);
+  return [...quickControlRules(session.origin, session.quickControls), ...cachedRules].filter((rule) => rule.enabled
+    && rule.match.initiatorOrigins.some((origin) => origin === '*' || origin === session.origin)
+    && globMatches(rule.match.urlPattern, details.url)
+    && (!rule.match.methods?.length || rule.match.methods.includes(method))
+    && (!rule.match.resourceTypes?.length || rule.match.resourceTypes.some(
+      (expected) => normalizeFirefoxResourceType(expected) === resourceType,
+    )));
+}
+
+function actionsFor(session: Session, details: RequestDetails): {
+  rules: IProxyRule[];
+  actions: IProxyAction[];
+} {
+  const rules = matchingRules(session, details);
+  return { rules, actions: rules.flatMap((rule) => rule.actions) };
+}
+
+function actionOfType<T extends IProxyAction['type']>(
+  actions: IProxyAction[],
+  type: T,
+): Extract<IProxyAction, { type: T }> | undefined {
+  return actions.find((action): action is Extract<IProxyAction, { type: T }> => action.type === type);
+}
+
+function upsertHeader(headers: HeaderEntry[], name: string, value: string): HeaderEntry[] {
+  return [
+    ...headers.filter((header) => header.name.toLowerCase() !== name.toLowerCase()),
+    { name, value },
+  ];
+}
+
+function getHeader(headers: ProxyHeaderMap, name: string): string | undefined {
+  const target = name.toLowerCase();
+  return Object.entries(headers).find(([header]) => header.toLowerCase() === target)?.[1];
+}
+
+function corsHeaders(session: Session, headers: ProxyHeaderMap, cors: Extract<IProxyAction, { type: 'cors' }>): HeaderEntry[] {
+  const origin = getHeader(headers, 'origin') || session.origin;
+  const requestedMethod = getHeader(headers, 'access-control-request-method');
+  const requestedHeaders = getHeader(headers, 'access-control-request-headers');
+  const result: HeaderEntry[] = [
+    { name: 'Access-Control-Allow-Origin', value: (cors.allowCredentials || cors.allowOrigin === 'initiator') ? origin : '*' },
+    { name: 'Access-Control-Allow-Methods', value: requestedMethod || cors.allowMethods.join(', ') },
+    { name: 'Access-Control-Allow-Headers', value: requestedHeaders || mergeHeaders(cors.allowHeaders.join(',')).join(', ') },
+    { name: 'Access-Control-Max-Age', value: '600' },
+  ];
+  if (cors.allowCredentials) result.push({ name: 'Access-Control-Allow-Credentials', value: 'true' });
+  return result;
+}
+
+function recordRequest(details: RequestDetails, rules: IProxyRule[]): IRequestLogEntry {
+  const entry: IRequestLogEntry = {
+    id: details.requestId,
+    tabId: details.tabId,
+    url: details.url,
+    method: details.method,
+    resourceType: normalizeFirefoxResourceType(details.type),
+    startedAt: Date.now(),
+    requestHeaders: {},
+    matchedRuleIds: rules.map((rule) => rule.id),
+    matchedRules: rules.map(({ id, name }) => ({ id, name })),
+    changes: [],
+    diagnostics: [],
+    outcome: 'pending',
+  };
+  const entries = requestLogs.get(details.tabId) || [];
+  entries.unshift(entry);
+  for (const evicted of entries.splice(requestLogLimit)) {
+    const key = `${details.tabId}:${evicted.id}`;
+    if (requestIndexes.get(key) === evicted) requestIndexes.delete(key);
+  }
+  requestLogs.set(details.tabId, entries);
+  requestIndexes.set(keyFor(details), entry);
+  return entry;
+}
+
+const logNotifications = batchTabNotifications((tabId) => {
+  void browser.runtime.sendMessage({ type: 'advancedProxyLogChange', payload: { tabId } }).catch(() => undefined);
+});
+const notifyLogChanged = (tabId: number) => logNotifications.notify(tabId);
+
+async function notifyStatus(status: IAdvancedProxyStatus) {
+  statuses.set(status.tabId, status);
+  await browser.runtime.sendMessage({
+    type: 'advancedProxyStatusChange',
+    payload: status,
+  }).catch(() => undefined);
+}
+
+function installMockFilter(
+  details: RequestDetails,
+  mock: Extract<IProxyAction, { type: 'mockResponse' }>,
+  entry: IRequestLogEntry,
+) {
+  const filterResponseData = (browser.webRequest as unknown as {
+    filterResponseData?: (requestId: string) => {
+      ondata: ((event: { data: ArrayBuffer }) => void) | null;
+      onstop: (() => void) | null;
+      onerror: (() => void) | null;
+      write(data: ArrayBuffer | Uint8Array): void;
+      close(): void;
+      disconnect(): void;
+    };
+  }).filterResponseData;
+  if (!filterResponseData) {
+    entry.diagnostics.push('Firefox response filtering is unavailable; the mock was skipped.');
+    return;
+  }
+  const key = keyFor(details);
+  const filter = filterResponseData(details.requestId);
+  mockActions.set(key, mock);
+  filter.ondata = () => undefined;
+  filter.onstop = () => {
+    filter.write(new TextEncoder().encode(mock.body));
+    filter.close();
+    entry.outcome = 'mocked';
+    entry.changes?.push({ label: 'Response body replacement', after: 'Local body delivered; server was contacted and original status preserved' });
+    entry.duration = Date.now() - entry.startedAt;
+    entry.diagnostics.push('Firefox replaced the response body; the original HTTP status was preserved.');
+    mockActions.delete(key);
+    notifyLogChanged(details.tabId);
+  };
+  filter.onerror = () => {
+    mockActions.delete(key);
+    entry.diagnostics.push('Firefox could not replace the response body.');
+    filter.disconnect();
+    notifyLogChanged(details.tabId);
+  };
+}
+
+async function onBeforeRequest(details: RequestDetails) {
+  const session = sessions.get(details.tabId);
+  if (!session) return {};
+  const { rules, actions } = actionsFor(session, details);
+  const entry = recordRequest(details, rules);
+  const delay = actionOfType(actions, 'delay');
+  if (delay) {
+    if (!await waitForDelay(delay.milliseconds, session.abort.signal)) return {};
+    entry.changes?.push({ label: 'Delay', after: `${Math.min(Math.max(delay.milliseconds, 0), 30_000)} ms` });
+  }
+  if (sessions.get(details.tabId) !== session) return {};
+  if (actionOfType(actions, 'block')) {
+    entry.outcome = 'blocked';
+    entry.changes?.push({ label: 'Request blocked', after: 'Cancelled' });
+    entry.duration = Date.now() - entry.startedAt;
+    notifyLogChanged(details.tabId);
+    return { cancel: true };
+  }
+  const failure = actionOfType(actions, 'networkFailure');
+  if (failure) {
+    entry.changes?.push({ label: 'Simulated failure', after: 'Cancelled' });
+    entry.outcome = 'failed';
+    entry.duration = Date.now() - entry.startedAt;
+    entry.diagnostics.push(`Firefox cancelled this request: ${failure.reason}`);
+    notifyLogChanged(details.tabId);
+    return { cancel: true };
+  }
+  const mock = actionOfType(actions, 'mockResponse');
+  if (mock) {
+    installMockFilter(details, mock, entry);
+    notifyLogChanged(details.tabId);
+    return {};
+  }
+  const redirect = actionOfType(actions, 'redirect');
+  if (redirect) {
+    entry.changes?.push({ label: 'Redirect', before: details.url, after: redirect.url });
+    entry.outcome = 'continued';
+    entry.diagnostics.push(`Redirected to ${redirect.url}`);
+    notifyLogChanged(details.tabId);
+    return { redirectUrl: redirect.url };
+  }
+  entry.outcome = 'continued';
+  notifyLogChanged(details.tabId);
+  return {};
+}
+
+function onBeforeSendHeaders(details: RequestDetails) {
+  const session = sessions.get(details.tabId);
+  if (!session) return {};
+  const original = headersToMap(details.requestHeaders);
+  requestHeaders.set(keyFor(details), original);
+  const { actions } = actionsFor(session, details);
+  const headerActions = actions.filter(
+    (action): action is Extract<IProxyAction, { type: 'setRequestHeaders' }> => action.type === 'setRequestHeaders',
+  );
+  const merged = headerActions.reduce(
+    (headers, action) => ({ ...headers, ...action.headers }),
+    original,
+  );
+  const entry = requestIndexes.get(keyFor(details));
+  if (entry) entry.requestHeaders = redactHeaders(merged);
+  for (const [name, value] of Object.entries(merged)) {
+    if (getHeader(original, name) !== value) entry?.changes?.push({ label: `Request header: ${name}`, before: redactHeaders({ [name]: getHeader(original, name) || '(absent)' })[name], after: redactHeaders({ [name]: value })[name] });
+  }
+  return headerActions.length > 0 ? { requestHeaders: mapToHeaders(merged) } : {};
+}
+
+function onHeadersReceived(details: RequestDetails) {
+  const session = sessions.get(details.tabId);
+  if (!session) return {};
+  const key = keyFor(details);
+  const sentHeaders = requestHeaders.get(key) || {};
+  const { actions } = actionsFor(session, details);
+  let headers = details.responseHeaders || [];
+  const cors = actionOfType(actions, 'cors');
+  if (cors) {
+    for (const header of corsHeaders(session, sentHeaders, cors)) {
+      if (header.value) headers = upsertHeader(headers, header.name, header.value);
+    }
+  }
+  for (const action of actions) {
+    if (action.type !== 'setResponseHeaders') continue;
+    for (const [name, value] of Object.entries(action.headers)) {
+      headers = upsertHeader(headers, name, value);
+    }
+  }
+  const mock = mockActions.get(key);
+  if (mock) {
+    headers = headers.filter((header) => header.name.toLowerCase() !== 'content-length');
+    const contentType = Object.entries(mock.headers)
+      .find(([name]) => name.toLowerCase() === 'content-type')?.[1]
+      || 'application/json; charset=utf-8';
+    headers = upsertHeader(headers, 'Content-Type', contentType);
+    for (const [name, value] of Object.entries(mock.headers)) {
+      headers = upsertHeader(headers, name, value);
+    }
+  }
+  const entry = requestIndexes.get(key);
+  if (entry) {
+    entry.status = details.statusCode;
+    const original = headersToMap(details.responseHeaders);
+    for (const [name, value] of Object.entries(headersToMap(headers))) {
+      if (getHeader(original, name) !== value) entry.changes?.push({ label: `Response header: ${name}`, before: redactHeaders({ [name]: getHeader(original, name) || '(absent)' })[name], after: redactHeaders({ [name]: value })[name] });
+    }
+    entry.responseHeaders = redactHeaders(headersToMap(headers));
+    entry.duration = Date.now() - entry.startedAt;
+    notifyLogChanged(details.tabId);
+  }
+  return { responseHeaders: headers };
+}
+
+function finish(details: RequestDetails, error?: string) {
+  const key = keyFor(details);
+  const entry = requestIndexes.get(key);
+  if (entry) {
+    if (error && entry.outcome !== 'blocked' && entry.outcome !== 'failed') {
+      entry.outcome = 'failed';
+      entry.diagnostics.push(error);
+    } else if (entry.outcome === 'pending') {
+      entry.outcome = 'continued';
+    }
+    if (typeof details.statusCode === 'number') entry.status = details.statusCode;
+    entry.duration = Date.now() - entry.startedAt;
+    notifyLogChanged(details.tabId);
+  }
+  requestHeaders.delete(key);
+  mockActions.delete(key);
+}
+
+const filter = { urls: ['<all_urls>'] };
+browser.webRequest.onBeforeRequest.addListener(onBeforeRequest as never, filter, ['blocking']);
+browser.webRequest.onBeforeSendHeaders.addListener(onBeforeSendHeaders as never, filter, ['blocking', 'requestHeaders']);
+browser.webRequest.onHeadersReceived.addListener(onHeadersReceived as never, filter, ['blocking', 'responseHeaders']);
+browser.webRequest.onCompleted.addListener(((details: RequestDetails) => finish(details)) as never, filter);
+browser.webRequest.onErrorOccurred.addListener(((details: RequestDetails) => finish(details, details.error)) as never, filter);
+
+browser.tabs.onRemoved.addListener((tabId) => {
+  logNotifications.cancel(tabId);
+  sessions.get(tabId)?.abort.abort();
+    sessions.delete(tabId);
+  statuses.delete(tabId);
+  requestLogs.delete(tabId);
+  for (const store of [requestIndexes, requestHeaders, mockActions]) {
+    for (const key of store.keys()) {
+      if (key.startsWith(`${tabId}:`)) store.delete(key);
+    }
+  }
+});
+
+browser.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  const session = sessions.get(tabId);
+  if (!session || !changeInfo.url) return;
+  try {
+    if (new URL(changeInfo.url).origin !== session.origin) void disableAdvancedProxy(tabId);
+  } catch {
+    void disableAdvancedProxy(tabId);
+  }
+});
+
+browser.storage.onChanged.addListener((changes, areaName) => {
+  const value = changes[APP_STATE_KEY]?.newValue;
+  if (areaName !== 'local' || !isProxyAppState(value)) return;
+  cachedRules = value.rules;
+  requestLogLimit = value.settings.requestLogLimit;
+});
+
+export async function enableAdvancedProxy(
+  tabId: number,
+  options: { quickControls?: QuickControls } = {},
+): Promise<IAdvancedProxyStatus> {
+  const quickControls = options.quickControls ? parseQuickControls(options.quickControls) : { ...EMPTY_QUICK_CONTROLS };
+  if (quickControls.disableCache) throw new Error('Cache control is available in Chrome only.');
+  const tab = await browser.tabs.get(tabId);
+  if (!tab.url) throw new Error('The active tab URL is unavailable.');
+  const url = new URL(tab.url);
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    throw new Error('Intercept mode only supports HTTP and HTTPS tabs.');
+  }
+  if (sessions.has(tabId)) return getAdvancedProxyStatus(tabId);
+  await notifyStatus({ tabId, phase: 'connecting', origin: url.origin });
+  try {
+    const state = await ensureProxyAppState();
+    cachedRules = state.rules;
+    requestLogLimit = state.settings.requestLogLimit;
+    sessions.set(tabId, {
+      abort: new AbortController(),
+      origin: url.origin,
+      quickControls,
+    });
+    const status = { tabId, phase: 'connected', origin: url.origin, quickControls } satisfies IAdvancedProxyStatus;
+    await notifyStatus(status);
+    return status;
+  } catch (error) {
+    sessions.get(tabId)?.abort.abort();
+    sessions.delete(tabId);
+    const status = {
+      tabId,
+      phase: 'error',
+      origin: url.origin,
+      error: error instanceof Error ? error.message : 'Unable to start Firefox interception.',
+    } satisfies IAdvancedProxyStatus;
+    await notifyStatus(status);
+    return status;
+  }
+}
+
+export async function updateQuickControls(tabId: number, value: unknown): Promise<IAdvancedProxyStatus> {
+  const quickControls = parseQuickControls(value);
+  if (quickControls.disableCache) throw new Error('Cache control is available in Chrome only.');
+  const session = sessions.get(tabId);
+  if (!session) throw new Error('Start a proxy session first.');
+  session.quickControls = quickControls;
+  const status = { tabId, phase: 'connected', origin: session.origin, quickControls } satisfies IAdvancedProxyStatus;
+  await notifyStatus(status);
+  return status;
+}
+
+export async function disableAdvancedProxy(tabId: number): Promise<IAdvancedProxyStatus> {
+  sessions.get(tabId)?.abort.abort();
+  sessions.delete(tabId);
+  const status = { tabId, phase: 'disabled' } satisfies IAdvancedProxyStatus;
+  await notifyStatus(status);
+  return status;
+}
+
+export function getAdvancedProxyStatus(tabId: number): IAdvancedProxyStatus {
+  return statuses.get(tabId) || { tabId, phase: 'disabled' };
+}
+
+export function getRequestLog(tabId: number): IRequestLogEntry[] {
+  return [...(requestLogs.get(tabId) || [])];
+}
+
+export function clearRequestLog(tabId: number): void {
+  requestLogs.delete(tabId);
+  for (const key of requestIndexes.keys()) {
+    if (key.startsWith(`${tabId}:`)) requestIndexes.delete(key);
+  }
+  notifyLogChanged(tabId);
+}
+
+logger.info('Firefox WebRequest interception engine initialized.');

@@ -5,9 +5,21 @@ import eslint from 'vite-plugin-eslint';
 import webExtension, { readJsonFile } from "vite-plugin-web-extension";
 import tailwindcss from '@tailwindcss/vite';
 
+const browserTarget = process.env.TARGET || 'chrome';
+
 function generateManifest() {
   const manifest = readJsonFile("src/manifest.json");
   const pkg = readJsonFile("package.json");
+  if (browserTarget === 'chrome') {
+    manifest.permissions = [...manifest.permissions, 'debugger', 'sidePanel'];
+  } else if (browserTarget === 'firefox') {
+    manifest.permissions = [
+      ...manifest.permissions,
+      'webRequest',
+      'webRequestBlocking',
+      'webRequestFilterResponse',
+    ];
+  }
   return {
     name: pkg.name,
     description: pkg.description,
@@ -16,10 +28,10 @@ function generateManifest() {
   };
 }
 
+// Keep the legacy Gecko ID so Firefox upgrades retain v1 storage for one-time migration.
 const firefoxExtID = 'cors-unlocker@forth.ink';
 const chromeExtID = 'knhlkjdfmgkmelcjfnbbhpphkmjjacng';
 
-const browserTarget = process.env.TARGET || 'chrome';
 // https://vitejs.dev/config/
 export default defineConfig(({ command, mode }) => {
   const isDev = command === 'serve' || mode === 'development';
@@ -57,9 +69,18 @@ export default defineConfig(({ command, mode }) => {
       devSourcemap: isDev
     },
     resolve: {
-      alias: {
-        '@': path.resolve(__dirname, 'src')
-      }
+      alias: [
+        {
+          find: '@/background/advanced-proxy',
+          replacement: path.resolve(
+            __dirname,
+            isFirefox
+              ? 'src/background/advanced-proxy-firefox.ts'
+              : 'src/background/advanced-proxy.ts',
+          ),
+        },
+        { find: '@', replacement: path.resolve(__dirname, 'src') },
+      ],
     },
     plugins: [
       react(),

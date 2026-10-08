@@ -1,226 +1,159 @@
-# CORS Unlocker
+# Forth Intercept
 
-<div align="center">
+Forth Intercept 2.0 is a browser-native request lab for Chrome and Firefox. It keeps the fast, warning-free CORS path from CORS Unlocker and adds opt-in, tab-scoped traffic inspection, response mocking, latency and failure simulation, redirects, blocking, and header rewriting.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Chrome Web Store](https://img.shields.io/badge/Chrome-Available-green)](https://chrome.google.com/webstore)
-[![Firefox Add-ons](https://img.shields.io/badge/Firefox-Available-orange)](https://addons.mozilla.org)
-[![npm version](https://img.shields.io/npm/v/cors-unlocker.svg)](https://www.npmjs.com/package/cors-unlocker)
+No native client is required. Chrome Advanced mode uses Chrome DevTools Protocol through `chrome.debugger`, so Chrome displays its standard debugging disclosure while a tab is attached. Firefox Intercept mode uses blocking WebRequest APIs and does not show a debugger banner.
 
-**🚀 Instantly unlock CORS restrictions for seamless API testing and cross-origin development**
+## What 2.0 includes
 
-[🌐 Website](https://cors.forth.ink) | [📖 Documentation](https://cors.forth.ink) | [📦 NPM Package](https://www.npmjs.com/package/cors-unlocker)
+- **CORS compatibility mode** — one-click, per-origin CORS rules compiled to `declarativeNetRequest`.
+- **Advanced proxy mode** — explicit per-tab attach/detach with request and response observation.
+- **Rules workspace** — full-window navigation, compact searchable rule list, and a dedicated editor with Match / Actions / Test sections. Configure actions with structured forms, with JSON available as an advanced option.
+- **Rule engine** — match page origins, request URL globs, methods, and resource types; test unsaved conditions without sending requests. Actions are validated data, not arbitrary JavaScript.
+- **Actions** — CORS repair, request/response headers, redirects, blocking, static mocks, delays, and simulated network failures.
+- **Site controls** — manage the current site's rules in the side panel, create or edit rules from captured requests, and inspect recorded matches and applied changes with sensitive headers masked.
+- **Local-only operation** — rules and logs stay in the extension; logs are held in memory and cleared when the service worker stops.
+- **Safe v1 upgrade** — the first 2.0 startup migrates `allowedOrigins` and `extConfig` into the v2 schema and stores a recovery snapshot. After migration, v2 storage is the only source of truth.
 
-</div>
+## Popup debugging controls
 
-## ✨ Features
+The popup is a developer control surface for the current tab, with an Inspector entry point,
+CORS repair with visible credential controls, Chrome HTTP-cache bypass, Fetch/XHR delay
+(500 ms, 1 s, or 3 s), and simulated Fetch/XHR failures.
+Enabling a quick control starts a proxy session explicitly; Chrome displays its debugging banner.
+Connecting the proxy alone observes traffic and applies enabled saved rules, without automatically
+repairing CORS. Cross-origin mocks need a matching CORS rule/control or appropriate mock headers.
 
-- **🔓 One-Click CORS Unlock** - Enable/disable CORS restrictions with a single click
-- **🎯 Smart Credentials Support** - Automatically handles authentication headers
-- **⚡ Zero Configuration** - Works out of the box, no setup required
-- **🪶 Lightweight & Fast** - Minimal impact on browser performance
-- **🛠️ Developer-Friendly** - Built by developers, for developers
-- **📦 NPM Integration** - Programmatic CORS management for your applications
-- **🌐 Cross-Browser Support** - Chrome, Firefox, and Edge compatible
-- **🔒 Privacy-First** - No data collection, works entirely locally
+Disable cache bypasses HTTP cache in the attached Chrome tab without clearing stored cache or
+bypassing service workers. Turning it off or stopping the session restores normal cache use. Firefox hides this unsupported control.
 
-## 🚀 Quick Start
+On Chrome, a session started by a quick control disconnects when its last active control is turned off,
+removing the debugging banner. A manually started proxy session stays connected until explicitly stopped.
+Other active quick controls also keep the connection alive.
 
-### Browser Extension
+Quick controls live only in the background session and reset on stop, tab close, or cross-origin
+navigation. They never create persistent rules. Existing CORS site rules remain available separately;
+turning off session CORS does not disable an independently enabled site rule.
 
-1. **Install from Store:**
-   - [Chrome Web Store](https://chrome.google.com/webstore) 
-   - [Firefox Add-ons](https://addons.mozilla.org)
-   - [Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons)
+Saved rules can be pinned to the popup. Pinning only changes the shortcut list; toggling a pinned
+rule changes its saved enabled state. Header/redirect/block rules can continue across tabs through
+DNR. Mocks, delays, failures, and advanced CORS need an active proxy session. Stopping a session
+clears temporary controls without disabling saved rules. Browser-specific interception limits still apply.
 
-2. **Enable CORS:**
-   - Click the CORS Unlocker icon in your browser toolbar
-   - Toggle CORS for the current tab
-   - Make your cross-origin requests without restrictions
+## First request: mock an API response
 
-### NPM Package
+1. Open your application tab, then choose **Inspector** from the popup.
+2. Start the proxy session and trigger the API request in your application.
+3. Select the request in **Recent activity**, then choose **Mock** (Chrome) or **Replace body** (Firefox).
+4. Enter the response body and save. The captured page origin, URL, method, and resource type are already filled in.
+   Expand **Request matching** to rename the rule or change its scope; the default URL includes query parameters.
+5. Trigger the request again. **View request** opens a new recorded match so you can inspect the applied changes.
+   A recorded match alone does not prove that every action ran. Old records are not used to verify a new save.
+
+Saved site rules appear below the request details. Stopping the proxy clears temporary controls;
+header, redirect, and block rules may continue until their saved switches are disabled.
+Firefox response replacement still contacts the server and preserves its status.
+
+## Architecture
+
+The extension UI supports English, Simplified Chinese, Korean, Japanese, French and Spanish. It follows the browser language by default, falling back to English. The language selector in the settings header updates the options page, popup and Site controls, including other open surfaces, without discarding drafts. The preference is saved locally as `uiLanguage`, separately from portable rule configuration and v1 migration. Rule names, URLs, HTTP/CDP identifiers and raw browser diagnostics are not translated. Website and store listing localization are separate work.
+
+| Browser path | API | Best for | Disclosure |
+| --- | --- | --- | --- |
+| Fast path | `declarativeNetRequest` | CORS, headers, redirect, block | None |
+| Chrome Advanced | `chrome.debugger` + CDP `Fetch` | inspection, mock, delay, failure, complete CORS repair | Chrome debugging banner |
+| Firefox Intercept | blocking `webRequest` + `filterResponseData` | inspection, headers, redirect, block, delay, failure, body replacement | Install-time permissions |
+
+Interception is deliberately tab-scoped. It stops when disabled, when the tab closes, or when the tab navigates to a different top-level origin. Chrome Advanced mode also detaches when another debugger takes over.
+
+## Upgrade behavior
+
+Keep the existing Chrome manifest key and Firefox Gecko ID when publishing 2.0 so each browser treats it as an update. On first startup:
+
+1. Existing v1 rules and settings are read.
+2. A `legacyBackupV1` snapshot is written.
+3. Equivalent v2 rules and settings are written to `proxyAppState`.
+4. The write is read back and validated.
+5. All later reads and writes use only `proxyAppState`; v1 keys are not dual-written or used as runtime configuration.
+
+Data & migration accepts v1 rule exports and complete v2 state exports. Import first previews added, overwritten and removed rules; choose merge-by-ID or full replacement before applying. Legacy backups are converted to v2. A `preImportBackup` snapshot is saved locally before each import and can be exported for recovery. New exports use the v2 format.
+
+The rule editor protects unsaved changes when switching rules or tabs and when closing the editor. Search and filters preserve the current draft. Browser reload/close uses the browser's native unsaved-changes prompt. The compact side-panel editor shares the same action forms and close protection.
+
+Use ⌘/Ctrl+K to search, arrow keys or Home/End on rule rows to select, and ⌘/Ctrl+S to save. Toggling another rule keeps the current draft intact. Duplicate creates a disabled draft that only becomes a stored rule after saving. Narrow windows switch between the list and editor instead of stacking them. Rule enabled state does not indicate whether an advanced-proxy tab is connected; verify actual effects in Site controls.
+
+## Development
+
+Requirements: Node.js 18+ and pnpm 9.
 
 ```bash
-npm install cors-unlocker
-```
-
-```javascript
-import { enable, disable, isExtInstalled } from 'cors-unlocker';
-
-// Check if extension is installed
-const installed = await isExtInstalled();
-
-// Enable CORS for current page
-await enable();
-
-// Enable with credentials support
-await enable({ credentials: true });
-
-// Disable CORS
-await disable();
-```
-
-## 🏗️ Project Structure
-
-This is a monorepo containing multiple packages:
-
-```
-cors-unlocker/
-├── packages/
-│   ├── browser-extension/     # Browser extension (Chrome, Firefox, Edge)
-│   ├── npm/                   # NPM package for developers
-│   └── website/               # Documentation and demo website
-├── docs/                      # Additional documentation
-└── README.md                  # This file
-```
-
-## 📦 Packages
-
-### Browser Extension
-Cross-browser extension that enables CORS bypass functionality:
-- **Chrome/Edge**: Uses `declarativeNetRequest` API
-- **Firefox**: Content script bridge for external communication
-- **Features**: Popup interface, settings page, tab-specific control
-
-### NPM Package (`cors-unlocker`)
-Lightweight JavaScript package for programmatic CORS management:
-- **Size**: ~1.7KB gzipped
-- **Formats**: ES modules and UMD
-- **TypeScript**: Full type definitions included
-- **Browser Support**: Chrome, Firefox, Edge
-
-### Website
-Documentation and demo site built with Astro:
-- **Live Demo**: Interactive CORS testing interface
-- **Documentation**: Complete API reference and guides
-- **Playground**: Test the extension functionality
-
-## 🛠️ Development
-
-### Prerequisites
-- Node.js 18+
-- pnpm (recommended) or npm
-
-### Setup
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/cors-unlocker.git
-cd cors-unlocker
-
-# Install dependencies
 pnpm install
-
-# Start development servers
-pnpm dev
+pnpm --filter browser-cors-unlocker dev
 ```
 
-### Build
+Build Chrome 2.0:
+
 ```bash
-# Build all packages
-pnpm build
-
-# Build specific package (from root)
-pnpm dev:extension          # Extension development
-pnpm dev:website            # Website development  
-pnpm dev:cors-unlocker      # NPM package development
+pnpm --filter browser-cors-unlocker build:chrome
+pnpm --filter browser-cors-unlocker package:chrome
 ```
 
-### Package Scripts
+The unpacked extension is written to `packages/browser-extension/dist/chrome`; the release archive is `packages/browser-extension/dist/forth-intercept-chrome-v2.0.0.zip`.
+
+Build and validate Firefox 2.0:
+
 ```bash
-# Development
-pnpm dev                    # Start all dev servers
-pnpm dev:extension          # Extension development only
-pnpm dev:website            # Website development only
-pnpm dev:cors-unlocker      # NPM package development
-
-# Building
-pnpm build                  # Build all packages
+pnpm --filter browser-cors-unlocker check:firefox
 ```
 
-## 🎯 Use Cases
+The Firefox archive is written to `packages/browser-extension/dist/forth-intercept-firefox-v2.0.0.zip`.
 
-### API Testing & Development
-```javascript
-// Perfect for testing APIs during development
-await enable({ credentials: true });
-const response = await fetch('https://api.example.com/data');
+## Verification
+
+```bash
+pnpm --filter browser-cors-unlocker check
 ```
 
-### Cross-Origin Integration
-```javascript
-// Seamless third-party service integration
-await enable();
-const result = await fetch('https://third-party-api.com/endpoint');
-```
+The check runs TypeScript, ESLint, unit tests, the production Chrome build, and Playwright acceptance tests. The acceptance suite launches a real Chrome for Testing profile with normal web security enabled and verifies:
 
-### Automated Testing
-```javascript
-// Include in your test setup
-beforeEach(async () => {
-  if (await isExtInstalled()) {
-    await enable();
-  }
-});
-```
+- a v1 profile upgrades automatically and retains a recovery snapshot;
+- the popup and workspace render;
+- resource types support consecutive selections and persist after saving;
+- structured multi-action forms, condition testing, draft protection and import preview/recovery work;
+- editing a mock in Site controls changes the next real response, and disabling it restores the server response;
+- a genuinely failing CORS preflight succeeds only after advanced mode attaches;
+- preflight and response activity appears in the request log;
+- static mocks, DNR request headers, blocking, delay, and network failure work in-browser.
 
-## 🔒 Privacy & Security
+If Playwright's bundled Chromium is not installed, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to a Chrome for Testing executable.
 
-- **Local Operation**: All functionality works entirely in your browser
-- **No Data Collection**: We don't collect, store, or transmit any user data
-- **Tab-Specific**: Only affects tabs where you explicitly enable CORS
-- **Open Source**: Fully transparent and auditable code
-- **Secure by Default**: Automatically disables when not needed
+## Permissions and privacy
 
-## 📋 Browser Support
+- `<all_urls>` is required because rules can target arbitrary developer endpoints.
+- `declarativeNetRequest` powers the non-debugging fast path.
+- `debugger` powers advanced mode and is used only after an explicit user action for the active tab.
+- `tabs`, `storage`, and `sidePanel` support tab scope, local persistence, and the inspector.
+- Sensitive request and response headers are redacted by default. The extension does not upload traffic, rules, or logs.
 
-| Browser | Extension | NPM Package |
-|---------|-----------|-------------|
-| Chrome  | ✅        | ✅          |
-| Firefox | ✅        | ✅          |
-| Edge    | ✅        | ✅          |
-| Safari  | ❌        | ❌          |
+Forth Intercept is a development tool, not a system VPN: it affects matching browser requests and cannot proxy other applications or hide the browser's network address.
 
-## 📖 Documentation
+## Other packages
 
-- **[Getting Started](https://cors.forth.ink/docs)** - Quick setup guide
-- **[API Reference](https://cors.forth.ink/docs)** - Complete API documentation
-- **[Examples](https://cors.forth.ink/playground)** - Common use cases and examples
-- **[FAQ](https://cors.forth.ink/faq)** - Common questions and answers
+- `packages/npm` publishes the canonical `forth-intercept` 0.2 SDK. `packages/npm-compat` publishes `cors-unlocker` as a thin compatibility re-export for existing users.
+- `packages/website` is the Forth Intercept product site, documentation, privacy explanation, FAQ, and live SDK playground.
+- `packages/browser-extension` builds the Chrome and Firefox 2.0 products.
 
-## 🤝 Contributing
+## License
 
-We welcome contributions! Please see our [Contributing Guide](DEVELOPMENT.md) for details.
+MIT
 
-### Development Workflow
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+## Runtime resource use
 
-## 📄 License
+A Chrome session started with only Disable cache uses the Network domain without pausing requests,
+provided no enabled rule applies to the site. Inspector offers **Start recording requests** to enable
+capture. Enabling another request-changing control or adding an applicable rule also enables capture;
+once enabled, capture remains active until that session stops.
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- Built with [Vite](https://vitejs.dev/) and [TypeScript](https://www.typescriptlang.org/)
-- UI components powered by [React](https://reactjs.org/) and [Tailwind CSS](https://tailwindcss.com/)
-- Icons from [Lucide](https://lucide.dev/)
-- Website built with [Astro](https://astro.build/)
-
-## 📞 Support
-
-- **Documentation**: [cors.forth.ink](https://cors.forth.ink)
-- **Issues**: [GitHub Issues](https://github.com/yourusername/cors-unlocker/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/cors-unlocker/discussions)
-
----
-
-<div align="center">
-
-**⭐ Star this repository if CORS Unlocker helps your development workflow!**
-
-Made with ❤️ by developers, for developers.
-
-</div>
+Both engines evict internal log indexes along with visible records. Log notifications are combined in
+100 ms windows per tab; Inspector refreshes logs without rereading rule storage on every notification.
+Stopping a session cancels outstanding delay timers immediately.

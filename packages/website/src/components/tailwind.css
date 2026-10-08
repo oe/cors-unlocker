@@ -1,2 +1,45 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
+
+@theme {
+  --font-sans: "Geist", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", "SFMono-Regular", Consolas, monospace;
+  --color-accent: #1267e8;
+}
+
+:root {
+  color-scheme: light;
+  font-family: var(--font-sans);
+  background: #fff;
+  color: #111113;
+  font-synthesis: none;
+}
+
+html { scroll-behavior: smooth; }
+body { margin: 0; min-width: 320px; background: #fff; }
+button, input, textarea, select { font: inherit; }
+::selection { background: #dceaff; color: #111113; }
+
+.site-shell { width: min(1180px, calc(100% - 40px)); margin-inline: auto; }
+.hairline { border-color: #e6e6e8; }
+.surface { border: 1px solid #e5e5e7; border-radius: 14px; background: #fff; box-shadow: 0 18px 50px rgba(0,0,0,.07); }
+.button-primary, .button-secondary {
+  display: inline-flex; min-height: 44px; align-items: center; justify-content: center; gap: 9px;
+  border-radius: 10px; padding: 0 18px; font-size: 14px; font-weight: 600; transition: 160ms ease;
+}
+.button-primary { background: #111113; color: #fff; border: 1px solid #111113; }
+.button-primary:hover { background: #2a2a2d; transform: translateY(-1px); }
+.button-secondary { background: #fff; color: #111113; border: 1px solid #d7d7da; }
+.button-secondary:hover { border-color: #a7a7ac; background: #fafafa; }
+.focus-ring:focus-visible { outline: 2px solid #1267e8; outline-offset: 3px; }
+.section-title { font-size: clamp(2rem, 4vw, 3.5rem); line-height: 1.02; letter-spacing: -.045em; font-weight: 650; }
+.section-copy { color: #626268; font-size: 17px; line-height: 1.7; }
+
+@media (max-width: 640px) {
+  .site-shell { width: min(100% - 28px, 1180px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}

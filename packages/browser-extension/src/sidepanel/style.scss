@@ -1,0 +1,11 @@
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+}
+
+button,
+[role='switch'] {
+  cursor: pointer;
+}

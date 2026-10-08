@@ -1,7 +1,11 @@
 import browser from 'webextension-polyfill';
 import { logger } from './logger';
-
-const configKey = 'extConfig';
+import {
+  APP_STATE_KEY,
+  ensureProxyAppState,
+  isProxyAppState,
+  withLegacyConfig,
+} from './proxy-state';
 
 export interface IExtConfig {
   /**
@@ -38,24 +42,8 @@ export const extConfig = {
 
   async init(): Promise<void> {
     try {
-      const result = await browser.storage.local.get(configKey);
-      const storedConfig = result[configKey];
-      
-      if (storedConfig) {
-        // Merge with defaults to handle new config properties
-        config = { ...defaultConfig, ...storedConfig };
-        
-        // Migrate old config if needed
-        if (this.needsMigration(storedConfig)) {
-          await this.save(config);
-          logger.info('Config migrated to new version');
-        }
-      } else {
-        // First time setup
-        await this.save(config);
-        logger.info('Config initialized with defaults');
-      }
-      
+      const state = await ensureProxyAppState();
+      config = this.validateConfig(state.settings);
       logger.debug('Config loaded:', config);
     } catch (error) {
       logger.error('Failed to load config, using defaults:', error);
@@ -67,10 +55,10 @@ export const extConfig = {
     try {
       // Validate config values
       const validatedConfig = this.validateConfig({ ...config, ...newConfig });
-      
+      const state = await ensureProxyAppState();
       config = validatedConfig;
       await browser.storage.local.set({
-        [configKey]: config,
+        [APP_STATE_KEY]: withLegacyConfig(state, config as unknown as Record<string, unknown>),
       });
       
       logger.debug('Config saved:', config);
@@ -120,13 +108,13 @@ export const extConfig = {
  * sync ext config changes
  */
 browser.storage.onChanged.addListener(async (changes, areaName) => {
-  logger.debug(`Storage changed - ${configKey}:`, changes, areaName);
-  const changed = changes[configKey];
-  if (areaName !== 'local' || !changed) return;
+  logger.debug(`Storage changed - ${APP_STATE_KEY}:`, changes, areaName);
+  const changed = changes[APP_STATE_KEY];
+  if (areaName !== 'local' || !changed || !isProxyAppState(changed.newValue)) return;
   
   try {
     // Update local config
-    config = extConfig.validateConfig(changed.newValue || {});
+    config = extConfig.validateConfig(changed.newValue.settings || {});
     logger.debug('Config updated from storage:', config);
   } catch (error) {
     logger.error('Error handling config change:', error);

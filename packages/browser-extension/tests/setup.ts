@@ -69,6 +69,34 @@ vi.mock('webextension-polyfill', () => ({
         addListener: vi.fn(),
         removeListener: vi.fn()
       }
+    },
+    tabs: {
+      get: vi.fn(),
+      query: vi.fn(),
+      create: vi.fn(),
+      onRemoved: {
+        addListener: vi.fn(),
+        removeListener: vi.fn()
+      },
+      onUpdated: {
+        addListener: vi.fn(),
+        removeListener: vi.fn()
+      }
+    },
+    sidebarAction: {
+      open: vi.fn()
+    },
+    declarativeNetRequest: {
+      updateDynamicRules: vi.fn(),
+      getDynamicRules: vi.fn(() => Promise.resolve([]))
+    },
+    webRequest: {
+      filterResponseData: vi.fn(),
+      onBeforeRequest: { addListener: vi.fn(), removeListener: vi.fn() },
+      onBeforeSendHeaders: { addListener: vi.fn(), removeListener: vi.fn() },
+      onHeadersReceived: { addListener: vi.fn(), removeListener: vi.fn() },
+      onCompleted: { addListener: vi.fn(), removeListener: vi.fn() },
+      onErrorOccurred: { addListener: vi.fn(), removeListener: vi.fn() }
     }
   }
 }))

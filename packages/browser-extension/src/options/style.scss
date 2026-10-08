@@ -1,5 +1,12 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+}
 
-// Custom styles can be added here
+button,
+[role='switch'],
+[role='tab'] {
+  cursor: pointer;
+}

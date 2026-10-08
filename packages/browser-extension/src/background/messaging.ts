@@ -9,10 +9,27 @@ import {
 import { extConfig } from '@/common/ext-config';
 import { isSupportedProtocol } from '@/common/utils';
 import { logger } from '@/common/logger';
+import {
+  clearRequestLog,
+  disableAdvancedProxy,
+  enableAdvancedProxy,
+  getAdvancedProxyStatus,
+  getRequestLog,
+  updateQuickControls,
+} from '@/background/advanced-proxy';
+import { PRODUCT_CAPABILITIES } from '@/common/capabilities';
+import { inspectorPathForTab } from '@/common/inspector-target';
+import {
+  addProxyRule,
+  ensureProxyAppState,
+  removeProxyRule,
+  updateProxyRule,
+} from '@/common/proxy-state';
 
 // Allowed external origins for security
 const ALLOWED_EXTERNAL_ORIGINS = [
   'https://cors.forth.ink',
+  'https://intercept.forth.ink',
 ];
 
 // Rate limiting for external messages
@@ -233,6 +250,90 @@ async function isOriginEnabled(origin: string) {
   };
 }
 
+async function handleSdkRequest(
+  message: any,
+  sender: browser.Runtime.MessageSender,
+): Promise<any> {
+  if (typeof sender.tab?.id !== 'number' || !sender.url || sender.frameId !== 0) {
+    throw new Error('The SDK is only available from a top-level browser tab.');
+  }
+  const pageUrl = new URL(sender.url);
+  if (!isSupportedProtocol(pageUrl.protocol)) {
+    throw new Error('The SDK only supports HTTP and HTTPS pages.');
+  }
+  const origin = pageUrl.origin;
+  if (!checkRateLimit(`sdk:${sender.tab.id}:${origin}`)) {
+    throw new Error('SDK rate limit exceeded.');
+  }
+  const method = message.payload?.method;
+  const data = message.payload?.data;
+
+  switch (method) {
+    case 'connect':
+      return {
+        origin,
+        capabilities: PRODUCT_CAPABILITIES,
+      };
+    case 'getStatus':
+      return {
+        origin,
+        cors: await isOriginEnabled(origin),
+        advancedMode: getAdvancedProxyStatus(sender.tab.id).phase,
+      };
+    case 'requestCors': {
+      await toggleRuleViaOrigin({
+        origin,
+        disabled: false,
+        credentials: data?.credentials === true,
+      });
+      return {
+        origin,
+        cors: await isOriginEnabled(origin),
+        advancedMode: getAdvancedProxyStatus(sender.tab.id).phase,
+      };
+    }
+    case 'disableCors':
+      await toggleRuleViaOrigin({ origin, disabled: true });
+      return {
+        origin,
+        cors: await isOriginEnabled(origin),
+        advancedMode: getAdvancedProxyStatus(sender.tab.id).phase,
+      };
+    case 'createRuleDraft': {
+      const draft = data?.rule;
+      if (!draft || typeof draft !== 'object') throw new Error('Missing rule draft.');
+      const serialized = JSON.stringify(draft);
+      if (serialized.length > 65_536) throw new Error('Rule draft exceeds the 64 KB limit.');
+      const rule = await addProxyRule({
+        name: typeof draft.name === 'string' ? draft.name.trim().slice(0, 120) : '',
+        enabled: false,
+        source: 'user',
+        match: {
+          initiatorOrigins: [origin],
+          urlPattern: typeof draft.urlPattern === 'string'
+            ? draft.urlPattern.trim().slice(0, 2_048)
+            : '',
+          methods: Array.isArray(draft.methods)
+            ? draft.methods.slice(0, 16).map((value: unknown) => String(value).toUpperCase())
+            : undefined,
+          resourceTypes: Array.isArray(draft.resourceTypes)
+            ? draft.resourceTypes.slice(0, 16).map(String)
+            : undefined,
+        },
+        actions: Array.isArray(draft.actions) ? draft.actions : [],
+      });
+      const workspaceOpened = data?.openWorkspace !== false;
+      if (workspaceOpened) await browser.runtime.openOptionsPage();
+      return { id: rule.id, enabled: false, workspaceOpened };
+    }
+    case 'openWorkspace':
+      await browser.runtime.openOptionsPage();
+      return undefined;
+    default:
+      throw new Error(`Unsupported SDK method: ${String(method)}`);
+  }
+}
+
 /**
  * listen message from options and popup
  */
@@ -252,6 +353,111 @@ export async function onRuntimeMessage(
     }
 
     switch (message.type) {
+      case 'sdkRequest':
+        return handleSdkRequest(message, sender);
+
+      case 'updateQuickControls': {
+        if (!isValidExtensionSender(sender)) throw new Error('Quick controls require an extension page.');
+        const tabId = message.payload?.tabId;
+        if (!Number.isInteger(tabId) || tabId < 0) throw new Error('Missing tab ID.');
+        return updateQuickControls(tabId, message.payload?.quickControls);
+      }
+
+      case 'getAdvancedProxyStatus': {
+        const tabId = message.payload?.tabId;
+        return typeof tabId === 'number'
+          ? getAdvancedProxyStatus(tabId)
+          : { phase: 'error', error: 'Invalid request: missing tab ID' };
+      }
+
+      case 'enableAdvancedProxy': {
+        const tabId = message.payload?.tabId;
+        return typeof tabId === 'number'
+          ? enableAdvancedProxy(tabId, message.payload)
+          : { phase: 'error', error: 'Invalid request: missing tab ID' };
+      }
+
+      case 'disableAdvancedProxy': {
+        const tabId = message.payload?.tabId;
+        return typeof tabId === 'number'
+          ? disableAdvancedProxy(tabId)
+          : { phase: 'error', error: 'Invalid request: missing tab ID' };
+      }
+
+      case 'getAdvancedProxyLog': {
+        const tabId = message.payload?.tabId;
+        return typeof tabId === 'number' ? getRequestLog(tabId) : [];
+      }
+
+      case 'clearAdvancedProxyLog': {
+        const tabId = message.payload?.tabId;
+        if (typeof tabId === 'number') clearRequestLog(tabId);
+        return { success: typeof tabId === 'number' };
+      }
+
+      case 'getProxyState':
+        return ensureProxyAppState();
+
+      case 'saveProxyRule': {
+        const rule = message.payload?.rule;
+        if (!rule) return { success: false, error: 'Missing proxy rule.' };
+        const saved = rule.id
+          ? await updateProxyRule(rule.id, rule)
+          : await addProxyRule({ ...rule, source: 'user' });
+        return { success: true, rule: saved };
+      }
+
+      case 'deleteProxyRule': {
+        const id = message.payload?.id;
+        if (typeof id !== 'string') return { success: false, error: 'Missing proxy rule ID.' };
+        await removeProxyRule(id);
+        return { success: true };
+      }
+
+      case 'createRuleFromRequest': {
+        const request = message.payload?.request;
+        const initiatorOrigin = message.payload?.initiatorOrigin;
+        if (!request?.url || !request?.method || !initiatorOrigin) {
+          return { success: false, error: 'Request details are incomplete.' };
+        }
+        const saved = await addProxyRule({
+          name: `${request.method} ${new URL(request.url).hostname}`,
+          enabled: false,
+          source: 'user',
+          match: {
+            initiatorOrigins: [initiatorOrigin],
+            urlPattern: request.url,
+            methods: [request.method.toUpperCase()],
+            resourceTypes: request.resourceType ? [request.resourceType] : undefined,
+          },
+          actions: [{ type: 'setResponseHeaders', headers: {} }],
+        });
+        return { success: true, rule: saved };
+      }
+
+      case 'openSidePanel': {
+        const tabId = message.payload?.tabId;
+        if (typeof tabId !== 'number') return { success: false, error: 'Missing tab ID.' };
+        const inspectorPath = inspectorPathForTab(tabId);
+        if (__TARGET__ === 'firefox') {
+          try {
+            await browser.sidebarAction.open();
+          } catch {
+            await browser.tabs.create({
+              url: browser.runtime.getURL(inspectorPath),
+            });
+          }
+          return { success: true };
+        }
+        await chrome.sidePanel.setOptions({
+          tabId,
+          path: inspectorPath,
+          enabled: true,
+        });
+        await chrome.sidePanel.open({ tabId });
+        return { success: true };
+      }
+
       case 'getCurrentTabRule':
         if (typeof message.windowId !== 'number') {
           logger.warn('Invalid windowId in getCurrentTabRule:', message.windowId);
@@ -297,4 +503,3 @@ export function onWindowClose(windowId: number) {
     logger.error('Error clearing cached rule:', error);
   }
 }
-
