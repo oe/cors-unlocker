@@ -991,7 +991,10 @@ test('keeps DNR scopes isolated by origin and matches complete URLs', async () =
   } finally {
     await control.evaluate((state) => chrome.storage.local.set({ proxyAppState: state }), original);
     await Promise.all(pages.map((page) => page.close()));
-    await Promise.all(servers.map((server) => new Promise<void>((resolve) => server.close(() => resolve()))));
+    await Promise.all(servers.map((server) => new Promise<void>((resolve, reject) => {
+      server.close((error) => error ? reject(error) : resolve());
+      server.closeAllConnections();
+    })));
   }
 });
 
@@ -1027,7 +1030,10 @@ test('removes the final CORS rule and stale persisted rules from real browser en
   } finally {
     await control.evaluate((state) => chrome.storage.local.set({ proxyAppState: state }), original);
     await page.close();
-    await new Promise<void>((resolve) => server.close(() => resolve()));
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => error ? reject(error) : resolve());
+      server.closeAllConnections();
+    });
   }
 });
 
