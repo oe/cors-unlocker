@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import browser from 'webextension-polyfill';
-import { compileProxyRules as compileRules, reconcileProxyDnrRules } from '../../src/background/proxy-dnr';
+import { compileFirefoxSessionCors, compileProxyRules as compileRules, reconcileProxyDnrRules } from '../../src/background/proxy-dnr';
+import { EMPTY_QUICK_CONTROLS } from '../../src/common/quick-controls';
 import type { IProxyRule } from '../../src/common/proxy-state';
 
 const tabs = [{ id: 9, url: 'https://app.example.com/' }];
@@ -98,4 +99,21 @@ it('keeps compatibility CORS rules active only on the matching tabs', () => {
   const [compiled] = compileRules([legacy], tabs);
   expect(compiled.condition.tabIds).toEqual([9]);
   expect(compiled.action.responseHeaders).toContainEqual({ header: 'Access-Control-Allow-Origin', operation: 'set', value: 'https://app.example.com' });
+});
+
+describe('Firefox MV3 session CORS', () => {
+  it('confines quick CORS to its connected tab even when another tab has the same origin', () => {
+    const sessions = new Map([[9, { origin: 'https://app.example.com', quickControls: { ...EMPTY_QUICK_CONTROLS, cors: true, credentials: true } }]]);
+    const [compiled] = compileFirefoxSessionCors([], [...tabs, { id: 10, url: tabs[0].url }], sessions);
+    expect(compiled.condition.tabIds).toEqual([9]);
+    expect(compiled.action.responseHeaders).toContainEqual({ header: 'Access-Control-Allow-Origin', operation: 'set', value: 'https://app.example.com' });
+    expect(compiled.action.responseHeaders).toContainEqual({ header: 'Access-Control-Allow-Credentials', operation: 'set', value: 'true' });
+  });
+  it('preserves saved CORS matching and skips disabled rules and previous-origin sessions', () => {
+    const cors = rule({ actions: [{ type: 'cors', allowOrigin: '*', allowCredentials: false, allowHeaders: [], allowMethods: ['GET'] }] });
+    const sessions = new Map([[9, { origin: 'https://app.example.com', quickControls: EMPTY_QUICK_CONTROLS }]]);
+    expect(compileFirefoxSessionCors([cors], tabs, sessions)[0].condition).toMatchObject({ tabIds: [9], requestMethods: ['get'], regexFilter: '^.*://api\\.example\\.com/.*$' });
+    expect(compileFirefoxSessionCors([{ ...cors, enabled: false }], tabs, sessions)).toEqual([]);
+    expect(compileFirefoxSessionCors([cors], [{ id: 9, url: 'https://other.example.com/' }], sessions)).toEqual([]);
+  });
 });

@@ -4,6 +4,11 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Prefer native CJK fonts: Firefox's Linux system-ui fallback can show missing glyphs. */
+:root:lang(zh-CN), :root:lang(zh-CN) body { font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; }
+:root:lang(ja), :root:lang(ja) body { font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans CJK JP", sans-serif; }
+:root:lang(ko), :root:lang(ko) body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans CJK KR", sans-serif; }
+
 @theme inline {
     --font-heading: var(--font-sans);
     --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;

@@ -66,6 +66,7 @@ beforeEach(() => {
     id: tabId,
     url: 'http://test.localhost:3000/',
   }));
+  vi.mocked(browser.tabs.query).mockResolvedValue(Array.from({ length: 100 }, (_, id) => ({ id, url: 'http://test.localhost:3000/' })));
 });
 
 describe('Firefox WebRequest interception engine', () => {
@@ -114,10 +115,14 @@ describe('Firefox WebRequest interception engine', () => {
     });
 
     expect(requestResult.requestHeaders).toContainEqual({ name: 'X-Forth', value: 'request' });
-    expect(responseResult.responseHeaders).toEqual(expect.arrayContaining([
-      { name: 'Access-Control-Allow-Origin', value: '*' },
-      { name: 'X-Forth', value: 'response' },
-    ]));
+    expect(responseResult.responseHeaders).toContainEqual({ name: 'X-Forth', value: 'response' });
+    expect(responseResult.responseHeaders).not.toContainEqual({ name: 'Access-Control-Allow-Origin', value: '*' });
+    expect(browser.declarativeNetRequest.updateSessionRules).toHaveBeenCalledWith(expect.objectContaining({
+      addRules: expect.arrayContaining([expect.objectContaining({
+        condition: expect.objectContaining({ tabIds: [8] }),
+        action: expect.objectContaining({ responseHeaders: expect.arrayContaining([{ header: 'Access-Control-Allow-Origin', operation: 'set', value: '*' }]) }),
+      })]),
+    }));
     expect(engine.getRequestLog(8)[0]).toMatchObject({ status: 200, outcome: 'continued' });
   });
 
@@ -259,7 +264,7 @@ describe('Firefox session controls', () => {
     await engine.enableAdvancedProxy(34, { quickControls: { disableCache: false, cors: true, credentials: false, delayMs: 0, failure: false } });
     const onUpdated = browser.tabs.onUpdated.addListener.mock.calls[0][0];
     onUpdated(34, { url: 'http://other.localhost:3000/' });
-    expect(engine.getAdvancedProxyStatus(34).phase).toBe('disabled');
+    await vi.waitFor(() => expect(engine.getAdvancedProxyStatus(34).phase).toBe('disabled'));
   });
 });
 

@@ -69,6 +69,24 @@ jobs:
       - name: Verify and package Firefox extension
         run: pnpm --filter browser-cors-unlocker check:firefox
 
+      - name: Install native Firefox test browser
+        run: bash packages/browser-extension/scripts/install-firefox-test-browser.sh "$RUNNER_TEMP/forth-firefox"
+
+      - name: Run Firefox extension end-to-end tests
+        env:
+          FIREFOX_BINARY: ${{ runner.temp }}/forth-firefox/firefox/firefox
+          GECKODRIVER: ${{ runner.temp }}/forth-firefox/geckodriver
+        run: pnpm --filter browser-cors-unlocker test:e2e:firefox
+
+      - name: Upload Firefox diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-firefox-diagnostics-${{ github.sha }}
+          path: packages/browser-extension/test-results/firefox
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Build product website
         run: pnpm --filter website build
 

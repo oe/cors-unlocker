@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type browser from 'webextension-polyfill';
 import { countTabBrowserRules, toolbarPresentation } from '../../src/background/toolbar-state';
 import { EMPTY_QUICK_CONTROLS } from '../../src/common/quick-controls';
+import { TEMPORARY_CORS_RULE_ID_BASE } from '../../src/common/session-dnr';
 
 const url = 'https://app.example.test/';
 describe('toolbar state semantics', () => {
@@ -64,5 +65,6 @@ describe('toolbar state semantics', () => {
     const rules = [{ condition: { tabIds: [1] } }, { condition: { tabIds: [2] } }, { condition: {} }, { condition: { excludedTabIds: [1] } }] as browser.DeclarativeNetRequest.Rule[];
     expect(countTabBrowserRules(rules, 1)).toBe(2);
     expect(countTabBrowserRules(rules, 2)).toBe(3);
+    expect(countTabBrowserRules([...rules, { id: TEMPORARY_CORS_RULE_ID_BASE, condition: { tabIds: [1] } } as browser.DeclarativeNetRequest.Rule], 1)).toBe(2);
   });
 });
