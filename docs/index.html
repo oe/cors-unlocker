@@ -131,6 +131,7 @@ need an active proxy session. Firefox CORS repair patches headers but cannot syn
 <li>Chrome Advanced mode necessarily shows Chrome’s debugging disclosure.</li>
 <li>Firefox uses blocking WebRequest and does not attach a debugger.</li>
 <li>Firefox response-body mocks preserve the server’s original HTTP status and require an actual response.</li>
+<li>Firefox applies CORS headers through DNR. Failed preflights still require server support; credentialed requests with custom headers must include those headers in the CORS rule’s allow list.</li>
 <li>Changes affect matching Chrome or Firefox traffic, not other applications.</li>
 <li>Forth Intercept does not change your public IP address or decrypt traffic outside the browser.</li>
 </ul> </article> </div> </main> <footer class="border-t hairline bg-white py-10"> <div class="site-shell flex flex-col gap-8 md:flex-row md:items-center md:justify-between"> <div class="flex items-center gap-2 font-semibold"> <img class="size-7 object-contain" src="/brand-mark.png" alt="">
