@@ -166,4 +166,28 @@ describe('request-first inspector', () => {
     expect(rules[0].actions[0]).toMatchObject({ type: 'mockResponse', status: 200 });
   });
 
+  it('recovers invalid action JSON without losing raw response bodies', async () => {
+    const user = userEvent.setup();
+    render(<Inspector />);
+    await user.click(await screen.findByRole('button', { name: /GET.*orders/ }));
+    await user.click(screen.getByRole('button', { name: 'Mock', exact: true }));
+    await user.clear(screen.getByLabelText('Response body'));
+    await user.paste('<html>test response</html>');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Response body format' }), 'text');
+    await user.click(screen.getByText('Advanced JSON'));
+    const config = screen.getByLabelText('Action configuration (JSON)');
+    const valid = (config as HTMLTextAreaElement).value;
+    await user.clear(config); await user.paste('[');
+    await user.click(screen.getByText('Advanced JSON'));
+    await user.click(screen.getByRole('button', { name: 'Save rule', exact: true }));
+    expect(rules).toEqual([]);
+    expect(config.closest('details')).toHaveAttribute('open');
+    expect(config).toHaveValue('[');
+    expect(screen.getByText('Invalid action JSON. Fix the syntax in Advanced JSON.', { selector: '[data-slot="alert-description"]' })).toBeInTheDocument();
+    await user.clear(config); await user.paste(valid);
+    await user.click(screen.getByRole('button', { name: 'Save rule', exact: true }));
+    await screen.findByText('Saved. Trigger the request again on the page to verify it.');
+    expect(rules[0].actions[0]).toMatchObject({ body: '<html>test response</html>' });
+  });
+
 });

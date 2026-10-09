@@ -392,6 +392,14 @@ test('controls site rules inline and verifies actual request effects', async () 
   await panel.getByLabel('Name', { exact: true }).fill('Console mock QA');
   await panel.getByLabel('HTTP status', { exact: true }).fill('201');
   await panel.getByLabel('Response body', { exact: true }).fill('{"source":"sidepanel"}');
+  const bodyEditor = panel.getByLabel('Response body', { exact: true });
+  await panel.getByRole('button', { name: 'Format JSON', exact: true }).click();
+  await expect(bodyEditor).toHaveValue('{\n  "source": "sidepanel"\n}');
+  // Native editing commands preserve undo even though syntax colors are overlaid.
+  await bodyEditor.press('Control+z');
+  await expect(bodyEditor).toHaveValue('{"source":"sidepanel"}');
+  await bodyEditor.press('Alt+Shift+f');
+  await expect(bodyEditor).toHaveValue('{\n  "source": "sidepanel"\n}');
   await panel.getByRole('button', { name: 'Save rule', exact: true }).click();
   await panel.setViewportSize({ width: 420, height: 820 });
   await panel.getByRole('tab', { name: /^Rules \(/ }).click();

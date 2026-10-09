@@ -57,6 +57,18 @@ Use **Disable this rule** after verification to restore the original behavior, u
 header, redirect, and block rules may continue until their saved switches are disabled.
 Firefox response replacement still contacts the server and preserves its status.
 
+Response bodies and **Advanced JSON** have a lightweight JSON editor. Choose **Format JSON**
+or press **Alt+Shift+F** to indent the text; **Undo format** restores the original. Formatting
+only changes whitespace, preserving large numbers, duplicate keys and string escapes.
+Syntax errors appear after leaving the field or formatting, with **Go to error** when the
+browser reports a position. Response bodies can switch to **Plain text** for HTML, malformed
+JSON or other test payloads; syntax hints never prevent saving a raw mock body.
+
+The editor keeps native selection, clipboard, undo, IME and Tab navigation. Optional
+highlighting and formatting pause above 50,000 characters; dense token streams also fall
+back to ordinary text. Payloads remain editable. No editor dependency, remote asset or new
+permission is required.
+
 ## Architecture
 
 The extension UI supports English, Simplified Chinese, Korean, Japanese, French and Spanish. It follows the browser language by default, falling back to English. The language selector in the settings header updates the options page, popup and Site controls, including other open surfaces, without discarding drafts. The preference is saved locally as `uiLanguage`, separately from portable rule configuration and v1 migration. Rule names, URLs, HTTP/CDP identifiers and raw browser diagnostics are not translated. Website and store listing localization are separate work.

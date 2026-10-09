@@ -1,5 +1,85 @@
 // English source keys are the fallback. Technical values and user content are never translated.
 export const messages: Record<string, Record<string, string>> = {
+  "Plain text": {
+    "en": "Plain text",
+    "zh-CN": "纯文本",
+    "ko": "일반 텍스트",
+    "ja": "プレーンテキスト",
+    "fr": "Texte brut",
+    "es": "Texto sin formato"
+  },
+  "Format JSON": {
+    "en": "Format JSON",
+    "zh-CN": "格式化 JSON",
+    "ko": "JSON 정렬",
+    "ja": "JSON を整形",
+    "fr": "Formater JSON",
+    "es": "Formatear JSON"
+  },
+  "Undo format": {
+    "en": "Undo format",
+    "zh-CN": "撤销格式化",
+    "ko": "정렬 취소",
+    "ja": "整形を元に戻す",
+    "fr": "Annuler le formatage",
+    "es": "Deshacer formato"
+  },
+  "{label} format": {
+    "en": "{label} format",
+    "zh-CN": "{label}格式",
+    "ko": "{label} 형식",
+    "ja": "{label}の形式",
+    "fr": "Format de {label}",
+    "es": "Formato de {label}"
+  },
+  "Invalid JSON at line {line}, column {column}.": {
+    "en": "Invalid JSON at line {line}, column {column}.",
+    "zh-CN": "JSON 语法错误：第 {line} 行，第 {column} 列。",
+    "ko": "JSON 구문 오류: {line}행, {column}열.",
+    "ja": "JSON 構文エラー：{line} 行、{column} 列。",
+    "fr": "JSON invalide à la ligne {line}, colonne {column}.",
+    "es": "JSON no válido en la línea {line}, columna {column}."
+  },
+  "Invalid JSON. Check the syntax.": {
+    "en": "Invalid JSON. Check the syntax.",
+    "zh-CN": "JSON 无效，请检查语法。",
+    "ko": "JSON 구문을 확인하세요.",
+    "ja": "JSON の構文を確認してください。",
+    "fr": "JSON invalide. Vérifiez la syntaxe.",
+    "es": "JSON no válido. Revisa la sintaxis."
+  },
+  "Go to error": {
+    "en": "Go to error",
+    "zh-CN": "定位错误",
+    "ko": "오류 위치로 이동",
+    "ja": "エラー位置へ移動",
+    "fr": "Aller à l’erreur",
+    "es": "Ir al error"
+  },
+  "Large input: highlighting and formatting paused. Editing still works.": {
+    "en": "Large input: highlighting and formatting paused. Editing still works.",
+    "zh-CN": "内容较大，已暂停高亮和格式化，仍可正常编辑。",
+    "ko": "큰 입력: 강조 표시와 정렬을 중지했습니다. 편집은 가능합니다.",
+    "ja": "大きな入力のため、強調表示と整形を停止しました。編集は可能です。",
+    "fr": "Contenu volumineux : coloration et formatage suspendus. L’édition reste possible.",
+    "es": "Contenido grande: resaltado y formato en pausa. Puedes seguir editando."
+  },
+  "Formatting limit reached. Your text is unchanged.": {
+    "en": "Formatting limit reached. Your text is unchanged.",
+    "zh-CN": "内容超出格式化限制，原文已保留。",
+    "ko": "정렬 한도에 도달했습니다. 원문은 유지됩니다.",
+    "ja": "整形の上限に達しました。元のテキストを保持します。",
+    "fr": "Limite de formatage atteinte. Votre texte est conservé.",
+    "es": "Se alcanzó el límite de formato. El texto no ha cambiado."
+  },
+  "Invalid action JSON. Fix the syntax in Advanced JSON.": {
+    "en": "Invalid action JSON. Fix the syntax in Advanced JSON.",
+    "zh-CN": "操作 JSON 无效，请在“高级 JSON”中修正语法。",
+    "ko": "액션 JSON이 잘못되었습니다. 고급 JSON에서 구문을 수정하세요.",
+    "ja": "アクション JSON が無効です。詳細 JSON で構文を修正してください。",
+    "fr": "JSON des actions invalide. Corrigez la syntaxe dans JSON avancé.",
+    "es": "JSON de acciones no válido. Corrige la sintaxis en JSON avanzado."
+  },
   "{count} persistent rules stay on after stopping": {
     "en": "{count} persistent rules stay on after stopping",
     "zh-CN": "停止调试后仍有 {count} 条持久规则生效",
@@ -1016,8 +1096,8 @@ export const messages: Record<string, Record<string, string>> = {
     "fr": "JSON avancé",
     "es": "JSON avanzado"
   },
-  "Action script (JSON)": {
-    "en": "Action script (JSON)",
+  "Action configuration (JSON)": {
+    "en": "Action configuration (JSON)",
     "zh-CN": "动作配置（JSON）",
     "ko": "동작 설정 (JSON)",
     "ja": "アクション設定 (JSON)",

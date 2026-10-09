@@ -3,7 +3,7 @@ import { useState } from 'react';
 import type { IProxyAction, ProxyHeaderMap } from '@/common/proxy-state';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { CodeEditor } from '@/components/code-editor';
 import { Field, FieldLabel, FieldDescription, FieldGroup } from '@/components/ui/field';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -46,7 +46,9 @@ export function ActionFields({ action, onChange }: { action: IProxyAction; onCha
       return <Headers value={action.headers} onChange={(headers) => onChange({ ...action, headers })} />;
     case 'mockResponse':
       return <FieldGroup>
-        <Field><FieldLabel>{t("Response body")}</FieldLabel><Textarea aria-label={t("Response body")} className="min-h-36 font-mono" value={action.body} onChange={(e) => onChange({ ...action, body: e.target.value })} /></Field>
+        <Field><FieldLabel>{t("Response body")}</FieldLabel><CodeEditor label={t("Response body")} allowPlainText
+          language={/json/i.test(Object.entries(action.headers).find(([name]) => name.toLowerCase() === 'content-type')?.[1] || '') || /^\s*[[{]/.test(action.body) ? 'json' : 'text'}
+          value={action.body} onValueChange={(body) => onChange({ ...action, body })} /></Field>
         {__TARGET__ === 'firefox'
           ? <FieldDescription>{t('Firefox contacts the server and preserves its status; only the response body is replaced.')}</FieldDescription>
           : <Field><FieldLabel>{t('HTTP status')}</FieldLabel><Input aria-label={t('HTTP status')} type="number" min={100} max={599} value={action.status} onChange={(e) => onChange({ ...action, status: Number(e.target.value) })} /></Field>}

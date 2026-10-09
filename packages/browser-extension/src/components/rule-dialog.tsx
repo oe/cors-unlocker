@@ -1,5 +1,5 @@
 import { t, translateError } from '@/common/i18n';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import browser from 'webextension-polyfill';
 import { Info } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -9,12 +9,13 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
+import { CodeEditor } from '@/components/code-editor';
 import { isProxyAction, type IProxyAction, type IProxyRule } from '@/common/proxy-state';
 import { ActionFields, ACTION_LABELS } from '@/components/action-fields';
 import { explainRuleMatch } from '@/common/rule-explanation';
 import { needsProxy } from '@/common/quick-controls';
 import { RESOURCE_TYPES } from '@/common/request-match';
+import { jsonProblem } from '@/common/json-editor';
 
 export const ACTION_TEMPLATES: Record<string, IProxyAction[]> = {
   cors: [{
@@ -124,6 +125,7 @@ export function RuleEditorForm({
   const [actionTemplate, setActionTemplate] = useState<ActionTemplate>('responseHeaders');
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const advancedJson = useRef<HTMLDetailsElement>(null);
   const [baseline, setBaseline] = useState(JSON.stringify(draft || EMPTY_DRAFT));
   const [discard, setDiscard] = useState(false);
   const [testUrl, setTestUrl] = useState('');
@@ -192,6 +194,11 @@ export function RuleEditorForm({
   const save = async () => {
     try {
       setPending(true);
+      if (jsonProblem(form.actions)) {
+        if (advancedJson.current) advancedJson.current.open = true;
+        document.getElementById('rule-actions')?.focus();
+        throw new Error('Invalid action JSON. Fix the syntax in Advanced JSON.');
+      }
       const actions = JSON.parse(form.actions);
       if (!Array.isArray(actions) || actions.length === 0 || !actions.every(isProxyAction)) {
         throw new Error('Check action fields: valid header names, status 100–599, delay 0–30,000 ms and HTTP(S) redirect URLs are required.');
@@ -296,7 +303,7 @@ export function RuleEditorForm({
               <Button variant="outline" disabled={!actions} onClick={() => setActions([...(actions || []), ...structuredClone(ACTION_TEMPLATES[actionTemplate])])}>{t("Add action")}</Button>
             </div></details>
           </section>
-          <details><summary className="cursor-pointer text-sm font-medium">{t("Advanced JSON")}</summary>
+          <details ref={advancedJson}><summary className="cursor-pointer text-sm font-medium">{t("Advanced JSON")}</summary>
           {replacesResponseBody ? (
             <Alert>
               <Info />
@@ -305,13 +312,12 @@ export function RuleEditorForm({
             </Alert>
           ) : null}
           <Field data-invalid={!!error}>
-            <FieldLabel htmlFor="rule-actions">{t("Action script (JSON)")}</FieldLabel>
-            <Textarea
+            <FieldLabel htmlFor="rule-actions">{t("Action configuration (JSON)")}</FieldLabel>
+            <CodeEditor
               id="rule-actions"
-              className="min-h-52 font-mono text-xs"
-              aria-invalid={!!error}
+              label={t("Action configuration (JSON)")}
               value={form.actions}
-              onChange={(event) => setForm({ ...form, actions: event.target.value })}
+              onValueChange={(actions) => { setError(null); setForm({ ...form, actions }); }}
             />
             {error ? <FieldDescription className="text-destructive">{translateError(error)}</FieldDescription> : null}
             {!error ? <FieldDescription>{t("Compose multiple validated actions without executing arbitrary JavaScript.")}</FieldDescription> : null}
