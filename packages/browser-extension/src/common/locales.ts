@@ -2,7 +2,7 @@
 export const messages: Record<string, Record<string, string>> = {
   "{count} persistent rules stay on after stopping": {
     "en": "{count} persistent rules stay on after stopping",
-    "zh-CN": "停止会话后仍有 {count} 条持久规则生效",
+    "zh-CN": "停止调试后仍有 {count} 条持久规则生效",
     "ko": "중지 후에도 영구 규칙 {count}개는 유지됩니다",
     "ja": "停止後も永続ルール {count} 件は有効です",
     "fr": "{count} règles persistantes restent actives après l’arrêt",
@@ -10,7 +10,7 @@ export const messages: Record<string, Record<string, string>> = {
   },
   "Only this tab. Resets when the session stops.": {
     "en": "Only this tab. Resets when the session stops.",
-    "zh-CN": "仅影响本标签页，停止会话后重置。",
+    "zh-CN": "仅影响本标签页，停止调试后重置。",
     "ko": "이 탭에만 적용. 세션 중지 시 초기화됩니다.",
     "ja": "このタブのみ。セッション停止でリセット。",
     "fr": "Cet onglet uniquement. Réinitialisé à l’arrêt.",
@@ -26,7 +26,7 @@ export const messages: Record<string, Record<string, string>> = {
   },
   "Tab session active": {
     "en": "Tab session active",
-    "zh-CN": "标签页会话已启动",
+    "zh-CN": "本页调试已启动",
     "ko": "탭 세션 활성",
     "ja": "タブセッション実行中",
     "fr": "Session de cet onglet active",
@@ -34,7 +34,7 @@ export const messages: Record<string, Record<string, string>> = {
   },
   "Tab session stopped": {
     "en": "Tab session stopped",
-    "zh-CN": "标签页会话已停止",
+    "zh-CN": "本页调试已停止",
     "ko": "탭 세션 중지됨",
     "ja": "タブセッション停止中",
     "fr": "Session de cet onglet arrêtée",
@@ -42,7 +42,7 @@ export const messages: Record<string, Record<string, string>> = {
   },
   "Stop tab session": {
     "en": "Stop tab session",
-    "zh-CN": "停止标签页会话",
+    "zh-CN": "停止本页调试",
     "ko": "탭 세션 중지",
     "ja": "タブセッションを停止",
     "fr": "Arrêter la session",
@@ -50,7 +50,7 @@ export const messages: Record<string, Record<string, string>> = {
   },
   "Start tab session": {
     "en": "Start tab session",
-    "zh-CN": "启动标签页会话",
+    "zh-CN": "启动本页调试",
     "ko": "탭 세션 시작",
     "ja": "タブセッションを開始",
     "fr": "Démarrer la session",
@@ -66,7 +66,7 @@ export const messages: Record<string, Record<string, string>> = {
   },
   "Active in this session": {
     "en": "Active in this session",
-    "zh-CN": "在当前会话中生效",
+    "zh-CN": "在本页调试中生效",
     "ko": "이 세션에서 적용 중",
     "ja": "このセッションで有効",
     "fr": "Active dans cette session",
@@ -74,7 +74,7 @@ export const messages: Record<string, Record<string, string>> = {
   },
   "Start a tab session to apply": {
     "en": "Start a tab session to apply",
-    "zh-CN": "启动标签页会话后生效",
+    "zh-CN": "启动本页调试后生效",
     "ko": "탭 세션을 시작해야 적용됩니다",
     "ja": "タブセッションの開始が必要",
     "fr": "Démarrez une session pour appliquer",
@@ -130,7 +130,7 @@ export const messages: Record<string, Record<string, string>> = {
   },
   "Stopping resets temporary changes and pauses session actions. Persistent rules stay enabled.": {
     "en": "Stopping resets temporary changes and pauses session actions. Persistent rules stay enabled.",
-    "zh-CN": "停止会话会重置临时修改，并暂停依赖会话的动作。持久规则仍然生效。",
+    "zh-CN": "停止调试会重置临时修改，并暂停依赖调试的动作。持久规则仍然生效。",
     "ko": "중지하면 임시 변경은 초기화되고 세션 작업은 일시 중지됩니다. 영구 규칙은 계속 적용됩니다.",
     "ja": "停止すると一時的な変更をリセットし、セッション用アクションを一時停止します。永続ルールは有効なままです。",
     "fr": "L’arrêt réinitialise les modifications temporaires et suspend les actions de session. Les règles persistantes restent actives.",
@@ -170,7 +170,7 @@ export const messages: Record<string, Record<string, string>> = {
   },
   "Start a tab session to record requests from this tab.": {
     "en": "Start a tab session to record requests from this tab.",
-    "zh-CN": "启动标签页会话，开始记录当前标签页的请求。",
+    "zh-CN": "启动本页调试，开始记录当前标签页的请求。",
     "ko": "탭 세션을 시작하여 이 탭의 요청을 기록하세요.",
     "ja": "タブセッションを開始して、このタブのリクエストを記録します。",
     "fr": "Démarrez une session pour enregistrer les requêtes de cet onglet.",
@@ -178,7 +178,7 @@ export const messages: Record<string, Record<string, string>> = {
   },
   "Start a tab session.": {
     "en": "Start a tab session.",
-    "zh-CN": "启动标签页会话。",
+    "zh-CN": "启动本页调试。",
     "ko": "탭 세션을 시작하세요.",
     "ja": "タブセッションを開始。",
     "fr": "Démarrez une session.",
@@ -2506,7 +2506,7 @@ export const messages: Record<string, Record<string, string>> = {
   },
   "Pinned rules": {
     "en": "Pinned rules",
-    "zh-CN": "固定规则",
+    "zh-CN": "置顶规则",
     "ko": "고정된 규칙",
     "ja": "固定したルール",
     "fr": "Règles épinglées",
@@ -2530,7 +2530,7 @@ export const messages: Record<string, Record<string, string>> = {
   },
   "Choose pinned rules": {
     "en": "Choose pinned rules",
-    "zh-CN": "选择固定规则",
+    "zh-CN": "选择置顶规则",
     "ko": "고정할 규칙 선택",
     "ja": "固定するルールを選択",
     "fr": "Choisir les règles à épingler",
@@ -2538,7 +2538,7 @@ export const messages: Record<string, Record<string, string>> = {
   },
   "Pin {name}": {
     "en": "Pin {name}",
-    "zh-CN": "固定 {name}",
+    "zh-CN": "置顶 {name}",
     "ko": "{name} 고정",
     "ja": "{name} を固定",
     "fr": "Épingler {name}",
@@ -2546,7 +2546,7 @@ export const messages: Record<string, Record<string, string>> = {
   },
   "Unpin {name}": {
     "en": "Unpin {name}",
-    "zh-CN": "取消固定 {name}",
+    "zh-CN": "取消置顶 {name}",
     "ko": "{name} 고정 해제",
     "ja": "{name} の固定を解除",
     "fr": "Désépingler {name}",
