@@ -6,7 +6,7 @@ Forth Intercept 2.0 is a browser-native request lab for Chrome and Firefox, buil
 
 - Rules mode uses `declarativeNetRequest` for CORS, request/response headers, redirects, and blocking without a debugging banner.
 - Advanced mode uses the tab-scoped Chrome DevTools Protocol `Fetch` domain for inspection, preflight/response repair, static mocks, delays, and network failures. Chrome shows its standard debugging disclosure while attached.
-- Firefox Intercept mode uses blocking `webRequest` listeners for inspection, headers, redirect, block, delay, failure simulation, and response-body replacement. Body mocks preserve the server HTTP status and require an actual response.
+- Firefox Intercept mode uses blocking `webRequest` listeners for inspection, headers, redirect, block, delay, failure simulation, and response-body replacement. Tab-scoped DNR applies CORS headers because Firefox MV3 restricts those changes in WebRequest. Body mocks preserve the server HTTP status and require an actual response.
 - The page bridge exposes the origin-scoped `forth-intercept` npm SDK. It derives scope from the browser sender tab, confirms CORS changes, creates only disabled rule drafts, and never exposes silent debugger attachment.
 
 ## Upgrade
@@ -20,11 +20,19 @@ pnpm --filter browser-cors-unlocker dev
 pnpm --filter browser-cors-unlocker check
 pnpm --filter browser-cors-unlocker package:chrome
 pnpm --filter browser-cors-unlocker check:firefox
+FIREFOX_BINARY=/path/to/firefox GECKODRIVER=/path/to/geckodriver pnpm --filter browser-cors-unlocker test:e2e:firefox
 ```
 
 When Playwright's bundled browser is unavailable, provide a Chrome for Testing binary through `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`.
 
 Production archives are written to `dist/forth-intercept-chrome-v2.0.0.zip` and `dist/forth-intercept-firefox-v2.0.0.zip`.
+
+The Firefox E2E suite installs the production build as a temporary add-on in a fresh, headless
+Firefox profile. It uses native WebDriver and local HTTP fixtures, including real CORS failures,
+server-backed body replacement, session cleanup, SDK scope, redaction and six-language UI screenshots.
+No extension APIs are mocked. Python 3, Firefox and geckodriver are required; the Linux CI installer is
+`bash packages/browser-extension/scripts/install-firefox-test-browser.sh /tmp/forth-firefox` from the repository root.
+Browser metadata, screenshots and diagnostics are written to `test-results/firefox`.
 
 ## Privacy boundary
 

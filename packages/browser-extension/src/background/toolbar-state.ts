@@ -2,6 +2,7 @@ import type browser from 'webextension-polyfill';
 import type { IAdvancedProxyStatus } from './advanced-proxy';
 import { toolbarMessages } from '@/common/toolbar-messages';
 import type { Locale } from '@/common/locale';
+import { TEMPORARY_CORS_RULE_ID_BASE } from '@/common/session-dnr';
 
 export const TOOLBAR_COLORS = { idle: '#64748b', rules: '#2563eb', connected: '#15803d', connecting: '#b45309', error: '#dc2626' } as const;
 export type ToolbarState = keyof typeof TOOLBAR_COLORS;
@@ -43,7 +44,7 @@ export function toolbarPresentation(url: string | undefined, status: IAdvancedPr
 }
 
 export function countTabBrowserRules(rules: browser.DeclarativeNetRequest.Rule[], tabId: number): number {
-  return rules.filter(({ condition }) => (!condition.tabIds || condition.tabIds.includes(tabId))
+  return rules.filter(({ id, condition }) => !(id >= TEMPORARY_CORS_RULE_ID_BASE) && (!condition.tabIds || condition.tabIds.includes(tabId))
     && !condition.excludedTabIds?.includes(tabId)).length;
 }
 

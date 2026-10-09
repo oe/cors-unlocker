@@ -1,8 +1,8 @@
 import { batchTabNotifications, waitForDelay } from './session-work';
 import { refreshToolbarTab } from './toolbar-status';
+import { setFirefoxCorsSession } from './proxy-dnr';
 import browser from 'webextension-polyfill';
 import { logger } from '@/common/logger';
-import { mergeHeaders } from '@/common/rules';
 import { mergeHeaderMaps } from '@/common/validation';
 import {
   APP_STATE_KEY,
@@ -142,20 +142,6 @@ function upsertHeader(headers: HeaderEntry[], name: string, value: string): Head
 function getHeader(headers: ProxyHeaderMap, name: string): string | undefined {
   const target = name.toLowerCase();
   return Object.entries(headers).find(([header]) => header.toLowerCase() === target)?.[1];
-}
-
-function corsHeaders(session: Session, headers: ProxyHeaderMap, cors: Extract<IProxyAction, { type: 'cors' }>): HeaderEntry[] {
-  const origin = getHeader(headers, 'origin') || session.origin;
-  const requestedMethod = getHeader(headers, 'access-control-request-method');
-  const requestedHeaders = getHeader(headers, 'access-control-request-headers');
-  const result: HeaderEntry[] = [
-    { name: 'Access-Control-Allow-Origin', value: (cors.allowCredentials || cors.allowOrigin === 'initiator') ? origin : '*' },
-    { name: 'Access-Control-Allow-Methods', value: requestedMethod || cors.allowMethods.join(', ') },
-    { name: 'Access-Control-Allow-Headers', value: requestedHeaders || mergeHeaders(cors.allowHeaders.join(',')).join(', ') },
-    { name: 'Access-Control-Max-Age', value: '600' },
-  ];
-  if (cors.allowCredentials) result.push({ name: 'Access-Control-Allow-Credentials', value: 'true' });
-  return result;
 }
 
 function recordRequest(details: RequestDetails, rules: IProxyRule[]): IRequestLogEntry {
@@ -310,15 +296,9 @@ function onHeadersReceived(details: RequestDetails) {
   const session = sessions.get(details.tabId);
   if (!session) return {};
   const key = keyFor(details);
-  const sentHeaders = requestHeaders.get(key) || {};
   const { actions } = actionsFor(session, details);
   let headers = details.responseHeaders || [];
   const cors = actionOfType(actions, 'cors');
-  if (cors) {
-    for (const header of corsHeaders(session, sentHeaders, cors)) {
-      if (header.value) headers = upsertHeader(headers, header.name, header.value);
-    }
-  }
   for (const action of actions) {
     if (action.type !== 'setResponseHeaders') continue;
     for (const [name, value] of Object.entries(action.headers)) {
@@ -339,6 +319,7 @@ function onHeadersReceived(details: RequestDetails) {
   const entry = requestIndexes.get(key);
   if (entry) {
     entry.status = details.statusCode;
+    if (cors) entry.diagnostics.push('Firefox applies CORS headers through tab-scoped DNR rules.');
     const original = headersToMap(details.responseHeaders);
     for (const [name, value] of Object.entries(headersToMap(headers))) {
       if (getHeader(original, name) !== value) entry.changes?.push({ label: `Response header: ${name}`, before: redactHeaders({ [name]: getHeader(original, name) || '(absent)' })[name], after: redactHeaders({ [name]: value })[name] });
@@ -378,7 +359,8 @@ browser.webRequest.onErrorOccurred.addListener(((details: RequestDetails) => fin
 browser.tabs.onRemoved.addListener((tabId) => {
   logNotifications.cancel(tabId);
   sessions.get(tabId)?.abort.abort();
-    sessions.delete(tabId);
+  sessions.delete(tabId);
+  void setFirefoxCorsSession(tabId).catch((error) => logger.error('Unable to clear closed-tab CORS rules:', error));
   statuses.delete(tabId);
   requestLogs.delete(tabId);
   for (const store of [requestIndexes, requestHeaders, mockActions]) {
@@ -442,12 +424,15 @@ export async function enableAdvancedProxy(
       origin: url.origin,
       quickControls,
     });
+    await setFirefoxCorsSession(tabId, { origin: url.origin, quickControls });
+    if (sessions.get(tabId)?.origin !== url.origin) throw new Error('Start a proxy session first.');
     const status = { tabId, phase: 'connected', origin: url.origin, quickControls } satisfies IAdvancedProxyStatus;
     await notifyStatus(status);
     return status;
   } catch (error) {
     sessions.get(tabId)?.abort.abort();
     sessions.delete(tabId);
+    await setFirefoxCorsSession(tabId).catch(() => undefined);
     const status = {
       tabId,
       phase: 'error',
@@ -464,6 +449,8 @@ export async function updateQuickControls(tabId: number, value: unknown): Promis
   if (quickControls.disableCache) throw new Error('Cache control is available in Chrome only.');
   const session = sessions.get(tabId);
   if (!session) throw new Error('Start a proxy session first.');
+  await setFirefoxCorsSession(tabId, { origin: session.origin, quickControls });
+  if (sessions.get(tabId) !== session) throw new Error('Start a proxy session first.');
   session.quickControls = quickControls;
   const status = { tabId, phase: 'connected', origin: session.origin, quickControls } satisfies IAdvancedProxyStatus;
   await notifyStatus(status);
@@ -473,6 +460,7 @@ export async function updateQuickControls(tabId: number, value: unknown): Promis
 export async function disableAdvancedProxy(tabId: number): Promise<IAdvancedProxyStatus> {
   sessions.get(tabId)?.abort.abort();
   sessions.delete(tabId);
+  await setFirefoxCorsSession(tabId);
   const status = { tabId, phase: 'disabled' } satisfies IAdvancedProxyStatus;
   await notifyStatus(status);
   return status;
