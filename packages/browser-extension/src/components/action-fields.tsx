@@ -47,9 +47,9 @@ export function ActionFields({ action, onChange }: { action: IProxyAction; onCha
     case 'mockResponse':
       return <FieldGroup>
         <Field><FieldLabel>{t("Response body")}</FieldLabel><Textarea aria-label={t("Response body")} className="min-h-36 font-mono" value={action.body} onChange={(e) => onChange({ ...action, body: e.target.value })} /></Field>
-        <Field><FieldLabel>{t("HTTP status")}</FieldLabel><Input aria-label={t("HTTP status")} type="number" min={100} max={599} value={action.status} onChange={(e) => onChange({ ...action, status: Number(e.target.value) })} />
-          {__TARGET__ === 'firefox' ? <FieldDescription>{t("Firefox contacts the server and preserves its status; only the response body is replaced.")}</FieldDescription> : null}
-        </Field>
+        {__TARGET__ === 'firefox'
+          ? <FieldDescription>{t('Firefox contacts the server and preserves its status; only the response body is replaced.')}</FieldDescription>
+          : <Field><FieldLabel>{t('HTTP status')}</FieldLabel><Input aria-label={t('HTTP status')} type="number" min={100} max={599} value={action.status} onChange={(e) => onChange({ ...action, status: Number(e.target.value) })} /></Field>}
         <details><summary className="cursor-pointer text-sm font-medium">{t('Response headers')}</summary><div className="mt-3"><Headers value={action.headers} onChange={(headers) => onChange({ ...action, headers })} /></div></details>
       </FieldGroup>;
     case 'delay':

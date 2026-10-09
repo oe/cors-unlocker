@@ -25,7 +25,7 @@ function App() {
   ].join(' · ');
 
   return (
-    <main className="flex min-h-full flex-col gap-2.5 bg-background p-3 text-foreground">
+    <main className="flex min-h-full flex-col gap-2 bg-background p-3 text-foreground">
       <header className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2.5">
           <BrandMark />
@@ -51,6 +51,7 @@ function App() {
           <span>{t(vm.connected ? 'Tab session active' : 'Tab session stopped')}</span>
           <Button className="ml-auto" size="xs" variant="ghost" disabled={disabled} onClick={vm.toggleSession}>{t(vm.connected ? 'Stop tab session' : 'Start tab session')}</Button>
         </div>
+        <p className="mt-1 text-xs text-muted-foreground">{t('{count} persistent rules stay on after stopping', { count: persistent })}</p>
         <Button className="mt-2 w-full" size="sm" disabled={disabled} aria-label={t('Open Inspector')} onClick={vm.openInspector}><Activity />{t('Inspect and modify requests')}<ArrowUpRight /></Button>
       </section>
 
@@ -70,14 +71,14 @@ function App() {
               <Switch size="sm" aria-label={t('Allow credentials')} checked={vm.quickControls.credentials} disabled={disabled || !vm.quickControls.cors} onCheckedChange={(credentials) => vm.setQuickControls({ credentials })} />
             </div>
           </div>
-          {__TARGET__ === 'chrome' ? <div className="control-row min-h-10" title={t('Bypass HTTP cache for this tab. Does not clear stored data or bypass service workers.')}>
+          {__TARGET__ === 'chrome' ? <div className="control-row min-h-9" title={t('Bypass HTTP cache for this tab. Does not clear stored data or bypass service workers.')}>
             <span className="text-sm">{t('Disable cache')}</span>
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">HTTP</span>
               <Switch aria-label={t('Disable cache')} checked={vm.quickControls.disableCache} disabled={disabled} onCheckedChange={(disableCache) => vm.setQuickControls({ disableCache })} />
             </div>
           </div> : null}
-          <div className="control-row min-h-10" title="Fetch / XHR">
+          <div className="control-row min-h-9" title="Fetch / XHR">
             <span className="text-sm">{t('Request delay')}</span>
             <div className="flex shrink-0 items-center gap-2">
               <select className="rounded-md border bg-background px-1.5 py-1 text-xs" aria-label={t('Delay duration')} disabled={disabled} value={vm.quickControls.delayMs || delay} onChange={(event) => {
@@ -92,14 +93,14 @@ function App() {
               }} />
             </div>
           </div>
-          <div className="control-row min-h-10" title="Fetch / XHR">
+          <div className="control-row min-h-9" title="Fetch / XHR">
             <span className="text-sm">{t('Simulate failure')}</span>
             <div className="flex items-center gap-2"><span className="text-xs text-muted-foreground">Fetch / XHR</span>
               <Switch aria-label={t('Simulate failure')} checked={vm.quickControls.failure} disabled={disabled} onCheckedChange={(failure) => vm.setQuickControls({ failure })} />
             </div>
           </div>
         </div>
-        <p className="mt-1 text-xs text-muted-foreground">{t('Only this tab. Stopping the session resets these controls.')}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{t('Only this tab. Resets when the session stops.')}</p>
         <p className="mt-1 text-xs text-muted-foreground">{t(__TARGET__ === 'chrome' ? 'Enabling starts Chrome debugging.' : 'Firefox CORS: response headers only.')}</p>
       </section>
 
@@ -117,7 +118,10 @@ function App() {
           <summary className="cursor-pointer text-muted-foreground">{t('Choose pinned rules')}</summary>
           <div className="mt-2 space-y-1">{vm.pinnableRules.map((rule) => <div className="control-row" key={rule.id}>
             <span className="min-w-0 break-words">{rule.name}</span>
-            <Button size="icon-xs" variant={vm.pinnedIds.includes(rule.id) ? 'secondary' : 'ghost'} aria-label={t(vm.pinnedIds.includes(rule.id) ? 'Unpin {name}' : 'Pin {name}', { name: rule.name })} disabled={disabled} onClick={() => vm.pinRule(rule.id, !vm.pinnedIds.includes(rule.id))}><Pin /></Button>
+            <Button size="icon-xs" variant={vm.pinnedIds.includes(rule.id) ? 'secondary' : 'ghost'} aria-label={t(vm.pinnedIds.includes(rule.id) ? 'Unpin {name}' : 'Pin {name}', { name: rule.name })} disabled={disabled} onClick={(event) => {
+              const picker = event.currentTarget.closest('details');
+              void vm.pinRule(rule.id, !vm.pinnedIds.includes(rule.id)).then(() => { if (picker) picker.open = false; });
+            }}><Pin /></Button>
           </div>)}</div>
         </details> : null}
         {vm.legacyCorsRules.length ? <details className="mt-2 text-xs">
@@ -128,10 +132,6 @@ function App() {
           </div>)}
         </details> : null}
       </section>
-      <footer className="border-t pt-2">
-        <p className="text-xs font-medium">{t('{count} persistent rules enabled', { count: persistent })}</p>
-        <p className="mt-1 text-xs text-muted-foreground">{t('Header, redirect and block rules run across tabs, even when this session is stopped. Manage them in Rules.')}</p>
-      </footer>
     </main>
   );
 }

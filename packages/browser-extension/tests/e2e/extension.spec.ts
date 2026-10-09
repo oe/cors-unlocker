@@ -759,6 +759,7 @@ test('popup controls are temporary, tab-scoped, and independent from saved rules
   // Pinning is metadata; enabling a saved rule persists across stopping/reopening.
   await popup.getByText('Choose pinned rules', { exact: true }).click();
   await popup.getByRole('button', { name: 'Pin Popup header preset', exact: true }).click();
+  await expect(popup.locator('details').filter({ has: popup.getByText('Choose pinned rules', { exact: true }) })).not.toHaveAttribute('open');
   await expect(popup.getByRole('switch', { name: 'Popup header preset', exact: true })).toBeVisible();
   await popup.getByRole('switch', { name: 'Popup header preset', exact: true }).click();
   await expect(popup.getByRole('switch', { name: 'Popup header preset', exact: true })).toBeChecked();
@@ -769,7 +770,7 @@ test('popup controls are temporary, tab-scoped, and independent from saved rules
   await expect(popup.getByText('Tab session active', { exact: true })).toBeVisible();
   await popup.getByRole('button', { name: 'Stop tab session' }).click();
   await expect(popup.getByRole('switch', { name: 'Popup header preset', exact: true })).toBeChecked();
-  await expect(popup.getByText('1 persistent rules enabled', { exact: true })).toBeVisible();
+  await expect(popup.getByText('1 persistent rules stay on after stopping', { exact: true })).toBeVisible();
   expect(await target.evaluate(async () => (await fetch('/health')).headers.get('X-Popup-Preset'))).toBe('enabled');
   await popup.evaluate(() => window.scrollTo(0, 0));
   await expect(popup.getByRole('switch', { name: 'Request delay', exact: true })).not.toBeChecked();

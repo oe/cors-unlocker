@@ -74,6 +74,8 @@ describe('request-first inspector', () => {
     await sync();
     expect(vi.mocked(browser.runtime.sendMessage).mock.calls.filter(([message]) => (message as any).type === 'getProxyState')).toHaveLength(stateReads);
     expect(screen.queryByRole('button', { name: 'View request' })).not.toBeInTheDocument();
+    expect(screen.getByText('Requests recorded, but none matched this rule. Repeat the target request or edit its conditions.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Edit proxy rule' })).toBeInTheDocument();
     entries = [entry('fresh-match', { startedAt: Date.now() + 1, matchedRuleIds: ['saved'], outcome: 'mocked', changes: [{ label: 'Local mock', after: 'HTTP 200; server not contacted' }] }), ...entries];
     await sync();
     await user.type(screen.getByRole('textbox', { name: 'Filter URL, method, status' }), 'no-results');
@@ -148,6 +150,20 @@ describe('request-first inspector', () => {
     expect(screen.getByText('Start a tab session to apply')).toBeInTheDocument();
     await user.click(screen.getByRole('tab', { name: 'Requests (1)' }));
     expect(screen.getByRole('button', { name: 'Mock', exact: true })).toBeInTheDocument();
+  });
+
+  it('offers Firefox body replacement without an HTTP status control that cannot take effect', async () => {
+    vi.stubGlobal('__TARGET__', 'firefox');
+    const user = userEvent.setup();
+    render(<Inspector />);
+    await user.click(await screen.findByRole('button', { name: /GET.*orders/ }));
+    await user.click(screen.getByRole('button', { name: 'Replace body', exact: true }));
+    expect(screen.getByLabelText('Response body')).toBeVisible();
+    expect(screen.queryByLabelText('HTTP status')).not.toBeInTheDocument();
+    expect(screen.getByText('Firefox contacts the server and preserves its status; only the response body is replaced.')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Save rule', exact: true }));
+    await screen.findByText('Saved. Trigger the request again on the page to verify it.');
+    expect(rules[0].actions[0]).toMatchObject({ type: 'mockResponse', status: 200 });
   });
 
 });

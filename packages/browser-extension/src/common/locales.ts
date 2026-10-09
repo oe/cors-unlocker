@@ -1,5 +1,29 @@
 // English source keys are the fallback. Technical values and user content are never translated.
 export const messages: Record<string, Record<string, string>> = {
+  "{count} persistent rules stay on after stopping": {
+    "en": "{count} persistent rules stay on after stopping",
+    "zh-CN": "停止会话后仍有 {count} 条持久规则生效",
+    "ko": "중지 후에도 영구 규칙 {count}개는 유지됩니다",
+    "ja": "停止後も永続ルール {count} 件は有効です",
+    "fr": "{count} règles persistantes restent actives après l’arrêt",
+    "es": "{count} reglas persistentes siguen activas al detener"
+  },
+  "Only this tab. Resets when the session stops.": {
+    "en": "Only this tab. Resets when the session stops.",
+    "zh-CN": "仅影响本标签页，停止会话后重置。",
+    "ko": "이 탭에만 적용. 세션 중지 시 초기화됩니다.",
+    "ja": "このタブのみ。セッション停止でリセット。",
+    "fr": "Cet onglet uniquement. Réinitialisé à l’arrêt.",
+    "es": "Solo esta pestaña. Se restablece al detener."
+  },
+  "Requests recorded, but none matched this rule. Repeat the target request or edit its conditions.": {
+    "en": "Requests recorded, but none matched this rule. Repeat the target request or edit its conditions.",
+    "zh-CN": "已记录新请求，但没有匹配这条规则。请重试目标请求，或编辑匹配条件。",
+    "ko": "새 요청이 기록되었지만 이 규칙과 일치하지 않습니다. 대상 요청을 다시 실행하거나 조건을 수정하세요.",
+    "ja": "新しいリクエストを記録しましたが、このルールと一致しません。対象のリクエストを再実行するか条件を編集してください。",
+    "fr": "Des requêtes ont été enregistrées, mais aucune ne correspond à cette règle. Répétez la requête ciblée ou modifiez les conditions.",
+    "es": "Se registraron solicitudes, pero ninguna coincide con esta regla. Repite la solicitud objetivo o edita sus condiciones."
+  },
   "Tab session active": {
     "en": "Tab session active",
     "zh-CN": "标签页会话已启动",
@@ -80,14 +104,6 @@ export const messages: Record<string, Record<string, string>> = {
     "fr": "Réinitialiser",
     "es": "Restablecer cambios"
   },
-  "Only this tab. Stopping the session resets these controls.": {
-    "en": "Only this tab. Stopping the session resets these controls.",
-    "zh-CN": "仅影响当前标签页。停止会话会重置这些控制项。",
-    "ko": "이 탭에만 적용됩니다. 세션을 중지하면 이 설정이 초기화됩니다.",
-    "ja": "このタブのみに適用。セッション停止でこれらの設定はリセットされます。",
-    "fr": "Cet onglet uniquement. Arrêter la session réinitialise ces réglages.",
-    "es": "Solo esta pestaña. Detener la sesión restablece estos controles."
-  },
   "{count} persistent rules enabled": {
     "en": "{count} persistent rules enabled",
     "zh-CN": "{count} 条持久规则已启用",
@@ -95,14 +111,6 @@ export const messages: Record<string, Record<string, string>> = {
     "ja": "永続ルール {count} 件が有効",
     "fr": "{count} règles persistantes activées",
     "es": "{count} reglas persistentes activadas"
-  },
-  "Header, redirect and block rules run across tabs, even when this session is stopped. Manage them in Rules.": {
-    "en": "Header, redirect and block rules run across tabs, even when this session is stopped. Manage them in Rules.",
-    "zh-CN": "请求头、重定向和拦截规则可跨标签页生效，不随会话停止。请在规则中管理。",
-    "ko": "헤더, 리디렉션, 차단 규칙은 세션이 중지되어도 여러 탭에서 적용됩니다. 규칙에서 관리하세요.",
-    "ja": "ヘッダー・リダイレクト・ブロックのルールは停止後も他のタブで有効です。「ルール」で管理できます。",
-    "fr": "Les règles d’en-têtes, de redirection et de blocage restent actives dans les onglets après l’arrêt. Gérez-les dans Règles.",
-    "es": "Las reglas de cabeceras, redirección y bloqueo siguen activas en las pestañas al detener la sesión. Gestiona estas reglas en Reglas."
   },
   "Recording requests": {
     "en": "Recording requests",

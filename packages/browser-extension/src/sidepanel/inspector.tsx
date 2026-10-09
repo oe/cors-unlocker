@@ -26,10 +26,12 @@ function statusVariant(entry: IRequestLogEntry): 'default' | 'secondary' | 'dest
   return entry.status && entry.status >= 400 ? 'destructive' : 'outline';
 }
 
-function verificationMessage(rule: IProxyRule, connected: boolean, entry: IRequestLogEntry | null | undefined): string {
+function verificationMessage(rule: IProxyRule, connected: boolean, entry: IRequestLogEntry | null | undefined, hasNewRequests: boolean): string {
   if (!rule.enabled) return 'Rule disabled. Requests use their original behavior unless other rules apply.';
   if (needsProxy(rule) && !connected) return 'Start a tab session to apply';
-  if (!entry) return 'Saved. Trigger the request again on the page to verify it.';
+  if (!entry) return hasNewRequests
+    ? 'Requests recorded, but none matched this rule. Repeat the target request or edit its conditions.'
+    : 'Saved. Trigger the request again on the page to verify it.';
   if (entry.outcome === 'pending') return 'Request in progress. Waiting for the result.';
   if (entry.diagnostics.length) return 'Request matched with warnings. Review the result.';
   return entry.changes?.length
@@ -163,6 +165,7 @@ export function Inspector() {
   const selected = filtered.find((entry) => entry.id === selectedId);
   const savedRule = rules.find((rule) => rule.id === verification?.ruleId);
   const verifiedRequest = verification && entries.find((entry) => entry.startedAt >= verification.since && entry.matchedRuleIds.includes(verification.ruleId));
+  const hasNewRequests = !!verification && entries.some((entry) => entry.startedAt >= verification.since);
 
   const toggle = async (enabled: boolean) => {
     if (tabId === null) return;
@@ -230,11 +233,12 @@ export function Inspector() {
         </Alert>
       ) : null}
       {savedRule ? <Alert role="status"><AlertTitle>{savedRule.name}</AlertTitle><AlertDescription className="text-wrap [&_p:not(:last-child)]:mb-2">
-        <p>{t(verificationMessage(savedRule, status?.phase === 'connected', verifiedRequest))}</p>
+        <p>{t(verificationMessage(savedRule, status?.phase === 'connected', verifiedRequest, hasNewRequests))}</p>
         <div className="mt-2 flex flex-wrap gap-2">
           {verifiedRequest ? <Button size="sm" variant="outline" onClick={() => { setView('requests'); setSearch(''); setSelectedId(verifiedRequest.id); }}>{t('View request')}</Button> : null}
           {savedRule.enabled && status?.phase !== 'connected' && !verifiedRequest ? <Button size="sm" disabled={busy || tabId === null} onClick={() => void toggle(true)}>{t('Start recording requests')}</Button> : null}
           {savedRule.enabled ? <Button size="sm" variant="outline" disabled={busy} onClick={() => void toggleRule(savedRule, false)}>{t('Disable this rule')}</Button> : null}
+          {savedRule.enabled && hasNewRequests && !verifiedRequest?.changes?.length ? <Button size="sm" variant="outline" disabled={busy} onClick={() => setDraft(draftFromRule(savedRule))}>{t('Edit proxy rule')}</Button> : null}
           <Button size="sm" variant="ghost" onClick={() => setVerification(null)}>{t('Dismiss')}</Button>
         </div>
       </AlertDescription></Alert> : null}

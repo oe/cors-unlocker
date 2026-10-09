@@ -296,6 +296,7 @@ export function RuleEditorForm({
               <Button variant="outline" disabled={!actions} onClick={() => setActions([...(actions || []), ...structuredClone(ACTION_TEMPLATES[actionTemplate])])}>{t("Add action")}</Button>
             </div></details>
           </section>
+          <details><summary className="cursor-pointer text-sm font-medium">{t("Advanced JSON")}</summary>
           {replacesResponseBody ? (
             <Alert>
               <Info />
@@ -303,7 +304,6 @@ export function RuleEditorForm({
               <AlertDescription> {t("Firefox still sends the request and preserves the server status. The JSON status value remains for portable Chrome rules and is ignored by Firefox.")} </AlertDescription>
             </Alert>
           ) : null}
-          <details><summary className="cursor-pointer text-sm font-medium">{t("Advanced JSON")}</summary>
           <Field data-invalid={!!error}>
             <FieldLabel htmlFor="rule-actions">{t("Action script (JSON)")}</FieldLabel>
             <Textarea
