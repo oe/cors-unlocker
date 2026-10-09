@@ -9,11 +9,19 @@ import {
 } from './messaging';
 import { logger } from '@/common/logger';
 import { ensureProxyAppState, initializeProxyStateWriter, isProxyAppState } from '@/common/proxy-state';
-import '@/background/advanced-proxy';
+import { getAdvancedProxyStatus } from '@/background/advanced-proxy';
 import { reconcileProxyDnrRules } from './proxy-dnr';
 import { createFirefoxMessageRouter } from './message-routing';
+import { forgetToolbarTab, initializeToolbarStatus, refreshAllToolbar, refreshToolbarTab } from './toolbar-status';
+import { LANGUAGE_KEY } from '@/common/locale';
+import type { IProxyRule } from '@/common/proxy-state';
 
-initializeProxyStateWriter((state) => reconcileProxyDnrRules(state.rules));
+async function applyBrowserRules(rules: IProxyRule[]) {
+  await reconcileProxyDnrRules(rules);
+  void refreshAllToolbar();
+}
+initializeProxyStateWriter((state) => applyBrowserRules(state.rules));
+initializeToolbarStatus(getAdvancedProxyStatus);
 
 // Simple delay utility function
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -21,10 +29,10 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 async function bootstrap() {
   try {
     const state = await ensureProxyAppState();
-    await reconcileProxyDnrRules(state.rules);
+    await applyBrowserRules(state.rules);
   } catch (error) {
     logger.error('Extension bootstrap failed:', error);
-    await reconcileProxyDnrRules([]).catch(() => undefined);
+    await applyBrowserRules([]).catch(() => undefined);
   }
 }
 
@@ -50,7 +58,7 @@ browser.runtime.onStartup.addListener(async () => {
     }
     
     const state = await ensureProxyAppState();
-    await reconcileProxyDnrRules(state.rules);
+    await applyBrowserRules(state.rules);
   } catch (error) {
     logger.error('Error during startup rule initialization:', error);
   }
@@ -80,18 +88,20 @@ dataStorage.onRulesChange(async (newRules) => {
 });
 
 browser.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === 'local' && changes[LANGUAGE_KEY]) void refreshAllToolbar();
   const state = changes.proxyAppState?.newValue;
   if (areaName !== 'local' || !changes.proxyAppState) return;
   if (state !== undefined && !isProxyAppState(state)) {
-    void reconcileProxyDnrRules([]).catch((error) => logger.error('Unable to clear invalid rules:', error));
+    void applyBrowserRules([]).catch((error) => logger.error('Unable to clear invalid rules:', error));
     return;
   }
-  void reconcileProxyDnrRules(state?.rules || []).catch((error) => {
+  void applyBrowserRules(state?.rules || []).catch((error) => {
     logger.error('Unable to reconcile proxy DNR rules:', error);
   });
 });
 
 browser.tabs.onActivated.addListener(async (activeInfo) => {
+  void refreshToolbarTab(activeInfo.tabId);
   try {
     const tab = await browser.tabs.get(activeInfo.tabId);
     await onTabActiveChange(tab);
@@ -101,6 +111,7 @@ browser.tabs.onActivated.addListener(async (activeInfo) => {
 });
 
 browser.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  if (changeInfo.url || changeInfo.status === 'complete') void refreshToolbarTab(tabId);
   try {
     await onTabActiveChange(tab);
     if (changeInfo.url) await refreshTabRules();
@@ -123,6 +134,9 @@ browser.windows.onRemoved.addListener(onWindowClose);
 
 async function refreshTabRules() {
   const state = await ensureProxyAppState();
-  await reconcileProxyDnrRules(state.rules);
+  await applyBrowserRules(state.rules);
 }
-browser.tabs.onRemoved.addListener(() => { void refreshTabRules().catch((error) => logger.error('Unable to refresh tab rules:', error)); });
+browser.tabs.onRemoved.addListener((tabId) => {
+  forgetToolbarTab(tabId);
+  void refreshTabRules().catch((error) => logger.error('Unable to refresh tab rules:', error));
+});

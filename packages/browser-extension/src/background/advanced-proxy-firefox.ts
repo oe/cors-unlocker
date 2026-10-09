@@ -1,4 +1,5 @@
 import { batchTabNotifications, waitForDelay } from './session-work';
+import { refreshToolbarTab } from './toolbar-status';
 import browser from 'webextension-polyfill';
 import { logger } from '@/common/logger';
 import { mergeHeaders } from '@/common/rules';
@@ -190,6 +191,7 @@ const notifyLogChanged = (tabId: number) => logNotifications.notify(tabId);
 
 async function notifyStatus(status: IAdvancedProxyStatus) {
   statuses.set(status.tabId, status);
+  void refreshToolbarTab(status.tabId);
   await browser.runtime.sendMessage({
     type: 'advancedProxyStatusChange',
     payload: status,
@@ -388,7 +390,16 @@ browser.tabs.onRemoved.addListener((tabId) => {
 
 browser.tabs.onUpdated.addListener((tabId, changeInfo) => {
   const session = sessions.get(tabId);
-  if (!session || !changeInfo.url) return;
+  if (!changeInfo.url) return;
+  if (!session) {
+    const status = statuses.get(tabId);
+    if (status?.phase === 'error') {
+      let origin: string | undefined;
+      try { origin = new URL(changeInfo.url).origin; } catch { /* Unsupported navigation clears the failed session. */ }
+      if (status.origin !== origin) void notifyStatus({ tabId, phase: 'disabled' });
+    }
+    return;
+  }
   try {
     if (new URL(changeInfo.url).origin !== session.origin) void disableAdvancedProxy(tabId);
   } catch {

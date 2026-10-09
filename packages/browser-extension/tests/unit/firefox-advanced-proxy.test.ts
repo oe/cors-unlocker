@@ -69,6 +69,14 @@ beforeEach(() => {
 });
 
 describe('Firefox WebRequest interception engine', () => {
+  it('clears a failed connection when the tab changes origin', async () => {
+    vi.mocked(browser.storage.local.get).mockRejectedValueOnce(new Error('Storage unavailable'));
+    expect((await engine.enableAdvancedProxy(88)).phase).toBe('error');
+    listener(browser.tabs.onUpdated)(88, { url: 'https://other.example.test/' });
+    expect(engine.getAdvancedProxyStatus(88).phase).toBe('disabled');
+    listener(browser.tabs.onUpdated)(88, { url: 'http://test.localhost:3000/' });
+    expect(engine.getAdvancedProxyStatus(88).phase).toBe('disabled');
+  });
   it('cancels matching blocked requests and records the outcome', async () => {
     vi.mocked(browser.storage.local.get).mockResolvedValue({ proxyAppState: state([{ type: 'block' }]) });
     await engine.enableAdvancedProxy(7);
