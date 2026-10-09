@@ -60,6 +60,7 @@ export function Inspector() {
   const [targetError, setTargetError] = useState<string | null>(null);
   const syncVersion = useRef(0);
   const target = useRef('');
+  const requestDetail = useRef<HTMLDivElement>(null);
 
   const sync = useCallback(async () => {
     const version = ++syncVersion.current;
@@ -166,6 +167,10 @@ export function Inspector() {
   const savedRule = rules.find((rule) => rule.id === verification?.ruleId);
   const verifiedRequest = verification && entries.find((entry) => entry.startedAt >= verification.since && entry.matchedRuleIds.includes(verification.ruleId));
   const hasNewRequests = !!verification && entries.some((entry) => entry.startedAt >= verification.since);
+  const showRequest = (id: string) => {
+    setView('requests'); setSearch(''); setSelectedId(id);
+    requestAnimationFrame(() => requestDetail.current?.scrollIntoView?.({ block: 'start' }));
+  };
 
   const toggle = async (enabled: boolean) => {
     if (tabId === null) return;
@@ -203,7 +208,7 @@ export function Inspector() {
 
   return (
     <main className="flex min-h-screen flex-col gap-3 bg-background p-3 text-foreground">
-      <header className="flex items-center justify-between gap-3">
+      <header className="sticky top-0 z-10 flex items-center justify-between gap-3 bg-background py-1">
         <div className="flex min-w-0 items-center gap-2">
           <BrandMark />
           <div className="min-w-0">
@@ -235,7 +240,7 @@ export function Inspector() {
       {savedRule ? <Alert role="status"><AlertTitle>{savedRule.name}</AlertTitle><AlertDescription className="text-wrap [&_p:not(:last-child)]:mb-2">
         <p>{t(verificationMessage(savedRule, status?.phase === 'connected', verifiedRequest, hasNewRequests))}</p>
         <div className="mt-2 flex flex-wrap gap-2">
-          {verifiedRequest ? <Button size="sm" variant="outline" onClick={() => { setView('requests'); setSearch(''); setSelectedId(verifiedRequest.id); }}>{t('View request')}</Button> : null}
+          {verifiedRequest ? <Button size="sm" variant="outline" onClick={() => showRequest(verifiedRequest.id)}>{t('View request')}</Button> : null}
           {savedRule.enabled && status?.phase !== 'connected' && !verifiedRequest ? <Button size="sm" disabled={busy || tabId === null} onClick={() => void toggle(true)}>{t('Start recording requests')}</Button> : null}
           {savedRule.enabled ? <Button size="sm" variant="outline" disabled={busy} onClick={() => void toggleRule(savedRule, false)}>{t('Disable this rule')}</Button> : null}
           {savedRule.enabled && hasNewRequests && !verifiedRequest?.changes?.length ? <Button size="sm" variant="outline" disabled={busy} onClick={() => setDraft(draftFromRule(savedRule))}>{t('Edit proxy rule')}</Button> : null}
@@ -289,6 +294,7 @@ export function Inspector() {
 
       {!selected && filtered.length > 0 ? <p className="text-xs text-muted-foreground">{t("Select a request to mock its response or change its behavior.")}</p> : null}
       {selected ? (
+        <div ref={requestDetail} className="scroll-mt-16">
         <Card size="sm">
           <CardHeader>
             <CardTitle className="break-all text-xs">{selected.method} {selected.url}</CardTitle>
@@ -343,6 +349,7 @@ export function Inspector() {
 
           </CardContent>
         </Card>
+        </div>
       ) : null}
       </TabsContent>
       <TabsContent value="rules">
