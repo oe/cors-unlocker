@@ -144,15 +144,17 @@ try {
         false,
       ),
     );
+    const slow =
+      new URLSearchParams(location.search).get("scenario") === "delay";
     let status = {
       phase: "connected",
       tabId: 17,
       captureEnabled: true,
       quickControls: {
-        cors: true,
+        cors: !slow,
         credentials: false,
-        disableCache: true,
-        delayMs: 0,
+        disableCache: !slow,
+        delayMs: slow ? 1000 : 0,
         failure: false,
       },
     };
@@ -326,11 +328,55 @@ try {
       (locale) => localStorage.setItem("marketing-locale", locale),
       locale,
     );
+    await page.setViewportSize({ width: 360, height: 550 });
+    await page.goto(`${base}/src/popup/index.html?tabId=17`);
+    await page
+      .getByRole("switch", {
+        name: locale === "en" ? "CORS repair" : "CORS 修复",
+        exact: true,
+      })
+      .waitFor();
+    await page.screenshot({
+      animations: "disabled",
+      path: `${folder}/popup-${locale}.png`,
+      fullPage: true,
+    });
+    await page.goto(`${base}/src/popup/index.html?tabId=17&scenario=delay`);
+    await page
+      .getByRole("switch", {
+        name: locale === "en" ? "Request delay" : "请求延迟",
+        exact: true,
+      })
+      .waitFor();
+    await page.screenshot({
+      animations: "disabled",
+      path: `${folder}/popup-delay-${locale}.png`,
+      fullPage: true,
+    });
+    await page.setViewportSize({ width: 520, height: 780 });
+    await page.goto(`${base}/src/sidepanel/index.html?tabId=17`);
+    await page
+      .getByRole("button", {
+        name: /GET https:\/\/api\.example\.com\/projects\/123/,
+      })
+      .click();
+    await page
+      .getByRole("heading", {
+        name: locale === "en" ? "Applied changes" : "已应用的修改",
+        exact: true,
+      })
+      .waitFor();
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({
+      animations: "disabled",
+      path: `${folder}/inspector-${locale}.png`,
+      fullPage: true,
+    });
     await page.setViewportSize({ width: 1120, height: 590 });
     await page.goto(`${base}/src/options/index.html`);
-    console.log(locale, await page.locator("main").innerText());
+
     await page.locator('[data-rule-select="mock-projects"]').click();
-    console.log("TABS", await page.getByRole("tab").allTextContents());
+
     await page
       .getByRole("tab", {
         name: locale === "en" ? "Actions" : "动作",
@@ -345,13 +391,33 @@ try {
     );
     await body.blur();
     const editor = body.locator("..").locator("..");
-    await editor.screenshot({ path: `${folder}/json-editor-${locale}.png` });
+    await editor.screenshot({
+      animations: "disabled",
+      path: `${folder}/json-editor-${locale}.png`,
+    });
     const rect = await editor.boundingBox();
     await page.screenshot({
+      animations: "disabled",
       path: `${folder}/json-detail-${locale}.png`,
       clip: { x: rect.x, y: rect.y, width: 420, height: 180 },
     });
-    await page.screenshot({ path: `${folder}/workspace-${locale}.png` });
+    await page.screenshot({
+      animations: "disabled",
+      path: `${folder}/workspace-${locale}.png`,
+    });
+    await page
+      .getByRole("tab", {
+        name: locale === "en" ? "Match" : "匹配",
+        exact: true,
+      })
+      .click();
+    await page.screenshot({
+      animations: "disabled",
+      path: `${folder}/matching-${locale}.png`,
+    });
+    console.log(
+      `Captured ${locale}: popup, inspector, mock editor, matching and delay`,
+    );
   }
   if (errors.length) throw new Error(errors.join("\n"));
   console.log("CAPTURE OK: current Chrome production UI with sample data.");

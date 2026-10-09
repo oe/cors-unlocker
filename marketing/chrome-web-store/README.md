@@ -4,19 +4,33 @@ These are the approved, straight-on Forth Intercept store images. They use the
 actual Chrome extension UI with sample data, short benefit-led copy, and Goldie's
 `classic` layout principles. The marquee uses a horizontal copy-and-window layout.
 
-![Chinese store screenshot](screenshots/zh-CN/product-1280x800.png)
+![Chinese Popup screenshot](screenshots/zh-CN/01-popup-1280x800.png)
 
 ## Upload files
 
-| File | Store field | Pixels |
-| --- | --- | --- |
-| [English screenshot](screenshots/en/product-1280x800.png) | Default-language screenshot | 1280 × 800 |
-| [Chinese screenshot](screenshots/zh-CN/product-1280x800.png) | Simplified Chinese screenshot | 1280 × 800 |
-| [Small promo tile](promo/product-440x280.png) | Small promo tile | 440 × 280 |
-| [Marquee](promo/product-1400x560.png) | Optional marquee promo tile | 1400 × 560 |
+Upload the following five **1280 × 800** screenshots in this order for each
+locale. Chrome Web Store accepts at most five screenshots per locale; use one
+language set in each language slot, rather than uploading both together.
 
-Each file is a 24-bit RGB PNG without transparency. Upload each screenshot to its
-own language slot. Promo tiles are shared between locales, so they use English.
+| Order | Benefit / actual screen                          | English                                         | 简体中文                                           |
+| ----- | ------------------------------------------------ | ----------------------------------------------- | -------------------------------------------------- |
+| 1     | Quick controls / Popup                           | [PNG](screenshots/en/01-popup-1280x800.png)     | [PNG](screenshots/zh-CN/01-popup-1280x800.png)     |
+| 2     | Applied changes / request Inspector              | [PNG](screenshots/en/02-inspector-1280x800.png) | [PNG](screenshots/zh-CN/02-inspector-1280x800.png) |
+| 3     | Local JSON responses / Mock editor               | [PNG](screenshots/en/03-mock-1280x800.png)      | [PNG](screenshots/zh-CN/03-mock-1280x800.png)      |
+| 4     | Precise targeting / rule matching                | [PNG](screenshots/en/04-scope-1280x800.png)     | [PNG](screenshots/zh-CN/04-scope-1280x800.png)     |
+| 5     | Loading-state testing / Popup with request delay | [PNG](screenshots/en/05-delay-1280x800.png)     | [PNG](screenshots/zh-CN/05-delay-1280x800.png)     |
+
+| Promo file                                    | Store field                 | Pixels     |
+| --------------------------------------------- | --------------------------- | ---------- |
+| [Small promo tile](promo/product-440x280.png) | Required small promo tile   | 440 × 280  |
+| [Marquee](promo/product-1400x560.png)         | Optional marquee promo tile | 1400 × 560 |
+
+Each file is a 24-bit RGB PNG without transparency. Promo tiles are shared between
+locales, so they use English. Headlines and short subheads have no trailing
+periods in either language. Each screenshot presents one benefit and one complete,
+upright product window. The gallery includes Popup twice in distinct states:
+CORS repair + HTTP cache bypass, then a one-second Fetch / XHR delay.
+
 Keep the existing extension icon; these images are store marketing assets.
 
 Chrome's [image requirements](https://developer.chrome.com/docs/webstore/images/)
@@ -58,7 +72,8 @@ Playwright's installed Chromium. Install the latter if needed:
 pnpm --filter browser-cors-unlocker exec playwright install chromium
 ```
 
-To change copy or colors, edit [`source/design.json`](source/design.json). To change
+To change copy, screenshot order, or colors, edit [`source/design.json`](source/design.json).
+Its `scenes` array defines capture names, layouts, and localized copy. To change
 the desktop geometry, edit [`source/layout.html`](source/layout.html). Keep the
 approved UI upright and completely inside the canvas, with a single window.
 Then export from the saved original captures:
@@ -79,8 +94,10 @@ Both scripts locate the repository relative to their own files; `FORTH_REPO` is 
 optional override. They require no new extension permissions, production
 dependencies, or global Goldie CLI installation.
 
-The exporter checks exact dimensions, 24-bit RGB PNG headers, copy bounds,
-unrotated UI, absence of perspective, and the complete window's canvas bounds.
+The exporter checks five scenes per locale, unique filenames, period-free short
+copy, exact dimensions, 24-bit RGB PNG headers, copy bounds,
+unrotated UI, absence of perspective, the complete window's canvas bounds, and
+separation between marketing copy and the UI window.
 It writes checks and half-size inspection previews to ignored `qa/` files.
 Review those previews before committing refreshed assets.
 
@@ -91,7 +108,7 @@ Review those previews before committing refreshed assets.
   not evidence of a real intercepted network session. Preserve **Sample data /
   示例数据** labeling. Example origins use `example.com` and contain no user data.
 - The approved UI was captured from `oe/cors-unlocker` commit
-  `ac99e0ab983fb11837a1cf2cb72a545e34bc2e4e`. The UI is rendered by the product's
+  `f07914d07371a5cb61e3b5bc998901250344e80b`. The UI is rendered by the product's
   React code, not redrawn by an image model.
 - Fonts come from [Goldie's bundled fonts](https://github.com/kacperkapusciak/goldie/tree/main/assets/fonts):
   DM Sans and Noto Sans SC. Their copyright notices and SIL Open Font License are

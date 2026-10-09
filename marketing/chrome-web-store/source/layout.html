@@ -90,7 +90,7 @@
     .screen {
       position: absolute;
       left: 100px;
-      top: 212px;
+      top: 202px;
       width: 1080px;
       line-height: 0;
       background: white;
@@ -118,6 +118,40 @@
     }
     .zh .subhead {
       font-size: 21px;
+    }
+    .portrait h1 {
+      left: 80px;
+      right: auto;
+      top: 228px;
+      width: 630px;
+      text-align: left;
+      font-size: 60px;
+      letter-spacing: -2px;
+      line-height: 1.15;
+    }
+    .portrait h1 em {
+      display: block;
+      margin-top: 6px;
+    }
+    .portrait .subhead {
+      left: 80px;
+      right: auto;
+      top: 412px;
+      width: 620px;
+      text-align: left;
+      font-size: 23px;
+      line-height: 1.6;
+    }
+    .portrait.zh h1 {
+      font-size: 64px;
+      letter-spacing: -1px;
+    }
+    .portrait.zh .subhead {
+      font-size: 23px;
+    }
+    .portrait .sample {
+      right: 100px;
+      bottom: 32px;
     }
     .small {
       width: 440px;
@@ -225,7 +259,13 @@
         locale = p.get("locale") || "en",
         zh = locale === "zh-CN",
         el = document.querySelector("#canvas"),
-        c = d.copy[locale];
+        c = d.copy[locale],
+        scene =
+          format === "screenshot"
+            ? d.scenes.find(
+                (scene) => scene.id === (p.get("scene") || d.scenes[0].id),
+              )
+            : undefined;
       document.documentElement.lang = locale;
       el.style.setProperty("--background", d.background);
       el.style.setProperty("--ink", d.headlineColor);
@@ -233,10 +273,20 @@
       el.style.setProperty("--muted", d.subheadColor);
       if (format !== "screenshot") el.classList.add(format);
       if (zh) el.classList.add("zh");
-      const active = { ...c, ...d.formats[format].copy?.[locale] },
+      if (scene?.layout === "portrait") el.classList.add("portrait");
+      const active = {
+          ...c,
+          ...d.formats[format].copy?.[locale],
+          ...scene?.copy[locale],
+        },
         title = `${active.headlineLead}<em>${active.headlineAccent}</em>`,
         sub = active.subhead.replaceAll("\n", "<br>");
-      el.innerHTML = `<div class="brand">${d.brand}</div><div class="platform">${zh ? "Chrome 浏览器插件" : "Chrome extension"}</div><h1>${title}</h1><p class="subhead">${sub}</p><div class="screen"><img src="captures/${format === "small" ? "json-detail" : "workspace"}-${locale}.png" alt="Actual extension UI with sample data"></div><div class="sample">${c.sample}</div>`;
+      el.innerHTML = `<div class="brand">${d.brand}</div><div class="platform">${zh ? "Chrome 浏览器插件" : "Chrome extension"}</div><h1>${title}</h1><p class="subhead">${sub}</p><div class="screen"><img src="captures/${scene?.capture || (format === "small" ? "json-detail" : "workspace")}-${locale}.png" alt="Actual extension UI with sample data"></div><div class="sample">${c.sample}</div>`;
+      if (scene?.screen) {
+        const screen = el.querySelector(".screen");
+        for (const [key, value] of Object.entries(scene.screen))
+          screen.style[key] = `${value}px`;
+      }
       document.body.dataset.ready = "true";
     })();
   </script>
