@@ -30,6 +30,8 @@ describe('lossless JSON editing', () => {
       expect(jsonProblem('{\n  }')).toEqual({ offset: 4, line: 2, column: 3 });
       parse.mockImplementationOnce(() => { throw new SyntaxError('Unknown diagnostic'); });
       expect(jsonProblem('invalid')).toEqual({});
+      parse.mockImplementationOnce(() => { throw new SyntaxError('Unexpected token \'p\', "at position 999, end of data" is not valid JSON'); });
+      expect(jsonProblem('at position 999, end of data')).toEqual({});
     } finally { parse.mockRestore(); }
   });
 

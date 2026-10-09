@@ -8,15 +8,16 @@ export function jsonProblem(source: string): JsonProblem | null {
   try { JSON.parse(source); return null; }
   catch (cause) {
     const message = cause instanceof Error ? cause.message : '';
-    const position = message.match(/position (\d+)/);
-    const coordinates = message.match(/line (\d+) column (\d+)/);
+    // Match parser metadata at the end, never phrases in a quoted payload snippet.
+    const position = message.match(/ at position (\d+)(?: \(line \d+ column \d+\))?$/);
+    const coordinates = message.match(/line (\d+) column (\d+)(?:\)| of the JSON data)?$/);
     let offset: number | undefined;
     if (position) offset = Math.min(Number(position[1]), source.length);
     else if (coordinates) {
       const lines = source.split('\n');
       offset = lines.slice(0, Number(coordinates[1]) - 1).reduce((sum, line) => sum + line.length + 1, 0) + Number(coordinates[2]) - 1;
       offset = Math.min(offset, source.length);
-    } else if (/end of|unterminated/i.test(message)) offset = source.length;
+    } else if (/^(Unexpected end of JSON input|Unterminated string in JSON)/i.test(message)) offset = source.length;
     if (offset === undefined) return {};
     const before = source.slice(0, offset).split('\n');
     return { offset, line: before.length, column: before[before.length - 1].length + 1 };
