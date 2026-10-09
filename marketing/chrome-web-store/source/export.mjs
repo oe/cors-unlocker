@@ -23,20 +23,40 @@ const mimeTypes = {
   ".otf": "font/otf",
 };
 
+assert.equal(design.scenes.length, 5, "Five ordered screenshots per locale");
+for (const copy of [
+  ...Object.values(design.copy),
+  ...design.scenes.flatMap((scene) => Object.values(scene.copy)),
+  ...Object.values(design.formats).flatMap((format) =>
+    Object.values(format.copy || {}),
+  ),
+]) {
+  for (const field of ["headlineLead", "headlineAccent", "subhead"]) {
+    for (const line of copy[field].split("\n")) {
+      assert(
+        !/[.。]$/.test(line.trim()),
+        "Short marketing copy must not end with a period",
+      );
+    }
+  }
+}
 const assets = [
-  {
-    format: "screenshot",
-    locale: "en",
-    file: "screenshots/en/product-1280x800.png",
-  },
-  {
-    format: "screenshot",
-    locale: "zh-CN",
-    file: "screenshots/zh-CN/product-1280x800.png",
-  },
+  ...design.locales.flatMap((locale) =>
+    design.scenes.map((scene) => ({
+      format: "screenshot",
+      locale,
+      scene: scene.id,
+      file: `screenshots/${locale}/${scene.id}-1280x800.png`,
+    })),
+  ),
   { format: "small", locale: "en", file: "promo/product-440x280.png" },
   { format: "marquee", locale: "en", file: "promo/product-1400x560.png" },
 ];
+assert.equal(
+  new Set(assets.map((asset) => asset.file)).size,
+  assets.length,
+  "Unique output files",
+);
 
 const server = createServer((request, response) => {
   try {
@@ -78,6 +98,7 @@ async function load(page, asset) {
   );
   url.searchParams.set("format", asset.format);
   url.searchParams.set("locale", asset.locale);
+  if (asset.scene) url.searchParams.set("scene", asset.scene);
   await page.goto(url.href);
   await page.waitForSelector("body[data-ready=true]");
   await page.evaluate(() => document.fonts.ready);
@@ -141,6 +162,30 @@ try {
         rect.bottom <= height,
       "The complete UI window must fit the canvas",
     );
+    const overlaps = await page
+      .locator("h1,.brand,.subhead,.platform,.sample")
+      .evaluateAll((elements) => {
+        const screen = document
+          .querySelector(".screen")
+          .getBoundingClientRect();
+        return elements
+          .filter((element) => getComputedStyle(element).display !== "none")
+          .filter((element) => {
+            const copy = element.getBoundingClientRect();
+            return (
+              copy.left < screen.right &&
+              copy.right > screen.left &&
+              copy.top < screen.bottom &&
+              copy.bottom > screen.top
+            );
+          })
+          .map((element) => element.textContent);
+      });
+    assert.deepEqual(
+      overlaps,
+      [],
+      "Marketing copy must not overlap the UI window",
+    );
     const png = await page.screenshot({ type: "png", omitBackground: false });
     checkPng(png, width, height);
     const output = path.join(root, asset.file);
@@ -153,6 +198,7 @@ try {
       channels: 3,
       hasAlpha: false,
       overflow,
+      overlaps,
       geometry,
     });
 
@@ -164,7 +210,11 @@ try {
     });
     checkPng(half, width / 2, height / 2);
     writeFileSync(
-      path.join(root, "qa", `${asset.format}-${asset.locale}-half.png`),
+      path.join(
+        root,
+        "qa",
+        `${asset.scene || asset.format}-${asset.locale}-half.png`,
+      ),
       half,
     );
   }

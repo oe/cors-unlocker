@@ -14,3 +14,6 @@ Keep the approved straight-on layout: readable benefit-led copy, actual extensio
 UI, no rotation, perspective, overlapping windows, or enlarged logo artwork.
 Use `marketing/chrome-web-store/source/design.json` for copy and colors. Preserve
 sample-data labeling and bundled font attribution when changing the assets.
+
+Do not end short marketing headlines or subheads with periods, in any locale.
+Keep a five-scene screenshot gallery per locale, including the actual Popup UI.
