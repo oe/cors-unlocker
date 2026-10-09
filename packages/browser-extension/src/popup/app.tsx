@@ -6,7 +6,8 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { BrandMark } from '@/components/brand-mark';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { needsProxy } from '@/common/quick-controls';
+import { EMPTY_QUICK_CONTROLS, hasActiveQuickControls, hasPersistentActions, needsProxy } from '@/common/quick-controls';
+import type { IProxyRule } from '@/common/proxy-state';
 import { useViewModel } from './view-model';
 import '@/common/tailwind.css';
 import './style.scss';
@@ -16,10 +17,12 @@ function App() {
   const vm = useViewModel();
   const [delay, setDelay] = useState(1000);
   const disabled = !vm.isSupported || vm.busy;
-  const activeSaved = vm.siteRules.filter((rule) => rule.enabled).length;
-  const scope = (requiresProxy: boolean) => t(requiresProxy
-    ? vm.connected ? 'Saved · proxy active' : 'Saved · needs proxy'
-    : 'Persistent · across tabs');
+  const persistent = vm.siteRules.filter((rule) => rule.enabled && hasPersistentActions(rule)).length;
+  const temporary = hasActiveQuickControls(vm.quickControls);
+  const scope = (rule: IProxyRule) => !rule.enabled ? t('Disabled') : [
+    ...(hasPersistentActions(rule) ? [t('Persistent · across tabs')] : []),
+    ...(needsProxy(rule) ? [t(vm.connected ? 'Active in this session' : 'Start a tab session to apply')] : []),
+  ].join(' · ');
 
   return (
     <main className="flex min-h-full flex-col gap-2.5 bg-background p-3 text-foreground">
@@ -42,19 +45,19 @@ function App() {
       <section className="rounded-lg border bg-muted/20 px-2.5 py-2" aria-label={t('Current tab')}>
         <div className="control-row">
           <p className="min-w-0 flex-1 truncate text-sm font-medium" title={vm.origin}>{vm.origin || t(vm.ready ? 'Select an HTTP or HTTPS tab.' : 'Loading…')}</p>
-          <Button size="xs" disabled={disabled} aria-label={t('Open Inspector')} onClick={vm.openInspector}><Activity />Inspector<ArrowUpRight /></Button>
         </div>
         <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
           <span className={`size-1.5 shrink-0 rounded-full ${vm.connected ? 'bg-emerald-500' : 'bg-muted-foreground/50'}`} />
-          <span>{t(vm.connected ? 'Proxy connected' : 'Proxy off')}</span>
-          <Button className="ml-auto" size="xs" variant="ghost" disabled={disabled} onClick={vm.toggleSession}>{t(vm.connected ? 'Stop this session' : 'Start proxy session')}</Button>
+          <span>{t(vm.connected ? 'Tab session active' : 'Tab session stopped')}</span>
+          <Button className="ml-auto" size="xs" variant="ghost" disabled={disabled} onClick={vm.toggleSession}>{t(vm.connected ? 'Stop tab session' : 'Start tab session')}</Button>
         </div>
+        <Button className="mt-2 w-full" size="sm" disabled={disabled} aria-label={t('Open Inspector')} onClick={vm.openInspector}><Activity />{t('Inspect and modify requests')}<ArrowUpRight /></Button>
       </section>
 
       <section aria-labelledby="quick-heading">
         <div className="control-row text-xs">
-          <h2 id="quick-heading" className="font-semibold">{t('Quick debug')}</h2>
-          <span className="text-muted-foreground">{t('This tab · temporary')}</span>
+          <h2 id="quick-heading" className="font-semibold">{t('Temporary changes')}</h2>
+          <Button size="xs" variant="ghost" disabled={disabled || !temporary} onClick={() => vm.setQuickControls(EMPTY_QUICK_CONTROLS)}>{t('Reset temporary changes')}</Button>
         </div>
         <div className="mt-1 divide-y">
           <div className="py-1.5">
@@ -96,6 +99,7 @@ function App() {
             </div>
           </div>
         </div>
+        <p className="mt-1 text-xs text-muted-foreground">{t('Only this tab. Stopping the session resets these controls.')}</p>
         <p className="mt-1 text-xs text-muted-foreground">{t(__TARGET__ === 'chrome' ? 'Enabling starts Chrome debugging.' : 'Firefox CORS: response headers only.')}</p>
       </section>
 
@@ -105,7 +109,7 @@ function App() {
           <Button size="xs" variant="ghost" onClick={vm.gotoOptionsPage}>{t('Manage rules')}<ArrowUpRight /></Button>
         </div>
         {vm.pinnedRules.length ? <div className="mt-1 divide-y">{vm.pinnedRules.map((rule) => <div className="control-row py-1.5" key={rule.id}>
-          <div className="min-w-0 flex-1"><p className="break-words text-sm font-medium">{rule.name}</p><p className="control-description">{scope(needsProxy(rule))}</p></div>
+          <div className="min-w-0 flex-1"><p className="break-words text-sm font-medium">{rule.name}</p><p className="control-description">{scope(rule)}</p></div>
           <Switch aria-label={rule.name} checked={rule.enabled} disabled={disabled} onCheckedChange={(enabled) => vm.toggleRule(rule, enabled)} />
           <Button size="icon-xs" variant="ghost" aria-label={t('Unpin {name}', { name: rule.name })} disabled={disabled} onClick={() => vm.pinRule(rule.id, false)}><PinOff /></Button>
         </div>)}</div> : <p className="mt-1 text-xs text-muted-foreground">{t('Pin saved rules for quick access.')}</p>}
@@ -125,7 +129,8 @@ function App() {
         </details> : null}
       </section>
       <footer className="border-t pt-2">
-        <p className="text-xs text-muted-foreground">{t('{count} saved rules on · stop resets temporary controls', { count: activeSaved })}</p>
+        <p className="text-xs font-medium">{t('{count} persistent rules enabled', { count: persistent })}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{t('Header, redirect and block rules run across tabs, even when this session is stopped. Manage them in Rules.')}</p>
       </footer>
     </main>
   );

@@ -71,8 +71,8 @@ export type RuleDraft = {
 export const EMPTY_DRAFT: RuleDraft = {
   name: 'New proxy rule',
   enabled: true,
-  origins: '*',
-  urlPattern: '*',
+  origins: '',
+  urlPattern: '',
   methods: '',
   resourceTypes: ['XHR', 'Fetch'],
   actions: JSON.stringify(ACTION_TEMPLATES.responseHeaders, null, 2),
@@ -269,21 +269,32 @@ export function RuleEditorForm({
           </div>
 </FieldGroup>;
   const actionFields = <FieldGroup>          <section aria-label={t("Actions")} className="flex flex-col gap-4">
-            <h3 className="text-base font-semibold">{t("Actions")}</h3>
-            <p className="text-xs text-muted-foreground">{t("Actions use engine precedence, not a general-purpose script sequence. A block or mock can prevent later effects.")}</p>
+            {renderWorkspace || (actions && actions.length > 1) ? <h3 className="text-base font-semibold">{t("Actions")}</h3> : null}
             {actions ? actions.map((action, index) => <section key={index} aria-label={t('Action {count}', { count: index + 1 })} className="flex flex-col gap-4 rounded-lg border p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2"><h4 className="text-sm font-medium">{index + 1}. {t(ACTION_LABELS[action.type])}</h4>
-                <Button variant="ghost" size="sm" disabled={actions!.length === 1} onClick={() => setActions(actions!.filter((_, i) => i !== index))}>{t('Remove action {count}', { count: index + 1 })}</Button>
-              </div>
+              {!renderWorkspace && actions.length === 1 ? <Field>
+                <FieldLabel>{t('Change type')}</FieldLabel>
+                <Select value={Object.keys(ACTION_TEMPLATES).find((key) => ACTION_TEMPLATES[key][0].type === action.type)} onValueChange={(value) => {
+                  if (value && ACTION_TEMPLATES[value]) setActions(structuredClone(ACTION_TEMPLATES[value]));
+                }}>
+                  <SelectTrigger className="w-full" aria-label={t('Change type')}><SelectValue>{t(isFirefox && action.type === 'mockResponse' ? 'Replace response body' : ACTION_LABELS[action.type])}</SelectValue></SelectTrigger>
+                  <SelectContent><SelectGroup>{Object.keys(ACTION_TEMPLATES).map((key) => <SelectItem key={key} value={key}>{actionTemplateLabel(key, isFirefox)}</SelectItem>)}</SelectGroup></SelectContent>
+                </Select>
+              </Field> : null}
+              {renderWorkspace || actions.length > 1 ? <div className="flex flex-wrap items-center justify-between gap-2">
+                <h4 className="text-sm font-medium">{index + 1}. {t(ACTION_LABELS[action.type])}</h4>
+                {actions!.length > 1 ? <Button variant="ghost" size="sm" onClick={() => setActions(actions!.filter((_, i) => i !== index))}>{t('Remove action {count}', { count: index + 1 })}</Button> : null}
+              </div> : null}
               <ActionFields action={action} onChange={(value) => setActions(actions!.map((item, i) => i === index ? value : item))} />
             </section>) : <Alert variant="destructive"><AlertDescription>{t("Invalid action structure. Correct it in Advanced JSON below.")}</AlertDescription></Alert>}
+            <details open={renderWorkspace ? true : undefined}><summary className="cursor-pointer text-sm font-medium">{t("More actions")}</summary>
+            <p className="my-2 text-xs text-muted-foreground">{t("Actions use engine precedence, not a general-purpose script sequence. A block or mock can prevent later effects.")}</p>
             <div className="flex flex-wrap items-center gap-2">
               <Select value={actionTemplate} onValueChange={(value) => { if (value && value in ACTION_TEMPLATES) setActionTemplate(value); }}>
                 <SelectTrigger aria-label={t("Action to add")}><SelectValue>{actionTemplateLabel(actionTemplate, isFirefox)}</SelectValue></SelectTrigger>
                 <SelectContent><SelectGroup>{Object.keys(ACTION_TEMPLATES).map((key) => <SelectItem key={key} value={key}>{actionTemplateLabel(key, isFirefox)}</SelectItem>)}</SelectGroup></SelectContent>
               </Select>
               <Button variant="outline" disabled={!actions} onClick={() => setActions([...(actions || []), ...structuredClone(ACTION_TEMPLATES[actionTemplate])])}>{t("Add action")}</Button>
-            </div>
+            </div></details>
           </section>
           {replacesResponseBody ? (
             <Alert>
@@ -329,8 +340,9 @@ export function RuleEditorForm({
   return <>
     {renderWorkspace ? renderWorkspace(parts) :
       <Dialog open={!!draft} onOpenChange={(open) => { if (!open) requestClose(); }}>
-        <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-2xl">
-          <DialogHeader><DialogTitle>{form.id ? t("Edit proxy rule") : t("Create proxy rule")}</DialogTitle><DialogDescription>{t("Match traffic from a page, then configure local actions.")}</DialogDescription></DialogHeader>
+        <DialogContent className="flex max-h-[90dvh] flex-col overflow-hidden sm:max-w-2xl">
+          <DialogHeader className="shrink-0 pr-6"><DialogTitle>{form.id ? t("Edit proxy rule") : t("Create proxy rule")}</DialogTitle><DialogDescription>{t("Save your change, then repeat the request on the page to check the result.")}</DialogDescription></DialogHeader>
+          <div className="flex min-h-0 flex-col gap-4 overflow-y-auto">
           {form.capturedRequest ? <>
             <p className="break-all text-xs text-muted-foreground">{form.methods} {form.capturedRequest}</p>
             {actionFields}
@@ -341,7 +353,8 @@ export function RuleEditorForm({
           </> : <>{matchFields}{actionFields}</>}
           <details><summary className="cursor-pointer text-sm font-medium">{t("Test matching")}</summary>{testFields}</details>
           {errorMessage}
-          <DialogFooter><Button variant="outline" disabled={pending} onClick={requestClose}>{t("Cancel")}</Button><Button disabled={pending} onClick={save}>{pending ? t("Saving…") : t("Save rule")}</Button></DialogFooter>
+          </div>
+          <DialogFooter className="shrink-0 flex-row justify-end"><Button variant="outline" disabled={pending} onClick={requestClose}>{t("Cancel")}</Button><Button disabled={pending} onClick={save}>{pending ? t("Saving…") : t("Save rule")}</Button></DialogFooter>
         </DialogContent>
       </Dialog>}
     <Dialog open={discard} onOpenChange={setDiscard}><DialogContent>

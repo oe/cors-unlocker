@@ -51,6 +51,12 @@ export function needsProxy(rule: Pick<IProxyRule, 'source' | 'actions'>): boolea
   return rule.actions.some((action) => ['cors', 'delay', 'networkFailure', 'mockResponse'].includes(action.type));
 }
 
+/** Mixed rules can keep their browser actions active after the tab session stops. */
+export function hasPersistentActions(rule: Pick<IProxyRule, 'source' | 'actions'>): boolean {
+  return rule.source === 'legacy-cors'
+    || rule.actions.some((action) => ['setRequestHeaders', 'setResponseHeaders', 'redirect', 'block'].includes(action.type));
+}
+
 /** Credentials modify CORS; by themselves they do not require interception. */
 export function hasActiveQuickControls(controls: QuickControls): boolean {
   return controls.cors || controls.disableCache || controls.delayMs > 0 || controls.failure;
