@@ -110,6 +110,23 @@ test('keeps native toolbar colors, badges and tooltips in sync with each tab', a
     await expectState('…', [180, 83, 9], 'Connecting…');
     expect((await starting).phase).toBe('connected');
     await expectState('ON', [21, 128, 61], 'Tab session active');
+    const update = (delayMs: number, enabled = true) => control.evaluate(({ tabId, delayMs, enabled }) => chrome.runtime.sendMessage({
+      type: 'updateQuickControls', payload: { tabId, quickControls: {
+        cors: enabled, credentials: enabled, disableCache: enabled, delayMs, failure: enabled,
+      } },
+    }), { tabId, delayMs, enabled });
+    await update(500);
+    await expect.poll(title).toContain('• CORS repair · Allow credentials');
+    await expect.poll(title).toContain('• Disable cache');
+    await expect.poll(title).toContain('• Request delay: 500 ms');
+    await expect.poll(title).toContain('• Simulate failure');
+    await update(3000);
+    await expect.poll(title).toContain('• Request delay: 3 s');
+    expect(await title()).not.toContain('500 ms');
+    // Explicitly started sessions keep recording when the last quick control is cleared.
+    await update(0, false);
+    await expect.poll(title).toBe('Forth Intercept\nTab session active\nRecording requests\n1 persistent rules enabled');
+    await expectState('ON', [21, 128, 61], 'Recording requests');
     await control.evaluate((id) => chrome.runtime.sendMessage({ type: 'disableAdvancedProxy', payload: { tabId: id } }), tabId);
     await expectState('1', [37, 99, 235], 'Tab session stopped');
     // A second attach fails through the native API, exercising the red error state.
@@ -922,12 +939,20 @@ test('disable cache bypasses real HTTP cache for one tab and restores it on stop
     await target.goto(`${origin}/#target`);
     await other.goto(`${origin}/#other`);
     const tabId = await getTabId(`${origin}/#target`);
+    const toolbarTitle = () => control.evaluate((id) => chrome.action.getTitle({ tabId: id }), tabId);
+    const toolbarBadge = () => control.evaluate((id) => chrome.action.getBadgeText({ tabId: id }), tabId);
     expect(await read(target, '/asset')).toBe('1');
     expect(await read(target, '/asset')).toBe('1');
     expect(await read(other, '/other')).toBe('1');
     await popup.goto(`chrome-extension://${extensionId}/src/popup/index.html?tabId=${tabId}`);
     await popup.getByRole('switch', { name: 'Disable cache', exact: true }).click();
     await expect(popup.getByRole('switch', { name: 'Disable cache', exact: true })).toBeChecked();
+    await expect.poll(toolbarBadge).toBe('ON');
+    await expect.poll(toolbarTitle).toBe('Forth Intercept\nTab session active\nNot recording requests\nThis tab · temporary\n• Disable cache\n0 persistent rules enabled');
+    await control.evaluate(() => chrome.storage.local.set({ uiLanguage: 'zh-CN' }));
+    await expect.poll(toolbarTitle).toContain('未开启请求记录\n当前页 · 临时\n• 禁用缓存');
+    await control.evaluate(() => chrome.storage.local.set({ uiLanguage: 'en' }));
+    await expect(popup.locator('html')).toHaveAttribute('lang', 'en');
     expect(await read(target, '/asset')).toBe('2');
     expect(await read(target, '/asset')).toBe('3');
     await target.reload();
@@ -938,6 +963,8 @@ test('disable cache bypasses real HTTP cache for one tab and restores it on stop
     await popup.getByRole('switch', { name: 'Disable cache', exact: true }).click();
     await expect(popup.getByRole('switch', { name: 'Disable cache', exact: true })).not.toBeChecked();
     await expect(popup.getByText('Tab session stopped', { exact: true })).toBeVisible();
+    await expect.poll(toolbarBadge).toBe('');
+    await expect.poll(toolbarTitle).toBe('Forth Intercept\nTab session stopped\n0 persistent rules enabled');
     // getTargets().attached also sees Playwright's own connection. Verify this extension's access.
     await expect.poll(() => control.evaluate(async (id) => {
       try {
@@ -960,6 +987,7 @@ test('disable cache bypasses real HTTP cache for one tab and restores it on stop
     await expect(popup.getByRole('switch', { name: 'Disable cache', exact: true })).toBeChecked();
     await target.goto('http://localhost:3000/');
     await expect(popup.getByRole('switch', { name: 'Disable cache', exact: true })).not.toBeChecked();
+    await expect.poll(toolbarTitle).not.toContain('Disable cache');
     await target.goto(origin);
     const navigated = await read(target, '/navigated');
     expect(await read(target, '/navigated')).toBe(navigated);

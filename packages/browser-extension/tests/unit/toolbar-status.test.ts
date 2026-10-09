@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import browser from 'webextension-polyfill';
 import type { IAdvancedProxyStatus } from '../../src/background/advanced-proxy';
+import { EMPTY_QUICK_CONTROLS } from '../../src/common/quick-controls';
 
 vi.mock('../../src/background/toolbar-state', async (importOriginal) => ({
   ...await importOriginal<typeof import('../../src/background/toolbar-state')>(),
@@ -26,6 +27,18 @@ beforeEach(async () => {
 });
 
 describe('event-driven toolbar updates', () => {
+  it('updates the tooltip when controls change while the green ON state stays the same', async () => {
+    const status: IAdvancedProxyStatus = { tabId: 1, phase: 'connected', captureEnabled: false, quickControls: { ...EMPTY_QUICK_CONTROLS, disableCache: true } };
+    statuses.set(1, status); await toolbar.refreshToolbarTab(1);
+    expect(action.setTitle).toHaveBeenLastCalledWith({ tabId: 1, title: 'Forth Intercept\nTab session active\nNot recording requests\nThis tab · temporary\n• Disable cache\n0 persistent rules enabled' });
+    statuses.set(1, { ...status, captureEnabled: true, quickControls: { ...EMPTY_QUICK_CONTROLS, delayMs: 3000 } });
+    await toolbar.refreshToolbarTab(1);
+    expect(action.setTitle).toHaveBeenLastCalledWith({ tabId: 1, title: 'Forth Intercept\nTab session active\nRecording requests\nThis tab · temporary\n• Request delay: 3 s\n0 persistent rules enabled' });
+    statuses.set(1, { ...status, captureEnabled: true, quickControls: { ...EMPTY_QUICK_CONTROLS } });
+    await toolbar.refreshToolbarTab(1);
+    expect(action.setTitle).toHaveBeenLastCalledWith({ tabId: 1, title: 'Forth Intercept\nTab session active\nRecording requests\n0 persistent rules enabled' });
+    expect(action.setBadgeText.mock.calls.map(([details]) => details.text)).toEqual(['ON', 'ON', 'ON']);
+  });
   it('returns to blue after stopping a connected tab while a persistent rule remains', async () => {
     vi.mocked(browser.declarativeNetRequest.getSessionRules).mockResolvedValue([{ id: 1, condition: { tabIds: [1] }, action: { type: 'block' } }]);
     statuses.set(1, { tabId: 1, phase: 'connected' }); await toolbar.refreshToolbarTab(1);

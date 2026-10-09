@@ -47,5 +47,69 @@ export const toolbarMessages = {
     "ja": "タブセッションのエラー",
     "fr": "Erreur de session de cet onglet",
     "es": "Error de sesión de esta pestaña"
+  },
+  "CORS repair": {
+    "en": "CORS repair",
+    "zh-CN": "CORS 修复",
+    "ko": "CORS 수정",
+    "ja": "CORS 修正",
+    "fr": "Correction CORS",
+    "es": "Corrección CORS"
+  },
+  "Allow credentials": {
+    "en": "Allow credentials",
+    "zh-CN": "允许凭据",
+    "ko": "인증 정보 허용",
+    "ja": "認証情報を許可",
+    "fr": "Autoriser les identifiants",
+    "es": "Permitir credenciales"
+  },
+  "Disable cache": {
+    "en": "Disable cache",
+    "zh-CN": "禁用缓存",
+    "ko": "캐시 비활성화",
+    "ja": "キャッシュを無効化",
+    "fr": "Désactiver le cache",
+    "es": "Desactivar caché"
+  },
+  "Simulate failure": {
+    "en": "Simulate failure",
+    "zh-CN": "模拟请求失败",
+    "ko": "실패 시뮬레이션",
+    "ja": "失敗をシミュレート",
+    "fr": "Simuler un échec",
+    "es": "Simular un fallo"
+  },
+  "This tab · temporary": {
+    "en": "This tab · temporary",
+    "zh-CN": "当前页 · 临时",
+    "ko": "현재 탭 · 임시",
+    "ja": "このタブ · 一時的",
+    "fr": "Cet onglet · temporaire",
+    "es": "Esta pestaña · temporal"
+  },
+  "Request delay: {duration}": {
+    "en": "Request delay: {duration}",
+    "zh-CN": "请求延迟：{duration}",
+    "ko": "요청 지연: {duration}",
+    "ja": "リクエスト遅延：{duration}",
+    "fr": "Délai des requêtes : {duration}",
+    "es": "Retardo de solicitudes: {duration}"
+  },
+  "Recording requests": {
+    "en": "Recording requests",
+    "zh-CN": "正在记录请求",
+    "ko": "요청 기록 중",
+    "ja": "リクエストを記録中",
+    "fr": "Enregistrement des requêtes",
+    "es": "Registrando solicitudes"
+  },
+  "Not recording requests": {
+    "en": "Not recording requests",
+    "zh-CN": "未开启请求记录",
+    "ko": "요청 기록 꺼짐",
+    "ja": "リクエストの記録は無効",
+    "fr": "Enregistrement des requêtes désactivé",
+    "es": "Registro de solicitudes desactivado"
   }
 } as const;

@@ -1211,14 +1211,6 @@ export const messages: Record<string, Record<string, string>> = {
     "fr": "Motif d’erreur Chrome. Firefox annule la requête.",
     "es": "Motivo de error de Chrome. Firefox cancela la solicitud."
   },
-  "Allow credentials": {
-    "en": "Allow credentials",
-    "zh-CN": "允许凭据",
-    "ko": "인증 정보 허용",
-    "ja": "認証情報を許可",
-    "fr": "Autoriser les identifiants",
-    "es": "Permitir credenciales"
-  },
   "Echo page origin": {
     "en": "Echo page origin",
     "zh-CN": "回显页面来源",
@@ -2475,14 +2467,6 @@ export const messages: Record<string, Record<string, string>> = {
     "fr": "Ces commandes démarrent l’interception pour cet onglet.",
     "es": "Estos controles inician la interceptación en esta pestaña."
   },
-  "CORS repair": {
-    "en": "CORS repair",
-    "zh-CN": "CORS 修复",
-    "ko": "CORS 수정",
-    "ja": "CORS 修正",
-    "fr": "Correction CORS",
-    "es": "Corrección CORS"
-  },
   "Allow cross-origin API requests": {
     "en": "Allow cross-origin API requests",
     "zh-CN": "允许跨域 API 请求",
@@ -2522,14 +2506,6 @@ export const messages: Record<string, Record<string, string>> = {
     "ja": "遅延時間",
     "fr": "Durée du délai",
     "es": "Duración del retardo"
-  },
-  "Simulate failure": {
-    "en": "Simulate failure",
-    "zh-CN": "模拟请求失败",
-    "ko": "실패 시뮬레이션",
-    "ja": "失敗をシミュレート",
-    "fr": "Simuler un échec",
-    "es": "Simular un fallo"
   },
   "Fail Fetch / XHR requests": {
     "en": "Fail Fetch / XHR requests",
@@ -2674,22 +2650,6 @@ export const messages: Record<string, Record<string, string>> = {
     "ja": "プロキシセッションを開始できません。",
     "fr": "Impossible de démarrer la session proxy.",
     "es": "No se pudo iniciar la sesión de proxy."
-  },
-  "Disable cache": {
-    "en": "Disable cache",
-    "zh-CN": "禁用缓存",
-    "ko": "캐시 비활성화",
-    "ja": "キャッシュを無効化",
-    "fr": "Désactiver le cache",
-    "es": "Desactivar caché"
-  },
-  "This tab · temporary": {
-    "en": "This tab · temporary",
-    "zh-CN": "当前页 · 临时",
-    "ko": "현재 탭 · 임시",
-    "ja": "このタブ · 一時的",
-    "fr": "Cet onglet · temporaire",
-    "es": "Esta pestaña · temporal"
   },
   "Enabling starts Chrome debugging.": {
     "en": "Enabling starts Chrome debugging.",

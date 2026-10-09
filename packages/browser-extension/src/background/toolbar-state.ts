@@ -24,7 +24,22 @@ export function toolbarPresentation(url: string | undefined, status: IAdvancedPr
   const count = text('{count} persistent rules enabled').replace('{count}', String(persistentCount));
   const badge = state === 'rules' ? (persistentCount > 99 ? '99+' : String(persistentCount))
     : state === 'connected' ? 'ON' : state === 'connecting' ? '…' : state === 'error' ? '!' : '';
-  return { state, badge, title: `Forth Intercept\n${heading}\n${count}` };
+  const details: string[] = [];
+  // Report applied controls only; pending, failed and previous-origin sessions are inactive.
+  if (phase === 'connected') {
+    if (status.captureEnabled !== undefined) details.push(text(status.captureEnabled ? 'Recording requests' : 'Not recording requests'));
+    const controls = status.quickControls;
+    const active: string[] = [];
+    if (controls?.cors) active.push(text('CORS repair') + (controls.credentials ? ` · ${text('Allow credentials')}` : ''));
+    if (controls?.disableCache) active.push(text('Disable cache'));
+    if (controls && controls.delayMs > 0) {
+      const duration = controls.delayMs < 1000 ? `${controls.delayMs} ms` : `${controls.delayMs / 1000} s`;
+      active.push(text('Request delay: {duration}').replace('{duration}', duration));
+    }
+    if (controls?.failure) active.push(text('Simulate failure'));
+    if (active.length) details.push(text('This tab · temporary'), ...active.map((label) => `• ${label}`));
+  }
+  return { state, badge, title: ['Forth Intercept', heading, ...details, count].join('\n') };
 }
 
 export function countTabBrowserRules(rules: browser.DeclarativeNetRequest.Rule[], tabId: number): number {
