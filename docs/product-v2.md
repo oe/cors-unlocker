@@ -90,3 +90,11 @@ capability alongside API delay and failure simulation. Configurable mocks, heade
 become shortcuts by pinning named saved rules, not by adding ambiguous category-wide toggles.
 Persistent site rules are labeled separately and remain unchanged when a debugging session stops.
 Chrome offers a session-only Disable cache switch using CDP HTTP-cache control. Firefox hides this unsupported control. It does not clear browser data or bypass service workers.
+
+The toolbar reflects each tab: gray when inactive, blue with a count for installed persistent rules,
+green `ON` for a connected session, amber while connecting, and red on a session error. Its tooltip
+lists applied temporary controls, including the delay duration and CORS credentials option, and
+keeps the persistent rule count separate. Chrome also reports whether requests are being recorded:
+a cache-only session can be connected without recording. Turning off the last quick control stops
+an automatically started Chrome session; a manually started session keeps recording until stopped.
+Control details disappear on stop or navigation to another origin.
