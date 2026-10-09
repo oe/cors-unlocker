@@ -12,6 +12,9 @@ function EditorShell({ parts, onCopy, onDelete }: {
 }) {
   const [section, setSection] = useState('match');
   useEffect(() => {
+    if (parts.actionJsonReveal) setSection('actions');
+  }, [parts.actionJsonReveal]);
+  useEffect(() => {
     const save = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
         event.preventDefault();

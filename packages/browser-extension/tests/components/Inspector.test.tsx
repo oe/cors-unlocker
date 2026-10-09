@@ -5,6 +5,8 @@ import browser from 'webextension-polyfill';
 import { Inspector } from '../../src/sidepanel/inspector';
 import type { IRequestLogEntry } from '../../src/background/advanced-proxy';
 import type { IProxyRule } from '../../src/common/proxy-state';
+import { WorkspaceRuleEditor } from '../../src/options/workspace-rule-editor';
+import { EMPTY_DRAFT } from '../../src/components/rule-dialog';
 
 const url = 'https://api.example.test/orders?page=1';
 let rules: IProxyRule[];
@@ -164,6 +166,48 @@ describe('request-first inspector', () => {
     await user.click(screen.getByRole('button', { name: 'Save rule', exact: true }));
     await screen.findByText('Saved. Trigger the request again on the page to verify it.');
     expect(rules[0].actions[0]).toMatchObject({ type: 'mockResponse', status: 200 });
+  });
+
+  it('recovers invalid action JSON without losing raw response bodies', async () => {
+    const user = userEvent.setup();
+    render(<Inspector />);
+    await user.click(await screen.findByRole('button', { name: /GET.*orders/ }));
+    await user.click(screen.getByRole('button', { name: 'Mock', exact: true }));
+    await user.clear(screen.getByLabelText('Response body'));
+    await user.paste('<html>test response</html>');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Response body format' }), 'text');
+    await user.click(screen.getByText('Advanced JSON'));
+    const config = screen.getByLabelText('Action configuration (JSON)');
+    const valid = (config as HTMLTextAreaElement).value;
+    await user.clear(config); await user.paste('[');
+    await user.click(screen.getByText('Advanced JSON'));
+    await user.click(screen.getByRole('button', { name: 'Save rule', exact: true }));
+    expect(rules).toEqual([]);
+    expect(config.closest('details')).toHaveAttribute('open');
+    expect(config).toHaveValue('[');
+    expect(screen.getByText('Invalid action JSON. Fix the syntax in Advanced JSON.', { selector: '[data-slot="alert-description"]' })).toBeInTheDocument();
+    await user.clear(config); await user.paste(valid);
+    await user.click(screen.getByRole('button', { name: 'Save rule', exact: true }));
+    await screen.findByText('Saved. Trigger the request again on the page to verify it.');
+    expect(rules[0].actions[0]).toMatchObject({ body: '<html>test response</html>' });
+  });
+
+  it('reveals and focuses invalid JSON when saving from another workspace section', async () => {
+    const user = userEvent.setup();
+    render(<WorkspaceRuleEditor draft={{ ...EMPTY_DRAFT, actions: '[' }} onOpenChange={vi.fn()} onSaved={vi.fn()} />);
+    expect(screen.getByRole('tab', { name: 'Match', exact: true })).toHaveAttribute('aria-selected', 'true');
+    await user.click(screen.getByRole('button', { name: 'Save rule', exact: true }));
+    const config = await screen.findByLabelText('Action configuration (JSON)');
+    expect(screen.getByRole('tab', { name: 'Actions', exact: true })).toHaveAttribute('aria-selected', 'true');
+    expect(config.closest('details')).toHaveAttribute('open');
+    expect(config).toHaveFocus();
+    expect(config).toHaveValue('[');
+    expect(screen.getByRole('status')).toHaveTextContent('Invalid JSON at line 1, column 2.');
+    await user.clear(config); await user.paste(EMPTY_DRAFT.actions);
+    expect(config).toHaveFocus();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: 'Match', exact: true }));
+    expect(screen.getByRole('tab', { name: 'Match', exact: true })).toHaveAttribute('aria-selected', 'true');
   });
 
 });

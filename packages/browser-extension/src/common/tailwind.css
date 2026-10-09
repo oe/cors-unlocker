@@ -127,3 +127,30 @@
     @apply font-sans;
     }
 }
+
+/* The native textarea owns selection, IME, clipboard and keyboard navigation.
+   Both layers use identical text metrics; only the aria-hidden layer has colors. */
+.code-editor { min-width: 0; }
+.code-editor-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; min-height: 30px; margin-bottom: 4px; }
+.code-editor-toolbar select { max-width: 100%; border: 1px solid var(--input); border-radius: 6px; padding: 2px 6px; font-size: 12px; background: var(--background); }
+.code-editor-input { position: relative; border: 1px solid var(--input); border-radius: 8px; overflow: hidden; background: var(--background); }
+.code-editor-input:focus-within { border-color: var(--ring); box-shadow: 0 0 0 2px var(--ring); }
+.code-editor-input:has([aria-invalid="true"]) { border-color: var(--destructive); }
+.code-editor-input textarea, .code-editor-preview { margin: 0; border: 0; padding: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; font-weight: 400; line-height: 20px; letter-spacing: normal; tab-size: 2; white-space: pre; overflow-wrap: normal; }
+.code-editor-input textarea { display: block; position: relative; width: 100%; min-height: 144px; max-height: 60dvh; resize: vertical; outline: none; background: transparent; color: var(--foreground); caret-color: var(--foreground); }
+.code-editor[data-highlighted="true"] textarea { color: transparent; }
+.code-editor-input textarea::selection { color: var(--foreground); background: var(--accent); }
+.code-editor-preview { position: absolute; inset: 0; overflow: hidden; pointer-events: none; color: var(--foreground); }
+.code-token-key { color: #075985; }
+.code-token-string { color: #166534; }
+.code-token-number { color: #9a3412; }
+.code-token-literal { color: #6b21a8; }
+.dark .code-token-key { color: #7dd3fc; }
+.dark .code-token-string { color: #86efac; }
+.dark .code-token-number { color: #fdba74; }
+.dark .code-token-literal { color: #d8b4fe; }
+.code-editor-hint { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; margin-top: 4px; font-size: 12px; }
+@media (forced-colors: active) {
+  .code-editor-preview { display: none; }
+  .code-editor[data-highlighted="true"] textarea { color: CanvasText; }
+}

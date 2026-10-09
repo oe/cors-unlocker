@@ -9,12 +9,15 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
+import { CodeEditor } from '@/components/code-editor';
 import { isProxyAction, type IProxyAction, type IProxyRule } from '@/common/proxy-state';
 import { ActionFields, ACTION_LABELS } from '@/components/action-fields';
 import { explainRuleMatch } from '@/common/rule-explanation';
 import { needsProxy } from '@/common/quick-controls';
 import { RESOURCE_TYPES } from '@/common/request-match';
+import { jsonProblem } from '@/common/json-editor';
+
+const INVALID_ACTION_JSON = 'Invalid action JSON. Fix the syntax in Advanced JSON.';
 
 export const ACTION_TEMPLATES: Record<string, IProxyAction[]> = {
   cors: [{
@@ -124,6 +127,8 @@ export function RuleEditorForm({
   const [actionTemplate, setActionTemplate] = useState<ActionTemplate>('responseHeaders');
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [advancedJsonOpen, setAdvancedJsonOpen] = useState(false);
+  const [actionJsonReveal, setActionJsonReveal] = useState(0);
   const [baseline, setBaseline] = useState(JSON.stringify(draft || EMPTY_DRAFT));
   const [discard, setDiscard] = useState(false);
   const [testUrl, setTestUrl] = useState('');
@@ -186,12 +191,19 @@ export function RuleEditorForm({
         catch { return false; }
       }) || 'responseHeaders') as ActionTemplate);
       setError(null);
+      setAdvancedJsonOpen(false);
+      setActionJsonReveal(0);
     }
   }, [draft]);
 
   const save = async () => {
     try {
       setPending(true);
+      if (jsonProblem(form.actions)) {
+        setAdvancedJsonOpen(true);
+        setActionJsonReveal((request) => request + 1);
+        throw new Error(INVALID_ACTION_JSON);
+      }
       const actions = JSON.parse(form.actions);
       if (!Array.isArray(actions) || actions.length === 0 || !actions.every(isProxyAction)) {
         throw new Error('Check action fields: valid header names, status 100–599, delay 0–30,000 ms and HTTP(S) redirect URLs are required.');
@@ -296,7 +308,7 @@ export function RuleEditorForm({
               <Button variant="outline" disabled={!actions} onClick={() => setActions([...(actions || []), ...structuredClone(ACTION_TEMPLATES[actionTemplate])])}>{t("Add action")}</Button>
             </div></details>
           </section>
-          <details><summary className="cursor-pointer text-sm font-medium">{t("Advanced JSON")}</summary>
+          <details open={advancedJsonOpen} onToggle={(event) => setAdvancedJsonOpen(event.currentTarget.open)}><summary className="cursor-pointer text-sm font-medium">{t("Advanced JSON")}</summary>
           {replacesResponseBody ? (
             <Alert>
               <Info />
@@ -305,13 +317,13 @@ export function RuleEditorForm({
             </Alert>
           ) : null}
           <Field data-invalid={!!error}>
-            <FieldLabel htmlFor="rule-actions">{t("Action script (JSON)")}</FieldLabel>
-            <Textarea
+            <FieldLabel htmlFor="rule-actions">{t("Action configuration (JSON)")}</FieldLabel>
+            <CodeEditor
               id="rule-actions"
-              className="min-h-52 font-mono text-xs"
-              aria-invalid={!!error}
+              label={t("Action configuration (JSON)")}
               value={form.actions}
-              onChange={(event) => setForm({ ...form, actions: event.target.value })}
+              focusRequest={error === INVALID_ACTION_JSON ? actionJsonReveal : 0}
+              onValueChange={(actions) => { setError(null); setForm({ ...form, actions }); }}
             />
             {error ? <FieldDescription className="text-destructive">{translateError(error)}</FieldDescription> : null}
             {!error ? <FieldDescription>{t("Compose multiple validated actions without executing arbitrary JavaScript.")}</FieldDescription> : null}
@@ -332,6 +344,7 @@ export function RuleEditorForm({
   const errorMessage = error ? <Alert variant="destructive"><AlertDescription>{translateError(error)}</AlertDescription></Alert> : null;
   const parts: RuleEditorParts = {
     name: form.name, enabled: form.enabled, dirty, pending,
+    actionJsonReveal: error === INVALID_ACTION_JSON ? actionJsonReveal : 0,
     setEnabled: (enabled) => setForm({ ...form, enabled }),
     save: () => void save(), close: requestClose,
     matchFields, actionFields, testFields, errorMessage,
@@ -366,6 +379,7 @@ export function RuleEditorForm({
 
 export type RuleEditorParts = {
   name: string; enabled: boolean; dirty: boolean; pending: boolean; requiresAdvanced: boolean;
+  actionJsonReveal: number;
   setEnabled: (enabled: boolean) => void; save: () => void; close: () => void;
   matchFields: ReactNode; actionFields: ReactNode; testFields: ReactNode; errorMessage: ReactNode;
 };
