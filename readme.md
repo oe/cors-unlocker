@@ -132,6 +132,13 @@ The rule editor protects unsaved changes when switching rules or tabs and when c
 
 Use ⌘/Ctrl+K to search, arrow keys or Home/End on rule rows to select, and ⌘/Ctrl+S to save. Toggling another rule keeps the current draft intact. Duplicate creates a disabled draft that only becomes a stored rule after saving. Narrow windows switch between the list and editor instead of stacking them. Rule enabled state does not indicate whether an advanced-proxy tab is connected; verify actual effects in Site controls.
 
+## Store marketing assets
+
+Approved Chrome Web Store screenshots, promo tiles, editable layouts, and
+regeneration instructions are in [marketing/chrome-web-store](marketing/chrome-web-store/README.md).
+The project-local [Goldie skill](.agents/skills/goldie/SKILL.md) is installed in
+`.agents/skills/goldie`; follow the Chrome-specific guide when using it here.
+
 ## Development
 
 Requirements: Node.js 18+ and pnpm 9.

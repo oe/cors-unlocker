@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" /><title>
+    Forth Intercept — Goldie-inspired store art</title
+  ><style>
+    @font-face {
+      font-family: DM Sans;
+      src: url(fonts/DMSans-400.ttf);
+      font-weight: 400;
+      font-display: block;
+    }
+    @font-face {
+      font-family: DM Sans;
+      src: url(fonts/DMSans-700.ttf);
+      font-weight: 700;
+      font-display: block;
+    }
+    @font-face {
+      font-family: Noto Sans SC;
+      src: url(fonts/NotoSansSC-400-subset.otf);
+      font-weight: 400;
+      font-display: block;
+    }
+    @font-face {
+      font-family: Noto Sans SC;
+      src: url(fonts/NotoSansSC-700-subset.otf);
+      font-weight: 700;
+      font-display: block;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    html,
+    body {
+      margin: 0;
+    }
+    body {
+      font-family: "DM Sans", "Noto Sans SC", sans-serif;
+    }
+    .canvas {
+      width: 1280px;
+      height: 800px;
+      position: relative;
+      overflow: hidden;
+      background: var(--background);
+      color: var(--ink);
+    }
+    .brand {
+      position: absolute;
+      left: 64px;
+      top: 31px;
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.25px;
+    }
+    .platform {
+      position: absolute;
+      right: 64px;
+      top: 31px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    h1 {
+      position: absolute;
+      top: 72px;
+      left: 64px;
+      right: 64px;
+      text-align: center;
+      font-size: 57px;
+      letter-spacing: -2.3px;
+      line-height: 1.08;
+      font-weight: 700;
+      margin: 0;
+    }
+    h1 em {
+      font-style: normal;
+      color: var(--accent);
+    }
+    .subhead {
+      position: absolute;
+      top: 145px;
+      left: 64px;
+      right: 64px;
+      text-align: center;
+      font-size: 23px;
+      line-height: 1.45;
+      color: var(--muted);
+      margin: 0;
+    }
+    .screen {
+      position: absolute;
+      left: 100px;
+      top: 212px;
+      width: 1080px;
+      line-height: 0;
+      background: white;
+      border: 1px solid #c7d6eb;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 12px 36px #1d386721;
+    }
+    .screen img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+    .sample {
+      position: absolute;
+      right: 103px;
+      bottom: 10px;
+      font-size: 10px;
+      color: var(--muted);
+    }
+    .zh h1 {
+      font-family: "Noto Sans SC", sans-serif;
+      font-size: 55px;
+      letter-spacing: -1px;
+    }
+    .zh .subhead {
+      font-size: 21px;
+    }
+    .small {
+      width: 440px;
+      height: 280px;
+      background: linear-gradient(150deg, #082778, #0751e4);
+      color: #f5f8ff;
+    }
+    .small .brand {
+      left: 24px;
+      top: 15px;
+      font-size: 13px;
+    }
+    .small .platform {
+      display: none;
+    }
+    .small h1 {
+      top: 45px;
+      left: 20px;
+      right: 20px;
+      font-size: 28px;
+      letter-spacing: -0.9px;
+      color: #f5f8ff;
+    }
+    .small h1 em {
+      color: #bbffdf;
+    }
+    .small .subhead {
+      top: 84px;
+      left: 20px;
+      right: 20px;
+      font-size: 14px;
+      color: #dfeaff;
+    }
+    .small .screen {
+      left: 24px;
+      top: 109px;
+      width: 392px;
+      border-radius: 8px;
+      border-color: #ffffff80;
+      box-shadow: 0 8px 24px #00184b33;
+    }
+    .small .sample {
+      display: none;
+    }
+    .marquee {
+      width: 1400px;
+      height: 560px;
+      background: linear-gradient(130deg, #082778, #0751e4);
+      color: #f5f8ff;
+    }
+    .marquee .brand {
+      left: 64px;
+      top: 46px;
+      font-size: 22px;
+    }
+    .marquee .platform {
+      left: 64px;
+      right: auto;
+      top: 86px;
+      font-size: 13px;
+      color: #d2e3ff;
+    }
+    .marquee h1 {
+      left: 64px;
+      right: auto;
+      top: 156px;
+      width: 470px;
+      text-align: left;
+      font-size: 64px;
+      letter-spacing: -2px;
+      line-height: 1.08;
+    }
+    .marquee h1 em {
+      display: block;
+      color: #bbffdf;
+    }
+    .marquee .subhead {
+      left: 64px;
+      right: auto;
+      top: 335px;
+      width: 440px;
+      text-align: left;
+      font-size: 23px;
+      color: #e1ebff;
+    }
+    .marquee .screen {
+      left: 576px;
+      top: 79px;
+      width: 760px;
+      border-color: #ffffffc0;
+      box-shadow: 0 14px 40px #001a6533;
+    }
+    .marquee .sample {
+      right: 64px;
+      bottom: 51px;
+      color: #d2e3ff;
+    }
+  </style>
+  <main class="canvas" id="canvas"></main>
+  <script>
+    (async () => {
+      const d = await (await fetch("design.json")).json(),
+        p = new URLSearchParams(location.search),
+        format = p.get("format") || "screenshot",
+        locale = p.get("locale") || "en",
+        zh = locale === "zh-CN",
+        el = document.querySelector("#canvas"),
+        c = d.copy[locale];
+      document.documentElement.lang = locale;
+      el.style.setProperty("--background", d.background);
+      el.style.setProperty("--ink", d.headlineColor);
+      el.style.setProperty("--accent", d.accentColor);
+      el.style.setProperty("--muted", d.subheadColor);
+      if (format !== "screenshot") el.classList.add(format);
+      if (zh) el.classList.add("zh");
+      const active = { ...c, ...d.formats[format].copy?.[locale] },
+        title = `${active.headlineLead}<em>${active.headlineAccent}</em>`,
+        sub = active.subhead.replaceAll("\n", "<br>");
+      el.innerHTML = `<div class="brand">${d.brand}</div><div class="platform">${zh ? "Chrome 浏览器插件" : "Chrome extension"}</div><h1>${title}</h1><p class="subhead">${sub}</p><div class="screen"><img src="captures/${format === "small" ? "json-detail" : "workspace"}-${locale}.png" alt="Actual extension UI with sample data"></div><div class="sample">${c.sample}</div>`;
+      document.body.dataset.ready = "true";
+    })();
+  </script>
+</html>
