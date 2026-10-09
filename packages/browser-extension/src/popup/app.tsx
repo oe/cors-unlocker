@@ -25,7 +25,7 @@ function App() {
   ].join(' · ');
 
   return (
-    <main className="flex min-h-full flex-col gap-2 bg-background p-3 text-foreground">
+    <main className="flex min-h-full flex-col gap-1.5 bg-background p-3 text-foreground">
       <header className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2.5">
           <BrandMark />
@@ -42,7 +42,7 @@ function App() {
         <Button size="xs" variant="ghost" onClick={vm.clearError}>{t('Dismiss')}</Button>
       </Alert> : null}
 
-      <section className="rounded-lg border bg-muted/20 px-2.5 py-2" aria-label={t('Current tab')}>
+      <section className="rounded-lg border bg-muted/20 px-2.5 py-1.5" aria-label={t('Current tab')}>
         <div className="control-row">
           <p className="min-w-0 flex-1 truncate text-sm font-medium" title={vm.origin}>{vm.origin || t(vm.ready ? 'Select an HTTP or HTTPS tab.' : 'Loading…')}</p>
         </div>
@@ -52,7 +52,7 @@ function App() {
           <Button className="ml-auto" size="xs" variant="ghost" disabled={disabled} onClick={vm.toggleSession}>{t(vm.connected ? 'Stop tab session' : 'Start tab session')}</Button>
         </div>
         <p className="mt-1 text-xs text-muted-foreground">{t('{count} persistent rules stay on after stopping', { count: persistent })}</p>
-        <Button className="mt-2 w-full" size="sm" disabled={disabled} aria-label={t('Open Inspector')} onClick={vm.openInspector}><Activity />{t('Inspect and modify requests')}<ArrowUpRight /></Button>
+        <Button className="mt-1 w-full" size="sm" disabled={disabled} aria-label={t('Open Inspector')} onClick={vm.openInspector}><Activity />{t('Inspect and modify requests')}<ArrowUpRight /></Button>
       </section>
 
       <section aria-labelledby="quick-heading">
