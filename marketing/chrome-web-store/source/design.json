@@ -1,0 +1,61 @@
+{
+  "reference": "https://github.com/kacperkapusciak/goldie",
+  "target": "chrome-web-store",
+  "layout": "classic",
+  "screenOnly": true,
+  "rotation": 0,
+  "perspective": false,
+  "background": "linear-gradient(145deg, #f4f7fd 0%, #edf3fc 55%, #dce8fb 100%)",
+  "headlineColor": "#10223b",
+  "accentColor": "#0647df",
+  "subheadColor": "#425675",
+  "brand": "Forth Intercept",
+  "locales": ["en", "zh-CN"],
+  "copy": {
+    "en": {
+      "headline": "Your requests. Your rules.",
+      "subhead": "Fix CORS. Mock APIs. Inspect changes — inside Chrome.",
+      "sample": "Sample data",
+      "headlineLead": "Your requests. ",
+      "headlineAccent": "Your rules."
+    },
+    "zh-CN": {
+      "headline": "你的请求，由你掌控。",
+      "subhead": "修复跨域、模拟接口、检查改动，直接在 Chrome 中完成。",
+      "sample": "示例数据",
+      "headlineLead": "你的请求，",
+      "headlineAccent": "由你掌控。"
+    }
+  },
+  "formats": {
+    "screenshot": {
+      "width": 1280,
+      "height": 800,
+      "layout": "classic"
+    },
+    "small": {
+      "width": 440,
+      "height": 280,
+      "layout": "classic",
+      "copy": {
+        "en": {
+          "headlineLead": "Mock APIs. ",
+          "headlineAccent": "Fix CORS.",
+          "subhead": "Right inside Chrome."
+        }
+      }
+    },
+    "marquee": {
+      "width": 1400,
+      "height": 560,
+      "layout": "offset",
+      "copy": {
+        "en": {
+          "headlineLead": "Your requests.",
+          "headlineAccent": "Your rules.",
+          "subhead": "Fix CORS. Mock APIs.\nInspect changes inside Chrome."
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,3 @@
+# Keep vendored skill and font-license text identical to upstream.
+.agents/skills/goldie/** -whitespace
+marketing/chrome-web-store/source/fonts/OFL.txt -whitespace
