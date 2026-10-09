@@ -1,4 +1,4 @@
-import { needsProxy } from '@/common/quick-controls';
+import { hasPersistentActions, needsProxy } from '@/common/quick-controls';
 import { t, translateError, useLocale } from '@/common/i18n';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import browser from 'webextension-polyfill';
@@ -15,6 +15,7 @@ import { APP_STATE_KEY, type IProxyRule } from '@/common/proxy-state';
 import { explainRuleMatch, ruleAppliesToOrigin } from '@/common/rule-explanation';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { IAdvancedProxyStatus, IRequestLogEntry } from '@/background/advanced-proxy';
 import { parseInspectorTabId } from '@/common/inspector-target';
 import { isSupportedProtocol } from '@/common/utils';
@@ -23,6 +24,19 @@ function statusVariant(entry: IRequestLogEntry): 'default' | 'secondary' | 'dest
   if (entry.outcome === 'blocked' || entry.outcome === 'failed') return 'destructive';
   if (entry.outcome === 'mocked') return 'secondary';
   return entry.status && entry.status >= 400 ? 'destructive' : 'outline';
+}
+
+function verificationMessage(rule: IProxyRule, connected: boolean, entry: IRequestLogEntry | null | undefined, hasNewRequests: boolean): string {
+  if (!rule.enabled) return 'Rule disabled. Requests use their original behavior unless other rules apply.';
+  if (needsProxy(rule) && !connected) return 'Start a tab session to apply';
+  if (!entry) return hasNewRequests
+    ? 'Requests recorded, but none matched this rule. Repeat the target request or edit its conditions.'
+    : 'Saved. Trigger the request again on the page to verify it.';
+  if (entry.outcome === 'pending') return 'Request in progress. Waiting for the result.';
+  if (entry.diagnostics.length) return 'Request matched with warnings. Review the result.';
+  return entry.changes?.length
+    ? 'Request matched. Recorded changes are ready to review.'
+    : 'Request matched, but no changes were recorded. Check the request details.';
 }
 
 export function Inspector() {
@@ -39,12 +53,14 @@ export function Inspector() {
   const [draft, setDraft] = useState<RuleDraft | null>(null);
   const [verification, setVerification] = useState<{ ruleId: string; since: number } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [view, setView] = useState('requests');
   const siteRules = rules.filter((rule) => ruleAppliesToOrigin(rule, origin));
   const [search, setSearch] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [targetError, setTargetError] = useState<string | null>(null);
   const syncVersion = useRef(0);
   const target = useRef('');
+  const requestDetail = useRef<HTMLDivElement>(null);
 
   const sync = useCallback(async () => {
     const version = ++syncVersion.current;
@@ -150,6 +166,11 @@ export function Inspector() {
   const selected = filtered.find((entry) => entry.id === selectedId);
   const savedRule = rules.find((rule) => rule.id === verification?.ruleId);
   const verifiedRequest = verification && entries.find((entry) => entry.startedAt >= verification.since && entry.matchedRuleIds.includes(verification.ruleId));
+  const hasNewRequests = !!verification && entries.some((entry) => entry.startedAt >= verification.since);
+  const showRequest = (id: string) => {
+    setView('requests'); setSearch(''); setSelectedId(id);
+    requestAnimationFrame(() => requestDetail.current?.scrollIntoView?.({ block: 'start' }));
+  };
 
   const toggle = async (enabled: boolean) => {
     if (tabId === null) return;
@@ -179,7 +200,7 @@ export function Inspector() {
   const toggleRule = async (rule: IProxyRule, enabled: boolean) => {
     setBusy(true);
     try {
-      const result = await browser.runtime.sendMessage({ type: 'saveProxyRule', payload: { rule: { ...rule, enabled } } });
+      const result = await browser.runtime.sendMessage({ type: 'saveProxyRule', payload: { rule: { id: rule.id, enabled } } });
       if (!result?.success) throw new Error(result?.error || 'Unable to update rule.');
       await sync();
     } catch (error) { setMessage(String(error)); } finally { setBusy(false); }
@@ -187,7 +208,7 @@ export function Inspector() {
 
   return (
     <main className="flex min-h-screen flex-col gap-3 bg-background p-3 text-foreground">
-      <header className="flex items-center justify-between gap-3">
+      <header className="sticky top-0 z-10 flex items-center justify-between gap-3 bg-background py-1">
         <div className="flex min-w-0 items-center gap-2">
           <BrandMark />
           <div className="min-w-0">
@@ -195,49 +216,61 @@ export function Inspector() {
             <p className="truncate text-xs text-muted-foreground">{origin || t("No supported tab")}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2"><span className="text-xs">{t(status?.phase === 'connected' ? 'Proxy connected' : 'Proxy off')}</span><Switch
-          checked={status?.phase === 'connected'}
+        <Button size="sm" variant={status?.phase === 'connected' ? 'outline' : 'default'}
           disabled={busy || tabId === null || status?.phase === 'connecting'}
-          onCheckedChange={toggle}
-          aria-label={t("Toggle advanced proxy")}
-        /></div>
+          onClick={() => void toggle(status?.phase !== 'connected')}
+        >{t(status?.phase === 'connecting' ? 'Connecting…' : status?.phase === 'connected' ? 'Stop tab session' : 'Start tab session')}</Button>
       </header>
 
-      {status?.phase !== 'connected' ? (
+      <div className="rounded-lg border bg-muted/20 p-2.5 text-xs">
+        <p className="font-medium"><span>{t(status?.phase === 'connected' ? 'Tab session active' : 'Tab session stopped')}</span> · <span>{t(status?.phase === 'connected' && status.captureEnabled !== false ? 'Recording requests' : 'Not recording')}</span></p>
+        <p className="mt-1 text-muted-foreground">{t('{count} persistent rules enabled', { count: siteRules.filter((rule) => rule.enabled && hasPersistentActions(rule)).length })}</p>
+        <p className="mt-1 text-muted-foreground">{t('Stopping resets temporary changes and pauses session actions. Persistent rules stay enabled.')}</p>
+      </div>
+
+      {targetError || status?.phase === 'error' ? (
         <Alert>
           <CircleSlash2 />
-          <AlertTitle>{targetError ? t("This page is unavailable") : status?.phase === 'error' ? t("Advanced proxy could not start") : t("Advanced proxy is off")}</AlertTitle>
+          <AlertTitle>{targetError ? t("This page is unavailable") : t("Advanced proxy could not start")}</AlertTitle>
           <AlertDescription>
             {targetError || status?.error ? translateError(targetError || status?.error || '') : t("Start the proxy, then trigger a request on the page. Enabled rules also apply.")}
           </AlertDescription>
         </Alert>
       ) : null}
-      {savedRule ? <Alert role="status"><AlertTitle>{savedRule.name}</AlertTitle><AlertDescription>
-        {!savedRule.enabled ? t('Disabled') : needsProxy(savedRule) && status?.phase !== 'connected' ? t('Needs advanced proxy') : verifiedRequest ? t('New matching request recorded. Inspect its applied changes.') : t('Saved. Trigger the request again on the page to verify it.')}
-        {verifiedRequest ? <Button size="sm" variant="outline" onClick={() => { setSearch(''); setSelectedId(verifiedRequest.id); }}>{t('View request')}</Button> : null}
+      {savedRule ? <Alert role="status"><AlertTitle>{savedRule.name}</AlertTitle><AlertDescription className="text-wrap [&_p:not(:last-child)]:mb-2">
+        <p>{t(verificationMessage(savedRule, status?.phase === 'connected', verifiedRequest, hasNewRequests))}</p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {verifiedRequest ? <Button size="sm" variant="outline" onClick={() => showRequest(verifiedRequest.id)}>{t('View request')}</Button> : null}
+          {savedRule.enabled && status?.phase !== 'connected' && !verifiedRequest ? <Button size="sm" disabled={busy || tabId === null} onClick={() => void toggle(true)}>{t('Start recording requests')}</Button> : null}
+          {savedRule.enabled ? <Button size="sm" variant="outline" disabled={busy} onClick={() => void toggleRule(savedRule, false)}>{t('Disable this rule')}</Button> : null}
+          {savedRule.enabled && hasNewRequests && !verifiedRequest?.changes?.length ? <Button size="sm" variant="outline" disabled={busy} onClick={() => setDraft(draftFromRule(savedRule))}>{t('Edit proxy rule')}</Button> : null}
+          <Button size="sm" variant="ghost" onClick={() => setVerification(null)}>{t('Dismiss')}</Button>
+        </div>
       </AlertDescription></Alert> : null}
       {message ? <Alert><AlertDescription>{translateError(message)}</AlertDescription></Alert> : null}
 
+      <Tabs value={view} onValueChange={setView}>
+      <TabsList className="w-full"><TabsTrigger value="requests">{t('Requests')} ({entries.length})</TabsTrigger><TabsTrigger value="rules">{t('Rules')} ({siteRules.length})</TabsTrigger></TabsList>
+      <TabsContent value="requests" className="flex flex-col gap-3">
+      {status?.phase !== 'connected' && tabId !== null ? <p className="text-xs text-muted-foreground">{t(__TARGET__ === 'chrome' ? 'Chrome shows a debugging banner during the session. Requests stay on your device.' : 'Firefox CORS: response headers only.')}</p> : null}
       {status?.phase === 'connected' && status.captureEnabled === false ? <Button disabled={busy} onClick={() => void toggle(true)}>{t('Start recording requests')}</Button> : null}
-      <h2 className="text-sm font-semibold">{t("Recent activity")}</h2>
-      <p className="text-xs text-muted-foreground">{t("Advanced proxy records only. Basic browser rules may act before capture; this is not a complete network log.")}</p>
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-2 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input aria-label={t("Filter URL, method, status")} className="pl-8" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("Filter URL, method, status")} />
         </div>
-        <Button size="icon" variant="outline" onClick={clear} aria-label={t("Clear requests")}><Eraser /></Button>
+        <Button size="icon" variant="outline" disabled={!entries.length || busy} onClick={() => void clear().catch((error) => setMessage(String(error)))} aria-label={t("Clear requests")}><Eraser /></Button>
       </div>
 
-      <ScrollArea className="h-[clamp(12rem,38vh,24rem)] rounded-lg border" aria-label={t('Recent activity')}>
+      <ScrollArea className={selected ? 'h-40 rounded-lg border' : 'h-[clamp(16rem,45vh,28rem)] rounded-lg border'} aria-label={t('Recent activity')}>
         {filtered.length > 0 ? (
           <div key="activity-rows" className="flex flex-col gap-1 p-2">
             {filtered.map((entry) => (
               <button key={entry.id} aria-pressed={selectedId === entry.id} className="flex items-center gap-2 rounded-md p-2.5 text-left hover:bg-muted aria-pressed:bg-muted focus-visible:outline-2 focus-visible:outline-ring" onClick={() => setSelectedId(entry.id)}>
                 <Badge variant="secondary">{entry.method}</Badge>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-medium">{entry.url}</p>
-                  <p className="text-xs text-muted-foreground">{entry.resourceType} · {entry.duration ?? 0} ms</p>
+                  <p className="truncate text-xs font-medium" title={entry.url}>{entry.url}</p>
+                  <p className="text-xs text-muted-foreground">{entry.resourceType} · {entry.duration ?? 0} ms{entry.changes?.length ? ` · ${t('Modified')}` : ''}</p>
                 </div>
                 <Badge variant={statusVariant(entry)}>{entry.status || t(entry.outcome)}</Badge>
               </button>
@@ -251,18 +284,20 @@ export function Inspector() {
             ) : (
               <p className="text-xs leading-relaxed">{t(status?.phase === 'connected'
                 ? (status.captureEnabled === false ? 'Start recording requests' : 'Trigger a request on the page to see it here.')
-                : 'Start the proxy to record requests from this tab.')}</p>
+                : 'Start a tab session to record requests from this tab.')}</p>
             )}
-            {entries.length === 0 && status?.phase !== 'connected' && tabId !== null ? <Button size="sm" disabled={busy || status?.phase === 'connecting'} onClick={() => void toggle(true)}>{t('Start proxy session')}</Button> : null}
+            {entries.length === 0 ? <ol className="mt-2 space-y-2 text-left text-xs"><li>1. {t('Start a tab session.')}</li><li>2. {t('Repeat an action on your page, then select its request here.')}</li><li>3. {t('Choose a change, save it, and repeat the action to verify.')}</li></ol> : null}
           </div>
         )}
       </ScrollArea>
+      <details className="text-xs text-muted-foreground"><summary className="cursor-pointer">{t('About request capture')}</summary><p className="mt-2">{t('Advanced proxy records only. Basic browser rules may act before capture; this is not a complete network log.')}</p><p className="mt-2">{t(__TARGET__ === 'chrome' ? 'Chrome shows a debugging banner during the session. Requests stay on your device.' : 'Firefox CORS: response headers only.')}</p></details>
 
       {!selected && filtered.length > 0 ? <p className="text-xs text-muted-foreground">{t("Select a request to mock its response or change its behavior.")}</p> : null}
       {selected ? (
+        <div ref={requestDetail} className="scroll-mt-16">
         <Card size="sm">
           <CardHeader>
-            <CardTitle className="truncate">{selected.method} {selected.url}</CardTitle>
+            <CardTitle className="break-all text-xs">{selected.method} {selected.url}</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
             <div className="flex flex-wrap gap-2">
@@ -271,8 +306,6 @@ export function Inspector() {
               <Button size="sm" variant="outline" onClick={() => createRule(selected, 'failure')}>{t("Network failure")}</Button>
               <Button size="sm" variant="outline" onClick={() => createRule(selected, 'block')}>{t("Block")}</Button>
               <Button size="sm" variant="outline" onClick={() => createRule(selected)}>{t("Headers")}</Button>
-              <Button size="sm" variant="outline" onClick={() => browser.runtime.openOptionsPage()}> {t("Open rules")}<ExternalLink data-icon="inline-end" />
-              </Button>
             </div>
             <div className="flex flex-wrap gap-2">
               <Badge variant="outline">{selected.resourceType}</Badge>
@@ -282,7 +315,7 @@ export function Inspector() {
             {selected.diagnostics.map((diagnostic) => (
               <Alert key={translateError(diagnostic)}><AlertDescription>{translateError(diagnostic)}</AlertDescription></Alert>
             ))}
-            <p className="text-xs text-muted-foreground">{t("Rules above matched at capture. Matching does not guarantee every action ran.")}</p>
+            <h3 className="text-sm font-semibold">{t('Applied changes')}</h3>
             <div aria-label={t("Applied changes")} className="flex flex-col gap-2">
               {(selected.changes || []).map((change, index) => <div key={index} className="rounded-lg border p-2 text-xs">
                 <p className="font-medium">{translateError(change.label)}</p>
@@ -292,6 +325,7 @@ export function Inspector() {
               {!selected.changes?.length ? <p className="text-xs text-muted-foreground">{t("No detailed change record for this request.")}</p> : null}
             </div>
             <details><summary className="cursor-pointer text-sm font-medium">{t("Check against current rules")}</summary>
+              <p className="my-2 text-xs text-muted-foreground">{t("Rules above matched at capture. Matching does not guarantee every action ran.")}</p>
               <p className="my-2 text-xs text-muted-foreground">{t("Current conditions, not historical execution or priority. Trigger a new request after editing.")}</p>
               {siteRules.map((rule) => {
                 const reasons = explainRuleMatch(rule, origin, selected, __TARGET__ === 'firefox');
@@ -315,14 +349,16 @@ export function Inspector() {
 
           </CardContent>
         </Card>
+        </div>
       ) : null}
+      </TabsContent>
+      <TabsContent value="rules">
       <section aria-label={t("Rules for this site")} className="flex flex-col gap-2 border-t pt-3">
-      <p className="text-xs text-muted-foreground">{t("Advanced proxy changes requests; it is not a capture-only switch. Basic header, redirect and block rules can remain enabled when it is off.")}</p>
       <Card size="sm" className="mt-3">
-        <CardHeader><CardTitle>{t("Rules for this site")}</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{t("Rules for this site")}</CardTitle><Button size="sm" variant="outline" onClick={() => browser.runtime.openOptionsPage()}>{t('Manage rules')}<ExternalLink /></Button></CardHeader>
         <CardContent className="flex flex-col gap-3">
           <Button variant="outline" disabled={tabId === null} onClick={() => setDraft({ ...EMPTY_DRAFT, origins: origin })}><Plus data-icon="inline-start" />{t("New rule for this site")}</Button>
-          {!siteRules.length ? <p className="text-sm text-muted-foreground">{t("No rules for this site yet.")}</p> : null}
+          {!siteRules.length ? <><p className="text-sm text-muted-foreground">{t("No rules for this site yet.")}</p><Button variant="outline" onClick={() => setView('requests')}>{t('Start from a request')}</Button></> : null}
           {siteRules.map((rule) => <section key={rule.id} aria-label={rule.name} className="flex flex-col gap-2 rounded-lg border p-2">
             <div className="flex items-center justify-between gap-2">
               <Button variant="ghost" className="min-w-0 justify-start" onClick={() => setDraft(draftFromRule(rule))}><span className="truncate">{rule.name}</span></Button>
@@ -330,14 +366,19 @@ export function Inspector() {
             </div>
             <p className="break-all text-xs text-muted-foreground">{rule.match.methods?.join(', ') || t("All methods")} · {rule.match.urlPattern}</p>
             <div className="flex flex-wrap gap-1">
-              <Badge variant="outline">{!rule.enabled ? t("Disabled") : status?.phase !== 'connected' && needsProxy(rule) ? t("Needs advanced proxy") : t("Enabled")}</Badge>
+              {!rule.enabled ? <Badge variant="outline">{t('Disabled')}</Badge> : <>
+                {hasPersistentActions(rule) ? <Badge variant="outline">{t('Persistent · across tabs')}</Badge> : null}
+                {needsProxy(rule) ? <Badge variant="outline">{t(status?.phase !== 'connected' ? 'Start a tab session to apply' : 'Active in this session')}</Badge> : null}
+              </>}
               <Badge variant="secondary">{t('{count} recorded matches', { count: entries.filter((entry) => entry.matchedRuleIds.includes(rule.id)).length })}</Badge>
             </div>
           </section>)}
         </CardContent>
       </Card>
       </section>
-      <RuleDialog key={draft?.id || (draft ? 'new' : 'closed')} draft={draft} onOpenChange={(open) => { if (!open) setDraft(null); }} onSaved={async (rule) => { if (rule) setVerification({ ruleId: rule.id, since: Date.now() }); setMessage(null); await sync(); }} />
+      </TabsContent>
+      </Tabs>
+      <RuleDialog key={draft?.id || (draft ? 'new' : 'closed')} draft={draft} onOpenChange={(open) => { if (!open) setDraft(null); }} onSaved={async (rule) => { if (rule) setVerification({ ruleId: rule.id, since: Date.now() }); setView('requests'); setMessage(null); await sync(); }} />
     </main>
   );
 }

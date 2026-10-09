@@ -32,12 +32,13 @@ beforeEach(() => {
   vi.mocked(browser.tabs.get).mockResolvedValue({ id: 7, url: 'https://app.example.test/' } as browser.Tabs.Tab);
   vi.mocked(browser.runtime.sendMessage).mockImplementation(async (message: any) => {
     switch (message.type) {
-      case 'enableAdvancedProxy': connected = true; return { phase: 'connected' };
+      case 'enableAdvancedProxy': connected = true; return { phase: 'connected', captureEnabled: true };
+      case 'disableAdvancedProxy': connected = false; return { phase: 'disabled', captureEnabled: false };
       case 'getProxyState': return { rules };
       case 'getAdvancedProxyLog': return entries;
-      case 'getAdvancedProxyStatus': return { phase: connected ? 'connected' : 'disabled' };
+      case 'getAdvancedProxyStatus': return { phase: connected ? 'connected' : 'disabled', captureEnabled: connected };
       case 'saveProxyRule': {
-        const rule = { ...message.payload.rule, id: message.payload.rule.id || 'saved', createdAt: Date.now(), updatedAt: Date.now() };
+        const rule = { ...rules.find((rule) => rule.id === message.payload.rule.id), ...message.payload.rule, id: message.payload.rule.id || 'saved', createdAt: Date.now(), updatedAt: Date.now() };
         rules = [rule]; return { success: true, rule };
       }
       case 'clearAdvancedProxyLog': entries = []; return undefined;
@@ -53,7 +54,8 @@ describe('request-first inspector', () => {
     render(<Inspector />);
     const request = await screen.findByRole('button', { name: /GET.*orders/ });
     expect(screen.getByRole('heading', { name: 'Inspector' })).toBeInTheDocument();
-    expect(request.compareDocumentPosition(screen.getByRole('region', { name: 'Rules for this site' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Requests (1)' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.queryByRole('region', { name: 'Rules for this site' })).not.toBeInTheDocument();
     await user.click(request);
     await user.click(screen.getByRole('button', { name: 'Mock', exact: true }));
     const dialog = await screen.findByRole('dialog');
@@ -72,6 +74,8 @@ describe('request-first inspector', () => {
     await sync();
     expect(vi.mocked(browser.runtime.sendMessage).mock.calls.filter(([message]) => (message as any).type === 'getProxyState')).toHaveLength(stateReads);
     expect(screen.queryByRole('button', { name: 'View request' })).not.toBeInTheDocument();
+    expect(screen.getByText('Requests recorded, but none matched this rule. Repeat the target request or edit its conditions.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Edit proxy rule' })).toBeInTheDocument();
     entries = [entry('fresh-match', { startedAt: Date.now() + 1, matchedRuleIds: ['saved'], outcome: 'mocked', changes: [{ label: 'Local mock', after: 'HTTP 200; server not contacted' }] }), ...entries];
     await sync();
     await user.type(screen.getByRole('textbox', { name: 'Filter URL, method, status' }), 'no-results');
@@ -95,21 +99,71 @@ describe('request-first inspector', () => {
     connected = false;
     await user.click(screen.getByRole('button', { name: 'Save rule', exact: true }));
     await screen.findByText('Orders empty state', { selector: '[data-slot="alert-title"]' });
-    expect(screen.getByRole('status')).toHaveTextContent('Needs advanced proxy');
+    expect(screen.getByText('Start a tab session to apply')).toBeInTheDocument();
   });
   it('starts an empty session without implicitly enabling CORS and guides the next action', async () => {
     const user = userEvent.setup();
     entries = []; connected = false;
     render(<Inspector />);
-    await user.click(await screen.findByRole('button', { name: 'Start proxy session' }));
+    await user.click(await screen.findByRole('button', { name: 'Start tab session' }));
     expect(browser.runtime.sendMessage).toHaveBeenCalledWith({ type: 'enableAdvancedProxy', payload: { tabId: 7 } });
     expect(screen.getByText('Trigger a request on the page to see it here.')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Start proxy session' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Start tab session' })).not.toBeInTheDocument();
     entries = [entry('first')];
     await sync();
     expect(screen.queryByText('No activity recorded yet.')).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /GET.*orders/ }));
     expect(screen.getByRole('button', { name: 'Network failure', exact: true })).toBeInTheDocument();
+  });
+
+  it('distinguishes matching, pending results and warnings, and lets users undo the rule', async () => {
+    const user = userEvent.setup();
+    render(<Inspector />);
+    await user.click(await screen.findByRole('button', { name: /GET.*orders/ }));
+    await user.click(screen.getByRole('button', { name: 'Mock', exact: true }));
+    await user.click(screen.getByRole('button', { name: 'Save rule', exact: true }));
+    await screen.findByText('Saved. Trigger the request again on the page to verify it.');
+    entries = [entry('match', { startedAt: Date.now() + 1, matchedRuleIds: ['saved'] })];
+    await sync();
+    expect(screen.getByText('Request matched, but no changes were recorded. Check the request details.')).toBeInTheDocument();
+    entries = [{ ...entries[0], outcome: 'pending' }]; await sync();
+    expect(screen.getByText('Request in progress. Waiting for the result.')).toBeInTheDocument();
+    entries = [{ ...entries[0], outcome: 'continued', diagnostics: ['Another rule took precedence.'] }]; await sync();
+    expect(screen.getByText('Request matched with warnings. Review the result.')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Disable this rule' }));
+    expect(browser.runtime.sendMessage).toHaveBeenCalledWith({ type: 'saveProxyRule', payload: { rule: { id: 'saved', enabled: false } } });
+    expect(rules[0].actions[0].type).toBe('mockResponse');
+    expect(screen.getByText('Rule disabled. Requests use their original behavior unless other rules apply.')).toBeInTheDocument();
+  });
+
+  it('shows persistent rules while stopped and preserves request selection between tabs', async () => {
+    const user = userEvent.setup();
+    connected = false;
+    rules = [{ id: 'header', name: 'Staging header', enabled: true, source: 'user', match: { initiatorOrigins: ['https://app.example.test'], urlPattern: '*' }, actions: [{ type: 'setResponseHeaders', headers: { 'X-Debug': 'true' } }, { type: 'delay', milliseconds: 1000 }], createdAt: 1, updatedAt: 1 }];
+    render(<Inspector />);
+    await user.click(await screen.findByRole('button', { name: /GET.*orders/ }));
+    expect(screen.getByText('Tab session stopped')).toBeInTheDocument();
+    expect(screen.getByText('1 persistent rules enabled')).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: 'Rules (1)' }));
+    expect(screen.getByRole('switch', { name: 'Enable Staging header' })).toBeChecked();
+    expect(screen.getByText('Persistent · across tabs')).toBeInTheDocument();
+    expect(screen.getByText('Start a tab session to apply')).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: 'Requests (1)' }));
+    expect(screen.getByRole('button', { name: 'Mock', exact: true })).toBeInTheDocument();
+  });
+
+  it('offers Firefox body replacement without an HTTP status control that cannot take effect', async () => {
+    vi.stubGlobal('__TARGET__', 'firefox');
+    const user = userEvent.setup();
+    render(<Inspector />);
+    await user.click(await screen.findByRole('button', { name: /GET.*orders/ }));
+    await user.click(screen.getByRole('button', { name: 'Replace body', exact: true }));
+    expect(screen.getByLabelText('Response body')).toBeVisible();
+    expect(screen.queryByLabelText('HTTP status')).not.toBeInTheDocument();
+    expect(screen.getByText('Firefox contacts the server and preserves its status; only the response body is replaced.')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Save rule', exact: true }));
+    await screen.findByText('Saved. Trigger the request again on the page to verify it.');
+    expect(rules[0].actions[0]).toMatchObject({ type: 'mockResponse', status: 200 });
   });
 
 });

@@ -18,7 +18,7 @@ import { WorkspaceRuleEditor } from './workspace-rule-editor';
 import { RecoveryPanel } from './recovery-panel';
 import { dataStorage } from '@/common/storage';
 import { APP_STATE_KEY, isProxyAppState, type IProxyAppState, type IProxyRule } from '@/common/proxy-state';
-import { draftFromRule, EMPTY_DRAFT, type RuleDraft } from '@/components/rule-dialog';
+import { ACTION_TEMPLATES, draftFromRule, EMPTY_DRAFT, type RuleDraft } from '@/components/rule-dialog';
 import { ACTION_LABELS } from '@/components/action-fields';
 import { RESOURCE_TYPES } from '@/common/request-match';
 import { parseImport, previewImport } from '@/common/import-preview';
@@ -95,6 +95,25 @@ function ProxyRules({ state, reload, navigate, onDirtyChange, createToken }: {
       setDraft({ ...draftFromRule(selected), id: undefined, source: 'user', legacyRuleId: undefined, name: `${selected.name} copy`, enabled: false });
     });
   };
+  const welcome = (
+    <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+      <BrandMark />
+      <h2 className="text-lg font-medium">{t(state.rules.length ? 'Choose a rule to edit' : 'Make your first request change')}</h2>
+      <p className="max-w-sm text-sm text-muted-foreground">{t('Open the extension on your app, choose Inspect and modify requests, then select a request to start.')}</p>
+      <p className="text-xs text-muted-foreground">{t('Or create a rule manually:')}</p>
+      <div className="flex flex-wrap justify-center gap-2">
+        {['mock', 'delay', 'responseHeaders', 'redirect', 'block', 'cors'].map((template) => (
+          <Button key={template} size="sm" variant="outline" onClick={() => leave(() => setDraft({
+            ...EMPTY_DRAFT,
+            name: t(ACTION_LABELS[ACTION_TEMPLATES[template][0].type]),
+            actions: JSON.stringify(ACTION_TEMPLATES[template], null, 2),
+          }))}>
+            {t(__TARGET__ === 'firefox' && template === 'mock' ? 'Replace response body' : ACTION_LABELS[ACTION_TEMPLATES[template][0].type])}
+          </Button>
+        ))}
+      </div>
+    </div>
+  );
   return <div className="relative grid h-full min-h-0 min-w-0 grid-cols-1 md:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[340px_minmax(0,1fr)]">
     <aside aria-label={t("Rule list")} className={cn('flex min-h-0 min-w-0 flex-col border-r', draft && 'max-md:hidden')}>
       <div className="flex shrink-0 flex-col gap-2 border-b p-3">
@@ -123,7 +142,7 @@ function ProxyRules({ state, reload, navigate, onDirtyChange, createToken }: {
           </button>
           <Switch checked={rule.enabled} disabled={busy} aria-label={t('Toggle {name}', { name: rule.name })} onCheckedChange={(enabled) => toggle(rule, enabled)} />
         </div>)}
-        {!filtered.length ? <p className="p-6 text-sm text-muted-foreground">{state.rules.length ? t("No rules match these filters. Your draft is preserved.") : t("Create a rule or start from a captured request in Site controls.")}</p> : null}
+        {!filtered.length ? state.rules.length ? <p className="p-6 text-sm text-muted-foreground">{t("No rules match these filters. Your draft is preserved.")}</p> : <><p className="hidden p-6 text-sm text-muted-foreground md:block">{t("Create a rule or start from a captured request in Site controls.")}</p><div className="md:hidden">{welcome}</div></> : null}
       </div>
     </aside>
     <div className={cn('min-h-0 min-w-0', !draft && 'max-md:hidden')}>
@@ -131,7 +150,7 @@ function ProxyRules({ state, reload, navigate, onDirtyChange, createToken }: {
         onCopy={selected ? copy : undefined} onDelete={selected ? () => setPendingDelete(selected) : undefined}
         onOpenChange={(open) => { if (!open) { onDirtyChange(false); setDraft(null); } }}
         onSaved={async (rule) => { await reload(); if (rule) setDraft(draftFromRule(rule)); setMessage('Rule saved.'); }} /> :
-        <div className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center"><BrandMark /><h2 className="text-lg font-medium">{t("Choose a rule to edit")}</h2><p className="max-w-sm text-sm text-muted-foreground">{t("Search with ⌘/Ctrl K. Select a rule, configure its actions, then test its conditions.")}</p></div>}
+        welcome}
     </div>
     {message ? <Alert role={message === 'Rule saved.' ? 'status' : 'alert'} className="pointer-events-none absolute bottom-16 right-4 max-w-[min(24rem,calc(100%-2rem))] shadow-sm"><AlertDescription>{translateError(message)}</AlertDescription></Alert> : null}
     <Dialog open={!!pendingDelete} onOpenChange={(open) => !open && setPendingDelete(null)}><DialogContent><DialogHeader><DialogTitle>{t("Delete proxy rule?")}</DialogTitle><DialogDescription>{t('Delete {name} and its unsaved edits? This cannot be undone.', { name: pendingDelete?.name || '' })}</DialogDescription></DialogHeader><DialogFooter><Button variant="outline" onClick={() => setPendingDelete(null)}>{t("Cancel")}</Button><Button variant="destructive" disabled={busy} onClick={async () => { if (pendingDelete && await mutate('deleteProxyRule', { id: pendingDelete.id })) { if (draft?.id === pendingDelete.id) { setDraft(null); onDirtyChange(false); } setPendingDelete(null); } }}>{t("Delete rule")}</Button></DialogFooter></DialogContent></Dialog>

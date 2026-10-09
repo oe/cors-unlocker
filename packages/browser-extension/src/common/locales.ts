@@ -1,5 +1,309 @@
 // English source keys are the fallback. Technical values and user content are never translated.
 export const messages: Record<string, Record<string, string>> = {
+  "{count} persistent rules stay on after stopping": {
+    "en": "{count} persistent rules stay on after stopping",
+    "zh-CN": "停止调试后仍有 {count} 条持久规则生效",
+    "ko": "중지 후에도 영구 규칙 {count}개는 유지됩니다",
+    "ja": "停止後も永続ルール {count} 件は有効です",
+    "fr": "{count} règles persistantes restent actives après l’arrêt",
+    "es": "{count} reglas persistentes siguen activas al detener"
+  },
+  "Only this tab. Resets when the session stops.": {
+    "en": "Only this tab. Resets when the session stops.",
+    "zh-CN": "仅影响本标签页，停止调试后重置。",
+    "ko": "이 탭에만 적용. 세션 중지 시 초기화됩니다.",
+    "ja": "このタブのみ。セッション停止でリセット。",
+    "fr": "Cet onglet uniquement. Réinitialisé à l’arrêt.",
+    "es": "Solo esta pestaña. Se restablece al detener."
+  },
+  "Requests recorded, but none matched this rule. Repeat the target request or edit its conditions.": {
+    "en": "Requests recorded, but none matched this rule. Repeat the target request or edit its conditions.",
+    "zh-CN": "已记录新请求，但没有匹配这条规则。请重试目标请求，或编辑匹配条件。",
+    "ko": "새 요청이 기록되었지만 이 규칙과 일치하지 않습니다. 대상 요청을 다시 실행하거나 조건을 수정하세요.",
+    "ja": "新しいリクエストを記録しましたが、このルールと一致しません。対象のリクエストを再実行するか条件を編集してください。",
+    "fr": "Des requêtes ont été enregistrées, mais aucune ne correspond à cette règle. Répétez la requête ciblée ou modifiez les conditions.",
+    "es": "Se registraron solicitudes, pero ninguna coincide con esta regla. Repite la solicitud objetivo o edita sus condiciones."
+  },
+  "Tab session active": {
+    "en": "Tab session active",
+    "zh-CN": "本页调试已启动",
+    "ko": "탭 세션 활성",
+    "ja": "タブセッション実行中",
+    "fr": "Session de cet onglet active",
+    "es": "Sesión de esta pestaña activa"
+  },
+  "Tab session stopped": {
+    "en": "Tab session stopped",
+    "zh-CN": "本页调试已停止",
+    "ko": "탭 세션 중지됨",
+    "ja": "タブセッション停止中",
+    "fr": "Session de cet onglet arrêtée",
+    "es": "Sesión de esta pestaña detenida"
+  },
+  "Stop tab session": {
+    "en": "Stop tab session",
+    "zh-CN": "停止本页调试",
+    "ko": "탭 세션 중지",
+    "ja": "タブセッションを停止",
+    "fr": "Arrêter la session",
+    "es": "Detener sesión"
+  },
+  "Start tab session": {
+    "en": "Start tab session",
+    "zh-CN": "启动本页调试",
+    "ko": "탭 세션 시작",
+    "ja": "タブセッションを開始",
+    "fr": "Démarrer la session",
+    "es": "Iniciar sesión"
+  },
+  "Connecting…": {
+    "en": "Connecting…",
+    "zh-CN": "正在连接…",
+    "ko": "연결 중…",
+    "ja": "接続中…",
+    "fr": "Connexion…",
+    "es": "Conectando…"
+  },
+  "Active in this session": {
+    "en": "Active in this session",
+    "zh-CN": "在本页调试中生效",
+    "ko": "이 세션에서 적용 중",
+    "ja": "このセッションで有効",
+    "fr": "Active dans cette session",
+    "es": "Activa en esta sesión"
+  },
+  "Start a tab session to apply": {
+    "en": "Start a tab session to apply",
+    "zh-CN": "启动本页调试后生效",
+    "ko": "탭 세션을 시작해야 적용됩니다",
+    "ja": "タブセッションの開始が必要",
+    "fr": "Démarrez une session pour appliquer",
+    "es": "Inicia una sesión para aplicar"
+  },
+  "Inspect and modify requests": {
+    "en": "Inspect and modify requests",
+    "zh-CN": "查看并修改请求",
+    "ko": "요청 확인 및 수정",
+    "ja": "リクエストを確認・変更",
+    "fr": "Inspecter et modifier les requêtes",
+    "es": "Inspeccionar y modificar solicitudes"
+  },
+  "Temporary changes": {
+    "en": "Temporary changes",
+    "zh-CN": "临时修改",
+    "ko": "임시 변경",
+    "ja": "一時的な変更",
+    "fr": "Modifications temporaires",
+    "es": "Cambios temporales"
+  },
+  "Reset temporary changes": {
+    "en": "Reset temporary changes",
+    "zh-CN": "重置临时修改",
+    "ko": "임시 변경 초기화",
+    "ja": "一時的な変更をリセット",
+    "fr": "Réinitialiser",
+    "es": "Restablecer cambios"
+  },
+  "{count} persistent rules enabled": {
+    "en": "{count} persistent rules enabled",
+    "zh-CN": "{count} 条持久规则已启用",
+    "ko": "영구 규칙 {count}개 활성화됨",
+    "ja": "永続ルール {count} 件が有効",
+    "fr": "{count} règles persistantes activées",
+    "es": "{count} reglas persistentes activadas"
+  },
+  "Recording requests": {
+    "en": "Recording requests",
+    "zh-CN": "正在记录请求",
+    "ko": "요청 기록 중",
+    "ja": "リクエスト記録中",
+    "fr": "Enregistrement des requêtes",
+    "es": "Registrando solicitudes"
+  },
+  "Not recording": {
+    "en": "Not recording",
+    "zh-CN": "未记录请求",
+    "ko": "기록 중지",
+    "ja": "記録停止中",
+    "fr": "Enregistrement arrêté",
+    "es": "Sin registrar"
+  },
+  "Stopping resets temporary changes and pauses session actions. Persistent rules stay enabled.": {
+    "en": "Stopping resets temporary changes and pauses session actions. Persistent rules stay enabled.",
+    "zh-CN": "停止调试会重置临时修改，并暂停依赖调试的动作。持久规则仍然生效。",
+    "ko": "중지하면 임시 변경은 초기화되고 세션 작업은 일시 중지됩니다. 영구 규칙은 계속 적용됩니다.",
+    "ja": "停止すると一時的な変更をリセットし、セッション用アクションを一時停止します。永続ルールは有効なままです。",
+    "fr": "L’arrêt réinitialise les modifications temporaires et suspend les actions de session. Les règles persistantes restent actives.",
+    "es": "Detener restablece los cambios temporales y pausa las acciones de sesión. Las reglas persistentes siguen activas."
+  },
+  "Requests": {
+    "en": "Requests",
+    "zh-CN": "请求",
+    "ko": "요청",
+    "ja": "リクエスト",
+    "fr": "Requêtes",
+    "es": "Solicitudes"
+  },
+  "Modified": {
+    "en": "Modified",
+    "zh-CN": "已修改",
+    "ko": "수정됨",
+    "ja": "変更済み",
+    "fr": "Modifiée",
+    "es": "Modificada"
+  },
+  "About request capture": {
+    "en": "About request capture",
+    "zh-CN": "关于请求记录",
+    "ko": "요청 기록 안내",
+    "ja": "リクエスト記録について",
+    "fr": "À propos de la capture",
+    "es": "Acerca de la captura"
+  },
+  "Chrome shows a debugging banner during the session. Requests stay on your device.": {
+    "en": "Chrome shows a debugging banner during the session. Requests stay on your device.",
+    "zh-CN": "会话期间 Chrome 会显示调试横幅。请求记录仅保存在本机。",
+    "ko": "세션 중 Chrome에 디버깅 배너가 표시됩니다. 요청 기록은 기기에만 저장됩니다.",
+    "ja": "セッション中は Chrome にデバッグのバナーが表示されます。記録は端末内に保存されます。",
+    "fr": "Chrome affiche une bannière de débogage pendant la session. Les requêtes restent sur votre appareil.",
+    "es": "Chrome muestra un aviso de depuración durante la sesión. Las solicitudes permanecen en tu dispositivo."
+  },
+  "Start a tab session to record requests from this tab.": {
+    "en": "Start a tab session to record requests from this tab.",
+    "zh-CN": "启动本页调试，开始记录当前标签页的请求。",
+    "ko": "탭 세션을 시작하여 이 탭의 요청을 기록하세요.",
+    "ja": "タブセッションを開始して、このタブのリクエストを記録します。",
+    "fr": "Démarrez une session pour enregistrer les requêtes de cet onglet.",
+    "es": "Inicia una sesión para registrar las solicitudes de esta pestaña."
+  },
+  "Start a tab session.": {
+    "en": "Start a tab session.",
+    "zh-CN": "启动本页调试。",
+    "ko": "탭 세션을 시작하세요.",
+    "ja": "タブセッションを開始。",
+    "fr": "Démarrez une session.",
+    "es": "Inicia una sesión."
+  },
+  "Repeat an action on your page, then select its request here.": {
+    "en": "Repeat an action on your page, then select its request here.",
+    "zh-CN": "在页面上执行一次操作，再在这里选中对应请求。",
+    "ko": "페이지에서 동작을 실행한 뒤 여기서 해당 요청을 선택하세요.",
+    "ja": "ページで操作し、対応するリクエストをここで選択。",
+    "fr": "Effectuez une action sur votre page, puis sélectionnez sa requête ici.",
+    "es": "Realiza una acción en tu página y selecciona aquí su solicitud."
+  },
+  "Choose a change, save it, and repeat the action to verify.": {
+    "en": "Choose a change, save it, and repeat the action to verify.",
+    "zh-CN": "选择修改并保存，再次执行页面操作以验证效果。",
+    "ko": "변경을 선택해 저장하고 같은 동작을 다시 실행하여 확인하세요.",
+    "ja": "変更を選んで保存し、操作を繰り返して結果を確認。",
+    "fr": "Choisissez une modification, enregistrez-la et répétez l’action pour vérifier.",
+    "es": "Elige un cambio, guárdalo y repite la acción para verificar."
+  },
+  "Start from a request": {
+    "en": "Start from a request",
+    "zh-CN": "从请求开始",
+    "ko": "요청에서 시작",
+    "ja": "リクエストから始める",
+    "fr": "Partir d’une requête",
+    "es": "Empezar desde una solicitud"
+  },
+  "Disable this rule": {
+    "en": "Disable this rule",
+    "zh-CN": "禁用这条规则",
+    "ko": "이 규칙 비활성화",
+    "ja": "このルールを無効化",
+    "fr": "Désactiver cette règle",
+    "es": "Desactivar esta regla"
+  },
+  "Rule disabled. Requests use their original behavior unless other rules apply.": {
+    "en": "Rule disabled. Requests use their original behavior unless other rules apply.",
+    "zh-CN": "规则已禁用。若无其他规则生效，请求将恢复原有行为。",
+    "ko": "규칙이 비활성화되었습니다. 다른 규칙이 없으면 원래 요청 동작으로 돌아갑니다.",
+    "ja": "ルールを無効にしました。他のルールが適用されなければ元の動作に戻ります。",
+    "fr": "Règle désactivée. Les requêtes retrouvent leur comportement initial sauf si d’autres règles s’appliquent.",
+    "es": "Regla desactivada. Las solicitudes recuperan su comportamiento original salvo que se apliquen otras reglas."
+  },
+  "Request in progress. Waiting for the result.": {
+    "en": "Request in progress. Waiting for the result.",
+    "zh-CN": "请求进行中，正在等待结果。",
+    "ko": "요청 진행 중. 결과를 기다립니다.",
+    "ja": "リクエスト処理中。結果を待っています。",
+    "fr": "Requête en cours. En attente du résultat.",
+    "es": "Solicitud en curso. Esperando el resultado."
+  },
+  "Request matched with warnings. Review the result.": {
+    "en": "Request matched with warnings. Review the result.",
+    "zh-CN": "请求已匹配，但有警告。请检查结果。",
+    "ko": "요청이 일치했지만 경고가 있습니다. 결과를 확인하세요.",
+    "ja": "リクエストが一致しましたが警告があります。結果を確認してください。",
+    "fr": "Requête correspondante avec avertissements. Vérifiez le résultat.",
+    "es": "Solicitud coincidente con avisos. Revisa el resultado."
+  },
+  "Request matched. Recorded changes are ready to review.": {
+    "en": "Request matched. Recorded changes are ready to review.",
+    "zh-CN": "请求已匹配，可以查看实际修改记录。",
+    "ko": "요청이 일치했습니다. 기록된 변경을 확인하세요.",
+    "ja": "リクエストが一致しました。記録された変更を確認できます。",
+    "fr": "Requête correspondante. Les modifications enregistrées sont disponibles.",
+    "es": "Solicitud coincidente. Ya puedes revisar los cambios registrados."
+  },
+  "Request matched, but no changes were recorded. Check the request details.": {
+    "en": "Request matched, but no changes were recorded. Check the request details.",
+    "zh-CN": "请求已匹配，但尚无修改记录。请检查请求详情。",
+    "ko": "요청이 일치했지만 변경이 기록되지 않았습니다. 요청 상세를 확인하세요.",
+    "ja": "リクエストは一致しましたが変更の記録はありません。詳細を確認してください。",
+    "fr": "Requête correspondante, mais aucune modification enregistrée. Vérifiez les détails.",
+    "es": "Solicitud coincidente, pero sin cambios registrados. Revisa sus detalles."
+  },
+  "More actions": {
+    "en": "More actions",
+    "zh-CN": "组合更多动作",
+    "ko": "추가 작업",
+    "ja": "追加のアクション",
+    "fr": "Autres actions",
+    "es": "Más acciones"
+  },
+  "Change type": {
+    "en": "Change type",
+    "zh-CN": "修改类型",
+    "ko": "변경 유형",
+    "ja": "変更の種類",
+    "fr": "Type de modification",
+    "es": "Tipo de cambio"
+  },
+  "Save your change, then repeat the request on the page to check the result.": {
+    "en": "Save your change, then repeat the request on the page to check the result.",
+    "zh-CN": "保存修改后，在页面上重试请求以检查结果。",
+    "ko": "변경을 저장한 뒤 페이지에서 요청을 다시 실행하여 결과를 확인하세요.",
+    "ja": "変更を保存し、ページでリクエストを繰り返して結果を確認します。",
+    "fr": "Enregistrez la modification, puis répétez la requête sur la page pour vérifier le résultat.",
+    "es": "Guarda el cambio y repite la solicitud en la página para comprobar el resultado."
+  },
+  "Make your first request change": {
+    "en": "Make your first request change",
+    "zh-CN": "开始修改你的第一个请求",
+    "ko": "첫 요청 변경하기",
+    "ja": "初めてのリクエスト変更",
+    "fr": "Modifiez votre première requête",
+    "es": "Modifica tu primera solicitud"
+  },
+  "Open the extension on your app, choose Inspect and modify requests, then select a request to start.": {
+    "en": "Open the extension on your app, choose Inspect and modify requests, then select a request to start.",
+    "zh-CN": "在你的应用页面打开插件，点击“查看并修改请求”，选中一个请求即可开始。",
+    "ko": "앱 페이지에서 확장 프로그램을 열고 요청 확인 및 수정을 선택한 뒤 요청을 선택하세요.",
+    "ja": "アプリのページで拡張機能を開き「リクエストを確認・変更」を選び、リクエストを選択します。",
+    "fr": "Ouvrez l’extension sur votre application, choisissez Inspecter et modifier les requêtes, puis sélectionnez une requête.",
+    "es": "Abre la extensión en tu aplicación, elige Inspeccionar y modificar solicitudes y selecciona una solicitud."
+  },
+  "Or create a rule manually:": {
+    "en": "Or create a rule manually:",
+    "zh-CN": "也可以手动创建规则：",
+    "ko": "또는 규칙을 직접 만드세요:",
+    "ja": "またはルールを手動で作成：",
+    "fr": "Ou créez une règle manuellement :",
+    "es": "O crea una regla manualmente:"
+  },
   "Export original data": {
     "en": "Export original data",
     "zh-CN": "导出原始数据",
@@ -2202,7 +2506,7 @@ export const messages: Record<string, Record<string, string>> = {
   },
   "Pinned rules": {
     "en": "Pinned rules",
-    "zh-CN": "固定规则",
+    "zh-CN": "置顶规则",
     "ko": "고정된 규칙",
     "ja": "固定したルール",
     "fr": "Règles épinglées",
@@ -2226,7 +2530,7 @@ export const messages: Record<string, Record<string, string>> = {
   },
   "Choose pinned rules": {
     "en": "Choose pinned rules",
-    "zh-CN": "选择固定规则",
+    "zh-CN": "选择置顶规则",
     "ko": "고정할 규칙 선택",
     "ja": "固定するルールを選択",
     "fr": "Choisir les règles à épingler",
@@ -2234,7 +2538,7 @@ export const messages: Record<string, Record<string, string>> = {
   },
   "Pin {name}": {
     "en": "Pin {name}",
-    "zh-CN": "固定 {name}",
+    "zh-CN": "置顶 {name}",
     "ko": "{name} 고정",
     "ja": "{name} を固定",
     "fr": "Épingler {name}",
@@ -2242,7 +2546,7 @@ export const messages: Record<string, Record<string, string>> = {
   },
   "Unpin {name}": {
     "en": "Unpin {name}",
-    "zh-CN": "取消固定 {name}",
+    "zh-CN": "取消置顶 {name}",
     "ko": "{name} 고정 해제",
     "ja": "{name} の固定を解除",
     "fr": "Désépingler {name}",

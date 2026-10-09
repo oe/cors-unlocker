@@ -82,8 +82,8 @@ test('localizes all surfaces and preserves drafts and settings across language c
       await control.evaluate((uiLanguage) => chrome.storage.local.set({ uiLanguage }), locale);
       for (const page of [control, popup, panel]) await expect(page.locator('html')).toHaveAttribute('lang', locale);
       await expect(control.getByRole('textbox', { name: messages.Name[locale], exact: true })).toHaveValue(draftName);
-      await expect(popup.getByText(messages['Quick debug'][locale], { exact: true })).toBeVisible();
-      await expect(panel.getByText(messages['Advanced proxy is off'][locale], { exact: true }).or(panel.getByText(messages['This page is unavailable'][locale], { exact: true }))).toBeVisible();
+      await expect(popup.getByText(messages['Temporary changes'][locale], { exact: true })).toBeVisible();
+      await expect(panel.getByText(messages['Tab session stopped'][locale], { exact: true })).toBeVisible();
       for (const [name, page] of [['options', control], ['popup', popup], ['sidepanel', panel]] as const) {
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${name} ${locale} overflow`).toBe(true);
         await page.screenshot({ path: testInfo.outputPath(`${name}-${locale}.png`), fullPage: true });
@@ -182,7 +182,11 @@ test('renders the shadcn proxy workspace and popup', async () => {
   await expect(control.getByRole('heading', { name: 'Forth Intercept' })).toBeVisible();
   await expect(control.getByRole('button', { name: 'Rules', exact: true })).toBeVisible();
   await control.getByRole('button', { name: 'New rule' }).click();
+  await expect(control.getByLabel('Page origins')).toHaveValue('');
+  await expect(control.getByLabel('URL pattern')).toHaveValue('');
   await control.getByLabel('Name', { exact: true }).fill('Resource picker QA');
+  await control.getByLabel('Page origins').fill('http://test.localhost:3000');
+  await control.getByLabel('URL pattern').fill('*://test.localhost:3000/*');
   const resources = control.getByRole('button', { name: 'Resource types: XHR, Fetch' });
   await resources.click();
   const resourceList = control.getByRole('listbox', { name: 'Resource types' });
@@ -240,12 +244,12 @@ test('renders the shadcn proxy workspace and popup', async () => {
   await inspector.goto(`chrome-extension://${extensionId}/src/sidepanel/index.html?tabId=${inspectedTabId}`);
   await expect(inspector.getByRole('heading', { name: 'Inspector' })).toBeVisible();
   await expect(inspector.getByText('http://test.localhost:3000', { exact: true })).toBeVisible();
-  const inspectorToggle = inspector.getByRole('switch', { name: 'Toggle advanced proxy' });
+  const inspectorToggle = inspector.getByRole('button', { name: /^(Start|Stop) tab session$/ });
   await expect(inspectorToggle).toBeEnabled();
   await inspectorToggle.click();
-  await expect(inspectorToggle).toBeChecked();
+  await expect(inspectorToggle).toHaveText('Stop tab session');
   await inspectorToggle.click();
-  await expect(inspectorToggle).not.toBeChecked();
+  await expect(inspectorToggle).toHaveText('Start tab session');
   await inspector.setViewportSize({ width: 420, height: 820 });
   await inspector.screenshot({ path: 'test-results/forth-intercept-inspector.png', fullPage: true });
   await inspector.close();
@@ -368,8 +372,8 @@ test('controls site rules inline and verifies actual request effects', async () 
   await panel.setViewportSize({ width: 420, height: 820 });
   await panel.goto(`chrome-extension://${extensionId}/src/sidepanel/index.html?tabId=${tabId}`);
   await expect(panel.getByRole('heading', { name: 'Inspector' })).toBeVisible();
-  await panel.getByRole('switch', { name: 'Toggle advanced proxy' }).click();
-  await expect(panel.getByRole('switch', { name: 'Toggle advanced proxy' })).toBeChecked();
+  await panel.getByRole('button', { name: /^(Start|Stop) tab session$/ }).click();
+  await expect(panel.getByRole('button', { name: /^(Start|Stop) tab session$/ })).toHaveText('Stop tab session');
   const fetchHealth = () => target.evaluate(async () => {
     const response = await fetch('/health');
     return { status: response.status, body: await response.json() };
@@ -378,13 +382,21 @@ test('controls site rules inline and verifies actual request effects', async () 
   await panel.getByRole('button', { name: /GET.*console.localhost:3000\/health/ }).first().click();
   await panel.getByRole('button', { name: 'Mock', exact: true }).click();
   await expect(panel.getByRole('dialog')).toBeVisible();
+  await panel.setViewportSize({ width: 390, height: 650 });
+  await expect.poll(async () => {
+    const bounds = await panel.getByRole('button', { name: 'Save rule', exact: true }).boundingBox();
+    return !!bounds && bounds.y >= 0 && bounds.y + bounds.height <= 650;
+  }).toBe(true);
   await panel.getByText('Request matching', { exact: true }).click();
   await expect(panel.getByLabel('Page origins')).toHaveValue('http://console.localhost:3000');
   await panel.getByLabel('Name', { exact: true }).fill('Console mock QA');
   await panel.getByLabel('HTTP status', { exact: true }).fill('201');
   await panel.getByLabel('Response body', { exact: true }).fill('{"source":"sidepanel"}');
   await panel.getByRole('button', { name: 'Save rule', exact: true }).click();
+  await panel.setViewportSize({ width: 420, height: 820 });
+  await panel.getByRole('tab', { name: /^Rules \(/ }).click();
   await expect(panel.getByRole('switch', { name: 'Enable Console mock QA' })).toBeChecked();
+  await panel.getByRole('tab', { name: /^Requests \(/ }).click();
   await expect(panel.getByText('Saved. Trigger the request again on the page to verify it.', { exact: true })).toBeVisible();
   await expect.poll(fetchHealth).toEqual({ status: 201, body: { source: 'sidepanel' } });
   await panel.getByRole('button', { name: 'View request', exact: true }).click();
@@ -392,23 +404,30 @@ test('controls site rules inline and verifies actual request effects', async () 
   await expect(panel.getByText('Local mock', { exact: true })).toBeVisible();
   await expect(panel.getByText(/HTTP 201;.*server not contacted/)).toBeVisible();
   await panel.screenshot({ path: '/tmp/forth-site-controls-mock.png', fullPage: true });
+  await panel.getByRole('tab', { name: /^Rules \(/ }).click();
   await panel.getByRole('switch', { name: 'Enable Console mock QA' }).click();
+  await panel.getByRole('tab', { name: /^Requests \(/ }).click();
   await expect.poll(async () => (await fetchHealth()).body.data?.status).toBe('healthy');
   await panel.getByRole('button', { name: /GET.*console.localhost:3000\/health/ }).first().click();
   await panel.getByText('Check against current rules', { exact: true }).click();
   await expect(panel.locator('div').filter({ hasText: /^Console mock QARule is disabled$/ })).toBeVisible();
   // Edit within the same side-panel dialog, then verify the next real response.
+  await panel.getByRole('tab', { name: /^Rules \(/ }).click();
   await panel.getByRole('button', { name: 'Console mock QA', exact: true }).first().click();
   await expect(panel.getByRole('heading', { name: 'Edit proxy rule' })).toBeVisible();
   await panel.getByLabel('HTTP status', { exact: true }).fill('202');
   await panel.getByLabel('Response body', { exact: true }).fill('{"source":"edited"}');
   await panel.getByRole('button', { name: 'Save rule', exact: true }).click();
+  await panel.getByRole('tab', { name: /^Rules \(/ }).click();
   await panel.getByRole('switch', { name: 'Enable Console mock QA' }).click();
+  await panel.getByRole('tab', { name: /^Requests \(/ }).click();
   await expect.poll(fetchHealth).toEqual({ status: 202, body: { source: 'edited' } });
   expect(await panel.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   expect(errors).toEqual([]);
+  await panel.getByRole('tab', { name: /^Rules \(/ }).click();
   await panel.getByRole('switch', { name: 'Enable Console mock QA' }).click();
-  await panel.getByRole('switch', { name: 'Toggle advanced proxy' }).click();
+  await panel.getByRole('tab', { name: /^Requests \(/ }).click();
+  await panel.getByRole('button', { name: /^(Start|Stop) tab session$/ }).click();
   await panel.close();
   await target.close();
 });
@@ -688,8 +707,8 @@ test('popup controls are temporary, tab-scoped, and independent from saved rules
   await expect(popup).toHaveTitle(/Forth Intercept/);
   await expect(popup.getByText('http://popup.localhost:3000', { exact: true })).toBeVisible();
   await expect(popup.getByRole('button', { name: 'Open Inspector' })).toBeEnabled();
-  await popup.getByRole('button', { name: 'Start proxy session' }).click();
-  await expect(popup.getByText('Proxy connected', { exact: true })).toBeVisible();
+  await popup.getByRole('button', { name: 'Start tab session' }).click();
+  await expect(popup.getByText('Tab session active', { exact: true })).toBeVisible();
   // Merely connecting must not repair CORS.
   const crossRequest = () => target.evaluate(async () => {
     try {
@@ -724,14 +743,23 @@ test('popup controls are temporary, tab-scoped, and independent from saved rules
   expect(imageLog).toMatchObject({ resourceType: 'Image', outcome: 'continued' });
   expect(imageLog.matchedRuleIds.filter((id: string) => id.startsWith('session:'))).toEqual([]);
   expect(await control.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState)).toEqual(before);
-  await popup.getByRole('button', { name: 'Stop this session' }).click();
+  await popup.getByRole('button', { name: 'Stop tab session' }).click();
   for (const name of ['CORS repair', 'Request delay', 'Simulate failure']) await expect(popup.getByRole('switch', { name, exact: true })).not.toBeChecked();
   expect(await crossRequest()).toBe(false);
   expect(await target.evaluate(async () => (await fetch('/health')).ok)).toBe(true);
 
+  await popup.getByRole('button', { name: 'Start tab session', exact: true }).click();
+  await popup.getByRole('switch', { name: 'Request delay', exact: true }).click();
+  await popup.getByRole('button', { name: 'Reset temporary changes', exact: true }).click();
+  await expect(popup.getByRole('switch', { name: 'Request delay', exact: true })).not.toBeChecked();
+  await expect(popup.getByText('Tab session active', { exact: true })).toBeVisible();
+  expect(await control.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState)).toEqual(before);
+  await popup.getByRole('button', { name: 'Stop tab session' }).click();
+
   // Pinning is metadata; enabling a saved rule persists across stopping/reopening.
   await popup.getByText('Choose pinned rules', { exact: true }).click();
   await popup.getByRole('button', { name: 'Pin Popup header preset', exact: true }).click();
+  await expect(popup.locator('details').filter({ has: popup.getByText('Choose pinned rules', { exact: true }) })).not.toHaveAttribute('open');
   await expect(popup.getByRole('switch', { name: 'Popup header preset', exact: true })).toBeVisible();
   await popup.getByRole('switch', { name: 'Popup header preset', exact: true }).click();
   await expect(popup.getByRole('switch', { name: 'Popup header preset', exact: true })).toBeChecked();
@@ -739,9 +767,10 @@ test('popup controls are temporary, tab-scoped, and independent from saved rules
   await popup.reload();
   await expect(popup.getByRole('switch', { name: 'Popup header preset', exact: true })).toBeChecked();
   await popup.getByRole('switch', { name: 'Request delay', exact: true }).click();
-  await expect(popup.getByText('Proxy connected', { exact: true })).toBeVisible();
-  await popup.getByRole('button', { name: 'Stop this session' }).click();
+  await expect(popup.getByText('Tab session active', { exact: true })).toBeVisible();
+  await popup.getByRole('button', { name: 'Stop tab session' }).click();
   await expect(popup.getByRole('switch', { name: 'Popup header preset', exact: true })).toBeChecked();
+  await expect(popup.getByText('1 persistent rules stay on after stopping', { exact: true })).toBeVisible();
   expect(await target.evaluate(async () => (await fetch('/health')).headers.get('X-Popup-Preset'))).toBe('enabled');
   await popup.evaluate(() => window.scrollTo(0, 0));
   await expect(popup.getByRole('switch', { name: 'Request delay', exact: true })).not.toBeChecked();
@@ -816,7 +845,7 @@ test('disable cache bypasses real HTTP cache for one tab and restores it on stop
     await expect(popup.getByRole('switch', { name: 'Disable cache', exact: true })).toBeChecked();
     await popup.getByRole('switch', { name: 'Disable cache', exact: true }).click();
     await expect(popup.getByRole('switch', { name: 'Disable cache', exact: true })).not.toBeChecked();
-    await expect(popup.getByText('Proxy off', { exact: true })).toBeVisible();
+    await expect(popup.getByText('Tab session stopped', { exact: true })).toBeVisible();
     // getTargets().attached also sees Playwright's own connection. Verify this extension's access.
     await expect.poll(() => control.evaluate(async (id) => {
       try {
@@ -830,7 +859,7 @@ test('disable cache bypasses real HTTP cache for one tab and restores it on stop
     expect(await read(target, '/restored')).toBe(restored);
     await popup.getByRole('switch', { name: 'Disable cache', exact: true }).click();
     await expect(popup.getByRole('switch', { name: 'Disable cache', exact: true })).toBeChecked();
-    await popup.getByRole('button', { name: 'Stop this session' }).click();
+    await popup.getByRole('button', { name: 'Stop tab session' }).click();
     await expect(popup.getByRole('switch', { name: 'Disable cache', exact: true })).not.toBeChecked();
     const stopped = await read(target, '/stopped');
     expect(await read(target, '/stopped')).toBe(stopped);
@@ -864,14 +893,14 @@ test('activity empty states replace rows cleanly after reconnecting and filterin
   const empty = activity.getByRole('status');
   await expect(empty).toContainText('No activity recorded yet.');
   expect(await empty.evaluate((element) => getComputedStyle(element).paddingLeft)).toBe('24px');
-  const toggle = panel.getByRole('switch', { name: 'Toggle advanced proxy' });
+  const toggle = panel.getByRole('button', { name: /^(Start|Stop) tab session$/ });
   for (let pass = 0; pass < 2; pass++) {
     await toggle.click();
-    await expect(toggle).toBeChecked();
+    await expect(toggle).toHaveText('Stop tab session');
     await target.evaluate(async () => { await fetch('/health'); });
     await expect(panel.getByRole('button', { name: /GET.*activity.localhost:3000\/health/ }).first()).toBeVisible();
     await toggle.click();
-    await expect(toggle).not.toBeChecked();
+    await expect(toggle).toHaveText('Start tab session');
   }
   const logs = await control.evaluate(async (id) => chrome.runtime.sendMessage({ type: 'getAdvancedProxyLog', payload: { tabId: id } }), tabId);
   expect(new Set(logs.map((entry: any) => entry.id)).size).toBe(logs.length);
@@ -895,7 +924,7 @@ test('activity empty states replace rows cleanly after reconnecting and filterin
   await panel.getByRole('button', { name: 'Clear requests' }).click();
   await expect(empty).toContainText('No activity recorded yet.');
   await expect(activity.locator('button[aria-pressed]')).toHaveCount(0);
-  await expect(activity.getByRole('button', { name: 'Start proxy session', exact: true })).toBeEnabled();
+  await expect(panel.getByRole('button', { name: 'Start tab session', exact: true })).toBeEnabled();
   await expect(panel.getByText('Check against current rules', { exact: true })).toHaveCount(0);
   await activity.screenshot({ path: '/tmp/intercept-activity-empty.png' });
   expect(await panel.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

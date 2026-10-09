@@ -26,12 +26,12 @@ function Headers({ value, onChange }: { value: ProxyHeaderMap; onChange: (value:
     onChange(Object.fromEntries(rows.map((row, i) => i === index ? [name, text] : row)));
   };
   return <FieldGroup>
-    {rows.map(([name, text], index) => <Field key={index}>
+    {rows.map(([name, text], index) => <Field key={index} className="@container">
       <FieldLabel>{t('Header {count}', { count: index + 1 })}</FieldLabel>
-      <div className="flex flex-wrap gap-2">
-        <Input className="min-w-0 flex-1" aria-label={t('Header {count} name', { count: index + 1 })} value={name} onChange={(e) => change(index, e.target.value, text)} placeholder="X-Debug" />
-        <Input className="min-w-0 flex-1" aria-label={t('Header {count} value', { count: index + 1 })} value={text} onChange={(e) => change(index, name, e.target.value)} placeholder={t("Value")} />
-        <Button variant="ghost" aria-label={t('Remove header {count}', { count: index + 1 })} onClick={() => onChange(Object.fromEntries(rows.filter((_, i) => i !== index)))}>{t("Remove")}</Button>
+      <div className="grid min-w-0 gap-2 @md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+        <Input aria-label={t('Header {count} name', { count: index + 1 })} value={name} onChange={(e) => change(index, e.target.value, text)} placeholder="X-Debug" />
+        <Input aria-label={t('Header {count} value', { count: index + 1 })} value={text} onChange={(e) => change(index, name, e.target.value)} placeholder={t("Value")} />
+        <Button className="justify-self-end" size="sm" variant="ghost" aria-label={t('Remove header {count}', { count: index + 1 })} onClick={() => onChange(Object.fromEntries(rows.filter((_, i) => i !== index)))}>{t("Remove")}</Button>
       </div>
     </Field>)}
     {error ? <p role="alert" className="text-sm text-destructive">{t(error)}</p> : null}
@@ -47,10 +47,10 @@ export function ActionFields({ action, onChange }: { action: IProxyAction; onCha
     case 'mockResponse':
       return <FieldGroup>
         <Field><FieldLabel>{t("Response body")}</FieldLabel><Textarea aria-label={t("Response body")} className="min-h-36 font-mono" value={action.body} onChange={(e) => onChange({ ...action, body: e.target.value })} /></Field>
-        <Field><FieldLabel>{t("HTTP status")}</FieldLabel><Input aria-label={t("HTTP status")} type="number" min={100} max={599} value={action.status} onChange={(e) => onChange({ ...action, status: Number(e.target.value) })} />
-          {__TARGET__ === 'firefox' ? <FieldDescription>{t("Firefox contacts the server and preserves its status; only the response body is replaced.")}</FieldDescription> : null}
-        </Field>
-        <Headers value={action.headers} onChange={(headers) => onChange({ ...action, headers })} />
+        {__TARGET__ === 'firefox'
+          ? <FieldDescription>{t('Firefox contacts the server and preserves its status; only the response body is replaced.')}</FieldDescription>
+          : <Field><FieldLabel>{t('HTTP status')}</FieldLabel><Input aria-label={t('HTTP status')} type="number" min={100} max={599} value={action.status} onChange={(e) => onChange({ ...action, status: Number(e.target.value) })} /></Field>}
+        <details><summary className="cursor-pointer text-sm font-medium">{t('Response headers')}</summary><div className="mt-3"><Headers value={action.headers} onChange={(headers) => onChange({ ...action, headers })} /></div></details>
       </FieldGroup>;
     case 'delay':
       return <Field><FieldLabel>{t("Delay in milliseconds")}</FieldLabel><Input aria-label={t("Delay in milliseconds")} type="number" min={0} max={30000} value={action.milliseconds} onChange={(e) => onChange({ ...action, milliseconds: Number(e.target.value) })} /><FieldDescription>{t("0–30,000 ms. Requires advanced proxy.")}</FieldDescription></Field>;

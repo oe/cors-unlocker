@@ -42,15 +42,18 @@ clears temporary controls without disabling saved rules. Browser-specific interc
 
 ## First request: mock an API response
 
-1. Open your application tab, then choose **Inspector** from the popup.
-2. Start the proxy session and trigger the API request in your application.
-3. Select the request in **Recent activity**, then choose **Mock** (Chrome) or **Replace body** (Firefox).
+1. Open your application tab, then choose **Inspect and modify requests** from the popup.
+2. Choose **Start tab session** and trigger the API request in your application.
+3. Select the request in the **Requests** tab, then choose **Mock** (Chrome) or **Replace body** (Firefox).
 4. Enter the response body and save. The captured page origin, URL, method, and resource type are already filled in.
    Expand **Request matching** to rename the rule or change its scope; the default URL includes query parameters.
 5. Trigger the request again. **View request** opens a new recorded match so you can inspect the applied changes.
    A recorded match alone does not prove that every action ran. Old records are not used to verify a new save.
 
-Saved site rules appear below the request details. Stopping the proxy clears temporary controls;
+Saved site rules appear in the **Rules** tab, with separate labels for persistent and session actions.
+Use **Disable this rule** after verification to restore the original behavior, unless other rules apply.
+**Reset temporary changes** clears popup controls while keeping a manually started session connected.
+**Stop tab session** clears temporary controls and pauses session actions;
 header, redirect, and block rules may continue until their saved switches are disabled.
 Firefox response replacement still contacts the server and preserves its status.
 

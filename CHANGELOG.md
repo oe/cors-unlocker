@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Separate tab session status from persistent rules, including mixed rules that keep browser actions active.
+- Organize the inspector into Requests and Rules tabs with a guided first-request workflow.
+- Simplify captured-request editing, keep Save visible in short side panels, and stack header inputs.
+- Show verification progress, unmatched requests, missing change records and warnings; offer direct rule disable and temporary reset.
+- Add manual rule starters and require explicit page/request scopes rather than defaulting to all traffic.
+- Keep the popup compact after choosing a pin and hide unsupported HTTP status editing in Firefox.
+- Translate the revised workflows into all six supported languages.
+
 - Preserve concurrent rule/settings writes with a single background mutation queue and shared quotas.
 - Reconcile tab-scoped DNR rules using full page origins; remove obsolete dynamic rules and stale CORS rules.
 - Use matching URL glob semantics across browser engines and the rule tester; validate HTTP headers and actions.
