@@ -10,9 +10,10 @@ interface CodeEditorProps {
   onValueChange: (value: string) => void;
   language?: 'json' | 'text';
   allowPlainText?: boolean;
+  focusRequest?: number;
 }
 
-export function CodeEditor({ id, label, value, onValueChange, language = 'json', allowPlainText = false }: CodeEditorProps) {
+export function CodeEditor({ id, label, value, onValueChange, language = 'json', allowPlainText = false, focusRequest = 0 }: CodeEditorProps) {
   const generatedId = useId();
   const inputId = id || generatedId;
   const textarea = useRef<HTMLTextAreaElement>(null);
@@ -27,6 +28,9 @@ export function CodeEditor({ id, label, value, onValueChange, language = 'json',
   const tokens = useMemo(() => mode === 'json' ? highlightJson(value) : null, [mode, value]);
   const problem = useMemo(() => checked && mode === 'json' && !large ? jsonProblem(value) : null, [checked, mode, large, value]);
   const highlighted = tokens !== null && !composing;
+  useLayoutEffect(() => {
+    if (focusRequest) { textarea.current?.focus(); setChecked(true); }
+  }, [focusRequest]);
   const syncScroll = () => {
     if (preview.current && textarea.current) {
       preview.current.scrollTop = textarea.current.scrollTop;
