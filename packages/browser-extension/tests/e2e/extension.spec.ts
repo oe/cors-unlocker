@@ -59,6 +59,90 @@ test.afterAll(async () => {
   rmSync(userDataDir, { recursive: true, force: true });
 });
 
+test('keeps native toolbar colors, badges and tooltips in sync with each tab', async () => {
+  const worker = await currentWorker();
+  const ids: string[] = [];
+  await worker.evaluate(() => {
+    const native = chrome.action.setIcon.bind(chrome.action);
+    (self as any).__restoreToolbarIcon = () => { chrome.action.setIcon = native; };
+    (self as any).__toolbarPixels = {};
+    chrome.action.setIcon = ((...args: any[]) => {
+      const details = args[0];
+      const bitmap = details.imageData?.[32];
+      if (bitmap && details.tabId !== undefined) {
+        const index = (16 * 32 + 3) * 4;
+        (self as any).__toolbarPixels[details.tabId] = Array.from(bitmap.data.slice(index, index + 4));
+      }
+      return (native as any)(...args);
+    }) as typeof chrome.action.setIcon;
+  });
+  const target = await context.newPage();
+  await target.goto('http://toolbar.localhost:3000/');
+  const tabId = await getTabId('http://toolbar.localhost:3000/');
+  const badge = () => control.evaluate((id) => chrome.action.getBadgeText({ tabId: id }), tabId);
+  const color = () => control.evaluate((id) => chrome.action.getBadgeBackgroundColor({ tabId: id }), tabId);
+  const title = () => control.evaluate((id) => chrome.action.getTitle({ tabId: id }), tabId);
+  const expectState = async (text: string, rgb: number[], heading: string) => {
+    await expect.poll(badge).toBe(text);
+    await expect.poll(color).toEqual([...rgb, 255]);
+    await expect.poll(title).toContain(heading);
+    await expect.poll(() => worker.evaluate((id) => (self as any).__toolbarPixels[id], tabId)).toEqual([...rgb, 255]);
+  };
+  try {
+    await expectState('', [100, 116, 139], 'Tab session stopped');
+    const saved = await control.evaluate(async () => chrome.runtime.sendMessage({ type: 'saveProxyRule', payload: { rule: {
+      name: 'Toolbar persistent header', enabled: true,
+      match: { initiatorOrigins: ['http://toolbar.localhost:3000'], urlPattern: '*' },
+      actions: [{ type: 'setRequestHeaders', headers: { 'X-Toolbar': 'yes' } }],
+    } } }));
+    ids.push(saved.rule.id);
+    await expectState('1', [37, 99, 235], '1 persistent rules enabled');
+    // Hold a real attach briefly so the connecting indicator can be observed.
+    await worker.evaluate(() => {
+      const native = chrome.debugger.attach.bind(chrome.debugger);
+      chrome.debugger.attach = (async (...args: any[]) => {
+        chrome.debugger.attach = native;
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        return (native as any)(...args);
+      }) as typeof chrome.debugger.attach;
+    });
+    const starting = control.evaluate((id) => chrome.runtime.sendMessage({ type: 'enableAdvancedProxy', payload: { tabId: id } }), tabId);
+    await expectState('…', [180, 83, 9], 'Connecting…');
+    expect((await starting).phase).toBe('connected');
+    await expectState('ON', [21, 128, 61], 'Tab session active');
+    await control.evaluate((id) => chrome.runtime.sendMessage({ type: 'disableAdvancedProxy', payload: { tabId: id } }), tabId);
+    await expectState('1', [37, 99, 235], 'Tab session stopped');
+    // A second attach fails through the native API, exercising the red error state.
+    await control.evaluate((id) => chrome.debugger.attach({ tabId: id }, '1.3'), tabId);
+    const failed = await control.evaluate((id) => chrome.runtime.sendMessage({ type: 'enableAdvancedProxy', payload: { tabId: id } }), tabId);
+    expect(failed.phase).toBe('error');
+    await expectState('!', [220, 38, 38], 'Tab session error');
+    await target.goto('http://other-toolbar.localhost:3000/');
+    await expectState('', [100, 116, 139], '0 persistent rules enabled');
+    const mock = await control.evaluate(async () => chrome.runtime.sendMessage({ type: 'saveProxyRule', payload: { rule: {
+      name: 'Toolbar parked mock', enabled: true,
+      match: { initiatorOrigins: ['http://other-toolbar.localhost:3000'], urlPattern: '*' },
+      actions: [{ type: 'mockResponse', status: 200, headers: {}, body: '{}' }],
+    } } }));
+    ids.push(mock.rule.id);
+    await expectState('', [100, 116, 139], 'Tab session stopped');
+    await target.goto('http://toolbar.localhost:3000/');
+    await expectState('1', [37, 99, 235], 'Tab session stopped');
+    await control.evaluate(() => chrome.storage.local.set({ uiLanguage: 'zh-CN' }));
+    await expect.poll(title).toContain('本页调试已停止');
+    await expect.poll(title).toContain('1 条持久规则已启用');
+    for (const id of ids) await control.evaluate((id) => chrome.runtime.sendMessage({ type: 'deleteProxyRule', payload: { id } }), id);
+    ids.length = 0;
+    await expect.poll(badge).toBe('');
+  } finally {
+    await worker.evaluate(() => (self as any).__restoreToolbarIcon());
+    await control.evaluate((id) => chrome.runtime.sendMessage({ type: 'disableAdvancedProxy', payload: { tabId: id } }), tabId);
+    for (const id of ids) await control.evaluate((id) => chrome.runtime.sendMessage({ type: 'deleteProxyRule', payload: { id } }), id);
+    await control.evaluate(() => chrome.storage.local.set({ uiLanguage: 'en' }));
+    await target.close();
+  }
+});
+
 test('localizes all surfaces and preserves drafts and settings across language changes', async () => {
   const testInfo = test.info();
   await control.evaluate(() => chrome.storage.local.set({ uiLanguage: 'en' }));

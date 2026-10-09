@@ -1,5 +1,8 @@
 // English source keys are the fallback. Technical values and user content are never translated.
+import { toolbarMessages } from "./toolbar-messages";
+
 export const messages: Record<string, Record<string, string>> = {
+  ...toolbarMessages,
   "Plain text": {
     "en": "Plain text",
     "zh-CN": "纯文本",
@@ -104,22 +107,6 @@ export const messages: Record<string, Record<string, string>> = {
     "fr": "Des requêtes ont été enregistrées, mais aucune ne correspond à cette règle. Répétez la requête ciblée ou modifiez les conditions.",
     "es": "Se registraron solicitudes, pero ninguna coincide con esta regla. Repite la solicitud objetivo o edita sus condiciones."
   },
-  "Tab session active": {
-    "en": "Tab session active",
-    "zh-CN": "本页调试已启动",
-    "ko": "탭 세션 활성",
-    "ja": "タブセッション実行中",
-    "fr": "Session de cet onglet active",
-    "es": "Sesión de esta pestaña activa"
-  },
-  "Tab session stopped": {
-    "en": "Tab session stopped",
-    "zh-CN": "本页调试已停止",
-    "ko": "탭 세션 중지됨",
-    "ja": "タブセッション停止中",
-    "fr": "Session de cet onglet arrêtée",
-    "es": "Sesión de esta pestaña detenida"
-  },
   "Stop tab session": {
     "en": "Stop tab session",
     "zh-CN": "停止本页调试",
@@ -135,14 +122,6 @@ export const messages: Record<string, Record<string, string>> = {
     "ja": "タブセッションを開始",
     "fr": "Démarrer la session",
     "es": "Iniciar sesión"
-  },
-  "Connecting…": {
-    "en": "Connecting…",
-    "zh-CN": "正在连接…",
-    "ko": "연결 중…",
-    "ja": "接続中…",
-    "fr": "Connexion…",
-    "es": "Conectando…"
   },
   "Active in this session": {
     "en": "Active in this session",
@@ -183,14 +162,6 @@ export const messages: Record<string, Record<string, string>> = {
     "ja": "一時的な変更をリセット",
     "fr": "Réinitialiser",
     "es": "Restablecer cambios"
-  },
-  "{count} persistent rules enabled": {
-    "en": "{count} persistent rules enabled",
-    "zh-CN": "{count} 条持久规则已启用",
-    "ko": "영구 규칙 {count}개 활성화됨",
-    "ja": "永続ルール {count} 件が有効",
-    "fr": "{count} règles persistantes activées",
-    "es": "{count} reglas persistentes activadas"
   },
   "Recording requests": {
     "en": "Recording requests",
@@ -2455,14 +2426,6 @@ export const messages: Record<string, Record<string, string>> = {
     "ja": "プロキシ未接続",
     "fr": "Proxy déconnecté",
     "es": "Proxy desconectado"
-  },
-  "Select an HTTP or HTTPS tab.": {
-    "en": "Select an HTTP or HTTPS tab.",
-    "zh-CN": "请选择 HTTP 或 HTTPS 标签页。",
-    "ko": "HTTP 또는 HTTPS 탭을 선택하세요.",
-    "ja": "HTTP または HTTPS のタブを選択してください。",
-    "fr": "Sélectionnez un onglet HTTP ou HTTPS.",
-    "es": "Selecciona una pestaña HTTP o HTTPS."
   },
   "Loading…": {
     "en": "Loading…",

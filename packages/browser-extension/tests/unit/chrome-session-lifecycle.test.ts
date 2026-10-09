@@ -8,6 +8,7 @@ vi.mock('../../src/common/proxy-state', async (importOriginal) => ({
   ensureProxyAppState: vi.fn(async () => ({ rules: [], settings: { requestLogLimit: 500 } })),
 }));
 let storageChanged: (changes: any, area: string) => void;
+let tabUpdated: (tabId: number, changes: browser.Tabs.OnUpdatedChangeInfoType) => void;
 let event: (source: any, method: string, params: any) => Promise<void>;
 let engine: typeof import('../../src/background/advanced-proxy');
 const debuggerApi = { attach: vi.fn(), detach: vi.fn(), sendCommand: vi.fn(), onEvent: { addListener: vi.fn() }, onDetach: { addListener: vi.fn() } };
@@ -19,6 +20,7 @@ beforeAll(async () => {
   engine = await import('../../src/background/advanced-proxy');
   event = debuggerApi.onEvent.addListener.mock.calls[0][0];
   storageChanged = vi.mocked(browser.storage.onChanged.addListener).mock.calls[0][0];
+  tabUpdated = vi.mocked(browser.tabs.onUpdated.addListener).mock.calls[0][0];
 });
 beforeEach(() => {
   vi.clearAllMocks();
@@ -28,6 +30,15 @@ beforeEach(() => {
   vi.mocked(browser.tabs.get).mockResolvedValue({ id: 9, url: 'https://example.com/' } as browser.Tabs.Tab);
 });
 afterEach(async () => { await engine.disableAdvancedProxy(9); });
+
+it('clears a failed connection on cross-origin navigation instead of reviving a stale red icon', async () => {
+  debuggerApi.attach.mockRejectedValueOnce(new Error('Debugger unavailable'));
+  expect((await engine.enableAdvancedProxy(9)).phase).toBe('error');
+  tabUpdated(9, { url: 'https://other.example.test/' });
+  expect(engine.getAdvancedProxyStatus(9).phase).toBe('disabled');
+  tabUpdated(9, { url: 'https://example.com/' });
+  expect(engine.getAdvancedProxyStatus(9).phase).toBe('disabled');
+});
 
 describe('Chrome automatic debugger session lifetime', () => {
   it('restores caching and detaches after the final quick control is disabled', async () => {

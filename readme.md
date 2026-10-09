@@ -40,6 +40,19 @@ rule changes its saved enabled state. Header/redirect/block rules can continue a
 DNR. Mocks, delays, failures, and advanced CORS need an active proxy session. Stopping a session
 clears temporary controls without disabling saved rules. Browser-specific interception limits still apply.
 
+## Toolbar status
+
+The browser toolbar follows the selected tab. Gray means no active tab session or browser
+rule; blue shows the number of installed persistent browser rules; green with **ON** means
+a tab session is connected. Amber **…** means connecting, and red **!** means a session
+error. Hover for the localized session state and persistent rule count. A connected session
+does not by itself prove that a request was modified.
+
+Stopping a session returns the icon to blue if browser rules remain, or gray otherwise.
+Enabled mocks and delays waiting for a connection do not turn it blue. Switching tabs,
+navigation, rule changes, language changes and background initialization refresh the status
+without polling. Cross-origin navigation also clears an old connection error.
+
 ## First request: mock an API response
 
 1. Open your application tab, then choose **Inspect and modify requests** from the popup.
