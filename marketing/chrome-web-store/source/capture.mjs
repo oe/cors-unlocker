@@ -4,7 +4,7 @@ import { existsSync, readFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 const source = path.dirname(fileURLToPath(import.meta.url));
-const repo = process.env.FORTH_REPO || path.resolve(source, "../../..");
+const repo = process.env.WIREFLIP_REPO || path.resolve(source, "../../..");
 const require = createRequire(
   path.join(repo, "packages/browser-extension/package.json"),
 );
@@ -93,7 +93,7 @@ try {
     };
     const zh = window.__locale === "zh-CN";
     const mockBody =
-      '{\n  "project": "Forth",\n  "status": "ready",\n  "items": [1, 2, 3]\n}';
+      '{\n  "project": "Wireflip",\n  "status": "ready",\n  "items": [1, 2, 3]\n}';
     const sampleRule = (id, name, actions, enabled = true) => ({
       id,
       name,
@@ -387,7 +387,7 @@ try {
       exact: true,
     });
     await body.fill(
-      '{\n  "project": "Forth",\n  "status": "ready",\n  "items": [1, 2, 3]\n}',
+      '{\n  "project": "Wireflip",\n  "status": "ready",\n  "items": [1, 2, 3]\n}',
     );
     await body.blur();
     const editor = body.locator("..").locator("..");

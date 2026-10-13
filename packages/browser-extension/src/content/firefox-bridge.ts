@@ -12,7 +12,7 @@ const DEBUG = import.meta.env.MODE === 'development';
 
 const script = document.createElement('script');
 script.textContent = `
-  window.__cors_unlocker_ready__ = true;
+  window.__wireflip_ready__ = true;
 `;
 document.documentElement.appendChild(script);
 script.remove(); // 注入后可以删除标签

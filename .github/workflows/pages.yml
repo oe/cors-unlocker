@@ -28,15 +28,15 @@ jobs:
       - name: Validate rules and SDKs
         run: |
           pnpm test:run
-          pnpm --filter browser-cors-unlocker exec tsc -p tsconfig.json --noEmit
-          pnpm --filter browser-cors-unlocker exec eslint src tests
+          pnpm --filter browser-wireflip exec tsc -p tsconfig.json --noEmit
+          pnpm --filter browser-wireflip exec eslint src tests
       - name: Build website and extension archives
         run: pnpm build
       - name: Upload release archives
         uses: actions/upload-artifact@v4
         with:
           name: extension-release-archives
-          path: packages/browser-extension/dist/forth-intercept-*.zip
+          path: packages/browser-extension/dist/wireflip-*.zip
           if-no-files-found: error
           retention-days: 14
       - name: Deploy website

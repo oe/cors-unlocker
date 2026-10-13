@@ -53,7 +53,7 @@ export function DataManagement() {
       const url = URL.createObjectURL(blob);
       
       const timestamp = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
-      const filename = `cors-unlocker-rules-${timestamp}.json`;
+      const filename = `wireflip-rules-${timestamp}.json`;
       
       const a = document.createElement('a');
       a.href = url;

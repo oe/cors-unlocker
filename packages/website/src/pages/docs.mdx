@@ -1,16 +1,16 @@
 ---
 layout: ../components/doc-layout.astro
 title: Documentation
-description: Install Forth Intercept, choose the right interception mode, and connect a web app through the origin-scoped SDK.
+description: Install Wireflip, choose the right interception mode, and connect a web app through the origin-scoped SDK.
 ---
 
-# Forth Intercept documentation
+# Wireflip documentation
 
-Forth Intercept is an in-browser proxy for developers. It changes requests inside Chrome or Firefox; it is not an IP proxy, VPN, or system-wide traffic capture tool.
+Wireflip is an in-browser proxy for developers. It changes requests inside Chrome or Firefox; it is not an IP proxy, VPN, or system-wide traffic capture tool.
 
 ## Install
 
-[Add Forth Intercept to Chrome](https://chromewebstore.google.com/detail/knhlkjdfmgkmelcjfnbbhpphkmjjacng), then pin it to the toolbar. Version 2 keeps the existing Chrome and Firefox extension IDs and automatically migrates existing settings.
+[Add Wireflip to Chrome](https://chromewebstore.google.com/detail/knhlkjdfmgkmelcjfnbbhpphkmjjacng), then pin it to the toolbar. Version 2 keeps the existing Chrome and Firefox extension IDs and automatically migrates existing settings.
 
 Firefox support is currently distributed as a beta build artifact from CI. Load the unpacked `dist/firefox` directory temporarily during development; an AMO-signed public build will follow separately.
 
@@ -82,14 +82,14 @@ Basic browser rules can act before activity capture, so this is not a complete n
 
 ## SDK
 
-`forth-intercept` is the canonical SDK package. Existing installations can continue using `cors-unlocker@0.2`, which is a thin compatibility package that re-exports the same API.
+`wireflip` is the SDK package for Chrome and Firefox. Install and import it directly:
 
 ```bash
-pnpm add forth-intercept
+pnpm add wireflip
 ```
 
 ```ts
-import { intercept } from 'forth-intercept';
+import { intercept } from 'wireflip';
 
 const session = await intercept.connect();
 console.log(session.origin, session.capabilities);
@@ -139,7 +139,7 @@ The legacy `isExtInstalled`, `isEnabled`, `enable`, `disable`, `openExtOptions`,
 
 ## Upgrade and data
 
-On first v2 startup, Forth Intercept reads `allowedOrigins` and `extConfig`, writes a `legacyBackupV1` recovery snapshot, validates the new `proxyAppState`, and then uses only the v2 state. Old keys are not used as live configuration or dual-written.
+On first v2 startup, Wireflip reads `allowedOrigins` and `extConfig`, writes a `legacyBackupV1` recovery snapshot, validates the new `proxyAppState`, and then uses only the v2 state. Old keys are not used as live configuration or dual-written.
 
 The workspace imports old v1 rule exports and complete v2 exports. New exports use the v2 format.
 
@@ -150,4 +150,4 @@ The workspace imports old v1 rule exports and complete v2 exports. New exports u
 - Firefox response-body mocks preserve the server's original HTTP status and require an actual response.
 - Firefox applies CORS headers through DNR. Failed preflights still require server support; credentialed requests with custom headers must include those headers in the CORS rule's allow list.
 - Changes affect matching Chrome or Firefox traffic, not other applications.
-- Forth Intercept does not change your public IP address or decrypt traffic outside the browser.
+- Wireflip does not change your public IP address or decrypt traffic outside the browser.

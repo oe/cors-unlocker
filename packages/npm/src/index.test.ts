@@ -4,12 +4,12 @@ import { intercept } from './index';
 
 function mockBridge(handler: (request: any) => { data?: unknown; error?: unknown }) {
   return vi.spyOn(window, 'postMessage').mockImplementation((message: any) => {
-    if (message?.type !== 'forth-intercept:sdk-request') return;
+    if (message?.type !== 'wireflip:sdk-request') return;
     const result = handler(message);
     queueMicrotask(() => window.dispatchEvent(new MessageEvent('message', {
       source: window,
       data: {
-        type: 'forth-intercept:sdk-response',
+        type: 'wireflip:sdk-response',
         clientId: message.clientId,
         id: message.id,
         ...result,
@@ -20,14 +20,14 @@ function mockBridge(handler: (request: any) => { data?: unknown; error?: unknown
 
 afterEach(() => vi.restoreAllMocks());
 
-describe('Forth Intercept SDK', () => {
+describe('Wireflip SDK', () => {
   it('connects and exposes the origin-scoped v2 capabilities', async () => {
     mockBridge(() => ({
       data: {
         origin: 'https://app.example.com',
         capabilities: {
           protocolVersion: 2,
-          product: 'Forth Intercept',
+          product: 'Wireflip',
           browser: 'chrome',
           cors: true,
           draftRules: true,
@@ -57,7 +57,7 @@ describe('Forth Intercept SDK', () => {
         origin: 'https://app.example.com',
         capabilities: {
           protocolVersion: 2,
-          product: 'Forth Intercept',
+          product: 'Wireflip',
           browser: 'chrome',
           cors: true,
           draftRules: true,

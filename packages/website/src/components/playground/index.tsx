@@ -19,7 +19,7 @@ import {
   type DraftAction,
   type InterceptSession,
   type InterceptStatus,
-} from 'forth-intercept';
+} from 'wireflip';
 
 type ScenarioId = 'cors' | 'requestHeaders' | 'responseHeaders' | 'mock' | 'redirect' | 'block' | 'delay' | 'failure';
 
@@ -56,7 +56,7 @@ const SCENARIOS: Scenario[] = [
     icon: ArrowRightLeft,
     urlPattern: 'https://httpbin.org/*',
     testUrl: 'https://httpbin.org/anything',
-    actions: [{ type: 'setRequestHeaders', headers: { 'X-Forth-Debug': 'playground' } }],
+    actions: [{ type: 'setRequestHeaders', headers: { 'X-Wireflip-Debug': 'playground' } }],
   },
   {
     id: 'responseHeaders',
@@ -65,7 +65,7 @@ const SCENARIOS: Scenario[] = [
     icon: Braces,
     urlPattern: 'https://httpbin.org/*',
     testUrl: 'https://httpbin.org/anything',
-    actions: [{ type: 'setResponseHeaders', headers: { 'X-Forth-Intercepted': 'true' } }],
+    actions: [{ type: 'setResponseHeaders', headers: { 'X-Wireflip-Intercepted': 'true' } }],
   },
   {
     id: 'mock',
@@ -78,7 +78,7 @@ const SCENARIOS: Scenario[] = [
       type: 'mockResponse',
       status: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: '{\n  "source": "Forth Intercept",\n  "mocked": true\n}',
+      body: '{\n  "source": "Wireflip",\n  "mocked": true\n}',
     }],
   },
   {
@@ -163,7 +163,7 @@ export default function Playground() {
     } catch (error) {
       setSession(null);
       setStatus(null);
-      setMessage(error instanceof Error ? error.message : 'Forth Intercept is unavailable.');
+      setMessage(error instanceof Error ? error.message : 'Wireflip is unavailable.');
     } finally {
       setPending(null);
     }

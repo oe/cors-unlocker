@@ -9,7 +9,7 @@ describe('toolbar state semantics', () => {
   it('shows idle for stopped tabs and blue for actual persistent browser rules', () => {
     expect(toolbarPresentation(url, { tabId: 1, phase: 'disabled' }, 0, 'en')).toMatchObject({ state: 'idle', badge: '' });
     expect(toolbarPresentation(url, { tabId: 1, phase: 'disabled' }, 2, 'en')).toEqual({
-      state: 'rules', badge: '2', title: 'Forth Intercept\nTab session stopped\n2 persistent rules enabled',
+      state: 'rules', badge: '2', title: 'Wireflip\nTab session stopped\n2 persistent rules enabled',
     });
     expect(toolbarPresentation(url, { tabId: 1, phase: 'disabled' }, 120, 'en').badge).toBe('99+');
   });
@@ -17,30 +17,30 @@ describe('toolbar state semantics', () => {
     ['connected', 'ON', 'Tab session active'], ['connecting', '…', 'Connecting…'], ['error', '!', 'Tab session error'],
   ] as const)('shows %s without hiding independently active rules', (phase, badge, heading) => {
     const result = toolbarPresentation(url, { tabId: 1, phase, origin: new URL(url).origin }, 1, 'en');
-    expect(result).toEqual({ state: phase, badge, title: `Forth Intercept\n${heading}\n1 persistent rules enabled` });
+    expect(result).toEqual({ state: phase, badge, title: `Wireflip\n${heading}\n1 persistent rules enabled` });
   });
   it('ignores a previous origin status and keeps unsupported tabs inactive', () => {
     const previous = { tabId: 1, phase: 'connected' as const, origin: 'https://other.example.test' };
     expect(toolbarPresentation(url, previous, 1, 'en').state).toBe('rules');
     for (const unsupported of [undefined, 'chrome://extensions', 'about:blank', 'file:///tmp/test.html']) {
-      expect(toolbarPresentation(unsupported, previous, 1, 'en')).toEqual({ state: 'idle', badge: '', title: 'Forth Intercept\nSelect an HTTP or HTTPS tab.' });
+      expect(toolbarPresentation(unsupported, previous, 1, 'en')).toEqual({ state: 'idle', badge: '', title: 'Wireflip\nSelect an HTTP or HTTPS tab.' });
     }
   });
   it('localizes both the session and persistent rule count', () => {
-    expect(toolbarPresentation(url, { tabId: 1, phase: 'connected' }, 1, 'zh-CN').title).toBe('Forth Intercept\n本页调试已启动\n1 条持久规则已启用');
+    expect(toolbarPresentation(url, { tabId: 1, phase: 'connected' }, 1, 'zh-CN').title).toBe('Wireflip\n本页调试已启动\n1 条持久规则已启用');
   });
   it('explains a cache-only session without claiming to record requests', () => {
     const result = toolbarPresentation(url, {
       tabId: 1, phase: 'connected', captureEnabled: false,
       quickControls: { ...EMPTY_QUICK_CONTROLS, disableCache: true },
     }, 0, 'zh-CN');
-    expect(result).toEqual({ state: 'connected', badge: 'ON', title: 'Forth Intercept\n本页调试已启动\n未开启请求记录\n当前页 · 临时\n• 禁用缓存\n0 条持久规则已启用' });
+    expect(result).toEqual({ state: 'connected', badge: 'ON', title: 'Wireflip\n本页调试已启动\n未开启请求记录\n当前页 · 临时\n• 禁用缓存\n0 条持久规则已启用' });
   });
   it('lists combined controls and capture independently of persistent rules', () => {
     expect(toolbarPresentation(url, {
       tabId: 1, phase: 'connected', captureEnabled: true,
       quickControls: { cors: true, credentials: true, disableCache: true, delayMs: 1000, failure: true },
-    }, 2, 'en').title).toBe('Forth Intercept\nTab session active\nRecording requests\nThis tab · temporary\n• CORS repair · Allow credentials\n• Disable cache\n• Request delay: 1 s\n• Simulate failure\n2 persistent rules enabled');
+    }, 2, 'en').title).toBe('Wireflip\nTab session active\nRecording requests\nThis tab · temporary\n• CORS repair · Allow credentials\n• Disable cache\n• Request delay: 1 s\n• Simulate failure\n2 persistent rules enabled');
   });
   it.each([[500, '500 ms'], [1000, '1 s'], [3000, '3 s']])('shows the applied delay of %s ms', (delayMs, duration) => {
     expect(toolbarPresentation(url, { tabId: 1, phase: 'connected', quickControls: { ...EMPTY_QUICK_CONTROLS, delayMs } }, 0, 'en').title)
@@ -59,7 +59,7 @@ describe('toolbar state semantics', () => {
       expect(title).not.toContain('Recording requests');
     }
     expect(toolbarPresentation(url, { ...status, phase: 'connected', origin: 'https://other.example.test' }, 1, 'en').title)
-      .toBe('Forth Intercept\nTab session stopped\n1 persistent rules enabled');
+      .toBe('Wireflip\nTab session stopped\n1 persistent rules enabled');
   });
   it('counts installed tab-scoped and wildcard browser rules, with exclusions', () => {
     const rules = [{ condition: { tabIds: [1] } }, { condition: { tabIds: [2] } }, { condition: {} }, { condition: { excludedTabIds: [1] } }] as browser.DeclarativeNetRequest.Rule[];

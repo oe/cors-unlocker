@@ -1,18 +1,18 @@
 ---
 layout: ../components/doc-layout.astro
 title: Privacy
-description: How Forth Intercept handles browser traffic, rules, logs, permissions, and SDK requests.
+description: How Wireflip handles browser traffic, rules, logs, permissions, and SDK requests.
 ---
 
 # Privacy and security
 
-Forth Intercept is designed to keep request-debugging data on your device.
+Wireflip is designed to keep request-debugging data on your device.
 
 ## Data handling
 
 - Rules and settings are stored in local browser extension storage.
 - Traffic inspector logs are held in memory and disappear when the service worker stops.
-- Request URLs, headers, bodies, rules, and logs are not uploaded to Forth Intercept servers.
+- Request URLs, headers, bodies, rules, and logs are not uploaded to Wireflip servers.
 - Sensitive header values—including Authorization, Cookie, Proxy-Authorization, and Set-Cookie—are redacted in the inspector by default.
 - The website does not need an account to use the extension or SDK.
 
@@ -20,11 +20,11 @@ Forth Intercept is designed to keep request-debugging data on your device.
 
 `<all_urls>` allows rules to target developer-selected endpoints and lets the local SDK bridge identify the real calling page. `declarativeNetRequest` applies fast rules. `debugger` enables opt-in Advanced mode. `tabs`, `storage`, and `sidePanel` provide tab scope, persistence, and the inspector.
 
-These permissions are powerful. Install Forth Intercept only from a source you trust, keep rules narrowly scoped, and disable Advanced mode when the debugging session is finished.
+These permissions are powerful. Install Wireflip only from a source you trust, keep rules narrowly scoped, and disable Advanced mode when the debugging session is finished.
 
 ## Advanced mode
 
-Advanced mode attaches only after an explicit action for an HTTP or HTTPS tab. Chrome shows its standard debugging disclosure while attached. Forth Intercept detaches on disable, tab close, debugger takeover, or cross-origin top-level navigation.
+Advanced mode attaches only after an explicit action for an HTTP or HTTPS tab. Chrome shows its standard debugging disclosure while attached. Wireflip detaches on disable, tab close, debugger takeover, or cross-origin top-level navigation.
 
 ## SDK boundary
 

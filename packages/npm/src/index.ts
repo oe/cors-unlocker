@@ -1,6 +1,6 @@
 const EXTENSION_ID = 'knhlkjdfmgkmelcjfnbbhpphkmjjacng';
-const REQUEST_TYPE = 'forth-intercept:sdk-request';
-const RESPONSE_TYPE = 'forth-intercept:sdk-response';
+const REQUEST_TYPE = 'wireflip:sdk-request';
+const RESPONSE_TYPE = 'wireflip:sdk-response';
 const DEFAULT_TIMEOUT = 5_000;
 
 export type InterceptErrorType =
@@ -27,7 +27,7 @@ export class AppCorsError extends InterceptError {}
 
 export interface InterceptCapabilities {
   protocolVersion: 2;
-  product: 'Forth Intercept';
+  product: 'Wireflip';
   browser: 'chrome' | 'firefox';
   cors: true;
   draftRules: true;
@@ -99,13 +99,13 @@ function assertBrowserContext(): void {
   if (typeof window === 'undefined' || typeof location === 'undefined') {
     throw new InterceptError({
       type: 'unsupported-origin',
-      message: 'Forth Intercept SDK must run in a browser page.',
+      message: 'Wireflip SDK must run in a browser page.',
     });
   }
   if (location.protocol !== 'http:' && location.protocol !== 'https:') {
     throw new InterceptError({
       type: 'unsupported-origin',
-      message: 'Only HTTP and HTTPS pages can connect to Forth Intercept.',
+      message: 'Only HTTP and HTTPS pages can connect to Wireflip.',
     });
   }
 }
@@ -131,7 +131,7 @@ class LocalBridge {
         if (response.error) {
           reject(new InterceptError({
             type: (response.error.type || 'unknown-error') as InterceptErrorType,
-            message: response.error.message || 'Forth Intercept request failed.',
+            message: response.error.message || 'Wireflip request failed.',
           }));
           return;
         }
@@ -142,8 +142,8 @@ class LocalBridge {
         reject(new InterceptError({
           type: method === 'connect' ? 'not-installed' : 'timeout',
           message: method === 'connect'
-            ? 'Forth Intercept is not installed or is not available on this page.'
-            : `Forth Intercept did not respond to ${method}.`,
+            ? 'Wireflip is not installed or is not available on this page.'
+            : `Wireflip did not respond to ${method}.`,
         }));
       }, timeout);
       window.addEventListener('message', onMessage);

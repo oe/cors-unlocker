@@ -135,7 +135,7 @@ class FirefoxTests(unittest.TestCase):
         ARTIFACTS.mkdir(parents=True, exist_ok=True)
         firefox = os.environ.get('FIREFOX_BINARY', 'firefox')
         gecko = os.environ.get('GECKODRIVER', 'geckodriver')
-        cls.temp = tempfile.TemporaryDirectory(prefix='forth-firefox-')
+        cls.temp = tempfile.TemporaryDirectory(prefix='wireflip-firefox-')
         cls.addClassCleanup(cls.cleanup)
         with socket.socket() as sock:
             sock.bind(('127.0.0.1', 0))
@@ -236,19 +236,19 @@ class FirefoxTests(unittest.TestCase):
         return self.extension_js('return {title:await browser.action.getTitle({tabId:arguments[0]}),badge:await browser.action.getBadgeText({tabId:arguments[0]}),color:await browser.action.getBadgeBackgroundColor({tabId:arguments[0]})};', self.tab_id)
 
     def test_persistent_headers_redirect_block_and_origin_scope(self):
-        self.save([{'type': 'setRequestHeaders', 'headers': {'X-Forth-Test': 'native-firefox'}}, {'type': 'setResponseHeaders', 'headers': {'X-Forth-Response': 'patched'}}], '/echo')
+        self.save([{'type': 'setRequestHeaders', 'headers': {'X-Wireflip-Test': 'native-firefox'}}, {'type': 'setResponseHeaders', 'headers': {'X-Wireflip-Response': 'patched'}}], '/echo')
         self.save([{'type': 'redirect', 'url': self.origin + '/destination'}], '/redirect')
         self.save([{'type': 'block'}], '/blocked')
         self.wait(self.toolbar, lambda t: t['badge'] == '3')
         result = self.fetch('/echo')
-        self.assertEqual(json.loads(result['body'])['headers'].get('X-Forth-Test'), 'native-firefox', result)
-        self.assertEqual(result['headers'].get('x-forth-response'), 'patched')
+        self.assertEqual(json.loads(result['body'])['headers'].get('X-Wireflip-Test'), 'native-firefox', result)
+        self.assertEqual(result['headers'].get('x-wireflip-response'), 'patched')
         self.assertEqual(json.loads(self.fetch('/redirect')['body'])['path'], '/destination')
         before = Fixture.hits.get('/blocked', 0)
         self.assertTrue(self.fetch('/blocked').get('failed'))
         self.assertEqual(Fixture.hits.get('/blocked', 0), before)
         other = self.fetch('/echo', handle=self.other)
-        self.assertNotIn('X-Forth-Test', json.loads(other['body'])['headers'])
+        self.assertNotIn('X-Wireflip-Test', json.loads(other['body'])['headers'])
 
     def test_body_mock_contacts_server_preserves_status_and_stops(self):
         body = '{"source":"本地 Firefox mock"}'
@@ -284,7 +284,7 @@ class FirefoxTests(unittest.TestCase):
         result = self.fetch('/delay')
         self.assertGreaterEqual(result['duration'], 450, result)
         self.assertLess(result['duration'], 5000)
-        self.assertNotIn('X-Forth-Test', json.loads(self.fetch('/delay', handle=self.other)['body'])['headers'])
+        self.assertNotIn('X-Wireflip-Test', json.loads(self.fetch('/delay', handle=self.other)['body'])['headers'])
         self.update(failure=True)
         self.wait(self.toolbar, lambda t: 'Simulate failure' in t['title'] and 'Request delay' not in t['title'])
         before = Fixture.hits.get('/failure', 0)
@@ -356,7 +356,7 @@ class FirefoxTests(unittest.TestCase):
     def test_sdk_connect_and_disabled_origin_scoped_draft(self):
         self.switch(self.target)
         def sdk(method, payload=None):
-            return self.async_js('''return new Promise((resolve,reject)=>{const id=crypto.randomUUID();const clientId="firefox-native-test";const timer=setTimeout(()=>{window.removeEventListener("message",receive);reject(Error("SDK timeout"));},5000);function receive(event){if(event.source===window && event.data?.type==="forth-intercept:sdk-response" && event.data.id===id){clearTimeout(timer);window.removeEventListener("message",receive);resolve(event.data);}}window.addEventListener("message",receive);window.postMessage({type:"forth-intercept:sdk-request",clientId,id,method:arguments[0],payload:arguments[1]},location.origin);});''', method, payload)
+            return self.async_js('''return new Promise((resolve,reject)=>{const id=crypto.randomUUID();const clientId="firefox-native-test";const timer=setTimeout(()=>{window.removeEventListener("message",receive);reject(Error("SDK timeout"));},5000);function receive(event){if(event.source===window && event.data?.type==="wireflip:sdk-response" && event.data.id===id){clearTimeout(timer);window.removeEventListener("message",receive);resolve(event.data);}}window.addEventListener("message",receive);window.postMessage({type:"wireflip:sdk-request",clientId,id,method:arguments[0],payload:arguments[1]},location.origin);});''', method, payload)
         connected = sdk('connect')
         self.assertIn('data', connected, connected)
         self.assertIn('capabilities', connected['data'])

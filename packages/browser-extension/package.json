@@ -1,8 +1,8 @@
 {
-  "name": "browser-cors-unlocker",
+  "name": "browser-wireflip",
   "private": true,
   "version": "2.0.0",
-  "description": "Forth Intercept: a local, tab-scoped request lab for Chrome and Firefox.",
+  "description": "Wireflip: a local, tab-scoped request lab for Chrome and Firefox.",
   "type": "module",
   "scripts": {
     "dev": "TARGET=chrome vite build --watch --mode development",
