@@ -1,0 +1,68 @@
+{
+  "brand": "Wireflip",
+  "colors": [
+    "#6b80cc",
+    "#435d91"
+  ],
+  "geometry": "packages/browser-extension/src/common/brand-geometry.ts",
+  "approvedConcept": "marketing/brand/source/approved-concept.png",
+  "cutout": "marketing/brand/source/mark-cutout.png",
+  "outputs": [
+    {
+      "file": "marketing/brand/wireflip-mark.svg"
+    },
+    {
+      "file": "packages/website/public/brand-mark.svg"
+    },
+    {
+      "file": "packages/website/public/og-v2.svg"
+    },
+    {
+      "file": "marketing/brand/icons/16.png",
+      "size": 16
+    },
+    {
+      "file": "packages/browser-extension/public/icon/16.png",
+      "size": 16
+    },
+    {
+      "file": "marketing/brand/icons/32.png",
+      "size": 32
+    },
+    {
+      "file": "packages/browser-extension/public/icon/32.png",
+      "size": 32
+    },
+    {
+      "file": "marketing/brand/icons/48.png",
+      "size": 48
+    },
+    {
+      "file": "packages/browser-extension/public/icon/48.png",
+      "size": 48
+    },
+    {
+      "file": "marketing/brand/icons/128.png",
+      "size": 128
+    },
+    {
+      "file": "packages/browser-extension/public/icon/128.png",
+      "size": 128
+    },
+    {
+      "file": "marketing/brand/icons/256.png",
+      "size": 256
+    },
+    {
+      "file": "marketing/brand/icons/512.png",
+      "size": 512
+    },
+    {
+      "file": "packages/website/public/brand-mark.png",
+      "size": 512
+    },
+    {
+      "file": "packages/website/public/og-v2.png"
+    }
+  ]
+}

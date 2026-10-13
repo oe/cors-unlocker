@@ -31,7 +31,8 @@ periods in either language. Each screenshot presents one benefit and one complet
 upright product window. The gallery includes Popup twice in distinct states:
 CORS repair + HTTP cache bypass, then a one-second Fetch / XHR delay.
 
-Keep the existing extension icon; these images are store marketing assets.
+Use the approved [Wireflip mark](../brand/README.md) in the actual extension UI.
+Keep it at its normal UI size; these images are store marketing assets.
 
 Chrome's [image requirements](https://developer.chrome.com/docs/webstore/images/)
 and [listing guide](https://developer.chrome.com/docs/webstore/cws-dashboard-listing)
