@@ -266,6 +266,7 @@ class FirefoxTests(unittest.TestCase):
 
     def test_cors_header_repair_credentials_and_preflight_limit(self):
         self.assertTrue(self.fetch(self.other_origin + '/cors').get('failed'))
+
         self.start(cors=True)
         result = self.fetch(self.other_origin + '/cors')
         self.assertEqual(result.get('status'), 200, {'fetch': result, 'logs': self.message('getAdvancedProxyLog', tabId=self.tab_id), 'console': self.browser_errors()})
@@ -276,6 +277,25 @@ class FirefoxTests(unittest.TestCase):
         self.assertTrue(self.fetch(self.other_origin + '/cors', headers={'X-Needs-Preflight': 'yes'}).get('failed'))
         self.message('disableAdvancedProxy', tabId=self.tab_id)
         self.assertTrue(self.fetch(self.other_origin + '/cors').get('failed'))
+
+    def test_redirect_and_headers_execute_together_only_in_the_connected_session(self):
+        self.save([
+            {'type': 'redirect', 'url': self.origin + '/combo-target'},
+            {'type': 'setRequestHeaders', 'headers': {'X-Wireflip-Combo': 'staging'}},
+            {'type': 'setResponseHeaders', 'headers': {'X-Wireflip-Result': 'patched'}},
+        ], '/combo-source')
+        self.assertEqual(json.loads(self.fetch('/combo-source')['body'])['path'], '/combo-source')
+        self.start()
+        result = self.fetch('/combo-source')
+        body = json.loads(result['body'])
+        self.assertEqual(body['path'], '/combo-target')
+        self.assertEqual({k.lower(): v for k, v in body['headers'].items()}.get('x-wireflip-combo'), 'staging')
+        self.assertEqual(result['headers'].get('x-wireflip-result'), 'patched')
+        direct = self.fetch('/combo-target')
+        self.assertNotIn('x-wireflip-combo', {k.lower(): v for k, v in json.loads(direct['body'])['headers'].items()})
+        self.assertNotIn('x-wireflip-result', direct['headers'])
+        self.message('disableAdvancedProxy', tabId=self.tab_id)
+        self.assertEqual(json.loads(self.fetch('/combo-source')['body'])['path'], '/combo-source')
 
     def test_delay_failure_tooltip_and_recovery(self):
         self.start(delayMs=500)

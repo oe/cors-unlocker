@@ -753,6 +753,77 @@ test('applies fast-path request headers and blocking through DNR', async () => {
   await target.close();
 });
 
+test('cancels a pending attachment when its tab navigates to another origin', async () => {
+  const target = await context.newPage();
+  await target.goto('http://attach-race.localhost:3000/');
+  const tabId = await getTabId('http://attach-race.localhost:3000/');
+  const worker = await currentWorker();
+  const saved = await control.evaluate(async () => chrome.runtime.sendMessage({ type: 'saveProxyRule', payload: { rule: {
+    name: 'Pending origin regression', enabled: true,
+    match: { initiatorOrigins: ['http://attach-race.localhost:3000'], urlPattern: '*' },
+    actions: [{ type: 'mockResponse', status: 200, headers: {}, body: '{"wrongOrigin":true}' }],
+  } } }));
+  await worker.evaluate(() => {
+    const native = chrome.debugger.attach.bind(chrome.debugger);
+    (self as any).__restoreRaceAttach = () => { chrome.debugger.attach = native; };
+    chrome.debugger.attach = (async (...args: any[]) => {
+      chrome.debugger.attach = native;
+      await new Promise<void>((resolve) => { (self as any).__releaseRaceAttach = resolve; });
+      return (native as any)(...args);
+    }) as typeof chrome.debugger.attach;
+  });
+  const starting = control.evaluate(async (id) => chrome.runtime.sendMessage({ type: 'enableAdvancedProxy', payload: { tabId: id } }), tabId);
+  try {
+    await expect.poll(() => worker.evaluate(() => typeof (self as any).__releaseRaceAttach)).toBe('function');
+    await target.goto('http://other-attach.localhost:3000/');
+    await worker.evaluate(() => (self as any).__releaseRaceAttach());
+    expect((await starting).phase).toBe('disabled');
+    await expect.poll(() => control.evaluate(async (id) => chrome.runtime.sendMessage({ type: 'getAdvancedProxyStatus', payload: { tabId: id } }), tabId))
+      .toMatchObject({ phase: 'disabled' });
+    expect(await target.evaluate(async () => (await fetch('/api/headers-echo')).json())).not.toHaveProperty('wrongOrigin');
+  } finally {
+    await worker.evaluate(() => {
+      (self as any).__restoreRaceAttach?.(); (self as any).__releaseRaceAttach?.();
+      delete (self as any).__restoreRaceAttach; delete (self as any).__releaseRaceAttach;
+    });
+    await starting.catch(() => undefined);
+    await control.evaluate(async (id) => chrome.runtime.sendMessage({ type: 'deleteProxyRule', payload: { id } }), saved.rule.id);
+    await target.close();
+  }
+});
+
+test('executes redirect and headers together without changing direct destination requests', async () => {
+  const target = await context.newPage();
+  await target.goto('http://combo.localhost:3000/');
+  const tabId = await getTabId('http://combo.localhost:3000/');
+  const saved = await control.evaluate(async () => chrome.runtime.sendMessage({ type: 'saveProxyRule', payload: { rule: {
+    name: 'Redirect with headers', enabled: true,
+    match: { initiatorOrigins: ['http://combo.localhost:3000'], urlPattern: 'http://combo.localhost:3000/api/users/1' },
+    actions: [{ type: 'redirect', url: 'http://combo.localhost:3000/api/headers-echo' },
+      { type: 'setRequestHeaders', headers: { 'X-Wireflip-Combo': 'staging' } },
+      { type: 'setResponseHeaders', headers: { 'X-Wireflip-Result': 'patched' } }],
+  } } }));
+  const fetchResult = (url: string) => target.evaluate(async (url) => {
+    const response = await fetch(url);
+    return { body: await response.json(), header: response.headers.get('X-Wireflip-Result') };
+  }, url);
+  try {
+    expect((await fetchResult('/api/users/1')).body.data).not.toHaveProperty('headers');
+    expect((await control.evaluate(async (id) => chrome.runtime.sendMessage({ type: 'enableAdvancedProxy', payload: { tabId: id } }), tabId)).phase).toBe('connected');
+    const redirected = await fetchResult('/api/users/1');
+    expect(redirected.body.data.headers['x-wireflip-combo']).toBe('staging');
+    expect(redirected.header).toBe('patched');
+    const direct = await fetchResult('/api/headers-echo');
+    expect(direct.body.data.headers['x-wireflip-combo']).toBeUndefined();
+    expect(direct.header).toBeNull();
+    await control.evaluate(async (id) => chrome.runtime.sendMessage({ type: 'disableAdvancedProxy', payload: { tabId: id } }), tabId);
+    expect((await fetchResult('/api/users/1')).body.data).not.toHaveProperty('headers');
+  } finally {
+    await control.evaluate(async (id) => chrome.runtime.sendMessage({ type: 'deleteProxyRule', payload: { id } }), saved.rule.id);
+    await target.close();
+  }
+});
+
 test('applies CDP delay and simulated network failure', async () => {
   const target = await context.newPage();
   await target.goto('http://test.localhost:3000/');

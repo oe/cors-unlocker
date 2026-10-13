@@ -4,7 +4,7 @@ import { logger } from '@/common/logger';
 import { globToRegex, toDnrResourceTypes } from '@/common/request-match';
 import { mergeHeaderMaps } from '@/common/validation';
 import { mergeHeaders } from '@/common/rules';
-import { quickControlRules, type QuickControls } from '@/common/quick-controls';
+import { hasRedirectHeaders, quickControlRules, type QuickControls } from '@/common/quick-controls';
 import { TEMPORARY_CORS_RULE_ID_BASE } from '@/common/session-dnr';
 
 const RULE_ID_BASE = 1_000_000;
@@ -76,6 +76,8 @@ export function compileProxyRules(rules: IProxyRule[], tabs: ScopedTab[] = []): 
     if (rule.actions.some((action) => action.type === 'block')) return [{
       id: allocateId(`${rule.id}:block`), priority: terminalPriority + 10_000, condition, action: { type: 'block' },
     } as browser.DeclarativeNetRequest.Rule];
+    // Execute the whole combination in a tab session instead of dropping its headers.
+    if (hasRedirectHeaders(rule)) return [];
     const redirect = rule.actions.find((action) => action.type === 'redirect');
     if (redirect) return [{
       id: allocateId(`${rule.id}:redirect`), priority: terminalPriority, condition,

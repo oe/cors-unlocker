@@ -70,6 +70,47 @@ beforeEach(() => {
 });
 
 describe('Firefox WebRequest interception engine', () => {
+  it('reports a genuine browser-rule setup failure instead of treating cleanup as cancellation', async () => {
+    vi.mocked(browser.storage.local.get).mockResolvedValue({ proxyAppState: state([]) });
+    vi.mocked(browser.declarativeNetRequest.updateSessionRules).mockRejectedValueOnce(new Error('Browser rules unavailable'));
+    expect(await engine.enableAdvancedProxy(92)).toMatchObject({ phase: 'error', error: 'Browser rules unavailable' });
+  });
+  it('cancels preparation when the tab navigates before storage responds', async () => {
+    let finish!: (value: unknown) => void;
+    vi.mocked(browser.storage.local.get).mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+    const pending = engine.enableAdvancedProxy(91);
+    await vi.waitFor(() => expect(finish).toBeDefined());
+    vi.mocked(browser.tabs.get).mockResolvedValue({ id: 91, url: 'https://other.example.test/' });
+    listener(browser.tabs.onUpdated)(91, { url: 'https://other.example.test/' });
+    finish({ proxyAppState: state([{ type: 'mockResponse', status: 200, headers: {}, body: 'OLD_SITE' }]) });
+    expect((await pending).phase).toBe('disabled');
+    expect(engine.getAdvancedProxyStatus(91).phase).toBe('disabled');
+    expect(await listener(browser.webRequest.onBeforeRequest)(requestDetails(91, 'new-page'))).toEqual({});
+  });
+  it('preserves headers across a redirect without modifying unrelated destination requests', async () => {
+    const value = state([
+      { type: 'redirect', url: 'http://staging.localhost:3000/target' },
+      { type: 'setRequestHeaders', headers: { 'X-Staging': 'yes' } },
+      { type: 'setResponseHeaders', headers: { 'X-Response': 'yes' } },
+    ]);
+    value.rules[0].match.urlPattern = 'http://api.localhost:3000/api/users';
+    vi.mocked(browser.storage.local.get).mockResolvedValue({ proxyAppState: value });
+    await engine.enableAdvancedProxy(90);
+    const original = requestDetails(90, 'combo');
+    expect(await listener(browser.webRequest.onBeforeRequest)(original)).toEqual({ redirectUrl: 'http://staging.localhost:3000/target' });
+    const target = { ...original, url: 'http://staging.localhost:3000/target' };
+    expect(await listener(browser.webRequest.onBeforeRequest)(target)).toEqual({});
+    expect(listener(browser.webRequest.onBeforeSendHeaders)({ ...target, requestHeaders: [] })).toEqual({
+      requestHeaders: [{ name: 'X-Staging', value: 'yes' }],
+    });
+    expect(listener(browser.webRequest.onHeadersReceived)({ ...target, statusCode: 200, responseHeaders: [] })).toEqual({
+      responseHeaders: [{ name: 'X-Response', value: 'yes' }],
+    });
+    const direct = { ...target, requestId: 'unrelated' };
+    expect(await listener(browser.webRequest.onBeforeRequest)(direct)).toEqual({});
+    expect(listener(browser.webRequest.onBeforeSendHeaders)({ ...direct, requestHeaders: [] })).toEqual({});
+    await engine.disableAdvancedProxy(90);
+  });
   it('clears a failed connection when the tab changes origin', async () => {
     vi.mocked(browser.storage.local.get).mockRejectedValueOnce(new Error('Storage unavailable'));
     expect((await engine.enableAdvancedProxy(88)).phase).toBe('error');

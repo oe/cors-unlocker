@@ -48,11 +48,18 @@ export function quickControlRules(origin: string, controls: QuickControls): IPro
 
 export function needsProxy(rule: Pick<IProxyRule, 'source' | 'actions'>): boolean {
   if (rule.source === 'legacy-cors') return false;
-  return rule.actions.some((action) => ['cors', 'delay', 'networkFailure', 'mockResponse'].includes(action.type));
+  return hasRedirectHeaders(rule) || rule.actions.some((action) => ['cors', 'delay', 'networkFailure', 'mockResponse'].includes(action.type));
+}
+
+/** DNR cannot preserve the original matcher across a redirect's header phases. */
+export function hasRedirectHeaders(rule: Pick<IProxyRule, 'actions'>): boolean {
+  return rule.actions.some((action) => action.type === 'redirect')
+    && rule.actions.some((action) => action.type === 'setRequestHeaders' || action.type === 'setResponseHeaders');
 }
 
 /** Mixed rules can keep their browser actions active after the tab session stops. */
 export function hasPersistentActions(rule: Pick<IProxyRule, 'source' | 'actions'>): boolean {
+  if (hasRedirectHeaders(rule) && !rule.actions.some((action) => action.type === 'block')) return false;
   return rule.source === 'legacy-cors'
     || rule.actions.some((action) => ['setRequestHeaders', 'setResponseHeaders', 'redirect', 'block'].includes(action.type));
 }

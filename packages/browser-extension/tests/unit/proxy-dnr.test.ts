@@ -48,6 +48,17 @@ describe('proxy DNR compiler', () => {
     expect(compileProxyRules([rule({ actions: [{ type: 'mockResponse', status: 200, headers: {}, body: '{}' }] })])).toEqual([]);
   });
 
+  it('leaves redirect/header combinations to the session without installing a partial redirect', () => {
+    expect(compileProxyRules([rule({ actions: [
+      { type: 'redirect', url: 'https://staging.example.com/' },
+      { type: 'setRequestHeaders', headers: { 'X-Staging': 'yes' } },
+    ] })])).toEqual([]);
+    expect(compileProxyRules([rule({ actions: [
+      { type: 'redirect', url: 'https://staging.example.com/' },
+      { type: 'setResponseHeaders', headers: { 'X-Staging': 'yes' } },
+    ] })])).toEqual([]);
+  });
+
   it('does not recompile migrated CORS rules', () => {
     expect(compileProxyRules([rule({ source: 'legacy-cors', legacyRuleId: 1 })])).toEqual([]);
   });

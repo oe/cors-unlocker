@@ -1,6 +1,6 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import browser from 'webextension-polyfill';
-import { migrateLegacyState } from '../../src/common/proxy-state';
+import { ensureProxyAppState, migrateLegacyState } from '../../src/common/proxy-state';
 import { EMPTY_QUICK_CONTROLS } from '../../src/common/quick-controls';
 
 vi.mock('../../src/common/proxy-state', async (importOriginal) => ({
@@ -10,6 +10,7 @@ vi.mock('../../src/common/proxy-state', async (importOriginal) => ({
 let storageChanged: (changes: any, area: string) => void;
 let tabUpdated: (tabId: number, changes: browser.Tabs.OnUpdatedChangeInfoType) => void;
 let event: (source: any, method: string, params: any) => Promise<void>;
+let removed: (tabId: number) => void;
 let engine: typeof import('../../src/background/advanced-proxy');
 const debuggerApi = { attach: vi.fn(), detach: vi.fn(), sendCommand: vi.fn(), onEvent: { addListener: vi.fn() }, onDetach: { addListener: vi.fn() } };
 const cache = { ...EMPTY_QUICK_CONTROLS, disableCache: true };
@@ -19,6 +20,7 @@ beforeAll(async () => {
   chrome.tabs.onRemoved = { addListener: vi.fn() } as any;
   engine = await import('../../src/background/advanced-proxy');
   event = debuggerApi.onEvent.addListener.mock.calls[0][0];
+  removed = vi.mocked(chrome.tabs.onRemoved.addListener).mock.calls[0][0];
   storageChanged = vi.mocked(browser.storage.onChanged.addListener).mock.calls[0][0];
   tabUpdated = vi.mocked(browser.tabs.onUpdated.addListener).mock.calls[0][0];
 });
@@ -30,6 +32,108 @@ beforeEach(() => {
   vi.mocked(browser.tabs.get).mockResolvedValue({ id: 9, url: 'https://example.com/' } as browser.Tabs.Tab);
 });
 afterEach(async () => { await engine.disableAdvancedProxy(9); });
+
+describe('pending Chrome attachments', () => {
+  it.each(['navigation', 'stop', 'close'] as const)('cancels a pending attachment on %s', async (reason) => {
+    let finish!: () => void;
+    debuggerApi.attach.mockImplementationOnce(() => new Promise<void>((resolve) => { finish = resolve; }));
+    const pending = engine.enableAdvancedProxy(9);
+    await vi.waitFor(() => expect(finish).toBeDefined());
+    if (reason === 'navigation') {
+      vi.mocked(browser.tabs.get).mockResolvedValue({ id: 9, url: 'https://other.example.test/' } as browser.Tabs.Tab);
+      tabUpdated(9, { url: 'https://other.example.test/' });
+    } else if (reason === 'close') removed(9);
+    else await engine.disableAdvancedProxy(9);
+    finish();
+    expect((await pending).phase).toBe('disabled');
+    expect(engine.getAdvancedProxyStatus(9).phase).toBe('disabled');
+    expect(debuggerApi.detach).toHaveBeenCalledWith({ tabId: 9 });
+    expect(debuggerApi.sendCommand.mock.calls.some((call) => call[1] === 'Fetch.enable')).toBe(false);
+  });
+  it('rechecks the current origin even if the navigation event has not arrived', async () => {
+    let finish!: () => void;
+    debuggerApi.attach.mockImplementationOnce(() => new Promise<void>((resolve) => { finish = resolve; }));
+    const pending = engine.enableAdvancedProxy(9);
+    await vi.waitFor(() => expect(finish).toBeDefined());
+    vi.mocked(browser.tabs.get).mockResolvedValue({ id: 9, url: 'https://other.example.test/' } as browser.Tabs.Tab);
+    finish();
+    expect((await pending).phase).toBe('disabled');
+    expect(debuggerApi.sendCommand.mock.calls.some((call) => call[1] === 'Fetch.enable')).toBe(false);
+  });
+  it('coalesces simultaneous starts and permits same-origin navigation', async () => {
+    let finish!: () => void;
+    debuggerApi.attach.mockImplementationOnce(() => new Promise<void>((resolve) => { finish = resolve; }));
+    const first = engine.enableAdvancedProxy(9);
+    const second = engine.enableAdvancedProxy(9);
+    await vi.waitFor(() => expect(finish).toBeDefined());
+    tabUpdated(9, { url: 'https://example.com/another-path' });
+    finish();
+    expect((await first).phase).toBe('connected');
+    expect((await second).phase).toBe('connected');
+    expect(debuggerApi.attach).toHaveBeenCalledTimes(1);
+  });
+  it('honors stop before the initial tab lookup finishes', async () => {
+    let finish!: (tab: browser.Tabs.Tab) => void;
+    vi.mocked(browser.tabs.get).mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+    const pending = engine.enableAdvancedProxy(9);
+    await vi.waitFor(() => expect(finish).toBeDefined());
+    await engine.disableAdvancedProxy(9);
+    finish({ id: 9, url: 'https://example.com/' } as browser.Tabs.Tab);
+    expect((await pending).phase).toBe('disabled');
+    expect(debuggerApi.attach).not.toHaveBeenCalled();
+  });
+  it('preserves a real setup error when its own cleanup emits a detach event', async () => {
+    debuggerApi.sendCommand.mockRejectedValueOnce(new Error('Network setup failed'));
+    debuggerApi.detach.mockImplementationOnce(async () => {
+      debuggerApi.onDetach.addListener.mock.calls[0][0]({ tabId: 9 }, 'target_closed');
+    });
+    expect(await engine.enableAdvancedProxy(9)).toMatchObject({ phase: 'error', error: 'Network setup failed' });
+  });
+});
+
+it('keeps redirected request and response headers bound to the original request matcher', async () => {
+  const state = migrateLegacyState([], {});
+  state.rules = [{ id: 'combo', name: 'Redirect with headers', enabled: true, source: 'user', createdAt: 1, updatedAt: 1,
+    match: { initiatorOrigins: ['https://example.com'], urlPattern: 'https://api.example.com/source' },
+    actions: [{ type: 'redirect', url: 'https://staging.example.com/target' },
+      { type: 'setRequestHeaders', headers: { 'X-Staging': 'yes' } },
+      { type: 'setResponseHeaders', headers: { 'X-Response': 'yes' } }] }];
+  vi.mocked(ensureProxyAppState).mockResolvedValueOnce(state);
+  await engine.enableAdvancedProxy(9);
+  await event({ tabId: 9 }, 'Fetch.requestPaused', { requestId: 'combo', resourceType: 'Fetch',
+    request: { url: 'https://api.example.com/source', method: 'GET', headers: {} } });
+  expect(debuggerApi.sendCommand).toHaveBeenLastCalledWith({ tabId: 9 }, 'Fetch.continueRequest', {
+    requestId: 'combo', url: 'https://staging.example.com/target', headers: [{ name: 'X-Staging', value: 'yes' }],
+  });
+  await event({ tabId: 9 }, 'Fetch.requestPaused', { requestId: 'combo', resourceType: 'Fetch', responseStatusCode: 200,
+    request: { url: 'https://staging.example.com/target', method: 'GET', headers: {} }, responseHeaders: [] });
+  expect(debuggerApi.sendCommand).toHaveBeenLastCalledWith({ tabId: 9 }, 'Fetch.continueResponse', expect.objectContaining({
+    responseHeaders: [{ name: 'X-Response', value: 'yes' }],
+  }));
+  await event({ tabId: 9 }, 'Fetch.requestPaused', { requestId: 'direct', resourceType: 'Fetch',
+    request: { url: 'https://staging.example.com/target', method: 'GET', headers: {} } });
+  expect(debuggerApi.sendCommand).toHaveBeenLastCalledWith({ tabId: 9 }, 'Fetch.continueRequest', { requestId: 'direct' });
+  await event({ tabId: 9 }, 'Fetch.requestPaused', { requestId: 'evicted-combo', resourceType: 'Fetch',
+    request: { url: 'https://api.example.com/source', method: 'GET', headers: {} } });
+  for (let i = 0; i < 510; i++) await event({ tabId: 9 }, 'Fetch.requestPaused', { requestId: `unmatched-${i}`, resourceType: 'Fetch',
+    request: { url: 'https://unmatched.example.com/', method: 'GET', headers: {} } });
+  expect(engine.getRequestLog(9).some((entry) => entry.id === 'evicted-combo')).toBe(false);
+  await event({ tabId: 9 }, 'Fetch.requestPaused', { requestId: 'evicted-combo', resourceType: 'Fetch', responseStatusCode: 200,
+    request: { url: 'https://staging.example.com/target', method: 'GET', headers: {} }, responseHeaders: [] });
+  expect(debuggerApi.sendCommand).toHaveBeenLastCalledWith({ tabId: 9 }, 'Fetch.continueResponse', expect.objectContaining({
+    responseHeaders: [{ name: 'X-Response', value: 'yes' }],
+  }));
+});
+
+it('records a failed response without treating it as a new request', async () => {
+  engine.clearRequestLog(9);
+  await engine.enableAdvancedProxy(9);
+  const request = { requestId: 'failed-response', resourceType: 'Fetch', request: { url: 'https://example.com/api', method: 'GET', headers: {} } };
+  await event({ tabId: 9 }, 'Fetch.requestPaused', request);
+  await event({ tabId: 9 }, 'Fetch.requestPaused', { ...request, responseErrorReason: 'ConnectionRefused' });
+  expect(engine.getRequestLog(9)).toHaveLength(1);
+  expect(engine.getRequestLog(9)[0]).toMatchObject({ outcome: 'failed', diagnostics: ['ConnectionRefused'] });
+});
 
 it('clears a failed connection on cross-origin navigation instead of reviving a stale red icon', async () => {
   debuggerApi.attach.mockRejectedValueOnce(new Error('Debugger unavailable'));
