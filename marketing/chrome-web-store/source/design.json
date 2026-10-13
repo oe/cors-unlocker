@@ -7,7 +7,7 @@
   "perspective": false,
   "background": "linear-gradient(145deg, #f4f7fd 0%, #edf3fc 55%, #dce8fb 100%)",
   "headlineColor": "#10223b",
-  "accentColor": "#0647df",
+  "accentColor": "#435d91",
   "subheadColor": "#425675",
   "brand": "Wireflip",
   "locales": ["en", "zh-CN"],

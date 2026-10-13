@@ -3,6 +3,7 @@ import type { IAdvancedProxyStatus } from './advanced-proxy';
 import { toolbarMessages } from '@/common/toolbar-messages';
 import type { Locale } from '@/common/locale';
 import { TEMPORARY_CORS_RULE_ID_BASE } from '@/common/session-dnr';
+import { BRAND_PATHS, BRAND_VIEWBOX } from '@/common/brand-geometry';
 
 export const TOOLBAR_COLORS = { idle: '#64748b', rules: '#2563eb', connected: '#15803d', connecting: '#b45309', error: '#dc2626' } as const;
 export type ToolbarState = keyof typeof TOOLBAR_COLORS;
@@ -60,12 +61,12 @@ export function toolbarIcon(state: ToolbarState): Record<string, browser.Action.
     ctx.scale(size / 32, size / 32);
     ctx.fillStyle = TOOLBAR_COLORS[state];
     ctx.beginPath(); ctx.roundRect(1, 1, 30, 30, 10); ctx.fill();
-    // The F and intercepted crossbar keep the existing brand recognizable at 16 px.
-    ctx.lineWidth = 4.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#ffffff';
-    ctx.beginPath(); ctx.moveTo(10, 25); ctx.lineTo(10, 12); ctx.quadraticCurveTo(10, 8, 14, 8); ctx.lineTo(24, 8); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(10, 18); ctx.lineTo(19, 18); ctx.stroke();
-    ctx.lineWidth = 3; ctx.strokeStyle = '#111827';
-    ctx.beginPath(); ctx.moveTo(18, 14); ctx.lineTo(25, 14); ctx.stroke();
+    // A white version of the approved mark stays readable on every status color.
+    const [left, top, width, height] = BRAND_VIEWBOX;
+    ctx.scale(32 / width, 32 / height);
+    ctx.translate(-left, -top);
+    ctx.fillStyle = '#ffffff';
+    for (const d of BRAND_PATHS) ctx.fill(new Path2D(d));
     result[size] = ctx.getImageData(0, 0, size, size) as browser.Action.ImageDataType;
   }
   icons.set(state, result);

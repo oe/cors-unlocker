@@ -1,5 +1,7 @@
 # Wireflip
 
+<img src="marketing/brand/icons/128.png" width="64" height="64" alt="Wireflip" />
+
 Wireflip 2.0 is a browser-native request lab for Chrome and Firefox. It keeps the fast, warning-free CORS path from CORS Unlocker and adds opt-in, tab-scoped traffic inspection, response mocking, latency and failure simulation, redirects, blocking, and header rewriting.
 
 No native client is required. Chrome Advanced mode uses Chrome DevTools Protocol through `chrome.debugger`, so Chrome displays its standard debugging disclosure while a tab is attached. Firefox Intercept mode uses blocking WebRequest APIs and does not show a debugger banner.
@@ -195,6 +197,9 @@ If Playwright's bundled Chromium is not installed, set `PLAYWRIGHT_CHROMIUM_EXEC
 Wireflip is a development tool, not a system VPN: it affects matching browser requests and cannot proxy other applications or hide the browser's network address.
 
 ## Other packages
+
+The approved logo, vector source, icon exports, and regeneration instructions are
+in [`marketing/brand`](marketing/brand/README.md).
 
 - `packages/npm` publishes the `wireflip` 0.2 SDK. Install and import `wireflip`; no renamed-package wrapper is shipped.
 - `packages/website` is the Wireflip product site, documentation, privacy explanation, FAQ, and live SDK playground.
