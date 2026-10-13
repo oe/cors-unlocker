@@ -77,6 +77,10 @@ need an active proxy session. Firefox CORS repair patches headers but cannot syn
 <span class="line"><span style="color:#E1E4E8">  ]</span></span>
 <span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
 <p>Available actions are <code>cors</code>, <code>setRequestHeaders</code>, <code>setResponseHeaders</code>, <code>redirect</code>, <code>block</code>, <code>mockResponse</code>, <code>delay</code>, and <code>networkFailure</code>. Action scripts are validated JSON; arbitrary JavaScript is not evaluated.</p>
+<p>A redirect combined with request or response header changes requires a connected
+Chrome Advanced or Firefox Intercept session. The combination executes together
+against the original request matcher; it does not modify unrelated requests sent
+directly to the destination. A redirect-only rule still works in Rules mode.</p>
 <h2 id="site-controls">Site controls</h2>
 <p>Choose <strong>Open Inspector</strong> from the popup to manage rules for the current HTTP or HTTPS page. Toggle rules or click their names to edit them directly in the side panel. New rules default to the current page origin.</p>
 <p>Enable <strong>Advanced proxy</strong>, then reproduce a request on the page. This switch starts activity capture and applies enabled saved rules. Enable <strong>CORS repair</strong> separately in the popup, or use a saved CORS rule when needed. Select a captured request to create a Mock, Delay, Block, or Headers rule without leaving the panel. Save, trigger the request again, and inspect the recorded result.</p>
