@@ -7,7 +7,7 @@ export enum LogLevel {
 
 class Logger {
   private level: LogLevel = LogLevel.INFO;
-  private prefix = '[CORS-Unlocker]';
+  private prefix = '[Wireflip]';
 
   setLevel(level: LogLevel) {
     this.level = level;

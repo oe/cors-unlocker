@@ -1,6 +1,6 @@
-# Forth Intercept
+# Wireflip
 
-Forth Intercept 2.0 is a browser-native request lab for Chrome and Firefox. It keeps the fast, warning-free CORS path from CORS Unlocker and adds opt-in, tab-scoped traffic inspection, response mocking, latency and failure simulation, redirects, blocking, and header rewriting.
+Wireflip 2.0 is a browser-native request lab for Chrome and Firefox. It keeps the fast, warning-free CORS path from CORS Unlocker and adds opt-in, tab-scoped traffic inspection, response mocking, latency and failure simulation, redirects, blocking, and header rewriting.
 
 No native client is required. Chrome Advanced mode uses Chrome DevTools Protocol through `chrome.debugger`, so Chrome displays its standard debugging disclosure while a tab is attached. Firefox Intercept mode uses blocking WebRequest APIs and does not show a debugger banner.
 
@@ -145,30 +145,30 @@ Requirements: Node.js 18+ and pnpm 9.
 
 ```bash
 pnpm install
-pnpm --filter browser-cors-unlocker dev
+pnpm --filter browser-wireflip dev
 ```
 
 Build Chrome 2.0:
 
 ```bash
-pnpm --filter browser-cors-unlocker build:chrome
-pnpm --filter browser-cors-unlocker package:chrome
+pnpm --filter browser-wireflip build:chrome
+pnpm --filter browser-wireflip package:chrome
 ```
 
-The unpacked extension is written to `packages/browser-extension/dist/chrome`; the release archive is `packages/browser-extension/dist/forth-intercept-chrome-v2.0.0.zip`.
+The unpacked extension is written to `packages/browser-extension/dist/chrome`; the release archive is `packages/browser-extension/dist/wireflip-chrome-v2.0.0.zip`.
 
 Build and validate Firefox 2.0:
 
 ```bash
-pnpm --filter browser-cors-unlocker check:firefox
+pnpm --filter browser-wireflip check:firefox
 ```
 
-The Firefox archive is written to `packages/browser-extension/dist/forth-intercept-firefox-v2.0.0.zip`.
+The Firefox archive is written to `packages/browser-extension/dist/wireflip-firefox-v2.0.0.zip`.
 
 ## Verification
 
 ```bash
-pnpm --filter browser-cors-unlocker check
+pnpm --filter browser-wireflip check
 ```
 
 The check runs TypeScript, ESLint, unit tests, the production Chrome build, and Playwright acceptance tests. The acceptance suite launches a real Chrome for Testing profile with normal web security enabled and verifies:
@@ -192,12 +192,12 @@ If Playwright's bundled Chromium is not installed, set `PLAYWRIGHT_CHROMIUM_EXEC
 - `tabs`, `storage`, and `sidePanel` support tab scope, local persistence, and the inspector.
 - Sensitive request and response headers are redacted by default. The extension does not upload traffic, rules, or logs.
 
-Forth Intercept is a development tool, not a system VPN: it affects matching browser requests and cannot proxy other applications or hide the browser's network address.
+Wireflip is a development tool, not a system VPN: it affects matching browser requests and cannot proxy other applications or hide the browser's network address.
 
 ## Other packages
 
-- `packages/npm` publishes the canonical `forth-intercept` 0.2 SDK. `packages/npm-compat` publishes `cors-unlocker` as a thin compatibility re-export for existing users.
-- `packages/website` is the Forth Intercept product site, documentation, privacy explanation, FAQ, and live SDK playground.
+- `packages/npm` publishes the `wireflip` 0.2 SDK. Install and import `wireflip`; no renamed-package wrapper is shipped.
+- `packages/website` is the Wireflip product site, documentation, privacy explanation, FAQ, and live SDK playground.
 - `packages/browser-extension` builds the Chrome and Firefox 2.0 products.
 
 ## License

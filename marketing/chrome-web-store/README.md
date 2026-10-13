@@ -1,6 +1,6 @@
 # Chrome Web Store marketing assets
 
-These are the approved, straight-on Forth Intercept store images. They use the
+These are the approved, straight-on Wireflip store images. They use the
 actual Chrome extension UI with sample data, short benefit-led copy, and Goldie's
 `classic` layout principles. The marquee uses a horizontal copy-and-window layout.
 
@@ -69,7 +69,7 @@ The scripts use the extension's existing Playwright dependency. They use
 Playwright's installed Chromium. Install the latter if needed:
 
 ```bash
-pnpm --filter browser-cors-unlocker exec playwright install chromium
+pnpm --filter browser-wireflip exec playwright install chromium
 ```
 
 To change copy, screenshot order, or colors, edit [`source/design.json`](source/design.json).
@@ -85,12 +85,12 @@ node marketing/chrome-web-store/source/export.mjs
 To refresh the product UI after an extension change, build and recapture first:
 
 ```bash
-pnpm --filter browser-cors-unlocker build:chrome
+pnpm --filter browser-wireflip build:chrome
 node marketing/chrome-web-store/source/capture.mjs
 node marketing/chrome-web-store/source/export.mjs
 ```
 
-Both scripts locate the repository relative to their own files; `FORTH_REPO` is an
+Both scripts locate the repository relative to their own files; `WIREFLIP_REPO` is an
 optional override. They require no new extension permissions, production
 dependencies, or global Goldie CLI installation.
 
@@ -107,9 +107,10 @@ Review those previews before committing refreshed assets.
   detail crops. Capture uses Chrome API fixtures with four example rules; it is
   not evidence of a real intercepted network session. Preserve **Sample data /
   示例数据** labeling. Example origins use `example.com` and contain no user data.
-- The approved UI was captured from `oe/cors-unlocker` commit
-  `f07914d07371a5cb61e3b5bc998901250344e80b`. The UI is rendered by the product's
-  React code, not redrawn by an image model.
+- The approved layout was introduced in `oe/cors-unlocker` commit
+  `f07914d07371a5cb61e3b5bc998901250344e80b`. The captures were refreshed for
+  Wireflip using `source/capture.mjs`. The UI is rendered by the product's React
+  code, not redrawn by an image model.
 - Fonts come from [Goldie's bundled fonts](https://github.com/kacperkapusciak/goldie/tree/main/assets/fonts):
   DM Sans and Noto Sans SC. Their copyright notices and SIL Open Font License are
   in [`source/fonts/OFL.txt`](source/fonts/OFL.txt).

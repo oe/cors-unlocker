@@ -16,7 +16,7 @@ const { version } = JSON.parse(readFileSync(path.join(ROOT_DIR, 'package.json'),
 function zipBuild(target: string) {
   return zip(
     path.join(buildDir, target),
-    path.resolve(buildDir, `forth-intercept-${target}-v${version}.zip`),
+    path.resolve(buildDir, `wireflip-${target}-v${version}.zip`),
   );
 }
 

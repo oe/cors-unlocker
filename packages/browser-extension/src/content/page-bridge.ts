@@ -1,7 +1,7 @@
 import browser from 'webextension-polyfill';
 
-const REQUEST_TYPE = 'forth-intercept:sdk-request';
-const RESPONSE_TYPE = 'forth-intercept:sdk-response';
+const REQUEST_TYPE = 'wireflip:sdk-request';
+const RESPONSE_TYPE = 'wireflip:sdk-response';
 const ALLOWED_METHODS = new Set([
   'connect',
   'getStatus',
@@ -59,7 +59,7 @@ window.addEventListener('message', async (event) => {
         : '';
       const credentials = options.credentials === true;
       const details = [
-        `${location.origin} is asking Forth Intercept to repair CORS for this origin.`,
+        `${location.origin} is asking Wireflip to repair CORS for this origin.`,
         credentials ? 'Credentialed requests will be allowed.' : 'Credentials will not be enabled.',
         reason ? `Reason: ${reason}` : '',
         'Continue?',

@@ -6,7 +6,7 @@ export function capabilitiesFor(target: BrowserTarget) {
   const isChrome = target === 'chrome';
   return {
     protocolVersion: 2 as const,
-    product: 'Forth Intercept' as const,
+    product: 'Wireflip' as const,
     browser: target,
     cors: true as const,
     draftRules: true as const,

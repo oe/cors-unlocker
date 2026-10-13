@@ -177,7 +177,7 @@ function DataSettings({ state, reload }: { state: IProxyAppState; reload: () => 
   const exportRecovery = async () => {
     const { preImportBackup } = await browser.storage.local.get('preImportBackup');
     if (!preImportBackup) { setMessage('No pre-import backup yet.'); return; }
-    download(JSON.stringify(preImportBackup), 'forth-intercept-recovery.json');
+    download(JSON.stringify(preImportBackup), 'wireflip-recovery.json');
   };
   const download = (json: string, filename: string) => {
     const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
@@ -185,7 +185,7 @@ function DataSettings({ state, reload }: { state: IProxyAppState; reload: () => 
   };
   const exportState = async () => {
     const json = await dataStorage.exportRules();
-    download(json, `forth-intercept-${new Date().toISOString().slice(0, 10)}.json`);
+    download(json, `wireflip-${new Date().toISOString().slice(0, 10)}.json`);
   };
   const importState = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -270,7 +270,7 @@ function App() {
   }, [reload]);
   return <main className="flex h-dvh min-h-0 flex-col overflow-hidden bg-background text-foreground">
     <header className="flex min-h-16 shrink-0 flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
-      <div className="flex min-w-0 items-center gap-3"><BrandMark className="size-8" /><h1 className="truncate text-base font-semibold">Forth Intercept</h1></div>
+      <div className="flex min-w-0 items-center gap-3"><BrandMark className="size-8" /><h1 className="truncate text-base font-semibold">Wireflip</h1></div>
       <div className="flex flex-wrap items-center gap-2"><LanguageSelect />{view === 'rules' ? <Button size="sm" disabled={!state} onClick={() => navigate(() => setCreateToken((token) => token + 1))}><Plus data-icon="inline-start" />{t("New rule")}</Button> : <span className="text-sm text-muted-foreground">{t("Data management")}</span>}</div>
     </header>
     {error ? <Alert variant="destructive"><AlertTitle>{t("Unable to load")}</AlertTitle><AlertDescription>{translateError(error)}</AlertDescription></Alert> : null}

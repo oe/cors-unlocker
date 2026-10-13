@@ -1,15 +1,15 @@
-# forth-intercept
+# wireflip
 
-An origin-scoped browser SDK for connecting a web app to the locally installed Forth Intercept extension.
+An origin-scoped browser SDK for connecting a web app to the locally installed Wireflip extension.
 
-The canonical, origin-scoped browser SDK for Chrome and Firefox. Existing users can keep using the `cors-unlocker` compatibility package.
+The origin-scoped browser SDK for Chrome and Firefox. Install and import `wireflip` directly.
 
 ```bash
-pnpm add forth-intercept
+pnpm add wireflip
 ```
 
 ```ts
-import { intercept } from 'forth-intercept';
+import { intercept } from 'wireflip';
 
 const session = await intercept.connect();
 console.log(session.capabilities.browser, session.capabilities.interception);

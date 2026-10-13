@@ -119,14 +119,14 @@
 </head>
 <body>
     <div class="container">
-        <h1>🌐 CORS Unlocker Demo</h1>
+        <h1>🌐 Wireflip Demo</h1>
         
         <div class="info">
             <h4>How to Test:</h4>
             <ol>
                 <li>Open this page in your browser</li>
                 <li>Try the requests below - they should fail due to CORS</li>
-                <li>Install and enable CORS Unlocker extension</li>
+                <li>Install and enable Wireflip extension</li>
                 <li>Enable CORS for this domain in the extension</li>
                 <li>Try the requests again - they should work!</li>
             </ol>
@@ -242,7 +242,7 @@
         // Format response for display
         function formatResponse(response) {
             if (response.error) {
-                return `❌ ERROR (${response.duration}ms):\n${response.error}\n\nThis is likely a CORS error. Enable CORS Unlocker for this domain!`;
+                return `❌ ERROR (${response.duration}ms):\n${response.error}\n\nThis is likely a CORS error. Enable Wireflip for this domain!`;
             }
             
             let formatted = `✅ SUCCESS (${response.duration}ms)\n`;
@@ -439,7 +439,7 @@
             result += `Average response time: ${avgTime.toFixed(1)}ms\n\n`;
             
             if (failed > 0) {
-                result += `Failed requests likely due to CORS. Enable CORS Unlocker!`;
+                result += `Failed requests likely due to CORS. Enable Wireflip!`;
             }
             
             showResult('perfResult', result, failed > 0);
@@ -469,7 +469,7 @@
         if (window.location.hostname.includes('localhost')) {
             console.log('🌐 CORS Demo loaded!');
             console.log('💡 Tip: Open browser dev tools to see CORS errors in console');
-            console.log('🔧 Install CORS Unlocker extension to bypass CORS restrictions');
+            console.log('🔧 Install Wireflip extension to bypass CORS restrictions');
         }
     </script>
 </body>

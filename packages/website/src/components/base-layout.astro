@@ -11,7 +11,7 @@ interface Props {
 }
 const { frontmatter = {} } = Astro.props;
 const title = frontmatter.title || Astro.props.title;
-const pageTitle = title ? `${title} · Forth Intercept` : 'Forth Intercept';
+const pageTitle = title ? `${title} · Wireflip` : 'Wireflip';
 const description = frontmatter.description || Astro.props.description || 'A browser-native request lab for inspecting, rewriting, mocking, and debugging Chrome and Firefox traffic.';
 ---
 <html lang="en" class="h-full">
@@ -23,7 +23,7 @@ const description = frontmatter.description || Astro.props.description || 'A bro
     <meta name="theme-color" content="#ffffff" />
     <link rel="icon" href="/brand-mark.png" type="image/png" />
     <meta property="og:url" content="https://intercept.forth.ink/" />
-    <meta property="og:site_name" content="Forth Intercept" />
+    <meta property="og:site_name" content="Wireflip" />
     <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:image" content="/og-v2.svg" />

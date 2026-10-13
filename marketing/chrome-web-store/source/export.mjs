@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 
 const source = path.dirname(fileURLToPath(import.meta.url));
 const root = path.dirname(source);
-const repo = process.env.FORTH_REPO || path.resolve(source, "../../..");
+const repo = process.env.WIREFLIP_REPO || path.resolve(source, "../../..");
 const require = createRequire(
   path.join(repo, "packages/browser-extension/package.json"),
 );

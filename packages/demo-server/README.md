@@ -1,6 +1,6 @@
 # Demo Server
 
-A demonstration server for testing CORS functionality with the CORS Unlocker extension.
+A demonstration server for testing CORS functionality with the Wireflip extension.
 
 ## Overview
 
@@ -71,11 +71,11 @@ All domains point to the same server but allow testing cross-origin scenarios.
 
 ## Usage Examples
 
-### Testing with CORS Unlocker
+### Testing with Wireflip
 
 1. Open `http://abc.localhost:3000` in your browser
 2. Try making requests to `http://api.localhost:3000/api/users`
-3. Enable CORS Unlocker for the domain
+3. Enable Wireflip for the domain
 4. Test various scenarios with/without credentials
 
 ### Using curl

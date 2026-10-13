@@ -13,7 +13,7 @@ let context: BrowserContext;
 const extensionId = 'knhlkjdfmgkmelcjfnbbhpphkmjjacng';
 let control: Page;
 let extensionPath: string;
-const userDataDir = mkdtempSync(path.join(tmpdir(), 'forth-intercept-e2e-'));
+const userDataDir = mkdtempSync(path.join(tmpdir(), 'wireflip-e2e-'));
 
 async function currentWorker() {
   const workers = context.serviceWorkers();
@@ -125,7 +125,7 @@ test('keeps native toolbar colors, badges and tooltips in sync with each tab', a
     expect(await title()).not.toContain('500 ms');
     // Explicitly started sessions keep recording when the last quick control is cleared.
     await update(0, false);
-    await expect.poll(title).toBe('Forth Intercept\nTab session active\nRecording requests\n1 persistent rules enabled');
+    await expect.poll(title).toBe('Wireflip\nTab session active\nRecording requests\n1 persistent rules enabled');
     await expectState('ON', [21, 128, 61], 'Recording requests');
     await control.evaluate((id) => chrome.runtime.sendMessage({ type: 'disableAdvancedProxy', payload: { tabId: id } }), tabId);
     await expectState('1', [37, 99, 235], 'Tab session stopped');
@@ -280,7 +280,7 @@ test('migrates v1 storage once and keeps a recovery snapshot', async () => {
 
 test('renders the shadcn proxy workspace and popup', async () => {
   await control.reload();
-  await expect(control.getByRole('heading', { name: 'Forth Intercept' })).toBeVisible();
+  await expect(control.getByRole('heading', { name: 'Wireflip' })).toBeVisible();
   await expect(control.getByRole('button', { name: 'Rules', exact: true })).toBeVisible();
   await control.getByRole('button', { name: 'New rule' }).click();
   await expect(control.getByLabel('Page origins')).toHaveValue('');
@@ -315,7 +315,7 @@ test('renders the shadcn proxy workspace and popup', async () => {
   await expect(savedResourceList.getByRole('option', { name: 'XHR' })).toHaveAttribute('aria-selected', 'false');
   await control.keyboard.press('Escape');
   await control.getByRole('button', { name: 'Back to rules' }).click();
-  await control.screenshot({ path: 'test-results/forth-intercept-options.png', fullPage: true });
+  await control.screenshot({ path: 'test-results/wireflip-options.png', fullPage: true });
 
   const inspectedTab = await context.newPage();
   await inspectedTab.goto('http://test.localhost:3000/');
@@ -337,8 +337,8 @@ test('renders the shadcn proxy workspace and popup', async () => {
   const popup = await context.newPage();
   await popup.goto(`chrome-extension://${extensionId}/src/popup/index.html`);
   await expect(popup.getByRole('button', { name: 'Open Inspector' })).toBeVisible();
-  await expect(popup.getByRole('heading', { name: 'Forth Intercept' })).toBeVisible();
-  await popup.screenshot({ path: 'test-results/forth-intercept-popup.png', fullPage: true });
+  await expect(popup.getByRole('heading', { name: 'Wireflip' })).toBeVisible();
+  await popup.screenshot({ path: 'test-results/wireflip-popup.png', fullPage: true });
   await popup.close();
 
   const inspector = await context.newPage();
@@ -352,7 +352,7 @@ test('renders the shadcn proxy workspace and popup', async () => {
   await inspectorToggle.click();
   await expect(inspectorToggle).toHaveText('Start tab session');
   await inspector.setViewportSize({ width: 420, height: 820 });
-  await inspector.screenshot({ path: 'test-results/forth-intercept-inspector.png', fullPage: true });
+  await inspector.screenshot({ path: 'test-results/wireflip-inspector.png', fullPage: true });
   await inspector.close();
   await inspectedTab.close();
 });
@@ -396,7 +396,7 @@ test('edits structured actions, protects drafts and previews imports', async () 
   await control.getByRole('tab', { name: 'Actions', exact: true }).click();
   await expect(control.getByLabel('Delay in milliseconds')).toHaveValue('125');
   await expect(control.getByLabel('Header 1 name', { exact: true })).toHaveValue('X-Workspace-QA');
-  await control.screenshot({ path: 'test-results/forth-intercept-workspace.png', fullPage: true });
+  await control.screenshot({ path: 'test-results/wireflip-workspace.png', fullPage: true });
   await control.getByRole('button', { name: 'Data & migration' }).click();
   const before = await control.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState);
   const incoming = structuredClone(before);
@@ -512,7 +512,7 @@ test('controls site rules inline and verifies actual request effects', async () 
   await panel.getByRole('button', { name: /GET.*console.localhost:3000\/health/ }).first().click();
   await expect(panel.getByText('Local mock', { exact: true })).toBeVisible();
   await expect(panel.getByText(/HTTP 201;.*server not contacted/)).toBeVisible();
-  await panel.screenshot({ path: '/tmp/forth-site-controls-mock.png', fullPage: true });
+  await panel.screenshot({ path: '/tmp/wireflip-site-controls-mock.png', fullPage: true });
   await panel.getByRole('tab', { name: /^Rules \(/ }).click();
   await panel.getByRole('switch', { name: 'Enable Console mock QA' }).click();
   await panel.getByRole('tab', { name: /^Requests \(/ }).click();
@@ -550,7 +550,7 @@ test('exposes an origin-scoped SDK bridge with consent and disabled drafts', asy
     const id = crypto.randomUUID();
     const timer = setTimeout(() => reject(new Error('SDK response timeout')), 5_000);
     const listener = (event: MessageEvent) => {
-      if (event.data?.type !== 'forth-intercept:sdk-response'
+      if (event.data?.type !== 'wireflip:sdk-response'
         || event.data.clientId !== clientId
         || event.data.id !== id) return;
       clearTimeout(timer);
@@ -559,7 +559,7 @@ test('exposes an origin-scoped SDK bridge with consent and disabled drafts', asy
     };
     window.addEventListener('message', listener);
     window.postMessage({
-      type: 'forth-intercept:sdk-request',
+      type: 'wireflip:sdk-request',
       clientId,
       id,
       method: sdkMethod,
@@ -572,7 +572,7 @@ test('exposes an origin-scoped SDK bridge with consent and disabled drafts', asy
     origin: 'http://test.localhost:3000',
     capabilities: {
       protocolVersion: 2,
-      product: 'Forth Intercept',
+      product: 'Wireflip',
       browser: 'chrome',
       interception: {
         responseMock: 'synthetic',
@@ -675,7 +675,7 @@ test('mocks a response from a captured-rule-compatible matcher', async () => {
           type: 'mockResponse',
           status: 202,
           headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-          body: '{"source":"forth-intercept"}',
+          body: '{"source":"wireflip"}',
         }],
       },
     },
@@ -688,7 +688,7 @@ test('mocks a response from a captured-rule-compatible matcher', async () => {
     const response = await fetch(url);
     return { status: response.status, body: await response.json() };
   }, mockUrl);
-  expect(result).toEqual({ status: 202, body: { source: 'forth-intercept' } });
+  expect(result).toEqual({ status: 202, body: { source: 'wireflip' } });
 
   await control.evaluate(async (id) => chrome.runtime.sendMessage({
     type: 'disableAdvancedProxy', payload: { tabId: id },
@@ -813,7 +813,7 @@ test('popup controls are temporary, tab-scoped, and independent from saved rules
   const popupUrl = `chrome-extension://${extensionId}/src/popup/index.html?tabId=${tabId}`;
   await popup.goto(popupUrl);
   await popup.setViewportSize({ width: 360, height: 600 });
-  await expect(popup).toHaveTitle(/Forth Intercept/);
+  await expect(popup).toHaveTitle(/Wireflip/);
   await expect(popup.getByText('http://popup.localhost:3000', { exact: true })).toBeVisible();
   await expect(popup.getByRole('button', { name: 'Open Inspector' })).toBeEnabled();
   await popup.getByRole('button', { name: 'Start tab session' }).click();
@@ -884,7 +884,7 @@ test('popup controls are temporary, tab-scoped, and independent from saved rules
   await popup.evaluate(() => window.scrollTo(0, 0));
   await expect(popup.getByRole('switch', { name: 'Request delay', exact: true })).not.toBeChecked();
   await popup.setViewportSize({ width: 360, height: Math.ceil((await popup.locator('main').boundingBox())!.height) });
-  await popup.screenshot({ path: '/tmp/forth-intercept-popup-en.png', fullPage: true, animations: 'disabled' });
+  await popup.screenshot({ path: '/tmp/wireflip-popup-en.png', fullPage: true, animations: 'disabled' });
   await popup.setViewportSize({ width: 360, height: 600 });
   for (const locale of ['en', 'zh-CN', 'ko', 'ja', 'fr', 'es']) {
     await control.evaluate((uiLanguage) => chrome.storage.local.set({ uiLanguage }), locale);
@@ -897,7 +897,7 @@ test('popup controls are temporary, tab-scoped, and independent from saved rules
   await control.evaluate(() => chrome.storage.local.set({ uiLanguage: 'zh-CN' }));
   await expect(popup.locator('html')).toHaveAttribute('lang', 'zh-CN');
   await popup.setViewportSize({ width: 360, height: Math.ceil((await popup.locator('main').boundingBox())!.height) });
-  await popup.screenshot({ path: '/tmp/forth-intercept-popup-zh.png', fullPage: true, animations: 'disabled' });
+  await popup.screenshot({ path: '/tmp/wireflip-popup-zh.png', fullPage: true, animations: 'disabled' });
   await popup.setViewportSize({ width: 360, height: 600 });
   await control.evaluate(() => chrome.storage.local.set({ uiLanguage: 'en' }));
   await expect(popup.locator('html')).toHaveAttribute('lang', 'en');
@@ -948,7 +948,7 @@ test('disable cache bypasses real HTTP cache for one tab and restores it on stop
     await popup.getByRole('switch', { name: 'Disable cache', exact: true }).click();
     await expect(popup.getByRole('switch', { name: 'Disable cache', exact: true })).toBeChecked();
     await expect.poll(toolbarBadge).toBe('ON');
-    await expect.poll(toolbarTitle).toBe('Forth Intercept\nTab session active\nNot recording requests\nThis tab · temporary\n• Disable cache\n0 persistent rules enabled');
+    await expect.poll(toolbarTitle).toBe('Wireflip\nTab session active\nNot recording requests\nThis tab · temporary\n• Disable cache\n0 persistent rules enabled');
     await control.evaluate(() => chrome.storage.local.set({ uiLanguage: 'zh-CN' }));
     await expect.poll(toolbarTitle).toContain('未开启请求记录\n当前页 · 临时\n• 禁用缓存');
     await control.evaluate(() => chrome.storage.local.set({ uiLanguage: 'en' }));
@@ -964,7 +964,7 @@ test('disable cache bypasses real HTTP cache for one tab and restores it on stop
     await expect(popup.getByRole('switch', { name: 'Disable cache', exact: true })).not.toBeChecked();
     await expect(popup.getByText('Tab session stopped', { exact: true })).toBeVisible();
     await expect.poll(toolbarBadge).toBe('');
-    await expect.poll(toolbarTitle).toBe('Forth Intercept\nTab session stopped\n0 persistent rules enabled');
+    await expect.poll(toolbarTitle).toBe('Wireflip\nTab session stopped\n0 persistent rules enabled');
     // getTargets().attached also sees Playwright's own connection. Verify this extension's access.
     await expect.poll(() => control.evaluate(async (id) => {
       try {

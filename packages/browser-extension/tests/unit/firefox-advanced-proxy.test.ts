@@ -96,8 +96,8 @@ describe('Firefox WebRequest interception engine', () => {
   it('patches request, response, and CORS headers for Fetch/XHR traffic', async () => {
     vi.mocked(browser.storage.local.get).mockResolvedValue({
       proxyAppState: state([
-        { type: 'setRequestHeaders', headers: { 'X-Forth': 'request' } },
-        { type: 'setResponseHeaders', headers: { 'X-Forth': 'response' } },
+        { type: 'setRequestHeaders', headers: { 'X-Wireflip': 'request' } },
+        { type: 'setResponseHeaders', headers: { 'X-Wireflip': 'response' } },
       ]),
     });
     await engine.enableAdvancedProxy(8, { quickControls: { disableCache: false, cors: true, credentials: false, delayMs: 0, failure: false } });
@@ -114,8 +114,8 @@ describe('Firefox WebRequest interception engine', () => {
       responseHeaders: [{ name: 'Content-Type', value: 'application/json' }],
     });
 
-    expect(requestResult.requestHeaders).toContainEqual({ name: 'X-Forth', value: 'request' });
-    expect(responseResult.responseHeaders).toContainEqual({ name: 'X-Forth', value: 'response' });
+    expect(requestResult.requestHeaders).toContainEqual({ name: 'X-Wireflip', value: 'request' });
+    expect(responseResult.responseHeaders).toContainEqual({ name: 'X-Wireflip', value: 'response' });
     expect(responseResult.responseHeaders).not.toContainEqual({ name: 'Access-Control-Allow-Origin', value: '*' });
     expect(browser.declarativeNetRequest.updateSessionRules).toHaveBeenCalledWith(expect.objectContaining({
       addRules: expect.arrayContaining([expect.objectContaining({

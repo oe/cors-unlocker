@@ -1,9 +1,9 @@
-# Forth Intercept website
+# Wireflip website
 
-The Astro website and documentation for Forth Intercept, a browser-native request lab for Chrome and Firefox.
+The Astro website and documentation for Wireflip, a browser-native request lab for Chrome and Firefox.
 
 ```bash
-pnpm --filter forth-intercept build
+pnpm --filter wireflip build
 pnpm --filter website dev
 ```
 

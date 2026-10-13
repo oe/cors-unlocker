@@ -9,7 +9,7 @@ export default defineConfig(({ mode }) => ({
   build: {
     lib: {
       entry: 'src/index.ts',
-      name: 'forthIntercept',
+      name: 'wireflip',
       formats: ['es', 'cjs', 'umd'],
       fileName: (format) => {
         if (format === 'es') return 'index.mjs';

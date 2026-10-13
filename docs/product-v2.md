@@ -1,14 +1,14 @@
-# Forth Intercept v2 product direction
+# Wireflip v2 product direction
 
 ## Decision
 
-The product is **Forth Intercept**, described as **an in-browser proxy for developers** for Chrome and Firefox.
+The product is **Wireflip**, described as **an in-browser proxy for developers** for Chrome and Firefox.
 
-“Browser Proxy” is not the brand. It is too generic, overlaps with IP/VPN proxy products, and incorrectly suggests system-wide routing. “Forth Intercept” is tied to the existing forth.ink identity while describing what the extension actually does: intercept and patch request behavior inside a browser tab.
+Wireflip is an independent product name. It evokes changing request traffic while keeping the application workflow moving. “Browser Proxy” remains a category description: the extension modifies browser requests rather than routing system-wide traffic or changing an IP address.
 
 Core line: **Patch the request. Keep your flow.**
 
-Canonical website: **https://intercept.forth.ink**. The former `cors.forth.ink` hostname remains a redirect and legacy SDK compatibility surface.
+Canonical website: **https://intercept.forth.ink**. This is the existing deployment hostname; the product name, SDK package, and release artifacts are Wireflip. Changing the product name does not provision a new domain.
 
 ## Audience and job
 
@@ -22,7 +22,7 @@ The main job is not “remove CORS.” It is:
 
 Requestly already covers a broad interceptor platform, team collaboration, desktop interception, API clients, script injection, sessions, and cloud features. ModHeader owns the simple header-editing mental model. FoxyProxy and many products called “browser proxy” are mainly upstream proxy switchers.
 
-Forth Intercept should not compete by copying that breadth. Its useful wedge is:
+Wireflip should not compete by copying that breadth. Its useful wedge is:
 
 1. **Small, local, browser-only request lab** with no account and no native install.
 2. **Explicit execution paths:** warning-free DNR rules, opt-in tab-scoped CDP on Chrome, and blocking WebRequest interception on Firefox.
@@ -57,7 +57,7 @@ Not allowed:
 - read captured traffic into page JavaScript;
 - execute arbitrary JavaScript.
 
-The canonical npm package is `forth-intercept`. Version 0.2 adds `intercept.connect()` and keeps the old helpers as deprecated aliases. The existing `cors-unlocker` package remains available as a thin compatibility re-export so users can migrate imports on their own schedule.
+The npm package is `wireflip`. Web apps connect with `intercept.connect()`. The SDK and extension use the `wireflip:sdk-request` / `wireflip:sdk-response` page bridge. The previous pre-release brand is replaced directly; no old-brand package, protocol alias, or re-export package is maintained.
 
 ## Website information architecture
 
@@ -82,8 +82,8 @@ Do not add cloud sync, team collaboration, arbitrary scripts, or a native client
 ## Product family and popup boundary
 
 RequestOrbit serves ordinary users who want to DIY link redirects: source URL, destination URL,
-examples, and a safe way to test the result. Forth Intercept serves developers reproducing API
-behavior inside a browser tab. Intercept is a browser request proxy, not an IP proxy or a system VPN.
+examples, and a safe way to test the result. Wireflip serves developers reproducing API
+behavior inside a browser tab. Wireflip is a browser request proxy, not an IP proxy or a system VPN.
 
 Its popup prioritizes the current tab, Inspector, and session-only quick controls. CORS is one
 capability alongside API delay and failure simulation. Configurable mocks, headers, and redirects

@@ -30,7 +30,7 @@ function App() {
         <div className="flex min-w-0 items-center gap-2.5">
           <BrandMark />
           <div className="min-w-0">
-            <h1 className="text-sm font-semibold">Forth Intercept</h1>
+            <h1 className="text-sm font-semibold">Wireflip</h1>
           </div>
         </div>
         <Button size="icon-sm" variant="ghost" aria-label={t('Open settings')} onClick={vm.gotoOptionsPage}><Settings /></Button>

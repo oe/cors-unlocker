@@ -15,7 +15,7 @@ export function toolbarPresentation(url: string | undefined, status: IAdvancedPr
     const parsed = new URL(url || '');
     if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error();
     origin = parsed.origin;
-  } catch { return { state: 'idle', badge: '', title: `Forth Intercept\n${text('Select an HTTP or HTTPS tab.')}` }; }
+  } catch { return { state: 'idle', badge: '', title: `Wireflip\n${text('Select an HTTP or HTTPS tab.')}` }; }
   // A navigation can precede the engine's asynchronous detach notification.
   const phase = status.origin && status.origin !== origin ? 'disabled' : status.phase;
   const state: ToolbarState = phase === 'error' ? 'error' : phase === 'connecting' ? 'connecting'
@@ -40,7 +40,7 @@ export function toolbarPresentation(url: string | undefined, status: IAdvancedPr
     if (controls?.failure) active.push(text('Simulate failure'));
     if (active.length) details.push(text('This tab · temporary'), ...active.map((label) => `• ${label}`));
   }
-  return { state, badge, title: ['Forth Intercept', heading, ...details, count].join('\n') };
+  return { state, badge, title: ['Wireflip', heading, ...details, count].join('\n') };
 }
 
 export function countTabBrowserRules(rules: browser.DeclarativeNetRequest.Rule[], tabId: number): number {

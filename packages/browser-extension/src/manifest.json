@@ -30,7 +30,7 @@
     "default_path": "src/sidepanel/index.html"
   },
   "{{firefox}}.sidebar_action": {
-    "default_title": "Forth Intercept traffic inspector",
+    "default_title": "Wireflip traffic inspector",
     "default_panel": "src/sidepanel/index.html"
   },
   "{{chrome}}.content_scripts": [

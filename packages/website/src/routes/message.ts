@@ -2,7 +2,7 @@ import type {
   IMessageData,
   IMessageResponse,
   IEnableOptions,
-} from 'forth-intercept';
+} from 'wireflip';
 
 // Browser detection
 const IS_FIREFOX = /firefox/i.test(navigator.userAgent);
@@ -42,8 +42,8 @@ const messageCallbacks = {
     // In Firefox, check if bridge is ready instead of extObject
     if (IS_FIREFOX) {
       console.warn('Using Firefox bridge, checking if bridge is ready');
-      // @ts-expect-error __cors_unlocker_ready__ is injected by the content script
-      return !!window.__cors_unlocker_ready__;
+      // @ts-expect-error __wireflip_ready__ is injected by the content script
+      return !!window.__wireflip_ready__;
     }
     // Chrome/Edge: Basic check for extension API availability
     const hasExtAPI = !!extObject && !!extObject.runtime;
@@ -94,7 +94,7 @@ const messageCallbacks = {
     // oly confirm when rule is not found or disabled or no credentials set
     // if downgrade from credentials to no credentials, there is no need to confirm
     if (!rule || rule.disabled || !rule.credentials) {
-      let message = `${origin} is asking Forth Intercept to repair CORS`;
+      let message = `${origin} is asking Wireflip to repair CORS`;
       message += options.credentials ? ' **with credentials**.' : '.';
       message += options.reason
         ? `\n\nMessage from current Page:\n${options.reason}\n\n`

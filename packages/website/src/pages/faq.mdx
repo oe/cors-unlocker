@@ -1,16 +1,16 @@
 ---
 layout: ../components/doc-layout.astro
 title: FAQ
-description: Answers about Forth Intercept, Chrome debugging disclosure, privacy, migration, and the SDK.
+description: Answers about Wireflip, Chrome debugging disclosure, privacy, migration, and the SDK.
 ---
 
 # Frequently asked questions
 
-## Is Forth Intercept a VPN or network proxy?
+## Is Wireflip a VPN or network proxy?
 
 No. It is a request interception tool inside Chrome and Firefox. It does not route other applications, change your public IP, or provide geographic proxying.
 
-## Why did CORS Unlocker become Forth Intercept?
+## Why did CORS Unlocker become Wireflip?
 
 CORS repair is now one part of a broader request-lab workflow: observe traffic, change headers, redirect or block requests, return local mocks, and simulate slow or failing APIs. The new name avoids describing the product as only a CORS switch.
 
@@ -26,21 +26,21 @@ Advanced mode uses Chrome's `debugger` API and the DevTools Protocol to pause re
 
 When you switch it off, close the tab, another debugger takes over, or navigate the top-level tab to a different origin.
 
-## Does Forth Intercept upload my traffic?
+## Does Wireflip upload my traffic?
 
 No. Rules stay in extension storage and request logs are kept in the extension service worker's memory. The product has no traffic-upload or analytics endpoint.
 
 ## Can it execute JavaScript rules?
 
-Not arbitrary JavaScript. Forth Intercept accepts validated JSON action scripts. This keeps behavior inspectable and avoids MV3 remote-code and `eval` problems.
+Not arbitrary JavaScript. Wireflip accepts validated JSON action scripts. This keeps behavior inspectable and avoids MV3 remote-code and `eval` problems.
 
 ## What can a website do through the npm SDK?
 
 It can detect the installed extension, read status for its own origin, ask the user to enable CORS, disable its own CORS rule, open the workspace, or create a disabled rule draft. It cannot silently enable arbitrary interception, attach Advanced mode, or affect another origin.
 
-## What happened to the `cors-unlocker` npm package?
+## Which npm package should I install?
 
-The canonical package is now `forth-intercept`. `cors-unlocker@0.2` remains as a thin compatibility package, so existing applications can migrate their import when convenient instead of breaking immediately.
+Install `wireflip` and import `{ intercept }` from it. Wireflip ships its SDK directly, without an old-name package alias or compatibility wrapper.
 
 ## Is Firefox supported?
 

@@ -1,10 +1,9 @@
-# Forth Intercept architecture
+# Wireflip architecture
 
-Forth Intercept is a browser-native request lab for Chrome and Firefox with four cooperating packages:
+Wireflip is a browser-native request lab for Chrome and Firefox with three cooperating packages:
 
 - `packages/browser-extension` owns request interception, local rule storage, the traffic inspector, and the page capability bridge.
-- `packages/npm` is the canonical application-facing SDK published as `forth-intercept`.
-- `packages/npm-compat` preserves the published `cors-unlocker` name as a thin re-export.
+- `packages/npm` is the canonical application-facing SDK published as `wireflip`.
 - `packages/website` is the product site, documentation, privacy page, and SDK playground.
 
 ## Execution paths
