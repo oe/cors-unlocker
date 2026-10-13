@@ -13,7 +13,7 @@ import {
   type ProxyHeaderMap,
 } from '@/common/proxy-state';
 import { globMatches, normalizeResourceType } from '@/common/request-match';
-import { EMPTY_QUICK_CONTROLS, hasActiveQuickControls, parseQuickControls, quickControlRules, type QuickControls } from '@/common/quick-controls';
+import { EMPTY_QUICK_CONTROLS, hasActiveQuickControls, hasRedirectHeaders, parseQuickControls, quickControlRules, type QuickControls } from '@/common/quick-controls';
 
 const PROTOCOL_VERSION = '1.3';
 
@@ -72,12 +72,23 @@ interface IRequestPausedParams {
   responseStatusCode?: number;
   responseStatusText?: string;
   responseHeaders?: IHeaderEntry[];
+  responseErrorReason?: string;
 }
 
 const sessions = new Map<number, IAdvancedProxySession>();
+interface PendingConnection {
+  abort: AbortController;
+  origin?: string;
+  attached: boolean;
+  closed: boolean;
+  cleaningUp: boolean;
+  promise: Promise<IAdvancedProxyStatus>;
+}
+const pendingConnections = new Map<number, PendingConnection>();
 const statuses = new Map<number, IAdvancedProxyStatus>();
 const requestLogs = new Map<number, IRequestLogEntry[]>();
 const requestIndexes = new Map<string, IRequestLogEntry>();
+const redirectedRequests = new Map<string, { session: IAdvancedProxySession; url: string; method: string; resourceType?: string }>();
 let cachedRules: IProxyRule[] = [];
 let requestLogLimit = 500;
 
@@ -225,8 +236,24 @@ async function handleRequestPaused(tabId: number, params: IRequestPausedParams) 
     return;
   }
 
+  const key = `${tabId}:${params.requestId}`;
+  if (params.responseErrorReason) {
+    redirectedRequests.delete(key);
+    const failed = requestIndexes.get(key);
+    if (failed) { failed.outcome = 'failed'; failed.duration = Date.now() - failed.startedAt; failed.diagnostics.push(params.responseErrorReason); }
+    await continueUnchanged(tabId, params.requestId);
+    notifyLogChanged(tabId);
+    return;
+  }
   const isResponseStage = typeof params.responseStatusCode === 'number';
-  const rules = matchingRules(session, params);
+  const redirected = isResponseStage ? redirectedRequests.get(key) : undefined;
+  const original = redirected?.session === session ? redirected : undefined;
+  if (isResponseStage) redirectedRequests.delete(key);
+  const rules = matchingRules(session, original ? {
+    ...params,
+    request: { ...params.request, url: original.url, method: original.method },
+    resourceType: original.resourceType,
+  } : params);
   const actions = allActions(rules);
   const cors = actionOfType(actions, 'cors');
   const entry = isResponseStage
@@ -322,6 +349,9 @@ async function handleRequestPaused(tabId: number, params: IRequestPausedParams) 
       (headers, action) => mergeHeaderMaps(headers, action.headers),
       { ...params.request.headers },
     );
+    if (redirectAction && rules.some(hasRedirectHeaders)) redirectedRequests.set(key, {
+      session, url: params.request.url, method: params.request.method, resourceType: params.resourceType,
+    });
     await chrome.debugger.sendCommand({ tabId }, 'Fetch.continueRequest', {
       requestId: params.requestId,
       ...(redirectAction ? { url: redirectAction.url } : {}),
@@ -399,8 +429,11 @@ async function onDebuggerEvent(
 
 function onDebuggerDetach(source: chrome.debugger.Debuggee, reason: string) {
   if (typeof source.tabId !== 'number') return;
+  const pending = pendingConnections.get(source.tabId);
+  if (pending && !pending.cleaningUp) pending.abort.abort();
   sessions.get(source.tabId)?.abort.abort();
   sessions.delete(source.tabId);
+  for (const key of redirectedRequests.keys()) if (key.startsWith(`${source.tabId}:`)) redirectedRequests.delete(key);
   void notifyStatus({
     tabId: source.tabId,
     phase: 'disabled',
@@ -436,11 +469,14 @@ if (__TARGET__ === 'chrome') {
   chrome.debugger.onEvent.addListener(onDebuggerEvent);
   chrome.debugger.onDetach.addListener(onDebuggerDetach);
   chrome.tabs.onRemoved.addListener((tabId) => {
+    const pending = pendingConnections.get(tabId);
+    if (pending) { pending.closed = true; pending.abort.abort(); }
     logNotifications.cancel(tabId);
     sessions.get(tabId)?.abort.abort();
     sessions.delete(tabId);
     statuses.delete(tabId);
     requestLogs.delete(tabId);
+    for (const key of redirectedRequests.keys()) if (key.startsWith(`${tabId}:`)) redirectedRequests.delete(key);
     for (const key of requestIndexes.keys()) {
       if (key.startsWith(`${tabId}:`)) requestIndexes.delete(key);
     }
@@ -448,6 +484,15 @@ if (__TARGET__ === 'chrome') {
   browser.tabs.onUpdated.addListener((tabId, changeInfo) => {
     const session = sessions.get(tabId);
     if (!changeInfo.url) return;
+    const pending = pendingConnections.get(tabId);
+    if (pending) {
+      let origin: string | undefined;
+      try { origin = new URL(changeInfo.url).origin; } catch { /* Cancel unsupported navigation. */ }
+      if (!pending.origin || pending.origin !== origin) {
+        void disableAdvancedProxy(tabId);
+        return;
+      }
+    }
     if (!session) {
       const status = statuses.get(tabId);
       if (status?.phase === 'error') {
@@ -470,7 +515,7 @@ if (__TARGET__ === 'chrome') {
     if (areaName !== 'local' || !changes[APP_STATE_KEY]) return;
     if (!isProxyAppState(value)) {
       cachedRules = [];
-      for (const tabId of sessions.keys()) void disableAdvancedProxy(tabId);
+      for (const tabId of new Set([...sessions.keys(), ...pendingConnections.keys()])) void disableAdvancedProxy(tabId);
       return;
     }
     cachedRules = value.rules;
@@ -491,18 +536,50 @@ export async function enableAdvancedProxy(
   if (__TARGET__ !== 'chrome') {
     return { tabId, phase: 'error', error: 'Advanced proxy is currently available in Chrome only.' };
   }
+  const pending = pendingConnections.get(tabId);
+  if (pending) {
+    const result = await pending.promise;
+    if (result.phase !== 'connected') return result;
+    return enableAdvancedProxy(tabId, options);
+  }
+  const connection: PendingConnection = {
+    abort: new AbortController(), attached: false, closed: false, cleaningUp: false,
+    promise: Promise.resolve({ tabId, phase: 'disabled' }),
+  };
+  // Register before the first asynchronous lookup, so stop/close/navigation can cancel it.
+  pendingConnections.set(tabId, connection);
+  connection.promise = Promise.resolve().then(() => connectAdvancedProxy(tabId, options, connection))
+    .finally(() => { if (pendingConnections.get(tabId) === connection) pendingConnections.delete(tabId); });
+  return connection.promise;
+}
+
+async function checkConnectionScope(tabId: number, connection: PendingConnection): Promise<void> {
+  if (connection.abort.signal.aborted) throw new Error('Proxy connection cancelled.');
+  const tab = await browser.tabs.get(tabId);
+  const pendingUrl = (tab as browser.Tabs.Tab & { pendingUrl?: string }).pendingUrl;
+  if (connection.abort.signal.aborted || !tab.url || new URL(pendingUrl || tab.url).origin !== connection.origin) {
+    connection.abort.abort();
+    throw new Error('Proxy connection cancelled after navigation.');
+  }
+}
+
+async function connectAdvancedProxy(tabId: number, options: { quickControls?: QuickControls }, connection: PendingConnection): Promise<IAdvancedProxyStatus> {
   const quickControls = options.quickControls ? parseQuickControls(options.quickControls) : { ...EMPTY_QUICK_CONTROLS };
   const tab = await browser.tabs.get(tabId);
+  if (connection.abort.signal.aborted) return { tabId, phase: 'disabled' };
   if (!tab.url) throw new Error('The active tab URL is unavailable.');
   const url = new URL(tab.url);
+  connection.origin = url.origin;
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
     throw new Error('Advanced proxy only supports HTTP and HTTPS tabs.');
   }
   const existing = sessions.get(tabId);
   if (existing) {
+    if (existing.origin !== url.origin) return disableAdvancedProxy(tabId);
     // An explicit start takes ownership of an already-running automatic session.
     if (!options.quickControls) {
       await startCapture(tabId, existing);
+      await checkConnectionScope(tabId, connection);
       existing.startedByQuickControls = false;
       await notifyStatus({ ...getAdvancedProxyStatus(tabId), captureEnabled: true });
     }
@@ -512,7 +589,10 @@ export async function enableAdvancedProxy(
   await notifyStatus({ tabId, phase: 'connecting', origin: url.origin });
   try {
     await refreshRuleCache();
+    await checkConnectionScope(tabId, connection);
     await chrome.debugger.attach({ tabId }, PROTOCOL_VERSION);
+    connection.attached = true;
+    await checkConnectionScope(tabId, connection);
     sessions.set(tabId, {
       abort: new AbortController(),
       captureEnabled: false,
@@ -521,16 +601,30 @@ export async function enableAdvancedProxy(
       quickControls,
     });
     await chrome.debugger.sendCommand({ tabId }, 'Network.enable');
+    await checkConnectionScope(tabId, connection);
     await chrome.debugger.sendCommand({ tabId }, 'Network.setCacheDisabled', { cacheDisabled: quickControls.disableCache });
+    await checkConnectionScope(tabId, connection);
     const session = sessions.get(tabId)!;
     if (!options.quickControls || !quickControls.disableCache || requiresCapture(session)) await startCapture(tabId, session);
+    await checkConnectionScope(tabId, connection);
     const status = { tabId, phase: 'connected', origin: url.origin, quickControls, captureEnabled: session.captureEnabled } satisfies IAdvancedProxyStatus;
     await notifyStatus(status);
+    if (connection.abort.signal.aborted) return { tabId, phase: 'disabled' };
     return status;
   } catch (error) {
-    sessions.get(tabId)?.abort.abort();
+    connection.cleaningUp = true;
+    const failedSession = sessions.get(tabId);
+    failedSession?.abort.abort();
     sessions.delete(tabId);
-    await chrome.debugger.detach({ tabId }).catch(() => undefined);
+    if (connection.attached && failedSession?.quickControls.disableCache) {
+      await chrome.debugger.sendCommand({ tabId }, 'Network.setCacheDisabled', { cacheDisabled: false }).catch(() => undefined);
+    }
+    if (connection.attached) await chrome.debugger.detach({ tabId }).catch(() => undefined);
+    if (connection.abort.signal.aborted) {
+      const stopped = { tabId, phase: 'disabled' } satisfies IAdvancedProxyStatus;
+      if (!connection.closed) await notifyStatus(stopped);
+      return stopped;
+    }
     const status = {
       tabId,
       phase: 'error',
@@ -562,14 +656,17 @@ export async function updateQuickControls(tabId: number, value: unknown): Promis
 }
 
 export async function disableAdvancedProxy(tabId: number): Promise<IAdvancedProxyStatus> {
+  const pending = pendingConnections.get(tabId);
+  pending?.abort.abort();
   const session = sessions.get(tabId);
   sessions.get(tabId)?.abort.abort();
   sessions.delete(tabId);
+  for (const key of redirectedRequests.keys()) if (key.startsWith(`${tabId}:`)) redirectedRequests.delete(key);
   if (__TARGET__ === 'chrome') {
     if (session?.quickControls.disableCache) {
       await chrome.debugger.sendCommand({ tabId }, 'Network.setCacheDisabled', { cacheDisabled: false }).catch(() => undefined);
     }
-    await chrome.debugger.detach({ tabId }).catch(() => undefined);
+    if (session || pending?.attached) await chrome.debugger.detach({ tabId }).catch(() => undefined);
   }
   const status = { tabId, phase: 'disabled' } satisfies IAdvancedProxyStatus;
   await notifyStatus(status);

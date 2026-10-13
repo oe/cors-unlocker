@@ -96,6 +96,10 @@ The extension UI supports English, Simplified Chinese, Korean, Japanese, French 
 
 Interception is deliberately tab-scoped. It stops when disabled, when the tab closes, or when the tab navigates to a different top-level origin. Chrome Advanced mode also detaches when another debugger takes over.
 
+Redirects combined with request or response header changes require a connected
+tab session. The complete combination stops with the session; redirect-only
+rules continue to use the browser's fast path.
+
 ## Rule reliability and recovery
 
 Saved page scopes use the complete top-level HTTP(S) origin, including protocol and port.

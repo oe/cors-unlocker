@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EMPTY_QUICK_CONTROLS, parseQuickControls, quickControlRules } from '../../src/common/quick-controls';
+import { EMPTY_QUICK_CONTROLS, hasPersistentActions, needsProxy, parseQuickControls, quickControlRules } from '../../src/common/quick-controls';
 
 describe('temporary quick controls', () => {
   it('rejects unsupported values instead of creating unbounded delays or implicit controls', () => {
@@ -28,4 +28,13 @@ it('requires a proxy for native CORS while preserving the compatibility fast pat
   const actions = quickControlRules('https://example.com', { ...EMPTY_QUICK_CONTROLS, cors: true })[0].actions;
   expect(needsProxy({ source: 'user', actions })).toBe(true);
   expect(needsProxy({ source: 'legacy-cors', actions })).toBe(false);
+});
+
+it('shows redirect/header combinations as session-only while keeping simple redirects persistent', () => {
+  const redirect = { type: 'redirect' as const, url: 'https://staging.example.com/' };
+  const combo = { source: 'user' as const, actions: [redirect, { type: 'setRequestHeaders' as const, headers: { 'X-Staging': 'yes' } }] };
+  expect(needsProxy(combo)).toBe(true);
+  expect(hasPersistentActions(combo)).toBe(false);
+  expect(needsProxy({ source: 'user', actions: [redirect] })).toBe(false);
+  expect(hasPersistentActions({ source: 'user', actions: [redirect] })).toBe(true);
 });

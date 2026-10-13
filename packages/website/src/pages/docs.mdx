@@ -70,6 +70,11 @@ A rule contains a page-origin match, request URL glob, optional HTTP methods and
 
 Available actions are `cors`, `setRequestHeaders`, `setResponseHeaders`, `redirect`, `block`, `mockResponse`, `delay`, and `networkFailure`. Action scripts are validated JSON; arbitrary JavaScript is not evaluated.
 
+A redirect combined with request or response header changes requires a connected
+Chrome Advanced or Firefox Intercept session. The combination executes together
+against the original request matcher; it does not modify unrelated requests sent
+directly to the destination. A redirect-only rule still works in Rules mode.
+
 ## Site controls
 
 Choose **Open Inspector** from the popup to manage rules for the current HTTP or HTTPS page. Toggle rules or click their names to edit them directly in the side panel. New rules default to the current page origin.
