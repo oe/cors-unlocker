@@ -1,10 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
   <rect width="1200" height="630" fill="white"/>
-  <image href="/brand-mark.png" x="64" y="56" width="56" height="56"/>
+  <svg data-brand-mark="true" x="64" y="56" width="56" height="56" viewBox="60 88 1140 1140">
+    <path fill="#6b80cc" d="M 443.9 203.1 C 351.2 209.7, 259.7 261.3, 204.3 338 C 125.5 447.1, 129.8 589.7, 214.8 688.1 C 300.8 787.5, 426.7 799.3, 515.5 716.1 C 524.9 707.3, 534.5 697.9, 613.5 620.5 C 675.5 559.8, 680.9 555.0, 701.1 541.4 C 761.2 501.3, 837.6 492.2, 898.3 518.0 C 902.1 519.7, 905.5 520.9, 905.6 520.7 C 905.8 520.5, 898.1 512.5, 888.4 502.9 C 862.6 477.4, 802.6 414.2, 763.5 371.5 C 732.3 337.5, 692.4 295.7, 682.5 286.6 C 616.1 225.9, 532.5 196.7, 443.9 203.1 Z"/>
+  <path fill="#435d91" d="M 846.5 554.6 C 793.5 559.8, 756.4 574.4, 718.3 604.8 C 704.4 615.9, 689.6 630.2, 606.5 712.0 C 560.4 757.5, 549.9 767.3, 537.7 776.4 C 479.6 819.7, 414.3 831.2, 348.2 809.8 C 341.4 807.6, 335.7 806.0, 335.5 806.2 C 335.1 806.6, 341.7 813.6, 367.5 840 C 375.8 848.5, 386.9 860, 392.1 865.5 C 407.4 881.7, 465.3 942.2, 481.0 958.5 C 489.0 966.7, 500.3 978.5, 506.0 984.5 C 527.9 1007.5, 543.9 1023.5, 555 1033.4 C 700.1 1162.8, 935.9 1149.7, 1051.6 1006 C 1186.0 839.0, 1095.6 587.3, 890.2 556.5 C 879.9 555.0, 854.1 553.8, 846.5 554.6 Z"/>
+  </svg>
   <text x="140" y="96" font-family="Inter,Arial,sans-serif" font-size="32" font-weight="700" fill="#111113">Wireflip</text>
-  <text x="64" y="280" font-family="Inter,Arial,sans-serif" font-size="76" font-weight="700" letter-spacing="-3" fill="#111113">Patch the request.</text>
-  <text x="64" y="370" font-family="Inter,Arial,sans-serif" font-size="76" font-weight="700" letter-spacing="-3" fill="#111113">Keep your flow.</text>
-  <text x="64" y="445" font-family="Inter,Arial,sans-serif" font-size="28" fill="#626268">A browser-native request lab. No native client. No proxy setup.</text>
+  <text x="64" y="280" font-family="Inter,Arial,sans-serif" font-size="76" font-weight="700" letter-spacing="-3" fill="#111113">Patch the request</text>
+  <text x="64" y="370" font-family="Inter,Arial,sans-serif" font-size="76" font-weight="700" letter-spacing="-3" fill="#111113">Keep your flow</text>
+  <text x="64" y="430" font-family="Inter,Arial,sans-serif" font-size="26" fill="#626268"><tspan x="64">A browser-native request lab</tspan><tspan x="64" dy="36">No native client · No proxy setup</tspan></text>
   <rect x="64" y="505" width="190" height="56" rx="10" fill="#111113"/>
   <text x="96" y="542" font-family="Inter,Arial,sans-serif" font-size="21" font-weight="600" fill="white">Add to Chrome</text>
   <rect x="820" y="130" width="320" height="370" rx="16" fill="#fafafa" stroke="#dedee1"/>
@@ -16,5 +19,5 @@
   <text x="892" y="252" font-family="monospace" font-size="15" fill="#111113">GET /api/projects</text>
   <text x="892" y="324" font-family="monospace" font-size="15" fill="#111113">POST /api/orders</text>
   <text x="864" y="400" font-family="Inter,Arial,sans-serif" font-size="17" font-weight="700" fill="#1267e8">CORS repaired</text>
-  <text x="864" y="431" font-family="Inter,Arial,sans-serif" font-size="14" fill="#345b91">Response patched locally.</text>
+  <text x="864" y="431" font-family="Inter,Arial,sans-serif" font-size="14" fill="#345b91">Response patched locally</text>
 </svg>
