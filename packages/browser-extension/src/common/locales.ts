@@ -421,6 +421,14 @@ export const messages: Record<string, Record<string, string>> = {
     "fr": "Données et migration",
     "es": "Datos y migración"
   },
+  "Data": {
+    "en": "Data",
+    "zh-CN": "数据",
+    "ko": "데이터",
+    "ja": "データ",
+    "fr": "Données",
+    "es": "Datos"
+  },
   "Data & recovery": {
     "en": "Data & recovery",
     "zh-CN": "数据与恢复",

@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { WorkspaceRuleEditor } from './workspace-rule-editor';
+import { WorkspaceHeader } from './workspace-header';
 import { RecoveryPanel } from './recovery-panel';
 import { dataStorage } from '@/common/storage';
 import { APP_STATE_KEY, isProxyAppState, type IProxyProfile, type IProxyAppState, type IProxyRule } from '@/common/proxy-state';
@@ -31,6 +32,7 @@ function ProxyRules({ state, reload, navigate, onDirtyChange }: {
   onDirtyChange: (dirty: boolean) => void;
 }) {
   const [draft, setDraft] = useState<RuleDraft | null>(null);
+  const [headerTarget, setHeaderTarget] = useState<HTMLDivElement | null>(null);
   const [pendingDelete, setPendingDelete] = useState<IProxyRule | null>(null);
   const [query, setQuery] = useState('');
   const [actionFilter, setActionFilter] = useState('all');
@@ -160,15 +162,16 @@ function ProxyRules({ state, reload, navigate, onDirtyChange }: {
       </div>
     </div>
   );
-  return <div className="relative grid h-full min-h-0 min-w-0 grid-cols-1 md:grid-cols-[288px_minmax(0,1fr)]">
+  return <div className="flex h-full min-h-0 min-w-0 flex-col">
+    <WorkspaceHeader><div ref={setHeaderTarget} className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+      {!draft ? <><h2 className="text-sm font-semibold">{t('Rules')}</h2><Badge variant="secondary">{state.rules.length}</Badge></> : null}
+    </div></WorkspaceHeader>
+    <div className="relative grid min-h-0 min-w-0 flex-1 grid-cols-1 md:grid-cols-[288px_minmax(0,1fr)]">
     <aside aria-label={t("Rule list")} className={cn('flex min-h-0 min-w-0 flex-col border-r', draft && 'max-md:hidden')}>
       <div className="flex shrink-0 flex-col gap-2 border-b p-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold">{t('Rules')}</h2>
-          <div className="ml-auto flex items-center gap-1">
             <Button size="xs" variant="ghost" disabled={busy} onClick={() => openGroup('create')}><Folder data-icon="inline-start" />{t('New group')}</Button>
             <Button size="sm" disabled={busy} onClick={() => leave(() => setDraft({ ...EMPTY_DRAFT }))}><Plus data-icon="inline-start" />{t('New rule')}</Button>
-          </div>
         </div>
         <Input ref={search} aria-label={t("Search rules")} placeholder={t("Search rules · ⌘/Ctrl K")} value={query} onChange={(e) => setQuery(e.target.value)} />
         <div className="grid grid-cols-2 gap-2">
@@ -187,9 +190,9 @@ function ProxyRules({ state, reload, navigate, onDirtyChange }: {
             </button>
             <div className="ml-auto flex shrink-0 items-center gap-1">
             <Switch size="sm" checked={profile.enabled} disabled={busy} aria-label={t('Enable group {name}', { name: profile.name })} onCheckedChange={(enabled) => void changeGroup({ kind: 'updateGroup', id: profile.id, enabled })} />
-            <Button variant="ghost" size="icon-xs" disabled={busy} title={t('Create rule in {name}', { name: profile.name })} aria-label={t('Create rule in {name}', { name: profile.name })} onClick={() => leave(() => setDraft({ ...EMPTY_DRAFT, groupId: profile.id }))}><Plus /></Button>
-            <Button variant="ghost" size="icon-xs" disabled={busy} title={t('Rename group {name}', { name: profile.name })} aria-label={t('Rename group {name}', { name: profile.name })} onClick={() => openGroup('rename', profile)}><Pencil /></Button>
-            <Button variant="ghost" size="icon-xs" disabled={busy} title={t('Delete group {name}', { name: profile.name })} aria-label={t('Delete group {name}', { name: profile.name })} onClick={() => openGroup('remove', profile)}><Trash2 /></Button>
+            <Button variant="ghost" size="icon-sm" disabled={busy} title={t('Create rule in {name}', { name: profile.name })} aria-label={t('Create rule in {name}', { name: profile.name })} onClick={() => leave(() => setDraft({ ...EMPTY_DRAFT, groupId: profile.id }))}><Plus /></Button>
+            <Button variant="ghost" size="icon-sm" disabled={busy} title={t('Rename group {name}', { name: profile.name })} aria-label={t('Rename group {name}', { name: profile.name })} onClick={() => openGroup('rename', profile)}><Pencil /></Button>
+            <Button variant="ghost" size="icon-sm" disabled={busy} title={t('Delete group {name}', { name: profile.name })} aria-label={t('Delete group {name}', { name: profile.name })} onClick={() => openGroup('remove', profile)}><Trash2 /></Button>
             </div>
           </div> : state.profiles.length ? <h3 className="border-b bg-muted/40 px-3 py-2 text-sm font-medium">{t('Ungrouped')}</h3> : null}
           <div id={profile ? `group-${profile.id}` : undefined} hidden={!!profile && !searching && collapsed.includes(profile.id)}>
@@ -201,7 +204,7 @@ function ProxyRules({ state, reload, navigate, onDirtyChange }: {
       </div>
     </aside>
     <div className={cn('min-h-0 min-w-0', !draft && 'max-md:hidden')}>
-      {draft ? <WorkspaceRuleEditor profiles={state.profiles} key={draft.id || 'new'} draft={draft} onDirtyChange={onDirtyChange}
+      {draft ? <WorkspaceRuleEditor headerTarget={headerTarget} profiles={state.profiles} key={draft.id || 'new'} draft={draft} onDirtyChange={onDirtyChange}
         onCopy={selected ? copy : undefined} onDelete={selected ? () => setPendingDelete(selected) : undefined}
         onOpenChange={(open) => { if (!open) { onDirtyChange(false); setDraft(null); } }}
         onSaved={async (rule, groupId) => { await reload(); if (rule) setDraft({ ...draftFromRule(rule, state.profiles), ...(groupId !== undefined ? { groupId } : {}) }); setMessage('Rule saved.'); }} /> :
@@ -224,6 +227,7 @@ function ProxyRules({ state, reload, navigate, onDirtyChange }: {
       </form>
     </DialogContent></Dialog>
     <Dialog open={!!pendingDelete} onOpenChange={(open) => !open && setPendingDelete(null)}><DialogContent><DialogHeader><DialogTitle>{t("Delete proxy rule?")}</DialogTitle><DialogDescription>{t('Delete {name} and its unsaved edits? This cannot be undone.', { name: pendingDelete?.name || '' })}</DialogDescription></DialogHeader><DialogFooter><Button variant="outline" onClick={() => setPendingDelete(null)}>{t("Cancel")}</Button><Button variant="destructive" disabled={busy} onClick={async () => { if (pendingDelete && await mutate('deleteProxyRule', { id: pendingDelete.id })) { if (draft?.id === pendingDelete.id) { setDraft(null); onDirtyChange(false); } setPendingDelete(null); } }}>{t("Delete rule")}</Button></DialogFooter></DialogContent></Dialog>
+    </div>
   </div>;
 }
 
@@ -342,18 +346,18 @@ function App() {
   return <main className="flex h-dvh min-h-0 flex-col overflow-hidden bg-background text-foreground">
     {error ? <Alert variant="destructive"><AlertTitle>{t("Unable to load")}</AlertTitle><AlertDescription>{translateError(error)}</AlertDescription></Alert> : null}
     <div className="flex min-h-0 flex-1">
-      <nav aria-label={t("Workspace navigation")} className="flex w-14 shrink-0 flex-col gap-1 border-r bg-muted/30 p-2 lg:w-36">
-        <div className="mb-2 flex h-9 shrink-0 items-center justify-center gap-2 lg:justify-start lg:px-1" title="Wireflip">
+      <nav aria-label={t("Workspace navigation")} className="flex w-16 shrink-0 flex-col gap-1 border-r bg-muted/30 p-2 lg:w-32">
+        <div className="-mx-2 -mt-2 mb-2 flex h-11 shrink-0 items-center justify-center gap-2 border-b px-3 lg:justify-start" title="Wireflip">
           <BrandMark className="size-7 shrink-0" /><h1 className="sr-only text-sm font-semibold lg:not-sr-only">Wireflip</h1>
         </div>
-        <Button variant={view === 'rules' ? 'secondary' : 'ghost'} className="h-auto min-h-9 w-full lg:justify-start" aria-label={t("Rules")} title={t("Rules")} aria-current={view === 'rules' ? 'page' : undefined} onClick={() => { if (view !== 'rules') navigate(() => setView('rules')); }}><ListFilter data-icon="inline-start" /><span className="hidden min-w-0 whitespace-normal text-left lg:block">{t("Rules")}</span></Button>
-        <Button variant={view === 'data' ? 'secondary' : 'ghost'} className="h-auto min-h-9 w-full py-2 lg:justify-start" aria-label={t("Data & migration")} title={t("Data & migration")} aria-current={view === 'data' ? 'page' : undefined} onClick={() => { if (view !== 'data') navigate(() => setView('data')); }}><Database data-icon="inline-start" /><span className="hidden min-w-0 whitespace-normal text-left lg:block">{t("Data & migration")}</span></Button>
+        <Button variant={view === 'rules' ? 'secondary' : 'ghost'} className="h-auto min-h-11 w-full flex-col gap-1 px-0 py-1.5 lg:min-h-9 lg:flex-row lg:justify-start lg:px-2" aria-label={t("Rules")} title={t("Rules")} aria-current={view === 'rules' ? 'page' : undefined} onClick={() => { if (view !== 'rules') navigate(() => setView('rules')); }}><ListFilter data-icon="inline-start" /><span className="min-w-0 text-xs lg:text-sm">{t("Rules")}</span></Button>
+        <Button variant={view === 'data' ? 'secondary' : 'ghost'} className="h-auto min-h-11 w-full flex-col gap-1 px-0 py-1.5 lg:min-h-9 lg:flex-row lg:justify-start lg:px-2" aria-label={t("Data & migration")} title={t("Data & migration")} aria-current={view === 'data' ? 'page' : undefined} onClick={() => { if (view !== 'data') navigate(() => setView('data')); }}><Database data-icon="inline-start" /><span className="min-w-0 text-xs lg:text-sm">{t("Data")}</span></Button>
         <div className="mt-auto pt-3"><LanguageSelect compact /></div>
       </nav>
       <div className="min-h-0 min-w-0 flex-1">
         {state ? view === 'rules' ? <ProxyRules state={state} reload={reload} navigate={navigate} onDirtyChange={setDirty} /> :
-          <section aria-label={t("Data management")} className="h-full overflow-y-auto p-4 lg:p-6"><div className="mx-auto max-w-5xl"><h2 className="mb-4 text-xl font-semibold">{t("Data & recovery")}</h2><DataSettings state={state} reload={reload} /></div></section> :
-          <>{error ? <RecoveryPanel reload={reload} /> : <p className="p-6 text-sm text-muted-foreground">{t("Loading configuration…")}</p>}</>}
+          <section aria-label={t("Data management")} className="flex h-full min-h-0 flex-col"><WorkspaceHeader><h2 className="text-sm font-semibold">{t("Data & recovery")}</h2></WorkspaceHeader><div className="min-h-0 flex-1 overflow-y-auto p-4 lg:p-6"><div className="mx-auto max-w-5xl"><DataSettings state={state} reload={reload} /></div></div></section> :
+          <div className="flex h-full min-h-0 flex-col"><WorkspaceHeader><h2 className="text-sm font-semibold">{t(view === 'rules' ? 'Rules' : 'Data & recovery')}</h2></WorkspaceHeader><div className="min-h-0 flex-1 overflow-y-auto">{error ? <RecoveryPanel reload={reload} /> : <p className="p-6 text-sm text-muted-foreground">{t("Loading configuration…")}</p>}</div></div>}
       </div>
     </div>
     <Dialog open={!!pendingNavigation} onOpenChange={(open) => !open && setPendingNavigation(null)}><DialogContent><DialogHeader><DialogTitle>{t("Discard unsaved changes?")}</DialogTitle><DialogDescription>{t("Save your draft or discard it before leaving.")}</DialogDescription></DialogHeader><DialogFooter><Button variant="outline" onClick={() => setPendingNavigation(null)}>{t("Keep editing")}</Button><Button variant="destructive" onClick={() => { const action = pendingNavigation; setPendingNavigation(null); setDirty(false); action?.(); }}>{t("Discard changes")}</Button></DialogFooter></DialogContent></Dialog>

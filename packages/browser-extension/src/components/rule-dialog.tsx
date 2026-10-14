@@ -16,6 +16,7 @@ import { explainRuleMatch } from '@/common/rule-explanation';
 import { needsProxy } from '@/common/quick-controls';
 import { RESOURCE_TYPES } from '@/common/request-match';
 import { jsonProblem } from '@/common/json-editor';
+import { cn } from '@/lib/utils';
 
 const INVALID_ACTION_JSON = 'Invalid action JSON. Fix the syntax in Advanced JSON.';
 
@@ -252,19 +253,22 @@ export function RuleEditorForm({
   };
 
 
-  const matchFields = <FieldGroup>          <Field>
+  const matchFields = <FieldGroup>
+          <FieldGroup className={cn(renderWorkspace && profiles && 'grid gap-4 @xl/field-group:grid-cols-2')}>
+          <Field>
             <FieldLabel htmlFor="rule-name">{t("Name")}</FieldLabel>
             <Input id="rule-name" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
           </Field>
           {profiles ? <Field>
             <FieldLabel htmlFor="rule-group">{t('Group')}</FieldLabel>
-            <select id="rule-group" className="h-9 w-full rounded-md border bg-background px-3 text-sm" value={selectedGroup?.id || ''} onChange={(event) => setForm({ ...form, groupId: event.target.value })}>
+            <select id="rule-group" className={cn('h-9 w-full rounded-md border bg-background px-3 text-sm', renderWorkspace && 'h-8')} value={selectedGroup?.id || ''} onChange={(event) => setForm({ ...form, groupId: event.target.value })}>
               <option value="">{t('Ungrouped')}</option>
               {profiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name}</option>)}
             </select>
             <FieldDescription>{t('Group off pauses its rules without changing their switches.')}</FieldDescription>
             {groupPaused ? <p role="status" className="text-sm text-amber-700 dark:text-amber-400">{t('Group paused. This rule will not apply until the group is enabled.')}</p> : null}
           </Field> : null}
+          </FieldGroup>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field>
               <FieldLabel htmlFor="rule-origins">{t("Page origins")}</FieldLabel>

@@ -380,12 +380,23 @@ test('keeps compact workspace actions accessible on desktop and narrow windows',
     await expect(list).toHaveAttribute('aria-label', 'Rule list');
     await expect(navigation.getByRole('heading', { name: 'Wireflip' })).toBeVisible();
     await expect(list.getByRole('button', { name: 'New rule', exact: true })).toBeVisible();
-    expect((await list.boundingBox())!.y).toBe(0);
-    expect((await list.boundingBox())!.height).toBe(800);
+    const header = control.locator('[data-workspace-header]');
+    await expect(header.getByRole('heading', { name: 'Rules', exact: true })).toBeVisible();
+    expect((await header.boundingBox())!.height).toBe(44);
+    expect((await list.boundingBox())!.y).toBe(44);
+    expect((await list.boundingBox())!.height).toBe(756);
     const language = navigation.getByRole('combobox', { name: 'Language', exact: true });
     expect((await language.boundingBox())!.y).toBeGreaterThan(740);
     await list.getByRole('button', { name: 'New rule', exact: true }).click();
     await control.getByLabel('Name', { exact: true }).fill('Compact workspace draft');
+    await expect(header.getByRole('heading', { name: 'Compact workspace draft', exact: true })).toBeVisible();
+    await expect(header.getByText('Unsaved', { exact: true })).toBeVisible();
+    await expect(header.getByRole('button', { name: 'Save rule', exact: true })).toBeVisible();
+    await expect(control.getByRole('region', { name: 'Rule editor' }).getByRole('button', { name: 'Save rule', exact: true })).toHaveCount(0);
+    const nameBox = (await control.getByLabel('Name', { exact: true }).boundingBox())!;
+    const groupBox = (await control.getByLabel('Group', { exact: true }).boundingBox())!;
+    expect(groupBox.y).toBe(nameBox.y);
+    expect(groupBox.x).toBeGreaterThan(nameBox.x + nameBox.width);
     await list.getByRole('button', { name: 'New rule', exact: true }).click();
     await expect(control.getByRole('dialog', { name: 'Discard unsaved changes?' })).toBeVisible();
     await control.getByRole('button', { name: 'Keep editing' }).click();
@@ -405,9 +416,21 @@ test('keeps compact workspace actions accessible on desktop and narrow windows',
       expect(await control.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       await control.screenshot({ path: testInfo.outputPath(`workspace-editor-${width}.png`) });
     }
+    for (const locale of ['en', 'zh-CN', 'ko', 'ja', 'fr', 'es']) {
+      await control.evaluate((uiLanguage) => chrome.storage.local.set({ uiLanguage }), locale);
+      await expect(control.locator('html')).toHaveAttribute('lang', locale);
+      await expect(header.getByRole('button', { name: messages['Save rule'][locale], exact: true })).toBeVisible();
+      await expect(header.getByRole('heading', { name: 'Compact workspace draft', exact: true })).toBeVisible();
+      await expect(navigation.getByText(messages.Data[locale], { exact: true })).toBeVisible();
+      expect(await control.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${locale} editor`).toBe(true);
+    }
+    await control.evaluate(() => chrome.storage.local.set({ uiLanguage: 'en' }));
+    await expect(control.locator('html')).toHaveAttribute('lang', 'en');
     await control.getByRole('button', { name: 'Back to rules' }).click();
     await control.getByRole('button', { name: 'Discard changes', exact: true }).click();
     await expect(list.getByRole('button', { name: 'New rule', exact: true })).toBeVisible();
+    await expect(header.getByRole('heading', { name: 'Rules', exact: true })).toBeVisible();
+    await expect(header.getByRole('button', { name: 'Save rule', exact: true })).toHaveCount(0);
     // The compact selector remains operable even when its value is visually hidden.
     await language.click();
     await control.getByRole('option', { name: 'Español', exact: true }).click();
@@ -424,6 +447,8 @@ test('keeps compact workspace actions accessible on desktop and narrow windows',
     await expect(control.locator('html')).toHaveAttribute('lang', 'en');
     await navigation.getByRole('button', { name: 'Data & migration' }).click();
     await expect(control.getByRole('region', { name: 'Data management' })).toBeVisible();
+    await expect(header.getByRole('heading', { name: 'Data & recovery' })).toBeVisible();
+    await expect(header.getByRole('button', { name: 'Save rule', exact: true })).toHaveCount(0);
     await navigation.getByRole('button', { name: 'Rules', exact: true }).click();
     await list.getByRole('button', { name: 'New rule', exact: true }).click();
     await expect(control.getByLabel('Name', { exact: true })).toHaveValue('New proxy rule');

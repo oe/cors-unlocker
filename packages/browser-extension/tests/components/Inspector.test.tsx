@@ -192,6 +192,32 @@ describe('request-first inspector', () => {
     expect(rules[0].actions[0]).toMatchObject({ body: '<html>test response</html>' });
   });
 
+  it('keeps shared workspace header controls live and cleans them up with the editor', async () => {
+    const user = userEvent.setup();
+    const target = document.createElement('div');
+    document.body.append(target);
+    try {
+      const onSaved = vi.fn().mockResolvedValue(undefined);
+      const editor = render(<WorkspaceRuleEditor headerTarget={target} profiles={[]} draft={EMPTY_DRAFT} onOpenChange={vi.fn()} onSaved={onSaved} />);
+      const header = within(target);
+      expect(header.getByRole('heading')).toHaveTextContent(EMPTY_DRAFT.name);
+      expect(within(screen.getByRole('region', { name: 'Rule editor' })).queryByRole('button', { name: 'Save rule', exact: true })).not.toBeInTheDocument();
+      await user.clear(screen.getByLabelText('Name', { exact: true }));
+      await user.type(screen.getByLabelText('Name', { exact: true }), 'Shared toolbar rule');
+      await user.type(screen.getByLabelText('Page origins'), 'https://app.example.test');
+      await user.type(screen.getByLabelText('Request URL pattern'), '*');
+      expect(header.getByRole('heading')).toHaveTextContent('Shared toolbar rule');
+      expect(header.getByText('Unsaved')).toBeInTheDocument();
+      await user.click(header.getByRole('switch', { name: 'Rule enabled' }));
+      await user.click(header.getByRole('button', { name: 'Save rule', exact: true }));
+      expect(onSaved).toHaveBeenCalled();
+      expect(rules[0]).toMatchObject({ name: 'Shared toolbar rule', enabled: false, match: { initiatorOrigins: ['https://app.example.test'], urlPattern: '*' } });
+      expect(header.queryByText('Unsaved')).not.toBeInTheDocument();
+      editor.unmount();
+      expect(target).toBeEmptyDOMElement();
+    } finally { target.remove(); }
+  });
+
   it('reveals and focuses invalid JSON when saving from another workspace section', async () => {
     const user = userEvent.setup();
     render(<WorkspaceRuleEditor draft={{ ...EMPTY_DRAFT, actions: '[' }} onOpenChange={vi.fn()} onSaved={vi.fn()} />);
