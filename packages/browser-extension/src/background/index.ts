@@ -19,6 +19,9 @@ import type { IProxyRule } from '@/common/proxy-state';
 async function applyBrowserRules(rules: IProxyRule[]) {
   await reconcileProxyDnrRules(rules);
   void refreshAllToolbar();
+  // Storage changes arrive before native rule installation finishes. Refresh open controls
+  // after installation so their counts describe browser enforcement, not the old snapshot.
+  void browser.runtime.sendMessage({ type: 'browserRulesChanged' }).catch(() => undefined);
 }
 initializeProxyStateWriter((state) => applyBrowserRules(effectiveRules(state)));
 initializeToolbarStatus(getAdvancedProxyStatus);

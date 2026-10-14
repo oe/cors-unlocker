@@ -7,18 +7,24 @@ import { BrandMark } from '@/components/brand-mark';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { EMPTY_QUICK_CONTROLS, hasActiveQuickControls, hasPersistentActions, needsProxy } from '@/common/quick-controls';
+import { toolbarPresentation, TOOLBAR_COLORS } from '@/background/toolbar-state';
 import { RuleGroupControls } from '@/components/rule-group-controls';
-import { isRuleEnabled, ruleGroup, type IProxyRule } from '@/common/proxy-state';
+import { ruleGroup, type IProxyRule } from '@/common/proxy-state';
 import { useViewModel } from './view-model';
 import '@/common/tailwind.css';
 import './style.scss';
 
 function App() {
-  useLocale();
+  const { locale } = useLocale();
   const vm = useViewModel();
   const [delay, setDelay] = useState(1000);
-  const disabled = !vm.isSupported || vm.busy;
-  const persistent = vm.siteRules.filter((rule) => isRuleEnabled(rule, vm.profiles) && hasPersistentActions(rule)).length;
+  const disabled = !vm.isSupported || vm.busy || vm.phase === 'connecting';
+  const persistent = vm.persistentCount;
+  const presentation = toolbarPresentation(vm.origin, vm.status || { tabId: -1, phase: 'disabled' }, persistent, locale, vm.summary);
+  const sessionError = presentation.state === 'error';
+  const error = vm.error || (sessionError ? vm.status?.error || t('Tab session error') : null);
+  const heading = sessionError ? 'Tab session error' : vm.phase === 'connecting' ? 'Connecting…' : vm.connected ? 'Tab session active' : presentation.badge === 'OFF' ? 'Saved rules paused' : 'Tab session stopped';
+  const sessionAction = vm.phase === 'connecting' ? 'Cancel connection' : sessionError ? 'Retry connection' : vm.connected ? 'Stop tab session' : 'Start tab session';
   const temporary = hasActiveQuickControls(vm.quickControls);
   const scope = (rule: IProxyRule) => ruleGroup(rule.id, vm.profiles)?.enabled === false ? t('Group paused') : !rule.enabled ? t('Disabled') : [
     ...(hasPersistentActions(rule) ? [t('Persistent · across tabs')] : []),
@@ -37,10 +43,10 @@ function App() {
         <Button size="icon-sm" variant="ghost" aria-label={t('Open settings')} onClick={vm.gotoOptionsPage}><Settings /></Button>
       </header>
 
-      {vm.error ? <Alert variant="destructive">
-        <AlertCircle /><AlertTitle>{t('Action failed')}</AlertTitle>
-        <AlertDescription>{translateError(vm.error)}</AlertDescription>
-        <Button size="xs" variant="ghost" onClick={vm.clearError}>{t('Dismiss')}</Button>
+      {error ? <Alert variant="destructive">
+        <AlertCircle /><AlertTitle>{t(sessionError ? 'Tab session error' : 'Action failed')}</AlertTitle>
+        <AlertDescription>{translateError(error)}</AlertDescription>
+        {!sessionError ? <Button size="xs" variant="ghost" onClick={vm.clearError}>{t('Dismiss')}</Button> : null}
       </Alert> : null}
 
       <section className="rounded-lg border bg-muted/20 px-2.5 py-1.5" aria-label={t('Current tab')}>
@@ -48,14 +54,18 @@ function App() {
           <p className="min-w-0 flex-1 truncate text-sm font-medium" title={vm.origin}>{vm.origin || t(vm.ready ? 'Select an HTTP or HTTPS tab.' : 'Loading…')}</p>
         </div>
         <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-          <span className={`size-1.5 shrink-0 rounded-full ${vm.connected ? 'bg-emerald-500' : 'bg-muted-foreground/50'}`} />
-          <span>{t(vm.connected ? 'Tab session active' : 'Tab session stopped')}</span>
-          <Button className="ml-auto" size="xs" variant="ghost" disabled={disabled} onClick={vm.toggleSession}>{t(vm.connected ? 'Stop tab session' : 'Start tab session')}</Button>
+          <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full" style={{ backgroundColor: TOOLBAR_COLORS[presentation.state] }} />
+          <span>{t(heading)}</span>
+          <Button className="ml-auto" size="xs" variant="ghost" disabled={!vm.isSupported || (vm.busy && vm.phase !== 'connecting')} onClick={vm.toggleSession}>{t(sessionAction)}</Button>
         </div>
         <p className="mt-1 text-xs text-muted-foreground">{t('{count} persistent rules stay on after stopping', { count: persistent })}</p>
+        {!vm.connected && vm.summary.sessionRules ? <p className="mt-1 text-xs text-muted-foreground">{t('Rules waiting for a tab session: {count}', { count: vm.summary.sessionRules })}</p> : null}
+        {vm.summary.pausedGroups.length ? <p className="mt-1 text-xs text-muted-foreground">{t('Paused groups: {count}', { count: vm.summary.pausedGroups.length })} · {t('Individual switches are preserved')}</p> : null}
+        {vm.connected && vm.status?.captureEnabled === false ? <p className="mt-1 text-xs text-muted-foreground">{t('Not recording requests')}</p> : null}
         <Button className="mt-1 w-full" size="sm" disabled={disabled} aria-label={t('Open Inspector')} onClick={vm.openInspector}><Activity />{t('Inspect and modify requests')}<ArrowUpRight /></Button>
       </section>
 
+      <RuleGroupControls profiles={vm.profiles} rules={vm.siteRules} busy={disabled} toggle={(profile, enabled) => void vm.toggleGroup(profile, enabled)} />
       <section aria-labelledby="quick-heading">
         <div className="control-row text-xs">
           <h2 id="quick-heading" className="font-semibold">{t('Temporary changes')}</h2>
@@ -105,7 +115,6 @@ function App() {
         <p className="mt-1 text-xs text-muted-foreground">{t(__TARGET__ === 'chrome' ? 'Enabling starts Chrome debugging.' : 'Firefox CORS: response headers only.')}</p>
       </section>
 
-      <RuleGroupControls profiles={vm.profiles} rules={vm.siteRules} busy={disabled} toggle={(profile, enabled) => void vm.toggleGroup(profile, enabled)} />
       <section className="border-t pt-2" aria-labelledby="pinned-heading">
         <div className="flex items-center justify-between gap-2">
           <h2 id="pinned-heading" className="text-xs font-semibold">{t('Pinned rules')}</h2>
@@ -129,7 +138,7 @@ function App() {
         {vm.legacyCorsRules.length ? <details className="mt-2 text-xs">
           <summary className="cursor-pointer text-muted-foreground">{t('Existing site CORS rules')}</summary>
           {vm.legacyCorsRules.map((rule) => <div className="control-row mt-2" key={rule.id}>
-            <div className="min-w-0"><p className="break-words">{rule.name}</p><p className="control-description">{t('Persistent · across tabs')}</p></div>
+            <div className="min-w-0"><p className="break-words">{rule.name}</p><p className="control-description">{scope(rule)}</p></div>
             <Switch aria-label={rule.name} checked={rule.enabled} disabled={disabled || ruleGroup(rule.id, vm.profiles)?.enabled === false} onCheckedChange={(enabled) => vm.toggleRule(rule, enabled)} />
           </div>)}
         </details> : null}

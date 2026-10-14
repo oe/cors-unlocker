@@ -43,6 +43,14 @@ Pin named saved rules for quick access. Their switches change saved configuratio
 does not disable saved rules, and DNR rules can continue across tabs. Saved mocks, delays, and failures
 need an active proxy session. Firefox CORS repair patches headers but cannot synthesize failed preflights.
 
+## Toolbar status and shortcuts
+
+The toolbar follows the current tab: gray for no active session or browser rules, blue with the actual persistent-rule count, green **ON** for a connected session, amber **…** while connecting, and red **!** for a connection error. Gray **OFF** means all otherwise enabled saved changes for this site are paused by groups. Active rules outside those groups still keep the icon blue; temporary changes or an explicitly connected session keep it green.
+
+Hover to see paused group names, enabled rules waiting for a tab session, applied temporary controls and a connection error when present. Saved-rule counts describe configuration, not proof of a modified request.
+
+Click the icon for quick controls. Group switches appear below the current tab status. Use **Start tab session**, **Stop tab session**, **Cancel connection** or **Retry connection** according to the displayed state, or open Inspector. A session error remains visible when reopening the popup. Restoring a group only restores its saved switches; it does not start interception.
+
 ## Rules
 
 A rule contains a page-origin match, request URL glob, optional HTTP methods and resource types, followed by one or more actions.
