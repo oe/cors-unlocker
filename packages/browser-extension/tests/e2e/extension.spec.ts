@@ -1044,7 +1044,7 @@ test('disable cache bypasses real HTTP cache for one tab and restores it on stop
     await expect(popup.getByRole('switch', { name: 'Disable cache', exact: true })).not.toBeChecked();
     await expect(popup.getByText('Tab session stopped', { exact: true })).toBeVisible();
     await expect.poll(toolbarBadge).toBe('');
-    await expect.poll(toolbarTitle).toBe('Wireflip\nTab session stopped\n0 persistent rules enabled');
+    await expect.poll(toolbarTitle).toBe('Wireflip\nTab session stopped\n0 persistent rules enabled\nClick for session controls and group switches');
     // getTargets().attached also sees Playwright's own connection. Verify this extension's access.
     await expect.poll(() => control.evaluate(async (id) => {
       try {
