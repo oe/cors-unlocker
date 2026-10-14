@@ -35,7 +35,8 @@ async function bootstrap() {
   try {
     const state = await ensureProxyAppState();
     await applyBrowserRules(effectiveRules(state));
-    await openPendingUpgradeNotice();
+    // Delivery failures must not disable otherwise valid saved browser rules.
+    await openPendingUpgradeNotice().catch((error) => logger.error('Unable to open upgrade notice:', error));
   } catch (error) {
     logger.error('Extension bootstrap failed:', error);
     await applyBrowserRules([]).catch(() => undefined);
