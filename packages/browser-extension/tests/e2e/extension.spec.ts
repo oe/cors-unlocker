@@ -409,6 +409,7 @@ test('edits structured actions, protects drafts and previews imports', async () 
   const before = await control.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState);
   const incoming = structuredClone(before);
   incoming.rules = [{ ...incoming.rules[0], id: 'import-preview-qa', source: 'user', legacyRuleId: undefined, name: 'Imported QA', enabled: false }];
+  incoming.profiles = []; // The synthetic backup contains one ungrouped rule, not the original memberships.
   await control.locator('#import-state').setInputFiles({ name: 'backup.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ version: '2.0', state: incoming })) });
   await expect(control.getByRole('region', { name: 'Import preview' })).toContainText('1 added');
   expect(await control.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState)).toEqual(before);
