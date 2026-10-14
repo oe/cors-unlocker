@@ -10,13 +10,27 @@ Add to Chrome
 <li>Sensitive header values—including Authorization, Cookie, Proxy-Authorization, and Set-Cookie—are redacted in the inspector by default.</li>
 <li>The website does not need an account to use the extension or SDK.</li>
 </ul>
+<p>Local processing includes the active tab’s URL and origin, request URLs, methods,
+resource types, status codes, timing, request/response headers and rule matches.
+The inspector uses these details to show the traffic in a session you explicitly
+start. Authentication headers may be handled while applying your rules; their
+values are masked before being added to inspector logs. Custom headers, URLs and
+mock bodies you enter are stored as part of your local rules. URLs and custom
+values can themselves contain sensitive information, so review them before
+exporting a backup or sharing a screenshot.</p>
+<p>This local processing supports only the request debugging features described in
+the extension. Wireflip does not sell or transfer this data to third parties,
+use it for advertising or unrelated purposes, or use it to determine
+creditworthiness. The developer does not receive or read your traffic or rules.
+Wireflip’s use of data follows the Chrome Web Store User Data Policy, including
+its Limited Use requirements.</p>
 <h2 id="permissions">Permissions</h2>
 <p><code>&lt;all_urls&gt;</code> allows rules to target developer-selected endpoints and lets the local SDK bridge identify the real calling page. <code>declarativeNetRequest</code> applies fast rules. <code>debugger</code> enables opt-in Advanced mode. <code>tabs</code>, <code>storage</code>, and <code>sidePanel</code> provide tab scope, persistence, and the inspector.</p>
 <p>These permissions are powerful. Install Wireflip only from a source you trust, keep rules narrowly scoped, and disable Advanced mode when the debugging session is finished.</p>
 <h2 id="advanced-mode">Advanced mode</h2>
 <p>Advanced mode attaches only after an explicit action for an HTTP or HTTPS tab. Chrome shows its standard debugging disclosure while attached. Wireflip detaches on disable, tab close, debugger takeover, or cross-origin top-level navigation.</p>
 <h2 id="sdk-boundary">SDK boundary</h2>
-<p>The SDK communicates through a packaged content-script bridge—there is no hosted relay. The extension derives scope from Chrome’s actual sender tab instead of trusting an origin supplied by page JavaScript.</p>
+<p>The new <code>wireflip</code> SDK communicates through a packaged content-script bridge. The retained <code>cors-unlocker</code> SDK uses its original iframe on <code>cors.forth.ink</code>; that bridge exchanges messages locally between the calling page and extension and does not upload request logs. The extension derives scope from the actual calling page instead of trusting an arbitrary origin supplied by page JavaScript.</p>
 <p>Enabling CORS requires confirmation. Rule drafts created by an app are always disabled and bound to that app’s origin so the user can inspect them before activation. SDK calls are size- and rate-limited.</p>
 <h2 id="v1-migration">v1 migration</h2>
 <p>The first v2 startup creates a local snapshot of v1 settings before writing the validated v2 state. The snapshot is retained for recovery; it is not used as live configuration after migration.</p>
