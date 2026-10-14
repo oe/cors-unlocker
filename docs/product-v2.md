@@ -59,6 +59,22 @@ Not allowed:
 
 The npm package is `wireflip`. Web apps connect with `intercept.connect()`. The SDK and extension use the `wireflip:sdk-request` / `wireflip:sdk-response` page bridge. The previous pre-release brand is replaced directly; no old-brand package, protocol alias, or re-export package is maintained.
 
+## Workspace layout and interaction
+
+The workspace uses a full-height layout without a global top header. The left sidebar
+holds the Wireflip brand, Rules, Data & migration, and the language selector at the bottom.
+Wide windows show navigation labels; narrower windows use icons with accessible names
+and hover titles to preserve editing space.
+
+New rule and New group sit at the top of the rule list, beside search and filters.
+Save, enable, duplicate, and delete stay in the selected rule's editor header. List and
+editor scroll independently, keeping these actions available. Narrow windows show one
+pane at a time; Back to rules returns to the list.
+
+Switching pages, creating another rule, or leaving the editor protects unsaved drafts.
+Ctrl/Cmd+K focuses rule search (returning to the list on narrow windows, with a discard
+prompt if needed); Ctrl/Cmd+S saves the selected rule. Changing language preserves the draft.
+
 ## Website information architecture
 
 - Home: positioning, real product surface, two execution paths, SDK wedge, privacy, v1 migration.
