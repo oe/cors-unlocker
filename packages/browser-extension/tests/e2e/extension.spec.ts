@@ -365,6 +365,77 @@ test('renders the shadcn proxy workspace and popup', async () => {
   await inspectedTab.close();
 });
 
+test('keeps compact workspace actions accessible on desktop and narrow windows', async () => {
+  const testInfo = test.info();
+  await control.reload();
+  const errors: string[] = [];
+  const onError = (error: Error) => errors.push(error.message);
+  control.on('pageerror', onError);
+  try {
+    await control.setViewportSize({ width: 1280, height: 800 });
+    // Scope by stable landmarks: their accessible labels change with the language.
+    const navigation = control.getByRole('navigation');
+    const list = control.getByRole('complementary');
+    await expect(navigation).toHaveAttribute('aria-label', 'Workspace navigation');
+    await expect(list).toHaveAttribute('aria-label', 'Rule list');
+    await expect(navigation.getByRole('heading', { name: 'Wireflip' })).toBeVisible();
+    await expect(list.getByRole('button', { name: 'New rule', exact: true })).toBeVisible();
+    expect((await list.boundingBox())!.y).toBe(0);
+    expect((await list.boundingBox())!.height).toBe(800);
+    const language = navigation.getByRole('combobox', { name: 'Language', exact: true });
+    expect((await language.boundingBox())!.y).toBeGreaterThan(740);
+    await list.getByRole('button', { name: 'New rule', exact: true }).click();
+    await control.getByLabel('Name', { exact: true }).fill('Compact workspace draft');
+    await list.getByRole('button', { name: 'New rule', exact: true }).click();
+    await expect(control.getByRole('dialog', { name: 'Discard unsaved changes?' })).toBeVisible();
+    await control.getByRole('button', { name: 'Keep editing' }).click();
+    await expect(control.getByLabel('Name', { exact: true })).toHaveValue('Compact workspace draft');
+    await control.screenshot({ path: testInfo.outputPath('workspace-desktop.png') });
+    for (const width of [900, 390]) {
+      await control.setViewportSize({ width, height: 844 });
+      await expect(control.getByRole('button', { name: 'Save rule', exact: true })).toBeVisible();
+      await navigation.getByRole('button', { name: 'Data & migration' }).click();
+      await control.getByRole('button', { name: 'Keep editing' }).click();
+      await expect(control.getByLabel('Name', { exact: true })).toHaveValue('Compact workspace draft');
+      await control.keyboard.press('Control+k');
+      if (width < 768) {
+        await control.getByRole('button', { name: 'Keep editing' }).click();
+        await expect(control.getByLabel('Name', { exact: true })).toHaveValue('Compact workspace draft');
+      } else await expect(control.getByLabel('Search rules')).toBeFocused();
+      expect(await control.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      await control.screenshot({ path: testInfo.outputPath(`workspace-editor-${width}.png`) });
+    }
+    await control.getByRole('button', { name: 'Back to rules' }).click();
+    await control.getByRole('button', { name: 'Discard changes', exact: true }).click();
+    await expect(list.getByRole('button', { name: 'New rule', exact: true })).toBeVisible();
+    // The compact selector remains operable even when its value is visually hidden.
+    await language.click();
+    await control.getByRole('option', { name: 'Español', exact: true }).click();
+    await expect(control.locator('html')).toHaveAttribute('lang', 'es');
+    await expect(navigation.getByRole('combobox', { name: messages.Language.es, exact: true })).toHaveAttribute('title', `${messages.Language.es} · Español`);
+    await control.screenshot({ path: testInfo.outputPath('workspace-list-narrow-es.png') });
+    for (const locale of ['en', 'zh-CN', 'ko', 'ja', 'fr', 'es']) {
+      await control.evaluate((uiLanguage) => chrome.storage.local.set({ uiLanguage }), locale);
+      await expect(control.locator('html')).toHaveAttribute('lang', locale);
+      await expect(list.getByRole('button', { name: messages['New rule'][locale], exact: true })).toBeVisible();
+      expect(await control.evaluate(() => document.documentElement.scrollWidth <= innerWidth), locale).toBe(true);
+    }
+    await control.evaluate(() => chrome.storage.local.set({ uiLanguage: 'en' }));
+    await expect(control.locator('html')).toHaveAttribute('lang', 'en');
+    await navigation.getByRole('button', { name: 'Data & migration' }).click();
+    await expect(control.getByRole('region', { name: 'Data management' })).toBeVisible();
+    await navigation.getByRole('button', { name: 'Rules', exact: true }).click();
+    await list.getByRole('button', { name: 'New rule', exact: true }).click();
+    await expect(control.getByLabel('Name', { exact: true })).toHaveValue('New proxy rule');
+    await control.getByRole('button', { name: 'Back to rules' }).click();
+    expect(errors).toEqual([]);
+  } finally {
+    control.off('pageerror', onError);
+    await control.evaluate(() => chrome.storage.local.set({ uiLanguage: 'en' }));
+    await control.setViewportSize({ width: 1280, height: 720 });
+  }
+});
+
 test('edits structured actions, protects drafts and previews imports', async () => {
   await control.reload();
   await control.getByRole('button', { name: 'New rule' }).click();

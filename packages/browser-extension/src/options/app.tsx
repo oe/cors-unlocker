@@ -26,9 +26,9 @@ import { parseImport, previewImport, previewGroupImport } from '@/common/import-
 import '@/common/tailwind.css';
 import './style.scss';
 
-function ProxyRules({ state, reload, navigate, onDirtyChange, createToken }: {
+function ProxyRules({ state, reload, navigate, onDirtyChange }: {
   state: IProxyAppState; reload: () => Promise<void>; navigate: (action: () => void) => void;
-  onDirtyChange: (dirty: boolean) => void; createToken: number;
+  onDirtyChange: (dirty: boolean) => void;
 }) {
   const [draft, setDraft] = useState<RuleDraft | null>(null);
   const [pendingDelete, setPendingDelete] = useState<IProxyRule | null>(null);
@@ -67,14 +67,6 @@ function ProxyRules({ state, reload, navigate, onDirtyChange, createToken }: {
     } finally { setBusy(false); }
   };
   const search = useRef<HTMLInputElement>(null);
-  const previousCreate = useRef(createToken);
-  useEffect(() => {
-    if (previousCreate.current !== createToken) {
-      previousCreate.current = createToken;
-      setDraft({ ...EMPTY_DRAFT });
-      onDirtyChange(false);
-    }
-  }, [createToken, onDirtyChange]);
   useEffect(() => {
     const focusSearch = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
@@ -132,7 +124,7 @@ function ProxyRules({ state, reload, navigate, onDirtyChange, createToken }: {
     { profile: undefined, rules: filtered.filter((rule) => !groupsByRule.get(rule.id)) },
   ].filter((section) => section.rules.length || (!searching && section.profile));
   const visibleRules = sections.filter(({ profile }) => !profile || searching || !collapsed.includes(profile.id)).flatMap(({ rules }) => rules);
-  const renderRule = (rule: IProxyRule, index: number) => <div key={rule.id} className={cn('flex items-start gap-2 border-b px-3 py-2.5', draft?.id === rule.id && 'bg-muted')}>
+  const renderRule = (rule: IProxyRule, index: number) => <div key={rule.id} className={cn('flex items-start gap-2 border-b px-3 py-2', draft?.id === rule.id && 'bg-muted')}>
           <button type="button" data-rule-select={rule.id} aria-label={t('Edit {name}', { name: rule.name })} aria-current={draft?.id === rule.id ? 'true' : undefined}
             className="flex min-w-0 flex-1 flex-col gap-1 rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onClick={() => select(rule)}
@@ -168,10 +160,16 @@ function ProxyRules({ state, reload, navigate, onDirtyChange, createToken }: {
       </div>
     </div>
   );
-  return <div className="relative grid h-full min-h-0 min-w-0 grid-cols-1 md:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[340px_minmax(0,1fr)]">
+  return <div className="relative grid h-full min-h-0 min-w-0 grid-cols-1 md:grid-cols-[288px_minmax(0,1fr)]">
     <aside aria-label={t("Rule list")} className={cn('flex min-h-0 min-w-0 flex-col border-r', draft && 'max-md:hidden')}>
       <div className="flex shrink-0 flex-col gap-2 border-b p-3">
-        <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-sm font-semibold">{t('Rules')}</h2><Button size="xs" variant="ghost" disabled={busy} onClick={() => openGroup('create')}><Plus />{t('New group')}</Button></div>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold">{t('Rules')}</h2>
+          <div className="ml-auto flex items-center gap-1">
+            <Button size="xs" variant="ghost" disabled={busy} onClick={() => openGroup('create')}><Folder data-icon="inline-start" />{t('New group')}</Button>
+            <Button size="sm" disabled={busy} onClick={() => leave(() => setDraft({ ...EMPTY_DRAFT }))}><Plus data-icon="inline-start" />{t('New rule')}</Button>
+          </div>
+        </div>
         <Input ref={search} aria-label={t("Search rules")} placeholder={t("Search rules · ⌘/Ctrl K")} value={query} onChange={(e) => setQuery(e.target.value)} />
         <div className="grid grid-cols-2 gap-2">
           <Select value={actionFilter} onValueChange={(value) => value && setActionFilter(value)}><SelectTrigger className="w-full min-w-0" aria-label={t("Filter actions")}><SelectValue>{actionFilter === 'all' ? t("All actions") : t(ACTION_LABELS[actionFilter as keyof typeof ACTION_LABELS])}</SelectValue></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">{t("All actions")}</SelectItem>{Object.entries(ACTION_LABELS).map(([key, label]) => <SelectItem key={key} value={key}>{t(label)}</SelectItem>)}</SelectGroup></SelectContent></Select>
@@ -325,7 +323,6 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState('rules');
   const [dirty, setDirty] = useState(false);
-  const [createToken, setCreateToken] = useState(0);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
   const reload = useCallback(async () => {
     try {
@@ -343,19 +340,19 @@ function App() {
     return () => browser.storage.onChanged.removeListener(changed);
   }, [reload]);
   return <main className="flex h-dvh min-h-0 flex-col overflow-hidden bg-background text-foreground">
-    <header className="flex min-h-16 shrink-0 flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
-      <div className="flex min-w-0 items-center gap-3"><BrandMark className="size-8" /><h1 className="truncate text-base font-semibold">Wireflip</h1></div>
-      <div className="flex flex-wrap items-center gap-2"><LanguageSelect />{view === 'rules' ? <Button size="sm" disabled={!state} onClick={() => navigate(() => setCreateToken((token) => token + 1))}><Plus data-icon="inline-start" />{t("New rule")}</Button> : <span className="text-sm text-muted-foreground">{t("Data management")}</span>}</div>
-    </header>
     {error ? <Alert variant="destructive"><AlertTitle>{t("Unable to load")}</AlertTitle><AlertDescription>{translateError(error)}</AlertDescription></Alert> : null}
     <div className="flex min-h-0 flex-1">
-      <nav aria-label={t("Workspace navigation")} className="flex w-14 shrink-0 flex-col items-center gap-2 border-r bg-muted/30 py-3 sm:w-16">
-        <Button variant={view === 'rules' ? 'secondary' : 'ghost'} size="icon" aria-label={t("Rules")} title={t("Rules")} aria-current={view === 'rules' ? 'page' : undefined} onClick={() => { if (view !== 'rules') navigate(() => setView('rules')); }}><ListFilter /></Button>
-        <Button variant={view === 'data' ? 'secondary' : 'ghost'} size="icon" aria-label={t("Data & migration")} title={t("Data & migration")} aria-current={view === 'data' ? 'page' : undefined} onClick={() => { if (view !== 'data') navigate(() => setView('data')); }}><Database /></Button>
+      <nav aria-label={t("Workspace navigation")} className="flex w-14 shrink-0 flex-col gap-1 border-r bg-muted/30 p-2 lg:w-36">
+        <div className="mb-2 flex h-9 shrink-0 items-center justify-center gap-2 lg:justify-start lg:px-1" title="Wireflip">
+          <BrandMark className="size-7 shrink-0" /><h1 className="sr-only text-sm font-semibold lg:not-sr-only">Wireflip</h1>
+        </div>
+        <Button variant={view === 'rules' ? 'secondary' : 'ghost'} className="h-auto min-h-9 w-full lg:justify-start" aria-label={t("Rules")} title={t("Rules")} aria-current={view === 'rules' ? 'page' : undefined} onClick={() => { if (view !== 'rules') navigate(() => setView('rules')); }}><ListFilter data-icon="inline-start" /><span className="hidden min-w-0 whitespace-normal text-left lg:block">{t("Rules")}</span></Button>
+        <Button variant={view === 'data' ? 'secondary' : 'ghost'} className="h-auto min-h-9 w-full py-2 lg:justify-start" aria-label={t("Data & migration")} title={t("Data & migration")} aria-current={view === 'data' ? 'page' : undefined} onClick={() => { if (view !== 'data') navigate(() => setView('data')); }}><Database data-icon="inline-start" /><span className="hidden min-w-0 whitespace-normal text-left lg:block">{t("Data & migration")}</span></Button>
+        <div className="mt-auto pt-3"><LanguageSelect compact /></div>
       </nav>
       <div className="min-h-0 min-w-0 flex-1">
-        {state ? view === 'rules' ? <ProxyRules state={state} reload={reload} navigate={navigate} onDirtyChange={setDirty} createToken={createToken} /> :
-          <section aria-label={t("Data management")} className="h-full overflow-y-auto p-4 lg:p-8"><div className="mx-auto max-w-5xl"><h2 className="mb-5 text-xl font-semibold">{t("Data & recovery")}</h2><DataSettings state={state} reload={reload} /></div></section> :
+        {state ? view === 'rules' ? <ProxyRules state={state} reload={reload} navigate={navigate} onDirtyChange={setDirty} /> :
+          <section aria-label={t("Data management")} className="h-full overflow-y-auto p-4 lg:p-6"><div className="mx-auto max-w-5xl"><h2 className="mb-4 text-xl font-semibold">{t("Data & recovery")}</h2><DataSettings state={state} reload={reload} /></div></section> :
           <>{error ? <RecoveryPanel reload={reload} /> : <p className="p-6 text-sm text-muted-foreground">{t("Loading configuration…")}</p>}</>}
       </div>
     </div>
