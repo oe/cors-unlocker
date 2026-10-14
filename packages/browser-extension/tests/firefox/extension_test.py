@@ -673,6 +673,15 @@ class FirefoxTests(unittest.TestCase):
 
 
     def test_z_v1_update_opens_explanation_once_but_fresh_install_does_not(self):
+        def installed_origin():
+            # Uninstalling the disposable add-on also removes its internal UUID mapping.
+            global EXTENSION
+            self.command('POST', '/moz/context', {'context': 'chrome'})
+            try:
+                EXTENSION = self.js('return WebExtensionPolicy.getByID(arguments[0]).getURL("");', ADDON_ID).rstrip('/')
+            finally:
+                self.command('POST', '/moz/context', {'context': 'content'})
+
         self.switch(self.control)
         self.assertFalse(self.js("return !!document.querySelector('[aria-label=\"About your Wireflip upgrade\"]');"))
         self.assertFalse(self.extension_js('return (await browser.tabs.query({})).some(t=>t.url.includes("/src/upgrade/"));'))
@@ -690,6 +699,7 @@ class FirefoxTests(unittest.TestCase):
         self.switch(self.target)
         self.command('POST', '/moz/addon/uninstall', {'id': ADDON_ID})
         self.assertEqual(self.command('POST', '/moz/addon/install', {'path': str(legacy), 'temporary': False}), ADDON_ID)
+        installed_origin()
         type(self).control = self.new_page(EXTENSION + '/' + manifest['options_page'])
         self.extension_js('''await browser.storage.local.clear();await browser.storage.local.set({allowedOrigins:[{
             id:42,origin:"https://upgrade.example",domain:"upgrade.example",disabled:false,credentials:true,
@@ -697,6 +707,7 @@ class FirefoxTests(unittest.TestCase):
         archive = Path(self.temp.name) / 'extension.xpi'
         self.switch(self.target)
         self.assertEqual(self.command('POST', '/moz/addon/install', {'path': str(archive), 'temporary': True}), ADDON_ID)
+        installed_origin()
         type(self).control = self.new_page(EXTENSION + '/src/options/index.html')
         self.wait(lambda: self.js('return typeof browser!=="undefined" && !!document.querySelector("main");'))
         tabs = self.wait(lambda: self.extension_js('return (await browser.tabs.query({})).filter(t=>t.url.includes("/src/upgrade/index.html"));'))
