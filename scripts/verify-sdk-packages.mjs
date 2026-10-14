@@ -38,7 +38,8 @@ for (const [label, file] of archives) {
   assert.equal(packed.version, label === 'new' ? pkg.version : label.replace('legacy-', ''));
   for (const entry of [packed.main, packed.module, packed.types]) assert(readFileSync(path.join(destination, 'package', entry)).length);
   const outputJson = JSON.parse(run('npm', [label === 'legacy-0.1.0' ? 'pack' : 'publish', archive, '--dry-run', '--ignore-scripts', '--json']));
-  const listing = Array.isArray(outputJson) ? outputJson[0] : outputJson;
+  const listing = Array.isArray(outputJson) ? outputJson[0] : outputJson.name ? outputJson : outputJson[packed.name];
+  assert(listing, 'npm dry-run must return package metadata');
   assert.equal(listing.name, packed.name);
   assert.equal(listing.version, packed.version);
   const files = listing.files.map(item => item.path);

@@ -5,6 +5,7 @@ import browser from 'webextension-polyfill';
 import { Download, Plus, ListFilter, Database, Upload, ChevronDown, ChevronRight, Folder, Pencil, Trash2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AppearanceSettings } from '@/components/appearance-settings';
+import { UpgradeNotice } from '@/components/upgrade-notice';
 import { initializeTheme } from '@/common/theme';
 import { BrandMark } from '@/components/brand-mark';
 import { Badge } from '@/components/ui/badge';
@@ -355,10 +356,13 @@ function App() {
         <Button variant={view === 'data' ? 'secondary' : 'ghost'} className="h-auto min-h-11 w-full flex-col gap-1 px-0 py-1.5 lg:min-h-9 lg:flex-row lg:justify-start lg:px-2" aria-label={t("Data & migration")} title={t("Data & migration")} aria-current={view === 'data' ? 'page' : undefined} onClick={() => { if (view !== 'data') navigate(() => setView('data')); }}><Database data-icon="inline-start" /><span className="min-w-0 text-xs lg:text-sm">{t("Data")}</span></Button>
         <div className="mt-auto pt-3"><AppearanceSettings /></div>
       </nav>
-      <div className="min-h-0 min-w-0 flex-1">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className="shrink-0 max-h-[45dvh] overflow-y-auto [&:has(>*)]:p-3"><UpgradeNotice onViewRules={() => navigate(() => setView('rules'))} onViewRecovery={() => navigate(() => setView('data'))} /></div>
+        <div className="min-h-0 flex-1">
         {state ? view === 'rules' ? <ProxyRules state={state} reload={reload} navigate={navigate} onDirtyChange={setDirty} /> :
           <section aria-label={t("Data management")} className="flex h-full min-h-0 flex-col"><WorkspaceHeader><h2 className="text-sm font-semibold">{t("Data & recovery")}</h2></WorkspaceHeader><div className="min-h-0 flex-1 overflow-y-auto p-4 lg:p-6"><div className="mx-auto max-w-5xl"><DataSettings state={state} reload={reload} /></div></div></section> :
           <div className="flex h-full min-h-0 flex-col"><WorkspaceHeader><h2 className="text-sm font-semibold">{t(view === 'rules' ? 'Rules' : 'Data & recovery')}</h2></WorkspaceHeader><div className="min-h-0 flex-1 overflow-y-auto">{error ? <RecoveryPanel reload={reload} /> : <p className="p-6 text-sm text-muted-foreground">{t("Loading configuration…")}</p>}</div></div>}
+        </div>
       </div>
     </div>
     <Dialog open={!!pendingNavigation} onOpenChange={(open) => !open && setPendingNavigation(null)}><DialogContent><DialogHeader><DialogTitle>{t("Discard unsaved changes?")}</DialogTitle><DialogDescription>{t("Save your draft or discard it before leaving.")}</DialogDescription></DialogHeader><DialogFooter><Button variant="outline" onClick={() => setPendingNavigation(null)}>{t("Keep editing")}</Button><Button variant="destructive" onClick={() => { const action = pendingNavigation; setPendingNavigation(null); setDirty(false); action?.(); }}>{t("Discard changes")}</Button></DialogFooter></DialogContent></Dialog>

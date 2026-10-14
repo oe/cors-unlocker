@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { EMPTY_QUICK_CONTROLS, hasActiveQuickControls, hasPersistentActions, needsProxy } from '@/common/quick-controls';
 import { toolbarPresentation, TOOLBAR_COLORS } from '@/background/toolbar-state';
 import { RuleGroupControls } from '@/components/rule-group-controls';
+import { UpgradeNotice } from '@/components/upgrade-notice';
 import { ruleGroup, type IProxyRule } from '@/common/proxy-state';
 import { useViewModel } from './view-model';
 import '@/common/tailwind.css';
@@ -43,6 +44,8 @@ function App() {
         </div>
         <Button size="icon-sm" variant="ghost" aria-label={t('Open settings')} onClick={vm.gotoOptionsPage}><Settings /></Button>
       </header>
+
+      <UpgradeNotice onViewRules={vm.gotoOptionsPage} onViewRecovery={vm.gotoOptionsPage} />
 
       {error ? <Alert variant="destructive">
         <AlertCircle /><AlertTitle>{t(sessionError ? 'Tab session error' : 'Action failed')}</AlertTitle>

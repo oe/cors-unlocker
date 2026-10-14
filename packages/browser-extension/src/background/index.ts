@@ -15,6 +15,11 @@ import { createFirefoxMessageRouter } from './message-routing';
 import { forgetToolbarTab, initializeToolbarStatus, refreshAllToolbar, refreshToolbarTab } from './toolbar-status';
 import { LANGUAGE_KEY } from '@/common/locale';
 import type { IProxyRule } from '@/common/proxy-state';
+import { openPendingUpgradeNotice, recordLegacyUpgrade } from '@/common/upgrade-notice-state';
+
+browser.runtime.onInstalled.addListener((details) => {
+  void recordLegacyUpgrade(details).catch((error) => logger.error('Unable to record upgrade notice:', error));
+});
 
 async function applyBrowserRules(rules: IProxyRule[]) {
   await reconcileProxyDnrRules(rules);
@@ -33,9 +38,11 @@ async function bootstrap() {
   try {
     const state = await ensureProxyAppState();
     await applyBrowserRules(effectiveRules(state));
+    await openPendingUpgradeNotice();
   } catch (error) {
     logger.error('Extension bootstrap failed:', error);
     await applyBrowserRules([]).catch(() => undefined);
+    await openPendingUpgradeNotice().catch(() => undefined);
   }
 }
 

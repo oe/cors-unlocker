@@ -1,7 +1,7 @@
 import { test, expect, chromium, type BrowserContext, type Page } from '@playwright/test';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { mkdtempSync, readFileSync, rmSync } from 'fs';
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { createServer } from 'node:http';
 import { messages } from '../../src/common/locales';
@@ -57,6 +57,86 @@ async function launchContext() {
 test.afterAll(async () => {
   await context?.close();
   rmSync(userDataDir, { recursive: true, force: true });
+});
+
+test('opens upgrade explanation only for a real v1 update and preserves acknowledgment across restart', async () => {
+  // The normal test profile is a fresh install: no upgrade tab or notice.
+  expect(context.pages().some((page) => page.url().includes('/src/upgrade/'))).toBe(false);
+  await expect(control.getByRole('region', { name: 'About your Wireflip upgrade' })).toHaveCount(0);
+  const fixture = mkdtempSync(path.join(tmpdir(), 'wireflip-v1-upgrade-'));
+  const profile = mkdtempSync(path.join(tmpdir(), 'wireflip-upgrade-profile-'));
+  const manifest = JSON.parse(readFileSync(path.join(extensionPath, 'manifest.json'), 'utf8'));
+  writeFileSync(path.join(fixture, 'manifest.json'), JSON.stringify({
+    manifest_version: 3, name: 'Legacy upgrade fixture', version: '1.1.0', key: manifest.key,
+    permissions: ['storage'], background: { service_worker: 'legacy.js' }, options_page: 'legacy.html',
+  }));
+  writeFileSync(path.join(fixture, 'legacy.js'), 'chrome.runtime.onInstalled.addListener(()=>{});');
+  writeFileSync(path.join(fixture, 'legacy.html'), '<title>Legacy upgrade fixture</title>');
+  const launch = () => chromium.launchPersistentContext(profile, {
+    headless: false,
+    ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH } : {}),
+    args: [`--disable-extensions-except=${fixture}`, `--load-extension=${fixture}`],
+  });
+  let updating = await launch();
+  try {
+    const legacy = await updating.newPage();
+    await legacy.goto(`chrome-extension://${extensionId}/legacy.html`);
+    await legacy.evaluate(async () => chrome.storage.local.set({ allowedOrigins: [{
+      id: 42, origin: 'https://upgrade.example', domain: 'upgrade.example', disabled: false,
+      credentials: true, extraHeaders: '', createdAt: 1, updatedAt: 1,
+    }], extConfig: { maxRules: 250 }, uiLanguage: 'en', uiTheme: 'light' }));
+    const manager = await updating.newPage();
+    await manager.goto('chrome://extensions');
+    if (await manager.locator('#devMode').getAttribute('aria-pressed') !== 'true') await manager.locator('#devMode').click();
+    cpSync(extensionPath, fixture, { recursive: true });
+    await manager.locator('extensions-item').locator('#dev-reload-button').click();
+    await expect.poll(() => updating.pages().filter((page) => page.url().includes('/src/upgrade/index.html')).length).toBe(1);
+    const upgrade = updating.pages().find((page) => page.url().includes('/src/upgrade/index.html'))!;
+    const errors: string[] = [];
+    upgrade.on('pageerror', (error) => errors.push(error.message));
+    await expect(upgrade.getByRole('region', { name: 'About your Wireflip upgrade' })).toBeVisible();
+    expect(await upgrade.evaluate(async () => {
+      const values = await chrome.storage.local.get(['proxyAppState', 'legacyBackupV1', 'wireflipV2NoticeOpened']);
+      return { id: values.proxyAppState.rules[0].id, backup: values.legacyBackupV1.allowedOrigins[0].id, opened: values.wireflipV2NoticeOpened, max: values.proxyAppState.settings.maxRules };
+    })).toEqual({ id: 'legacy-cors-42', backup: 42, opened: '2.0', max: 250 });
+    let workspace = await updating.newPage();
+    await workspace.goto(`chrome-extension://${extensionId}/src/options/index.html`);
+    let popup = await updating.newPage();
+    await popup.goto(`chrome-extension://${extensionId}/src/popup/index.html`);
+    await expect(popup.getByRole('region', { name: 'About your Wireflip upgrade' })).toBeVisible();
+    for (const locale of ['en', 'zh-CN', 'ko', 'ja', 'fr', 'es']) {
+      await upgrade.evaluate((locale) => chrome.storage.local.set({ uiLanguage: locale }), locale);
+      await expect(upgrade.locator('html')).toHaveAttribute('lang', locale);
+      await expect(upgrade.getByText(messages['CORS Unlocker is now Wireflip'][locale], { exact: true })).toBeVisible();
+      await upgrade.setViewportSize({ width: locale === 'en' ? 960 : 360, height: 800 });
+      if (locale === 'en' || locale === 'zh-CN') await upgrade.screenshot({ path: `/tmp/wireflip-upgrade-${locale}.png`, fullPage: true });
+      expect(await upgrade.evaluate(() => Array.from(document.querySelectorAll('main, main *')).filter((element) => element.getBoundingClientRect().right > innerWidth + 1).map((element) => ({ tag: element.tagName, class: element.className, width: element.getBoundingClientRect().width }))), locale).toEqual([]);
+    }
+    await upgrade.evaluate(() => chrome.storage.local.set({ uiLanguage: 'en', uiTheme: 'dark' }));
+    await expect(upgrade.locator('html')).toHaveClass(/dark/);
+    await upgrade.setViewportSize({ width: 960, height: 800 });
+    await upgrade.screenshot({ path: '/tmp/wireflip-upgrade-dark.png', fullPage: true });
+    await upgrade.close();
+    await manager.locator('extensions-item').locator('#dev-reload-button').click();
+    workspace = await updating.newPage();
+    await expect(async () => {
+      await workspace.goto(`chrome-extension://${extensionId}/src/options/index.html`);
+      await expect(workspace.getByRole('region', { name: 'About your Wireflip upgrade' })).toBeVisible();
+    }).toPass({ timeout: 10_000 });
+    await expect(workspace.getByRole('region', { name: 'About your Wireflip upgrade' })).toBeVisible();
+    expect(updating.pages().some((page) => page.url().includes('/src/upgrade/'))).toBe(false);
+    popup = await updating.newPage();
+    await popup.goto(`chrome-extension://${extensionId}/src/popup/index.html`);
+    await popup.getByRole('button', { name: 'Got it', exact: true }).click();
+    await expect(workspace.getByRole('region', { name: 'About your Wireflip upgrade' })).toHaveCount(0);
+    expect(errors).toEqual([]);
+    await updating.close(); updating = await launch();
+    const reopened = await updating.newPage();
+    await reopened.goto(`chrome-extension://${extensionId}/src/options/index.html`);
+    await expect(reopened.getByRole('region', { name: 'About your Wireflip upgrade' })).toHaveCount(0);
+    expect(updating.pages().some((page) => page.url().includes('/src/upgrade/'))).toBe(false);
+    expect(await reopened.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState.rules[0].id)).toBe('legacy-cors-42');
+  } finally { await updating.close(); rmSync(profile, { recursive: true, force: true }); rmSync(fixture, { recursive: true, force: true }); }
 });
 
 test('keeps native toolbar colors, badges and tooltips in sync with each tab', async () => {
@@ -692,7 +772,7 @@ test('controls site rules inline and verifies actual request effects', async () 
   await panel.getByRole('button', { name: 'Format JSON', exact: true }).click();
   await expect(bodyEditor).toHaveValue('{\n  "source": "sidepanel"\n}');
   // Native editing commands preserve undo even though syntax colors are overlaid.
-  await bodyEditor.press('Control+z');
+  await bodyEditor.press(process.platform === 'darwin' ? 'Meta+z' : 'Control+z');
   await expect(bodyEditor).toHaveValue('{"source":"sidepanel"}');
   await bodyEditor.press('Alt+Shift+f');
   await expect(bodyEditor).toHaveValue('{\n  "source": "sidepanel"\n}');
@@ -1576,14 +1656,17 @@ test('saves and moves a grouped rule without losing membership on subsequent edi
     await control.getByLabel('Page origins', { exact: true }).fill('https://group.example');
     await control.getByLabel('Request URL pattern', { exact: true }).fill('*');
     await control.getByRole('button', { name: 'Save rule', exact: true }).click();
+    await expect(control.getByRole('button', { name: 'Save rule', exact: true })).toBeEnabled();
     await expect(control.getByLabel('Group', { exact: true })).toHaveValue(profile.id);
     id = (await send('getProxyState', undefined)).rules.find((rule: any) => rule.name === 'Grouped editor rule').id;
     await control.getByLabel('Name', { exact: true }).fill('Edited twice');
     await control.getByRole('button', { name: 'Save rule', exact: true }).click();
+    await expect(control.getByRole('button', { name: 'Save rule', exact: true })).toBeEnabled();
     expect((await send('getProxyState', undefined)).profiles.find((item: any) => item.id === profile.id).ruleIds).toContain(id);
     await control.getByLabel('Group', { exact: true }).selectOption('');
     await control.getByRole('button', { name: 'Save rule', exact: true }).click();
-    expect((await send('getProxyState', undefined)).profiles.find((item: any) => item.id === profile.id).ruleIds).not.toContain(id);
+    await expect(control.getByRole('button', { name: 'Save rule', exact: true })).toBeEnabled();
+    await expect.poll(async () => (await send('getProxyState', undefined)).profiles.find((item: any) => item.id === profile.id).ruleIds).not.toContain(id);
   } finally {
     if (id) await send('deleteProxyRule', { id });
     await send('proxyStateOperation', { kind: 'removeGroup', id: profile.id });

@@ -671,5 +671,57 @@ class FirefoxTests(unittest.TestCase):
             self.switch(self.control)
 
 
+    def test_z_v1_update_opens_explanation_once_but_fresh_install_does_not(self):
+        self.switch(self.control)
+        self.assertFalse(self.js("return !!document.querySelector('[aria-label=\"About your Wireflip upgrade\"]');"))
+        self.assertFalse(self.extension_js('return (await browser.tabs.query({})).some(t=>t.url.includes("/src/upgrade/"));'))
+        legacy = Path(self.temp.name) / 'legacy-v1.xpi'
+        with zipfile.ZipFile(legacy, 'w', zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr('manifest.json', json.dumps({
+                'manifest_version': 3, 'name': 'Legacy upgrade fixture', 'version': '1.1.0',
+                'permissions': ['storage'], 'options_ui': {'page': 'legacy.html'},
+                'browser_specific_settings': {'gecko': {'id': ADDON_ID, 'strict_min_version': '142.0'}},
+            }))
+            archive.writestr('legacy.html', '<title>Legacy upgrade fixture</title>')
+        self.assertEqual(self.command('POST', '/moz/addon/install', {'path': str(legacy), 'temporary': True}), ADDON_ID)
+        self.control = self.new_page(EXTENSION + '/legacy.html')
+        self.extension_js('''await browser.storage.local.clear();await browser.storage.local.set({allowedOrigins:[{
+            id:42,origin:"https://upgrade.example",domain:"upgrade.example",disabled:false,credentials:true,
+            extraHeaders:"",createdAt:1,updatedAt:1}],extConfig:{maxRules:250},uiLanguage:"en",uiTheme:"light"});''')
+        archive = Path(self.temp.name) / 'extension.xpi'
+        self.assertEqual(self.command('POST', '/moz/addon/install', {'path': str(archive), 'temporary': True}), ADDON_ID)
+        self.control = self.new_page(EXTENSION + '/src/options/index.html')
+        self.wait(lambda: self.js('return typeof browser!=="undefined" && !!document.querySelector("main");'))
+        tabs = self.wait(lambda: self.extension_js('return (await browser.tabs.query({})).filter(t=>t.url.includes("/src/upgrade/index.html"));'))
+        self.assertEqual(len(tabs), 1)
+        upgrade = None
+        for handle in self.command('GET', '/window/handles'):
+            self.switch(handle)
+            if '/src/upgrade/index.html' in self.js('return location.href;'):
+                upgrade = handle
+                break
+        self.assertIsNotNone(upgrade)
+        self.switch(upgrade)
+        self.wait(lambda: self.js('return document.body.innerText.includes("CORS Unlocker is now Wireflip");'))
+        self.assertTrue(self.js('return document.body.innerText.includes("Firefox response replacement still contacts the server");'))
+        self.assertFalse(self.js('return document.body.innerText.includes("Chrome shows a debugging banner");'))
+        self.assertTrue(self.js("return !!document.querySelector('img[alt=\"CORS Unlocker\"]');"))
+        (ARTIFACTS / 'upgrade-firefox.png').write_bytes(base64.b64decode(self.command('GET', '/screenshot')))
+        values = self.extension_js('return browser.storage.local.get(["proxyAppState","legacyBackupV1","wireflipV2NoticeOpened"]);')
+        self.assertEqual(values['proxyAppState']['rules'][0]['id'], 'legacy-cors-42')
+        self.assertEqual(values['legacyBackupV1']['allowedOrigins'][0]['id'], 42)
+        self.assertEqual(values['wireflipV2NoticeOpened'], '2.0')
+        self.switch(upgrade)
+        self.js('Array.from(document.querySelectorAll("button")).find(b=>b.textContent.trim()==="Got it").click();')
+        self.wait(lambda: self.command('GET', '/window/handles'), lambda handles: upgrade not in handles)
+        self.switch(self.control)
+        self.wait(lambda: self.js("return !document.querySelector('[aria-label=\"About your Wireflip upgrade\"]');"))
+        self.assertEqual(self.extension_js('return (await browser.storage.local.get("wireflipV2NoticeSeen")).wireflipV2NoticeSeen;'), '2.0')
+        self.assertEqual(self.command('POST', '/moz/addon/install', {'path': str(archive), 'temporary': True}), ADDON_ID)
+        self.navigate(EXTENSION + '/src/options/index.html')
+        self.wait(lambda: self.js('return !!document.querySelector("main");'))
+        self.assertFalse(self.extension_js('return (await browser.tabs.query({})).some(t=>t.url.includes("/src/upgrade/"));'))
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

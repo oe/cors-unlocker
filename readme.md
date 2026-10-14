@@ -142,6 +142,14 @@ restore flow. A separate `preRecoveryBackup` retains the data replaced by an exp
 
 ## Upgrade behavior
 
+Updating from 1.x opens a local extension explanation page once, showing the old and new
+names and logos, preserved CORS rules, the new request lab, and browser-specific limits.
+Fresh installs and later 2.x updates do not show this notice. Popup and Workspace retain
+a short reminder until **Got it** is selected; acknowledgment is local, shared across
+surfaces, and excluded from portable rule exports. Opening the explanation never starts
+an interception session. If configuration migration fails, it points to Data & recovery
+instead of claiming the rules were migrated successfully.
+
 Keep the existing Chrome manifest key and Firefox Gecko ID when publishing 2.0 so each browser treats it as an update. On first startup:
 
 1. Existing v1 rules and settings are read.

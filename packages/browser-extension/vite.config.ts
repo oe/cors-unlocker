@@ -87,6 +87,7 @@ export default defineConfig(({ command, mode }) => {
       eslint(),
       tailwindcss(),
       webExtension({
+        additionalInputs: ['src/upgrade/index.html'],
         browser: browserTarget,
         skipManifestValidation: true,
         webExtConfig: {
