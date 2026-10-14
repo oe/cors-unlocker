@@ -1,7 +1,7 @@
 import { test, expect, chromium, type BrowserContext, type Page } from '@playwright/test';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { mkdtempSync, rmSync } from 'fs';
+import { mkdtempSync, readFileSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { createServer } from 'node:http';
 import { messages } from '../../src/common/locales';
@@ -1677,5 +1677,97 @@ test('keeps toolbar group hints and popup recovery actions in sync', async () =>
     for (const id of ids) await send('deleteProxyRule', { id });
     if (groupId) await send('proxyStateOperation', { kind: 'removeGroup', id: groupId });
     await popup.close(); await target.close();
+  }
+});
+
+
+test('runs exact new and legacy SDK archives through production HTTPS bridges', async () => {
+  const repo = path.resolve(extensionPath, '../../../..');
+  const packages = path.join(repo, 'artifacts/sdk-preflight');
+  const site = path.join(repo, 'packages/website/dist');
+  const app = 'https://app.wireflip.test';
+  const otherOrigin = 'https://other.wireflip.test';
+  const bridgeRequests: string[] = [];
+  const target = await context.newPage();
+  const other = await context.newPage();
+  const send = (type: string, payload: any = {}) => control.evaluate(({ type, payload }) => chrome.runtime.sendMessage({ type, payload }), { type, payload });
+  const fixtureRoute = async (route: import('@playwright/test').Route) => {
+    const url = new URL(route.request().url());
+    if (url.hostname === 'cors.forth.ink') {
+      bridgeRequests.push(url.pathname);
+      const name = url.pathname.endsWith('/') ? url.pathname + 'index.html' : url.pathname;
+      await route.fulfill({ body: readFileSync(path.join(site, name)), contentType: name.endsWith('.js') ? 'text/javascript' : 'text/html' });
+    } else if (url.pathname.startsWith('/sdk/')) {
+      await route.fulfill({ body: readFileSync(path.join(packages, url.pathname.slice(5))), contentType: 'text/javascript' });
+    } else {
+      await route.fulfill({ body: '<title>Wireflip packaged SDK acceptance</title><p>Isolated HTTPS SDK fixture</p>', contentType: 'text/html' });
+    }
+  };
+  await context.route(/^https:\/\/(cors\.forth\.ink|app\.wireflip\.test|other\.wireflip\.test)\//, fixtureRoute);
+  const load = (page: Page, label: string, entry: string) => page.evaluate(async ({ label, entry }) => {
+    (window as any).sdk = await import(`/sdk/${label}/package/dist/${entry}`);
+  }, { label, entry });
+  const call = (page: Page, expression: string) => page.evaluate(async (expression) => await (0, eval)(expression), expression);
+  const openWorkspace = async (expression: string) => {
+    await target.bringToFront();
+    await call(target, expression);
+    await expect.poll(() => control.evaluate(async () => (await chrome.tabs.query({ active: true, lastFocusedWindow: true }))[0]?.url)).toBe(`chrome-extension://${extensionId}/src/options/index.html`);
+    await expect(control.locator('main')).toBeVisible();
+  };
+  try {
+    for (const label of ['legacy-0.1.0', 'legacy-0.1.1']) {
+      await target.goto(app + '/');
+      await other.goto(otherOrigin + '/');
+      await load(target, label, 'index.es.js');
+      expect(await call(target, 'sdk.default.isExtInstalled()')).toBe(true);
+      expect(await call(target, 'sdk.default.isEnabled()')).toEqual({ enabled: false, credentials: false });
+      target.once('dialog', dialog => dialog.dismiss());
+      expect(await call(target, 'sdk.default.enable({credentials:false}).catch(e=>({error:e.type}))')).toEqual({ error: 'user-cancel' });
+      expect((await call(target, 'sdk.default.isEnabled()')).enabled).toBe(false);
+      target.once('dialog', dialog => dialog.accept());
+      expect((await call(target, 'sdk.default.enable({credentials:true})')).enabled).toBe(true);
+      expect(await call(target, 'sdk.default.isEnabled()')).toEqual({ enabled: true, credentials: true });
+      await load(other, label, 'index.es.js');
+      expect((await call(other, 'sdk.default.isEnabled()')).enabled).toBe(false);
+      await call(target, 'sdk.default.disable()');
+      expect((await call(target, 'sdk.default.isEnabled()')).enabled).toBe(false);
+      await openWorkspace('sdk.default.openExtOptions()');
+      const frame = target.frames().find(frame => frame.url().startsWith('https://cors.forth.ink/message/index.html?'));
+      expect(frame).toBeTruthy();
+      expect(await frame!.evaluate(() => location.origin)).toBe('https://cors.forth.ink');
+    }
+    expect(bridgeRequests).toContain('/message/index.html');
+    await target.goto(app + '/');
+    await load(target, 'new', 'index.mjs');
+    const connected = await call(target, '(async()=>{window.session=await sdk.intercept.connect();return {origin:session.origin,capabilities:session.capabilities,status:await session.getStatus()};})()');
+    expect(connected).toMatchObject({ origin: app, capabilities: { browser: 'chrome', interception: { responseMock: 'synthetic' } }, status: { advancedMode: 'disabled' } });
+    target.once('dialog', dialog => dialog.dismiss());
+    expect(await call(target, 'session.requestCors().catch(e=>({error:e.type}))')).toEqual({ error: 'user-cancel' });
+    target.once('dialog', dialog => dialog.accept());
+    expect((await call(target, 'session.requestCors({credentials:false})')).cors.enabled).toBe(true);
+    expect((await call(target, 'session.disableCors()')).cors.enabled).toBe(false);
+    const draft = await call(target, 'session.createRuleDraft({name:"Exact archive",urlPattern:"https://api.example.com/*",actions:[{type:"delay",milliseconds:800}]},{openWorkspace:false})');
+    expect(draft.enabled).toBe(false);
+    const stored = (await send('getProxyState')).rules.find((rule: any) => rule.id === draft.id);
+    expect(stored).toMatchObject({ enabled: false, match: { initiatorOrigins: [app] } });
+    await openWorkspace('session.openWorkspace()');
+    await other.goto(otherOrigin + '/');
+    await load(other, 'new', 'index.mjs');
+    expect(await call(other, '(async()=>{const s=await sdk.intercept.connect();return (await s.getStatus()).cors.enabled;})()')).toBe(false);
+    const withoutExtension = await context.browser()!.newContext();
+    try {
+      await withoutExtension.route(/^https:\/\/app\.wireflip\.test\//, fixtureRoute);
+      const absent = await withoutExtension.newPage();
+      await absent.goto(app + '/');
+      await load(absent, 'new', 'index.mjs');
+      expect(await call(absent, 'sdk.intercept.isAvailable()')).toBe(false);
+      expect(await call(absent, 'sdk.intercept.connect().catch(e=>({type:e.type}))')).toEqual({ type: 'not-installed' });
+    } finally { await withoutExtension.close(); }
+
+  } finally {
+    const state = await send('getProxyState');
+    for (const rule of state.rules) if (rule.match.initiatorOrigins.some((origin: string) => [app, otherOrigin].includes(origin))) await send('deleteProxyRule', { id: rule.id });
+    await target.close(); await other.close();
+    await context.unroute(/^https:\/\/(cors\.forth\.ink|app\.wireflip\.test|other\.wireflip\.test)\//, fixtureRoute);
   }
 });

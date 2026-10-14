@@ -10,7 +10,10 @@
   "accentColor": "#435d91",
   "subheadColor": "#425675",
   "brand": "Wireflip",
-  "locales": ["en", "zh-CN"],
+  "locales": [
+    "en",
+    "zh-CN"
+  ],
   "copy": {
     "en": {
       "headlineLead": "Your requests · ",
@@ -62,9 +65,9 @@
       "capture": "popup",
       "layout": "portrait",
       "screen": {
-        "left": 786,
+        "left": 826,
         "top": 102,
-        "width": 390
+        "width": 350
       },
       "copy": {
         "en": {
@@ -140,9 +143,9 @@
       "capture": "popup-delay",
       "layout": "portrait",
       "screen": {
-        "left": 786,
+        "left": 826,
         "top": 102,
-        "width": 390
+        "width": 350
       },
       "copy": {
         "en": {

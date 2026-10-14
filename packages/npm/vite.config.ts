@@ -1,8 +1,13 @@
 import { defineConfig } from 'vite';
+import { copyFileSync } from 'node:fs';
 import dts from 'vite-plugin-dts';
 
 export default defineConfig(({ mode }) => ({
-  plugins: [dts({ exclude: ['src/**/*.test.ts'] })],
+  plugins: [dts({
+    exclude: ['src/**/*.test.ts'],
+    // NodeNext requires the declaration's module kind to match each runtime entry.
+    afterBuild: () => copyFileSync(new URL('./dist/index.d.ts', import.meta.url), new URL('./dist/index.d.cts', import.meta.url)),
+  })],
   define: {
     'process.env.NODE_ENV': JSON.stringify(mode === 'development' ? 'development' : 'production'),
   },

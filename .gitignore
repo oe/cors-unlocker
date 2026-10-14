@@ -32,3 +32,6 @@ test-results
 extension*.zip
 *.tgz
 artifacts/legacy-sdk/
+
+artifacts/sdk-preflight/
+__pycache__/

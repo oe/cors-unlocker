@@ -44,7 +44,7 @@ try {
       process.env.CHROMIUM_PATH ||
       (existsSync("/usr/bin/chromium") ? "/usr/bin/chromium" : undefined),
   });
-  const page = await browser.newPage({ viewport: { width: 420, height: 860 } });
+  const page = await browser.newPage({ viewport: { width: 420, height: 860 }, colorScheme: "light" });
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.addInitScript(() => {
@@ -68,7 +68,7 @@ try {
         maxRules: 100,
         autoCleanupDays: 30,
       },
-      profiles: [],
+      profiles: [{ id: "development", name: window.__locale === "zh-CN" ? "本地开发" : "Local development", enabled: true, ruleIds: ["mock-projects", "cors-local", "delay-test"] }],
       rules: [
         {
           id: "headers",
@@ -160,6 +160,7 @@ try {
     };
     const data = {
       uiLanguage: window.__locale || "en",
+      uiTheme: "light",
       proxyAppState: state,
       popupPinnedRuleIds: ["headers"],
     };
@@ -282,6 +283,14 @@ try {
           done(result);
         },
       },
+      declarativeNetRequest: {
+        getSessionRules: (...args) => {
+          const rules = [{ id: 20000, condition: { tabIds: [17] }, action: { type: "modifyHeaders" } }];
+          const done = args.at(-1);
+          if (typeof done === "function") done(rules);
+          else return Promise.resolve(rules);
+        },
+      },
       tabs: {
         get: (...args) =>
           callback(
@@ -336,6 +345,9 @@ try {
         exact: true,
       })
       .waitFor();
+    await page.waitForFunction(() => document.querySelector('[title="https://app.example.com"]') || document.querySelector('[role="alert"]'));
+    if (await page.getByRole("alert").count()) throw new Error(await page.getByRole("alert").innerText());
+    await page.getByText("https://app.example.com", { exact: true }).waitFor();
     await page.screenshot({
       animations: "disabled",
       path: `${folder}/popup-${locale}.png`,
@@ -348,6 +360,9 @@ try {
         exact: true,
       })
       .waitFor();
+    await page.waitForFunction(() => document.querySelector('[title="https://app.example.com"]') || document.querySelector('[role="alert"]'));
+    if (await page.getByRole("alert").count()) throw new Error(await page.getByRole("alert").innerText());
+    await page.getByText("https://app.example.com", { exact: true }).waitFor();
     await page.screenshot({
       animations: "disabled",
       path: `${folder}/popup-delay-${locale}.png`,

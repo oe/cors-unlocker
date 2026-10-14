@@ -77,6 +77,9 @@ To change copy, screenshot order, or colors, edit [`source/design.json`](source/
 Its `scenes` array defines capture names, layouts, and localized copy. To change
 the desktop geometry, edit [`source/layout.html`](source/layout.html). Keep the
 approved UI upright and completely inside the canvas, with a single window.
+Capture fixtures include a local-development rule group and explicitly select light appearance.
+Popup captures wait for the example origin and reject visible errors before writing an image.
+
 Then export from the saved original captures:
 
 ```bash
