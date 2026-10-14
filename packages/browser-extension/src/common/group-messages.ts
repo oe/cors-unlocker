@@ -112,8 +112,8 @@ export const groupMessages: Record<string, Record<string, string>> = {
     "fr": "Activer le groupe {name}",
     "es": "Activar grupo {name}"
   },
-  "New rule in {name}": {
-    "en": "New rule in {name}",
+  "Create rule in {name}": {
+    "en": "Create rule in {name}",
     "zh-CN": "在 {name} 中新建规则",
     "ko": "{name}에 새 규칙",
     "ja": "{name} に新しいルール",

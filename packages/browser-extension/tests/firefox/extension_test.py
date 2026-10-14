@@ -247,8 +247,8 @@ class FirefoxTests(unittest.TestCase):
             self.command('POST', f'/element/{element_id}/value', {'text': text})
         fill('#group-name', 'UI scenario')
         self.js('Array.from(document.querySelectorAll("button")).find(b=>b.textContent.trim()==="Create group").click();')
-        self.wait(lambda: self.js('return !!document.querySelector(\'[aria-label="New rule in UI scenario"]\');'))
-        self.js('document.querySelector(\'[aria-label="New rule in UI scenario"]\').click();')
+        self.wait(lambda: self.js('return !!document.querySelector(\'[aria-label="Create rule in UI scenario"]\');'))
+        self.js('document.querySelector(\'[aria-label="Create rule in UI scenario"]\').click();')
         fill('#rule-name', 'Group editor example')
         fill('#rule-origins', self.origin)
         fill('#rule-pattern', '*')
@@ -265,9 +265,20 @@ class FirefoxTests(unittest.TestCase):
         state = self.message('getProxyState')
         self.assertIn(rule['id'], next(group for group in state['profiles'] if group['id'] == profile['id'])['ruleIds'])
         self.switch(self.control)
+        # Close the native browser sidebar (which may belong to a built-in panel).
+        # sidebarAction.close() only closes our own panel and cannot ensure the viewport.
+        self.command('POST', '/moz/context', {'context': 'chrome'})
+        try:
+            self.js('SidebarController.hide();')
+        finally:
+            self.command('POST', '/moz/context', {'context': 'content'})
         self.command('POST', '/window/rect', {'width': 1280, 'height': 800})
+        self.wait(lambda: self.js('return innerWidth;'), lambda width: width >= 1200)
         (ARTIFACTS / 'groups-desktop.png').write_bytes(base64.b64decode(self.command('GET', '/screenshot')))
-        self.command('POST', '/window/rect', {'width': 390, 'height': 844})
+        # Firefox's native window minimum is 500px; Chrome separately covers a 390px viewport.
+        self.command('POST', '/window/rect', {'width': 500, 'height': 844})
+        self.wait(lambda: self.js('return innerWidth;'), lambda width: 450 <= width <= 550)
+        (ARTIFACTS / 'groups-viewport.json').write_text(json.dumps(self.js('return {width:innerWidth,height:innerHeight,outerWidth,dpr:devicePixelRatio};')))
         self.js('document.querySelector(\'[aria-label="Back to rules"]\').click();')
         self.wait(lambda: self.js('return !!document.querySelector(\'[aria-label="Rename group UI scenario"]\');'))
         self.assertTrue(self.js('return document.documentElement.scrollWidth<=innerWidth;'))

@@ -1384,7 +1384,7 @@ test('saves and moves a grouped rule without losing membership on subsequent edi
   let id: string | undefined;
   try {
     await control.goto(`chrome-extension://${extensionId}/src/options/index.html`);
-    await control.getByRole('button', { name: 'New rule in Editor group', exact: true }).click();
+    await control.getByRole('button', { name: 'Create rule in Editor group', exact: true }).click();
     await control.getByLabel('Name', { exact: true }).fill('Grouped editor rule');
     await control.getByLabel('Page origins', { exact: true }).fill('https://group.example');
     await control.getByLabel('Request URL pattern', { exact: true }).fill('*');

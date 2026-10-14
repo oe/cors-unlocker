@@ -171,7 +171,7 @@ function ProxyRules({ state, reload, navigate, onDirtyChange, createToken }: {
   return <div className="relative grid h-full min-h-0 min-w-0 grid-cols-1 md:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[340px_minmax(0,1fr)]">
     <aside aria-label={t("Rule list")} className={cn('flex min-h-0 min-w-0 flex-col border-r', draft && 'max-md:hidden')}>
       <div className="flex shrink-0 flex-col gap-2 border-b p-3">
-        <div className="flex items-center justify-between gap-2"><h2 className="text-sm font-semibold">{t('Rules')}</h2><Button size="xs" variant="ghost" disabled={busy} onClick={() => openGroup('create')}><Plus />{t('New group')}</Button></div>
+        <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-sm font-semibold">{t('Rules')}</h2><Button size="xs" variant="ghost" disabled={busy} onClick={() => openGroup('create')}><Plus />{t('New group')}</Button></div>
         <Input ref={search} aria-label={t("Search rules")} placeholder={t("Search rules · ⌘/Ctrl K")} value={query} onChange={(e) => setQuery(e.target.value)} />
         <div className="grid grid-cols-2 gap-2">
           <Select value={actionFilter} onValueChange={(value) => value && setActionFilter(value)}><SelectTrigger className="w-full min-w-0" aria-label={t("Filter actions")}><SelectValue>{actionFilter === 'all' ? t("All actions") : t(ACTION_LABELS[actionFilter as keyof typeof ACTION_LABELS])}</SelectValue></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">{t("All actions")}</SelectItem>{Object.entries(ACTION_LABELS).map(([key, label]) => <SelectItem key={key} value={key}>{t(label)}</SelectItem>)}</SelectGroup></SelectContent></Select>
@@ -181,16 +181,18 @@ function ProxyRules({ state, reload, navigate, onDirtyChange, createToken }: {
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto" aria-label={t("Rules")}>
         {sections.map(({ profile, rules }) => <section key={profile?.id || 'ungrouped'} aria-label={profile?.name || t('Ungrouped')}>
-          {profile ? <div className="flex items-center gap-1 border-b bg-muted/40 px-2 py-2">
-            <button type="button" className="flex min-w-0 flex-1 items-center gap-1.5 rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" disabled={searching} title={searching ? t('Clear filters to collapse groups.') : profile.name} aria-expanded={searching || !collapsed.includes(profile.id)} aria-controls={`group-${profile.id}`} onClick={() => collapse(profile.id)}>
+          {profile ? <div className="flex flex-wrap items-center gap-1 border-b bg-muted/40 px-2 py-2">
+            <button type="button" className="flex min-w-0 flex-1 basis-[140px] items-center gap-1.5 rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" disabled={searching} title={searching ? t('Clear filters to collapse groups.') : profile.name} aria-expanded={searching || !collapsed.includes(profile.id)} aria-controls={`group-${profile.id}`} onClick={() => collapse(profile.id)}>
               {searching || !collapsed.includes(profile.id) ? <ChevronDown className="size-4 shrink-0" /> : <ChevronRight className="size-4 shrink-0" />}
               <Folder className="size-4 shrink-0 text-muted-foreground" />
               <span className="min-w-0"><span className="block truncate text-sm font-medium" title={profile.name}>{profile.name}</span><span className="block text-xs text-muted-foreground">{profile.enabled ? t('{on} of {total} rules on', { on: state.rules.filter((rule) => profile.ruleIds.includes(rule.id) && rule.enabled).length, total: profile.ruleIds.length }) : t('Group paused')}</span></span>
             </button>
+            <div className="ml-auto flex shrink-0 items-center gap-1">
             <Switch size="sm" checked={profile.enabled} disabled={busy} aria-label={t('Enable group {name}', { name: profile.name })} onCheckedChange={(enabled) => void changeGroup({ kind: 'updateGroup', id: profile.id, enabled })} />
-            <Button variant="ghost" size="icon-xs" disabled={busy} title={t('New rule in {name}', { name: profile.name })} aria-label={t('New rule in {name}', { name: profile.name })} onClick={() => leave(() => setDraft({ ...EMPTY_DRAFT, groupId: profile.id }))}><Plus /></Button>
+            <Button variant="ghost" size="icon-xs" disabled={busy} title={t('Create rule in {name}', { name: profile.name })} aria-label={t('Create rule in {name}', { name: profile.name })} onClick={() => leave(() => setDraft({ ...EMPTY_DRAFT, groupId: profile.id }))}><Plus /></Button>
             <Button variant="ghost" size="icon-xs" disabled={busy} title={t('Rename group {name}', { name: profile.name })} aria-label={t('Rename group {name}', { name: profile.name })} onClick={() => openGroup('rename', profile)}><Pencil /></Button>
             <Button variant="ghost" size="icon-xs" disabled={busy} title={t('Delete group {name}', { name: profile.name })} aria-label={t('Delete group {name}', { name: profile.name })} onClick={() => openGroup('remove', profile)}><Trash2 /></Button>
+            </div>
           </div> : state.profiles.length ? <h3 className="border-b bg-muted/40 px-3 py-2 text-sm font-medium">{t('Ungrouped')}</h3> : null}
           <div id={profile ? `group-${profile.id}` : undefined} hidden={!!profile && !searching && collapsed.includes(profile.id)}>
             {rules.map((rule) => renderRule(rule, visibleRules.findIndex((item) => item.id === rule.id)))}
