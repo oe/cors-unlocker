@@ -49,4 +49,4 @@ await session.createRuleDraft({
 
 Legacy aliases: `isExtInstalled`, `isEnabled`, `enable`, `disable`, `openExtOptions`, and `openStorePage`.
 
-Full documentation: [intercept.forth.ink/docs](https://intercept.forth.ink/docs/)
+Full documentation: [wireflip.forth.ink/docs](https://wireflip.forth.ink/docs/)

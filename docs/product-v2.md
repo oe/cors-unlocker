@@ -8,7 +8,7 @@ Wireflip is an independent product name. It evokes changing request traffic whil
 
 Core line: **Patch the request. Keep your flow.**
 
-Canonical website: **https://intercept.forth.ink**. This is the existing deployment hostname; the product name, SDK package, and release artifacts are Wireflip. Changing the product name does not provision a new domain.
+Canonical website: **https://wireflip.forth.ink**. Keep the previously published `cors.forth.ink` hostname available for legacy SDK clients and redirect public pages to the canonical site. DNS, HTTPS and redirects must be configured separately; see `packages/website/README.md`.
 
 ## Audience and job
 

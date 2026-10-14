@@ -215,7 +215,7 @@ export const intercept = {
 
   openStorePage(): void {
     const url = /firefox/i.test(navigator.userAgent)
-      ? 'https://intercept.forth.ink/docs/#install'
+      ? 'https://wireflip.forth.ink/docs/#install'
       : `https://chromewebstore.google.com/detail/${EXTENSION_ID}`;
     window.open(url, '_blank', 'noopener,noreferrer');
   },
