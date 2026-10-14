@@ -1,0 +1,4 @@
+{
+  "extName": { "message": "Wireflip" },
+  "extDescription": { "message": "本地、按标签页控制的请求工具：修复 CORS、修改请求头、重定向、阻断、模拟响应、延迟和调试。" }
+}
