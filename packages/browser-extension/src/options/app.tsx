@@ -4,7 +4,8 @@ import { createRoot } from 'react-dom/client';
 import browser from 'webextension-polyfill';
 import { Download, Plus, ListFilter, Database, Upload, ChevronDown, ChevronRight, Folder, Pencil, Trash2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { LanguageSelect } from '@/components/language-select';
+import { AppearanceSettings } from '@/components/appearance-settings';
+import { initializeTheme } from '@/common/theme';
 import { BrandMark } from '@/components/brand-mark';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -352,7 +353,7 @@ function App() {
         </div>
         <Button variant={view === 'rules' ? 'secondary' : 'ghost'} className="h-auto min-h-11 w-full flex-col gap-1 px-0 py-1.5 lg:min-h-9 lg:flex-row lg:justify-start lg:px-2" aria-label={t("Rules")} title={t("Rules")} aria-current={view === 'rules' ? 'page' : undefined} onClick={() => { if (view !== 'rules') navigate(() => setView('rules')); }}><ListFilter data-icon="inline-start" /><span className="min-w-0 text-xs lg:text-sm">{t("Rules")}</span></Button>
         <Button variant={view === 'data' ? 'secondary' : 'ghost'} className="h-auto min-h-11 w-full flex-col gap-1 px-0 py-1.5 lg:min-h-9 lg:flex-row lg:justify-start lg:px-2" aria-label={t("Data & migration")} title={t("Data & migration")} aria-current={view === 'data' ? 'page' : undefined} onClick={() => { if (view !== 'data') navigate(() => setView('data')); }}><Database data-icon="inline-start" /><span className="min-w-0 text-xs lg:text-sm">{t("Data")}</span></Button>
-        <div className="mt-auto pt-3"><LanguageSelect compact /></div>
+        <div className="mt-auto pt-3"><AppearanceSettings /></div>
       </nav>
       <div className="min-h-0 min-w-0 flex-1">
         {state ? view === 'rules' ? <ProxyRules state={state} reload={reload} navigate={navigate} onDirtyChange={setDirty} /> :
@@ -364,4 +365,4 @@ function App() {
   </main>;
 }
 
-void initializeLocale().then(() => createRoot(document.getElementById('root')!).render(<StrictMode><App /></StrictMode>));
+void Promise.all([initializeLocale(), initializeTheme()]).then(() => createRoot(document.getElementById('root')!).render(<StrictMode><App /></StrictMode>));

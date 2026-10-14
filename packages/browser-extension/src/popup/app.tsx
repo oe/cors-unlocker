@@ -1,6 +1,7 @@
 import { t, translateError, initializeLocale, useLocale } from '@/common/i18n';
 import { StrictMode, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import { initializeTheme } from '@/common/theme';
 import { AlertCircle, ArrowUpRight, Settings, Activity, Pin, PinOff } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { BrandMark } from '@/components/brand-mark';
@@ -147,4 +148,4 @@ function App() {
   );
 }
 
-void initializeLocale().then(() => createRoot(document.getElementById('root')!).render(<StrictMode><App /></StrictMode>));
+void Promise.all([initializeLocale(), initializeTheme()]).then(() => createRoot(document.getElementById('root')!).render(<StrictMode><App /></StrictMode>));
