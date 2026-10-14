@@ -77,3 +77,20 @@ FIREFOX_BINARY=/path/to/firefox GECKODRIVER=/path/to/geckodriver \
 5. 更新“未发布 / beta”的文档状态，记录 tag、Release、各渠道链接及准确归档校验值
 
 结论范围：本轮准备完成后可以进入正式发布流程；完整生产上线仍以清单中的域名、渠道及上线后验收为准。
+
+## 升级说明补充验收（2026-10-15）
+
+候选代码 `f756440abe8ad5e3fdf19c6179ecf59435df0816` 已通过
+[Build v2 artifacts](https://github.com/oe/cors-unlocker/actions/runs/38620854802)
+及 [Website and release packages](https://github.com/oe/cors-unlocker/actions/runs/38620854912)。
+扩展单元/组件测试 200 项、Chrome E2E 28 项、Firefox E2E 17 项及三个 SDK
+归档的原生 Firefox 验收均通过。Chrome/Firefox 安装 ZIP 的每个文件与受测 CI
+产物一致；切换域名后，用本次 CI 的准确旧 SDK 归档再次通过公网旧桥接协议验收。
+
+升级说明为扩展内置页面：v1 更新自动打开一次，确认后跨 Popup/Workspace 同步，
+重启不再打开。全新安装和导入他人规则均不显示升级提示。提前收到初版 2.0.0
+的 v1 用户，只有原始迁移快照与本地迁移记录一致且包含旧规则时才补发一次。
+六种语言、浅色/深色及窄窗口布局已验证。启动检查与更新事件并发时漏发的竞态已
+通过先失败、后通过的回归用例复现并修复；说明页打开失败不会关闭已保存的浏览器规则。
+
+域名、商店和 npm 的执行状态见 [发布执行记录](release-execution.md)。
