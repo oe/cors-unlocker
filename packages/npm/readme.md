@@ -50,3 +50,9 @@ await session.createRuleDraft({
 Legacy aliases: `isExtInstalled`, `isEnabled`, `enable`, `disable`, `openExtOptions`, and `openStorePage`.
 
 Full documentation: [wireflip.forth.ink/docs](https://wireflip.forth.ink/docs/)
+
+## Upgrading from cors-unlocker
+
+Existing `cors-unlocker@0.1.0` applications can keep using the retained `cors.forth.ink/message/` bridge. The old domain is not being retired. This package uses a local bridge and requires user confirmation for CORS requests; migration is optional.
+
+The `wireflip` package is not yet published. Keep the old dependency until the new SDK and compatible extension are released. See the [migration guide](https://wireflip.forth.ink/migration/) for upgrade steps and the old-to-new API mapping.

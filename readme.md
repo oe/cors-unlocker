@@ -6,6 +6,12 @@ Wireflip 2.0 is a browser-native request lab for Chrome and Firefox. It keeps th
 
 No native client is required. Chrome Advanced mode uses Chrome DevTools Protocol through `chrome.debugger`, so Chrome displays its standard debugging disclosure while a tab is attached. Firefox Intercept mode uses blocking WebRequest APIs and does not show a debugger banner.
 
+## Migrating from CORS Unlocker
+
+Existing `cors-unlocker@0.1.0` integrations remain supported. The old `cors.forth.ink` hostname and its `/message/` bridge are retained; public pages redirect to the new website. Upgrading the SDK is optional and does not require reinstalling the extension. The `wireflip` npm package is not yet published, so existing users should keep the old package until the new SDK and compatible extension are released.
+
+See the [migration guide](packages/website/src/pages/migration.mdx) for the API mapping, user-confirmation changes and upgrade steps. DNS and old-origin bridge deployment remain separate operational prerequisites.
+
 ## What 2.0 includes
 
 - **CORS compatibility mode** — one-click, per-origin CORS rules compiled to `declarativeNetRequest`.
