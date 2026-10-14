@@ -312,11 +312,19 @@ class FirefoxTests(unittest.TestCase):
         self.wait(lambda: self.js('return innerWidth;'), lambda width: width >= 1200)
         layout = self.js('''const list=document.querySelector('aside[aria-label="Rule list"]').getBoundingClientRect();
         const editor=document.querySelector('[aria-label="Rule editor"]').getBoundingClientRect();
+        const header=document.querySelector('[data-workspace-header]').getBoundingClientRect();
+        const name=document.querySelector('#rule-name').getBoundingClientRect();
+        const group=document.querySelector('#rule-group').getBoundingClientRect();
         const language=document.querySelector('[aria-label="Language"]').getBoundingClientRect();
-        return {height:innerHeight,listTop:list.top,listHeight:list.height,editorTop:editor.top,languageTop:language.top};''')
-        self.assertEqual(layout['listTop'], 0)
-        self.assertEqual(layout['listHeight'], layout['height'])
-        self.assertEqual(layout['editorTop'], 0)
+        return {height:innerHeight,headerHeight:header.height,listTop:list.top,listHeight:list.height,editorTop:editor.top,languageTop:language.top,nameTop:name.top,groupTop:group.top,groupLeft:group.left,nameRight:name.right};''')
+        self.assertEqual(layout['headerHeight'], 44)
+        self.assertEqual(layout['listTop'], 44)
+        self.assertEqual(layout['listHeight'], layout['height'] - 44)
+        self.assertEqual(layout['editorTop'], 44)
+        self.assertEqual(layout['nameTop'], layout['groupTop'])
+        self.assertGreater(layout['groupLeft'], layout['nameRight'])
+        self.assertEqual(self.js('return document.querySelector("[data-workspace-header] h2").textContent;'), 'Edited again')
+        self.assertTrue(self.js('return !document.querySelector(\'[aria-label="Rule editor"] header\');'))
         self.assertGreater(layout['languageTop'], layout['height'] - 60)
         fill('#rule-name', 'Unsaved compact draft')
         self.js('Array.from(document.querySelectorAll("button")).find(b=>b.textContent.trim()==="New rule").click();')
@@ -335,6 +343,8 @@ class FirefoxTests(unittest.TestCase):
         (ARTIFACTS / 'groups-viewport.json').write_text(json.dumps(self.js('return {width:innerWidth,height:innerHeight,outerWidth,dpr:devicePixelRatio};')))
         self.js('document.querySelector(\'[aria-label="Back to rules"]\').click();')
         self.wait(lambda: self.js('return !!document.querySelector(\'[aria-label="Rename group UI scenario"]\');'))
+        self.assertEqual(self.js('return document.querySelector("[data-workspace-header] h2").textContent;'), 'Rules')
+        self.assertFalse(self.js('return Array.from(document.querySelectorAll("[data-workspace-header] button")).some(e=>e.textContent==="Save rule");'))
         self.assertTrue(self.js('return document.documentElement.scrollWidth<=innerWidth;'))
         (ARTIFACTS / 'groups-narrow.png').write_bytes(base64.b64decode(self.command('GET', '/screenshot')))
         self.js('document.querySelector(\'[aria-label="Language"]\').click();')
@@ -347,6 +357,12 @@ class FirefoxTests(unittest.TestCase):
         self.extension_js("await browser.storage.local.set({uiLanguage:'en'});")
         self.wait(lambda: self.js('return document.documentElement.lang;'), lambda value: value == 'en')
         self.command('POST', '/window/rect', {'width': 1280, 'height': 800})
+        self.js('document.querySelector(\'nav button[aria-label="Data & migration"]\').click();')
+        self.wait(lambda: self.js('return document.querySelector("[data-workspace-header] h2").textContent;'), lambda value: value == 'Data & recovery')
+        self.async_js('await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));')
+        (ARTIFACTS / 'workspace-data.png').write_bytes(base64.b64decode(self.command('GET', '/screenshot')))
+        self.js('document.querySelector(\'nav button[aria-label="Rules"]\').click();')
+        self.wait(lambda: self.js('return document.querySelector("[data-workspace-header] h2").textContent;'), lambda value: value == 'Rules')
         self.message('proxyStateOperation', kind='removeGroup', id=profile['id'])
 
     def test_group_switch_pauses_persistent_headers_and_connected_body_replacement(self):

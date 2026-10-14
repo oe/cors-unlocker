@@ -61,14 +61,20 @@ The npm package is `wireflip`. Web apps connect with `intercept.connect()`. The 
 
 ## Workspace layout and interaction
 
-The workspace uses a full-height layout without a global top header. The left sidebar
-holds the Wireflip brand, Rules, Data & migration, and the language selector at the bottom.
-Wide windows show navigation labels; narrower windows use icons with accessible names
-and hover titles to preserve editing space.
+The workspace uses a compact 44px context header on desktop, shared by rule management,
+editing, and Data & recovery. It shows the page or current rule, unsaved changes, and
+the selected rule's save/enable/duplicate/delete controls. The editor starts with its
+section tabs, avoiding a second title toolbar. Narrow windows let the header wrap so
+titles, state, and actions stay reachable.
+
+The left sidebar holds the Wireflip brand aligned with that header, Rules, Data, and
+the language selector at the bottom. Both wide and narrow windows show navigation
+labels; narrow windows stack short labels beneath their icons. Accessible names and
+hover titles retain the full Data & migration description.
 
 New rule and New group sit at the top of the rule list, beside search and filters.
-Save, enable, duplicate, and delete stay in the selected rule's editor header. List and
-editor scroll independently, keeping these actions available. Narrow windows show one
+List and editor scroll independently beneath the shared header, keeping their actions
+available. Name and group share a row when the editor is wide enough. Narrow windows show one
 pane at a time; Back to rules returns to the list.
 
 Switching pages, creating another rule, or leaving the editor protects unsaved drafts.
