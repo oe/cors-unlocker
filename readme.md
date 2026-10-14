@@ -1,6 +1,6 @@
-# Wireflip
+<img src="marketing/brand/icons/128.png" width="64" height="64" alt="Wireflip" align="right" />
 
-<img src="marketing/brand/icons/128.png" width="64" height="64" alt="Wireflip" />
+# Wireflip
 
 Wireflip 2.0 is a browser-native request lab for Chrome and Firefox. It keeps the fast, warning-free CORS path from CORS Unlocker and adds opt-in, tab-scoped traffic inspection, response mocking, latency and failure simulation, redirects, blocking, and header rewriting.
 
