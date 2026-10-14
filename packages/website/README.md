@@ -23,13 +23,14 @@ Routes:
 - `/migration/` — user-facing domain and SDK migration guide
 - `/message/` — legacy hidden bridge retained for clients using SDK 0.1
 
-The canonical site is `https://wireflip.forth.ink`. The tracked `public/CNAME` configures GitHub Pages; it does not create DNS records.
+The intended canonical site is `https://wireflip.forth.ink`. Until separate old-origin hosting is deployed and verified, `public/CNAME` deliberately keeps GitHub Pages on `cors.forth.ink` so published SDK clients remain functional. Do not switch this binding early: DNS alone cannot make GitHub Pages serve both hostnames.
 
 ## Domain migration
 
-1. In Cloudflare DNS for `forth.ink`, create a DNS-only CNAME named `wireflip` targeting `oe.github.io`. Keep GitHub Pages configured for `wireflip.forth.ink`.
-2. Wait for GitHub Pages to issue its certificate, enable Enforce HTTPS, and verify `/`, `/docs/`, `/playground/` and `/message/` over HTTPS.
-3. Keep the `cors.forth.ink` DNS record proxied through Cloudflare. Configure a Single Redirect for public pages using the expression below, a dynamic destination `concat("https://wireflip.forth.ink", http.request.uri.path)`, status 301 and Preserve query string enabled.
+1. First deploy and verify the old-origin bridge and its assets on separate hosting, as described below. Keep the existing GitHub Pages CNAME until that deployment serves `/message/` successfully on `cors.forth.ink`.
+2. In Cloudflare DNS for `forth.ink`, create a DNS-only CNAME named `wireflip` targeting `oe.github.io`. Only after the old bridge is verified, change `public/CNAME` and GitHub Pages to `wireflip.forth.ink`.
+3. Wait for GitHub Pages to issue its certificate, enable Enforce HTTPS, and verify `/`, `/docs/`, `/playground/` and `/message/` over HTTPS.
+4. Keep the `cors.forth.ink` DNS record proxied through Cloudflare. Configure a Single Redirect for public pages using the expression below, a dynamic destination `concat("https://wireflip.forth.ink", http.request.uri.path)`, status 301 and Preserve query string enabled.
 
 ```text
 (http.host eq "cors.forth.ink" and not (http.request.uri.path eq "/message" or starts_with(http.request.uri.path, "/message/") or starts_with(http.request.uri.path, "/_astro/")))
