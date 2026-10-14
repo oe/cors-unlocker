@@ -284,6 +284,7 @@ class FirefoxTests(unittest.TestCase):
             self.navigate(EXTENSION + '/src/options/index.html')
             self.wait(lambda: self.js('return !!document.querySelector("[data-rule-select]");'))
             self.js('document.querySelector("[data-rule-select]").click();')
+            self.wait(lambda: self.js('return !!document.querySelector("#rule-name");'))
             element = self.command('POST', '/element', {'using': 'css selector', 'value': '#rule-name'})
             element_id = next(iter(element.values()))
             self.command('POST', f'/element/{element_id}/clear', {})
@@ -354,6 +355,7 @@ class FirefoxTests(unittest.TestCase):
         self.wait(lambda: self.js('return !!Array.from(document.querySelectorAll("button")).find(b=>b.textContent.trim()==="New group");'))
         self.js('Array.from(document.querySelectorAll("button")).find(b=>b.textContent.trim()==="New group").click();')
         def fill(selector, text):
+            self.wait(lambda: self.js('const node=document.querySelector(arguments[0]);return !!node && node.getClientRects().length>0;', selector))
             element = self.command('POST', '/element', {'using': 'css selector', 'value': selector})
             element_id = next(iter(element.values()))
             self.command('POST', f'/element/{element_id}/clear', {})
