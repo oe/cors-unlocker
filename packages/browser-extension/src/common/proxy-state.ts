@@ -60,15 +60,32 @@ export interface IProxySettings {
   autoCleanupDays: number;
 }
 
+export interface IProxyProfile {
+  id: string;
+  name: string;
+  enabled: boolean;
+  ruleIds: string[];
+}
+
+/** Stored profiles are presented as rule groups. A group never starts a tab session. */
+export function ruleGroup(ruleId: string, profiles: IProxyProfile[]): IProxyProfile | undefined {
+  return profiles.find((profile) => profile.ruleIds.includes(ruleId));
+}
+
+export function isRuleEnabled(rule: IProxyRule, profiles: IProxyProfile[]): boolean {
+  return rule.enabled && !profiles.some((profile) => !profile.enabled && profile.ruleIds.includes(rule.id));
+}
+
+/** Apply the group gate without changing the remembered individual switches. */
+export function effectiveRules(state: Pick<IProxyAppState, 'rules' | 'profiles'>): IProxyRule[] {
+  const paused = new Set(state.profiles.filter((profile) => !profile.enabled).flatMap((profile) => profile.ruleIds));
+  return state.rules.map((rule) => paused.has(rule.id) ? { ...rule, enabled: false } : rule);
+}
+
 export interface IProxyAppState {
   schemaVersion: typeof CURRENT_SCHEMA_VERSION;
   settings: IProxySettings;
-  profiles: Array<{
-    id: string;
-    name: string;
-    enabled: boolean;
-    ruleIds: string[];
-  }>;
+  profiles: IProxyProfile[];
   rules: IProxyRule[];
   migration: {
     source: 'fresh-install' | 'cors-unlocker-v1';
@@ -169,10 +186,14 @@ export function isProxyAppState(value: unknown): value is IProxyAppState {
     && Array.isArray(state.profiles)
     && state.profiles.every((profile) => !!profile
       && typeof profile === 'object'
-      && typeof profile.id === 'string'
-      && typeof profile.name === 'string'
+      && typeof profile.id === 'string' && profile.id.length > 0
+      && typeof profile.name === 'string' && profile.name.trim().length > 0 && profile.name.length <= 80
       && typeof profile.enabled === 'boolean'
-      && isStringArray(profile.ruleIds))
+      && isStringArray(profile.ruleIds)
+      && profile.ruleIds.every((id) => state.rules!.some((rule) => rule.id === id)))
+    && state.profiles.length <= 100
+    && new Set(state.profiles.map((profile) => profile.id)).size === state.profiles.length
+    && new Set(state.profiles.flatMap((profile) => profile.ruleIds)).size === state.profiles.flatMap((profile) => profile.ruleIds).length
     && !!state.migration
     && typeof state.migration === 'object'
     && (state.migration.source === 'fresh-install'
@@ -293,22 +314,12 @@ export function withLegacyRules(
   const migratedRules = legacyRules.map((rule) => ({ ...legacyRuleToProxyRule(rule),
     id: existingIds.get(rule.id) ?? `legacy-cors-${rule.id}` }));
   const userRules = state.rules.filter((rule) => rule.source !== 'legacy-cors');
-  const migratedProfile = state.profiles.find((profile) => profile.id === 'migrated-cors-rules');
-  const otherProfiles = state.profiles.filter((profile) => profile.id !== 'migrated-cors-rules');
-
-  return {
-    ...state,
-    rules: [...userRules, ...migratedRules],
-    profiles: migratedRules.length > 0 ? [
-      ...otherProfiles,
-      {
-        id: 'migrated-cors-rules',
-        name: migratedProfile?.name || 'Migrated CORS rules',
-        enabled: migratedProfile?.enabled ?? true,
-        ruleIds: migratedRules.map((rule) => rule.id),
-      },
-    ] : otherProfiles,
-  };
+  const rules = [...userRules, ...migratedRules];
+  const ids = new Set(rules.map((rule) => rule.id));
+  // Keep existing assignments through SDK updates; do not move or unpause unrelated rules.
+  return { ...state, rules, profiles: state.profiles.map((profile) => ({
+    ...profile, ruleIds: profile.ruleIds.filter((id) => ids.has(id)),
+  })) };
 }
 
 export function withLegacyConfig(
@@ -352,8 +363,8 @@ export function proxyRuleToLegacyRule(rule: IProxyRule): IRuleItem | null {
   };
 }
 
-export function getCorsCompatibilityRules(state: IProxyAppState): IRuleItem[] {
-  return state.rules.flatMap((rule) => {
+export function getCorsCompatibilityRules(state: IProxyAppState, applyGroups = true): IRuleItem[] {
+  return (applyGroups ? effectiveRules(state) : state.rules).flatMap((rule) => {
     const legacyRule = proxyRuleToLegacyRule(rule);
     return legacyRule ? [legacyRule] : [];
   });
@@ -362,8 +373,11 @@ export function getCorsCompatibilityRules(state: IProxyAppState): IRuleItem[] {
 export type ProxyStateOperation =
   | { kind: 'get' }
   | { kind: 'recover'; state: IProxyAppState }
-  | { kind: 'add'; input: Omit<IProxyRule, 'id' | 'createdAt' | 'updatedAt'> }
-  | { kind: 'update'; id: string; update: Partial<Omit<IProxyRule, 'id'>> }
+  | { kind: 'add'; input: Omit<IProxyRule, 'id' | 'createdAt' | 'updatedAt'>; groupId?: string | null }
+  | { kind: 'update'; id: string; update: Partial<Omit<IProxyRule, 'id'>>; groupId?: string | null }
+  | { kind: 'createGroup'; name: string }
+  | { kind: 'updateGroup'; id: string; name?: string; enabled?: boolean }
+  | { kind: 'removeGroup'; id: string }
   | { kind: 'remove'; id: string }
   | { kind: 'replace'; state: IProxyAppState }
   | { kind: 'import'; state: IProxyAppState; merge: boolean; expectedState?: IProxyAppState }
@@ -371,6 +385,34 @@ export type ProxyStateOperation =
   | { kind: 'legacyPatch'; intent: 'add' | 'update' | 'upsert' | 'remove'; rule: Partial<IRuleItem> }
   | { kind: 'config'; config: Record<string, unknown> }
   | { kind: 'cleanup' };
+
+function assignGroup(state: IProxyAppState, ruleId: string, groupId: string | null): IProxyAppState {
+  if (groupId !== null && !state.profiles.some((profile) => profile.id === groupId)) throw new Error('Group no longer exists. Choose another group.');
+  return { ...state, profiles: state.profiles.map((profile) => ({
+    ...profile, ruleIds: [...profile.ruleIds.filter((id) => id !== ruleId), ...(profile.id === groupId ? [ruleId] : [])],
+  })) };
+}
+
+export function mergeProxyState(current: IProxyAppState, incoming: IProxyAppState): IProxyAppState {
+  const rules = new Map(current.rules.map((rule) => [rule.id, rule]));
+  for (const rule of incoming.rules) rules.set(rule.id, rule);
+  const incomingIds = new Set(incoming.rules.map((rule) => rule.id));
+  const profiles = new Map(current.profiles.map((profile) => [profile.id, { ...profile,
+    ruleIds: profile.ruleIds.filter((id) => !incomingIds.has(id)),
+  }]));
+  for (const profile of incoming.profiles) {
+    const existing = profiles.get(profile.id);
+    profiles.set(profile.id, { ...profile, ruleIds: [...new Set([...(existing?.ruleIds || []), ...profile.ruleIds])] });
+  }
+  return { ...current, rules: [...rules.values()], profiles: [...profiles.values()] };
+}
+
+function groupName(name: unknown, current: IProxyAppState, exceptId?: string): string {
+  if (typeof name !== 'string' || !name.trim() || name.trim().length > 80) throw new Error('Enter a group name between 1 and 80 characters.');
+  const trimmed = name.trim();
+  if (current.profiles.some((profile) => profile.id !== exceptId && profile.name.toLowerCase() === trimmed.toLowerCase())) throw new Error('A group with this name already exists.');
+  return trimmed;
+}
 
 let backgroundWriter = false;
 let writeQueue: Promise<unknown> = Promise.resolve();
@@ -420,14 +462,35 @@ async function applyStateOperation(operation: ProxyStateOperation): Promise<IPro
       const now = Date.now();
       next = { ...current, rules: [...current.rules, { ...operation.input,
         id: crypto.randomUUID(), createdAt: now, updatedAt: now }] };
+      if (operation.groupId !== undefined) next = assignGroup(next, next.rules[next.rules.length - 1].id, operation.groupId);
       break;
     }
     case 'update': {
       if (!current.rules.some((rule) => rule.id === operation.id)) throw new Error(`Proxy rule not found: ${operation.id}`);
       next = { ...current, rules: current.rules.map((rule) => rule.id === operation.id
         ? { ...rule, ...operation.update, id: rule.id, updatedAt: Date.now() } : rule) };
+      if (operation.groupId !== undefined) next = assignGroup(next, operation.id, operation.groupId);
       break;
     }
+    case 'createGroup': {
+      if (current.profiles.length >= 100) throw new Error('Maximum limit of 100 groups reached.');
+      next = { ...current, profiles: [...current.profiles, { id: crypto.randomUUID(), name: groupName(operation.name, current), enabled: true, ruleIds: [] }] };
+      break;
+    }
+    case 'updateGroup': {
+      if (!current.profiles.some((profile) => profile.id === operation.id)) throw new Error('Group no longer exists. Choose another group.');
+      next = { ...current, profiles: current.profiles.map((profile) => profile.id === operation.id ? {
+        ...profile,
+        ...(operation.name !== undefined ? { name: groupName(operation.name, current, profile.id) } : {}),
+        ...(operation.enabled !== undefined ? { enabled: operation.enabled } : {}),
+      } : profile) };
+      break;
+    }
+    case 'removeGroup':
+      if (!current.profiles.some((profile) => profile.id === operation.id)) throw new Error('Group no longer exists. Choose another group.');
+      // Rules retain their individual switch state and become ungrouped.
+      next = { ...current, profiles: current.profiles.filter((profile) => profile.id !== operation.id) };
+      break;
     case 'remove':
       next = { ...current, rules: current.rules.filter((rule) => rule.id !== operation.id),
         profiles: current.profiles.map((profile) => ({ ...profile, ruleIds: profile.ruleIds.filter((id) => id !== operation.id) })) };
@@ -438,14 +501,12 @@ async function applyStateOperation(operation: ProxyStateOperation): Promise<IPro
       if (operation.expectedState && JSON.stringify(operation.expectedState) !== JSON.stringify(current)) {
         throw new Error('Configuration changed. Review the updated preview and try again.');
       }
-      const rules = new Map(current.rules.map((rule) => [rule.id, rule]));
-      for (const rule of operation.state.rules) rules.set(rule.id, rule);
-      next = operation.merge ? { ...current, rules: [...rules.values()] } : operation.state;
+      next = operation.merge ? mergeProxyState(current, operation.state) : operation.state;
       break;
     }
     case 'legacyRules': next = withLegacyRules(current, operation.rules); break;
     case 'legacyPatch': {
-      const rules = getCorsCompatibilityRules(current);
+      const rules = getCorsCompatibilityRules(current, false);
       const patch = operation.rule;
       const existing = rules.find((rule) => operation.intent === 'upsert'
         ? rule.origin === patch.origin : rule.id === patch.id);
@@ -473,7 +534,7 @@ async function applyStateOperation(operation: ProxyStateOperation): Promise<IPro
     case 'cleanup': {
       if (!current.settings.autoCleanupDays) return current;
       const cutoff = Date.now() - current.settings.autoCleanupDays * 86400000;
-      const rules = getCorsCompatibilityRules(current).filter((rule) => !rule.disabled || rule.updatedAt >= cutoff);
+      const rules = getCorsCompatibilityRules(current, false).filter((rule) => !rule.disabled || rule.updatedAt >= cutoff);
       next = withLegacyRules(current, rules);
       break;
     }
@@ -502,13 +563,13 @@ export async function saveProxyAppState(state: IProxyAppState): Promise<void> {
   await performProxyStateOperation({ kind: 'replace', state });
 }
 
-export async function addProxyRule(input: Omit<IProxyRule, 'id' | 'createdAt' | 'updatedAt'>): Promise<IProxyRule> {
-  const state = await performProxyStateOperation({ kind: 'add', input });
+export async function addProxyRule(input: Omit<IProxyRule, 'id' | 'createdAt' | 'updatedAt'>, groupId?: string | null): Promise<IProxyRule> {
+  const state = await performProxyStateOperation({ kind: 'add', input, groupId });
   return state.rules[state.rules.length - 1];
 }
 
-export async function updateProxyRule(id: string, update: Partial<Omit<IProxyRule, 'id'>>): Promise<IProxyRule> {
-  const state = await performProxyStateOperation({ kind: 'update', id, update });
+export async function updateProxyRule(id: string, update: Partial<Omit<IProxyRule, 'id'>>, groupId?: string | null): Promise<IProxyRule> {
+  const state = await performProxyStateOperation({ kind: 'update', id, update, groupId });
   return state.rules.find((rule) => rule.id === id)!;
 }
 

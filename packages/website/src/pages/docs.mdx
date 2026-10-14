@@ -75,6 +75,16 @@ Chrome Advanced or Firefox Intercept session. The combination executes together
 against the original request matcher; it does not modify unrelated requests sent
 directly to the destination. A redirect-only rule still works in Rules mode.
 
+## Rule groups
+
+Use **New group** in the workspace to organize rules by scenario, such as Staging or Local development. Use the group's **+** button to create a rule inside it, or choose **Group** in a rule editor to move an existing rule. Groups can be renamed and collapsed. Search expands matching groups automatically.
+
+A group switch pauses or resumes the saved rules across matching tabs. Turning a group off preserves each rule's switch; turning it back on restores only rules that were already enabled. Paused rules are labeled **Group paused** in the workspace, Popup and Inspector. Temporary quick controls are separate and continue to work.
+
+Enabling a group does not start interception. Actions requiring a tab session still need an explicit connection. Deleting a group moves its rules to **Ungrouped** without deleting them; enabled rules in a paused group resume. The deletion dialog explains this before you confirm. Grouping does not change rule priority or matching.
+
+Configuration exports include groups, their switches and membership. Merge imports apply incoming rules and groups by ID while preserving unrelated local rules and current settings. The preview shows the resulting group and paused-group counts; a recovery backup is saved before applying.
+
 ## Site controls
 
 Choose **Open Inspector** from the popup to manage rules for the current HTTP or HTTPS page. Toggle rules or click their names to edit them directly in the side panel. New rules default to the current page origin.

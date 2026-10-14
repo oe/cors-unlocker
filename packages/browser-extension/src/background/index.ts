@@ -8,7 +8,7 @@ import {
   onWindowClose,
 } from './messaging';
 import { logger } from '@/common/logger';
-import { ensureProxyAppState, initializeProxyStateWriter, isProxyAppState } from '@/common/proxy-state';
+import { effectiveRules, ensureProxyAppState, initializeProxyStateWriter, isProxyAppState } from '@/common/proxy-state';
 import { getAdvancedProxyStatus } from '@/background/advanced-proxy';
 import { reconcileProxyDnrRules } from './proxy-dnr';
 import { createFirefoxMessageRouter } from './message-routing';
@@ -20,7 +20,7 @@ async function applyBrowserRules(rules: IProxyRule[]) {
   await reconcileProxyDnrRules(rules);
   void refreshAllToolbar();
 }
-initializeProxyStateWriter((state) => applyBrowserRules(state.rules));
+initializeProxyStateWriter((state) => applyBrowserRules(effectiveRules(state)));
 initializeToolbarStatus(getAdvancedProxyStatus);
 
 // Simple delay utility function
@@ -29,7 +29,7 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 async function bootstrap() {
   try {
     const state = await ensureProxyAppState();
-    await applyBrowserRules(state.rules);
+    await applyBrowserRules(effectiveRules(state));
   } catch (error) {
     logger.error('Extension bootstrap failed:', error);
     await applyBrowserRules([]).catch(() => undefined);
@@ -58,7 +58,7 @@ browser.runtime.onStartup.addListener(async () => {
     }
     
     const state = await ensureProxyAppState();
-    await applyBrowserRules(state.rules);
+    await applyBrowserRules(effectiveRules(state));
   } catch (error) {
     logger.error('Error during startup rule initialization:', error);
   }
@@ -95,7 +95,7 @@ browser.storage.onChanged.addListener((changes, areaName) => {
     void applyBrowserRules([]).catch((error) => logger.error('Unable to clear invalid rules:', error));
     return;
   }
-  void applyBrowserRules(state?.rules || []).catch((error) => {
+  void applyBrowserRules(state ? effectiveRules(state) : []).catch((error) => {
     logger.error('Unable to reconcile proxy DNR rules:', error);
   });
 });
@@ -134,7 +134,7 @@ browser.windows.onRemoved.addListener(onWindowClose);
 
 async function refreshTabRules() {
   const state = await ensureProxyAppState();
-  await applyBrowserRules(state.rules);
+  await applyBrowserRules(effectiveRules(state));
 }
 browser.tabs.onRemoved.addListener((tabId) => {
   forgetToolbarTab(tabId);

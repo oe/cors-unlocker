@@ -7,7 +7,8 @@ import { BrandMark } from '@/components/brand-mark';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { EMPTY_QUICK_CONTROLS, hasActiveQuickControls, hasPersistentActions, needsProxy } from '@/common/quick-controls';
-import type { IProxyRule } from '@/common/proxy-state';
+import { RuleGroupControls } from '@/components/rule-group-controls';
+import { isRuleEnabled, ruleGroup, type IProxyRule } from '@/common/proxy-state';
 import { useViewModel } from './view-model';
 import '@/common/tailwind.css';
 import './style.scss';
@@ -17,9 +18,9 @@ function App() {
   const vm = useViewModel();
   const [delay, setDelay] = useState(1000);
   const disabled = !vm.isSupported || vm.busy;
-  const persistent = vm.siteRules.filter((rule) => rule.enabled && hasPersistentActions(rule)).length;
+  const persistent = vm.siteRules.filter((rule) => isRuleEnabled(rule, vm.profiles) && hasPersistentActions(rule)).length;
   const temporary = hasActiveQuickControls(vm.quickControls);
-  const scope = (rule: IProxyRule) => !rule.enabled ? t('Disabled') : [
+  const scope = (rule: IProxyRule) => ruleGroup(rule.id, vm.profiles)?.enabled === false ? t('Group paused') : !rule.enabled ? t('Disabled') : [
     ...(hasPersistentActions(rule) ? [t('Persistent · across tabs')] : []),
     ...(needsProxy(rule) ? [t(vm.connected ? 'Active in this session' : 'Start a tab session to apply')] : []),
   ].join(' · ');
@@ -104,6 +105,7 @@ function App() {
         <p className="mt-1 text-xs text-muted-foreground">{t(__TARGET__ === 'chrome' ? 'Enabling starts Chrome debugging.' : 'Firefox CORS: response headers only.')}</p>
       </section>
 
+      <RuleGroupControls profiles={vm.profiles} rules={vm.siteRules} busy={disabled} toggle={(profile, enabled) => void vm.toggleGroup(profile, enabled)} />
       <section className="border-t pt-2" aria-labelledby="pinned-heading">
         <div className="flex items-center justify-between gap-2">
           <h2 id="pinned-heading" className="text-xs font-semibold">{t('Pinned rules')}</h2>
@@ -111,7 +113,7 @@ function App() {
         </div>
         {vm.pinnedRules.length ? <div className="mt-1 divide-y">{vm.pinnedRules.map((rule) => <div className="control-row py-1.5" key={rule.id}>
           <div className="min-w-0 flex-1"><p className="break-words text-sm font-medium">{rule.name}</p><p className="control-description">{scope(rule)}</p></div>
-          <Switch aria-label={rule.name} checked={rule.enabled} disabled={disabled} onCheckedChange={(enabled) => vm.toggleRule(rule, enabled)} />
+          <Switch aria-label={rule.name} checked={rule.enabled} disabled={disabled || ruleGroup(rule.id, vm.profiles)?.enabled === false} onCheckedChange={(enabled) => vm.toggleRule(rule, enabled)} />
           <Button size="icon-xs" variant="ghost" aria-label={t('Unpin {name}', { name: rule.name })} disabled={disabled} onClick={() => vm.pinRule(rule.id, false)}><PinOff /></Button>
         </div>)}</div> : <p className="mt-1 text-xs text-muted-foreground">{t('Pin saved rules for quick access.')}</p>}
         {vm.pinnableRules.length ? <details className="mt-2 text-xs">
@@ -128,7 +130,7 @@ function App() {
           <summary className="cursor-pointer text-muted-foreground">{t('Existing site CORS rules')}</summary>
           {vm.legacyCorsRules.map((rule) => <div className="control-row mt-2" key={rule.id}>
             <div className="min-w-0"><p className="break-words">{rule.name}</p><p className="control-description">{t('Persistent · across tabs')}</p></div>
-            <Switch aria-label={rule.name} checked={rule.enabled} disabled={disabled} onCheckedChange={(enabled) => vm.toggleRule(rule, enabled)} />
+            <Switch aria-label={rule.name} checked={rule.enabled} disabled={disabled || ruleGroup(rule.id, vm.profiles)?.enabled === false} onCheckedChange={(enabled) => vm.toggleRule(rule, enabled)} />
           </div>)}
         </details> : null}
       </section>

@@ -29,6 +29,7 @@ function EditorShell({ parts, onCopy, onDelete }: {
       <div className="flex min-w-0 flex-1 items-center gap-2 max-sm:basis-full">
         <Button size="icon-sm" variant="ghost" aria-label={t("Back to rules")} onClick={parts.close}><ArrowLeft /></Button>
         <h2 className="truncate text-base font-semibold" title={parts.name}>{parts.name || t("Untitled rule")}</h2>
+        {parts.groupPaused ? <Badge variant="outline">{t('Group paused')}</Badge> : null}
         {parts.dirty ? <Badge variant="outline">{t("Unsaved")}</Badge> : null}
       </div>
       <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
@@ -53,7 +54,7 @@ function EditorShell({ parts, onCopy, onDelete }: {
       </div>
     </Tabs>
     <footer className="shrink-0 border-t px-4 py-2 text-xs text-muted-foreground lg:px-6">
-      {parts.requiresAdvanced ? t("Requires a connected tab in Site controls. Enabled does not mean attached.") : t("Basic actions use browser rules. Verify actual effects in Site controls.")}
+      {parts.groupPaused ? t('Group paused. This rule will not apply until the group is enabled.') : parts.requiresAdvanced ? t("Requires a connected tab in Site controls. Enabled does not mean attached.") : t("Basic actions use browser rules. Verify actual effects in Site controls.")}
     </footer>
   </section>;
 }

@@ -388,8 +388,8 @@ export async function onRuntimeMessage(
         const rule = message.payload?.rule;
         if (!rule) return { success: false, error: 'Missing proxy rule.' };
         const saved = rule.id
-          ? await updateProxyRule(rule.id, rule)
-          : await addProxyRule({ ...rule, source: 'user' });
+          ? await updateProxyRule(rule.id, rule, message.payload?.groupId)
+          : await addProxyRule({ ...rule, source: 'user' }, message.payload?.groupId);
         return { success: true, rule: saved };
       }
 

@@ -2,7 +2,7 @@ import { t, translateError, formatDate, initializeLocale, useLocale } from '@/co
 import { StrictMode, useCallback, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import browser from 'webextension-polyfill';
-import { Download, Plus, ListFilter, Database, Upload } from 'lucide-react';
+import { Download, Plus, ListFilter, Database, Upload, ChevronDown, ChevronRight, Folder, Pencil, Trash2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { LanguageSelect } from '@/components/language-select';
 import { BrandMark } from '@/components/brand-mark';
@@ -17,11 +17,12 @@ import { cn } from '@/lib/utils';
 import { WorkspaceRuleEditor } from './workspace-rule-editor';
 import { RecoveryPanel } from './recovery-panel';
 import { dataStorage } from '@/common/storage';
-import { APP_STATE_KEY, isProxyAppState, type IProxyAppState, type IProxyRule } from '@/common/proxy-state';
+import { APP_STATE_KEY, isProxyAppState, type IProxyProfile, type IProxyAppState, type IProxyRule } from '@/common/proxy-state';
 import { ACTION_TEMPLATES, draftFromRule, EMPTY_DRAFT, type RuleDraft } from '@/components/rule-dialog';
 import { ACTION_LABELS } from '@/components/action-fields';
+import { needsProxy } from '@/common/quick-controls';
 import { RESOURCE_TYPES } from '@/common/request-match';
-import { parseImport, previewImport } from '@/common/import-preview';
+import { parseImport, previewImport, previewGroupImport } from '@/common/import-preview';
 import '@/common/tailwind.css';
 import './style.scss';
 
@@ -36,6 +37,35 @@ function ProxyRules({ state, reload, navigate, onDirtyChange, createToken }: {
   const [resourceFilter, setResourceFilter] = useState('all');
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
+  const [collapsed, setCollapsed] = useState<string[]>([]);
+  const [groupDialog, setGroupDialog] = useState<{ kind: 'create' | 'rename' | 'remove'; profile?: IProxyProfile } | null>(null);
+  const [groupName, setGroupName] = useState('');
+  const [groupError, setGroupError] = useState('');
+  useEffect(() => {
+    void browser.storage.local.get('collapsedRuleGroups').then((stored) => {
+      if (Array.isArray(stored.collapsedRuleGroups)) setCollapsed(stored.collapsedRuleGroups.filter((id: unknown) => typeof id === 'string'));
+    });
+  }, []);
+  const collapse = (id: string) => {
+    const next = collapsed.includes(id) ? collapsed.filter((value) => value !== id) : [...collapsed, id];
+    setCollapsed(next);
+    void browser.storage.local.set({ collapsedRuleGroups: next }).catch((error) => setMessage(String(error)));
+  };
+  const openGroup = (kind: 'create' | 'rename' | 'remove', profile?: IProxyProfile) => {
+    setGroupName(profile?.name || ''); setGroupError(''); setGroupDialog({ kind, profile });
+  };
+  const changeGroup = async (payload: unknown, inDialog = false): Promise<boolean> => {
+    setBusy(true); setMessage(''); setGroupError('');
+    try {
+      const response = await browser.runtime.sendMessage({ type: 'proxyStateOperation', payload });
+      if (!isProxyAppState(response?.state)) throw new Error(response?.error || 'Unable to update rules.');
+      await reload();
+      return true;
+    } catch (error) {
+      if (inDialog) setGroupError(String(error)); else setMessage(String(error));
+      return false;
+    } finally { setBusy(false); }
+  };
   const search = useRef<HTMLInputElement>(null);
   const previousCreate = useRef(createToken);
   useEffect(() => {
@@ -64,8 +94,9 @@ function ProxyRules({ state, reload, navigate, onDirtyChange, createToken }: {
   }, [message]);
   const leave = (action: () => void) => navigate(() => { onDirtyChange(false); action(); });
   const select = (rule: IProxyRule) => {
-    if (draft?.id !== rule.id) leave(() => setDraft(draftFromRule(rule)));
+    if (draft?.id !== rule.id) leave(() => setDraft(draftFromRule(rule, state.profiles)));
   };
+  const groupsByRule = new Map(state.profiles.flatMap((profile) => profile.ruleIds.map((id) => [id, profile] as const)));
   const filtered = state.rules.filter((rule) =>
     `${rule.name} ${rule.match.urlPattern} ${rule.match.initiatorOrigins.join(' ')}`.toLowerCase().includes(query.trim().toLowerCase())
     && (actionFilter === 'all' || rule.actions.some((action) => action.type === actionFilter))
@@ -82,9 +113,9 @@ function ProxyRules({ state, reload, navigate, onDirtyChange, createToken }: {
   };
   const toggle = (rule: IProxyRule, enabled: boolean) => {
     const apply = () => void mutate('saveProxyRule', { rule: { id: rule.id, enabled } }).then((result) => {
-      if (result && draft?.id === rule.id) setDraft(draftFromRule(typeof result === 'object' ? result : { ...rule, enabled }));
+      if (result && draft?.id === rule.id) setDraft(draftFromRule(typeof result === 'object' ? result : { ...rule, enabled }, state.profiles));
     });
-    if (draft?.id === rule.id) leave(() => { setDraft(draftFromRule(rule)); apply(); });
+    if (draft?.id === rule.id) leave(() => { setDraft(draftFromRule(rule, state.profiles)); apply(); });
     else apply();
   };
   const selected = state.rules.find((rule) => rule.id === draft?.id);
@@ -92,9 +123,32 @@ function ProxyRules({ state, reload, navigate, onDirtyChange, createToken }: {
     if (!selected) return;
     leave(() => {
       // A duplicate is a disabled draft until the user explicitly saves it.
-      setDraft({ ...draftFromRule(selected), id: undefined, source: 'user', legacyRuleId: undefined, name: `${selected.name} copy`, enabled: false });
+      setDraft({ ...draftFromRule(selected, state.profiles), id: undefined, source: 'user', legacyRuleId: undefined, name: `${selected.name} copy`, enabled: false });
     });
   };
+  const searching = !!query.trim() || actionFilter !== 'all' || resourceFilter !== 'all';
+  const sections = [
+    ...state.profiles.map((profile) => ({ profile, rules: filtered.filter((rule) => groupsByRule.get(rule.id)?.id === profile.id) })),
+    { profile: undefined, rules: filtered.filter((rule) => !groupsByRule.get(rule.id)) },
+  ].filter((section) => section.rules.length || (!searching && section.profile));
+  const visibleRules = sections.filter(({ profile }) => !profile || searching || !collapsed.includes(profile.id)).flatMap(({ rules }) => rules);
+  const renderRule = (rule: IProxyRule, index: number) => <div key={rule.id} className={cn('flex items-start gap-2 border-b px-3 py-2.5', draft?.id === rule.id && 'bg-muted')}>
+          <button type="button" data-rule-select={rule.id} aria-label={t('Edit {name}', { name: rule.name })} aria-current={draft?.id === rule.id ? 'true' : undefined}
+            className="flex min-w-0 flex-1 flex-col gap-1 rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onClick={() => select(rule)}
+            onKeyDown={(event) => {
+              if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+              event.preventDefault();
+              const next = event.key === 'Home' ? 0 : event.key === 'End' ? visibleRules.length - 1 : (index + (event.key === 'ArrowDown' ? 1 : -1) + visibleRules.length) % visibleRules.length;
+              const button = Array.from(event.currentTarget.closest('aside')?.querySelectorAll<HTMLButtonElement>('[data-rule-select]') || []).filter((item) => !item.closest('[hidden]'))[next];
+              leave(() => { setDraft(draftFromRule(visibleRules[next], state.profiles)); button?.focus(); });
+            }}>
+            <span className="w-full truncate text-sm font-medium">{rule.name}</span>
+            <span className="w-full truncate font-mono text-xs text-muted-foreground" title={rule.match.urlPattern}>{rule.match.urlPattern}</span>
+            <span className="w-full truncate text-xs text-muted-foreground" title={rule.match.initiatorOrigins.join(', ')}>{rule.actions.map((action) => t(ACTION_LABELS[action.type])).join(' · ')} · {groupsByRule.get(rule.id)?.enabled === false ? t('Group paused') : !rule.enabled ? t('Disabled') : needsProxy(rule) ? t('Requires a connected tab') : t('Enabled')}</span>
+          </button>
+          <Switch checked={rule.enabled} disabled={busy || groupsByRule.get(rule.id)?.enabled === false} aria-label={t('Toggle {name}', { name: rule.name })} onCheckedChange={(enabled) => toggle(rule, enabled)} />
+        </div>;
   const welcome = (
     <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
       <BrandMark />
@@ -117,6 +171,7 @@ function ProxyRules({ state, reload, navigate, onDirtyChange, createToken }: {
   return <div className="relative grid h-full min-h-0 min-w-0 grid-cols-1 md:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[340px_minmax(0,1fr)]">
     <aside aria-label={t("Rule list")} className={cn('flex min-h-0 min-w-0 flex-col border-r', draft && 'max-md:hidden')}>
       <div className="flex shrink-0 flex-col gap-2 border-b p-3">
+        <div className="flex items-center justify-between gap-2"><h2 className="text-sm font-semibold">{t('Rules')}</h2><Button size="xs" variant="ghost" disabled={busy} onClick={() => openGroup('create')}><Plus />{t('New group')}</Button></div>
         <Input ref={search} aria-label={t("Search rules")} placeholder={t("Search rules · ⌘/Ctrl K")} value={query} onChange={(e) => setQuery(e.target.value)} />
         <div className="grid grid-cols-2 gap-2">
           <Select value={actionFilter} onValueChange={(value) => value && setActionFilter(value)}><SelectTrigger className="w-full min-w-0" aria-label={t("Filter actions")}><SelectValue>{actionFilter === 'all' ? t("All actions") : t(ACTION_LABELS[actionFilter as keyof typeof ACTION_LABELS])}</SelectValue></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">{t("All actions")}</SelectItem>{Object.entries(ACTION_LABELS).map(([key, label]) => <SelectItem key={key} value={key}>{t(label)}</SelectItem>)}</SelectGroup></SelectContent></Select>
@@ -125,34 +180,49 @@ function ProxyRules({ state, reload, navigate, onDirtyChange, createToken }: {
         <div className="flex justify-between text-xs text-muted-foreground"><span>{t('{shown} of {total} rules', { shown: filtered.length, total: state.rules.length })}</span><span>{t("↑ ↓ to navigate")}</span></div>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto" aria-label={t("Rules")}>
-        {filtered.map((rule, index) => <div key={rule.id} className={cn('flex items-start gap-2 border-b px-3 py-2.5', draft?.id === rule.id && 'bg-muted')}>
-          <button type="button" data-rule-select={rule.id} aria-label={t('Edit {name}', { name: rule.name })} aria-current={draft?.id === rule.id ? 'true' : undefined}
-            className="flex min-w-0 flex-1 flex-col gap-1 rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            onClick={() => select(rule)}
-            onKeyDown={(event) => {
-              if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
-              event.preventDefault();
-              const next = event.key === 'Home' ? 0 : event.key === 'End' ? filtered.length - 1 : (index + (event.key === 'ArrowDown' ? 1 : -1) + filtered.length) % filtered.length;
-              const button = event.currentTarget.parentElement?.parentElement?.querySelectorAll<HTMLButtonElement>('[data-rule-select]')[next];
-              leave(() => { setDraft(draftFromRule(filtered[next])); button?.focus(); });
-            }}>
-            <span className="w-full truncate text-sm font-medium">{rule.name}</span>
-            <span className="w-full truncate font-mono text-xs text-muted-foreground" title={rule.match.urlPattern}>{rule.match.urlPattern}</span>
-            <span className="w-full truncate text-xs text-muted-foreground" title={rule.match.initiatorOrigins.join(', ')}>{rule.actions.map((action) => t(ACTION_LABELS[action.type])).join(' · ')} · {rule.enabled ? t("Enabled") : t("Disabled")}</span>
-          </button>
-          <Switch checked={rule.enabled} disabled={busy} aria-label={t('Toggle {name}', { name: rule.name })} onCheckedChange={(enabled) => toggle(rule, enabled)} />
-        </div>)}
+        {sections.map(({ profile, rules }) => <section key={profile?.id || 'ungrouped'} aria-label={profile?.name || t('Ungrouped')}>
+          {profile ? <div className="flex items-center gap-1 border-b bg-muted/40 px-2 py-2">
+            <button type="button" className="flex min-w-0 flex-1 items-center gap-1.5 rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" disabled={searching} title={searching ? t('Clear filters to collapse groups.') : profile.name} aria-expanded={searching || !collapsed.includes(profile.id)} aria-controls={`group-${profile.id}`} onClick={() => collapse(profile.id)}>
+              {searching || !collapsed.includes(profile.id) ? <ChevronDown className="size-4 shrink-0" /> : <ChevronRight className="size-4 shrink-0" />}
+              <Folder className="size-4 shrink-0 text-muted-foreground" />
+              <span className="min-w-0"><span className="block truncate text-sm font-medium" title={profile.name}>{profile.name}</span><span className="block text-xs text-muted-foreground">{profile.enabled ? t('{on} of {total} rules on', { on: state.rules.filter((rule) => profile.ruleIds.includes(rule.id) && rule.enabled).length, total: profile.ruleIds.length }) : t('Group paused')}</span></span>
+            </button>
+            <Switch size="sm" checked={profile.enabled} disabled={busy} aria-label={t('Enable group {name}', { name: profile.name })} onCheckedChange={(enabled) => void changeGroup({ kind: 'updateGroup', id: profile.id, enabled })} />
+            <Button variant="ghost" size="icon-xs" disabled={busy} title={t('New rule in {name}', { name: profile.name })} aria-label={t('New rule in {name}', { name: profile.name })} onClick={() => leave(() => setDraft({ ...EMPTY_DRAFT, groupId: profile.id }))}><Plus /></Button>
+            <Button variant="ghost" size="icon-xs" disabled={busy} title={t('Rename group {name}', { name: profile.name })} aria-label={t('Rename group {name}', { name: profile.name })} onClick={() => openGroup('rename', profile)}><Pencil /></Button>
+            <Button variant="ghost" size="icon-xs" disabled={busy} title={t('Delete group {name}', { name: profile.name })} aria-label={t('Delete group {name}', { name: profile.name })} onClick={() => openGroup('remove', profile)}><Trash2 /></Button>
+          </div> : state.profiles.length ? <h3 className="border-b bg-muted/40 px-3 py-2 text-sm font-medium">{t('Ungrouped')}</h3> : null}
+          <div id={profile ? `group-${profile.id}` : undefined} hidden={!!profile && !searching && collapsed.includes(profile.id)}>
+            {rules.map((rule) => renderRule(rule, visibleRules.findIndex((item) => item.id === rule.id)))}
+            {profile && !rules.length ? <p className="p-3 text-xs text-muted-foreground">{t('No rules in this group. Use + to add one, or choose this group in a rule editor.')}</p> : null}
+          </div>
+        </section>)}
         {!filtered.length ? state.rules.length ? <p className="p-6 text-sm text-muted-foreground">{t("No rules match these filters. Your draft is preserved.")}</p> : <><p className="hidden p-6 text-sm text-muted-foreground md:block">{t("Create a rule or start from a captured request in Site controls.")}</p><div className="md:hidden">{welcome}</div></> : null}
       </div>
     </aside>
     <div className={cn('min-h-0 min-w-0', !draft && 'max-md:hidden')}>
-      {draft ? <WorkspaceRuleEditor key={draft.id || 'new'} draft={draft} onDirtyChange={onDirtyChange}
+      {draft ? <WorkspaceRuleEditor profiles={state.profiles} key={draft.id || 'new'} draft={draft} onDirtyChange={onDirtyChange}
         onCopy={selected ? copy : undefined} onDelete={selected ? () => setPendingDelete(selected) : undefined}
         onOpenChange={(open) => { if (!open) { onDirtyChange(false); setDraft(null); } }}
-        onSaved={async (rule) => { await reload(); if (rule) setDraft(draftFromRule(rule)); setMessage('Rule saved.'); }} /> :
+        onSaved={async (rule, groupId) => { await reload(); if (rule) setDraft({ ...draftFromRule(rule, state.profiles), ...(groupId !== undefined ? { groupId } : {}) }); setMessage('Rule saved.'); }} /> :
         welcome}
     </div>
     {message ? <Alert role={message === 'Rule saved.' ? 'status' : 'alert'} className="pointer-events-none absolute bottom-16 right-4 max-w-[min(24rem,calc(100%-2rem))] shadow-sm"><AlertDescription>{translateError(message)}</AlertDescription></Alert> : null}
+    <Dialog open={!!groupDialog} onOpenChange={(open) => { if (!busy && !open) setGroupDialog(null); }}><DialogContent>
+      <form onSubmit={async (event) => {
+        event.preventDefault();
+        if (!groupDialog || busy) return;
+        const payload = groupDialog.kind === 'create' ? { kind: 'createGroup', name: groupName } : groupDialog.kind === 'rename' ? { kind: 'updateGroup', id: groupDialog.profile?.id, name: groupName } : { kind: 'removeGroup', id: groupDialog.profile?.id };
+        if (await changeGroup(payload, true)) {
+          setGroupDialog(null);
+        }
+      }} className="space-y-4">
+        <DialogHeader><DialogTitle>{t(groupDialog?.kind === 'remove' ? 'Delete group?' : groupDialog?.kind === 'rename' ? 'Rename group' : 'New group')}</DialogTitle><DialogDescription>{t(groupDialog?.kind === 'remove' ? 'Rules move to Ungrouped and keep their switches. Enabled rules in a paused group will resume. No rules are deleted.' : 'Group off pauses its rules without changing their switches.')}</DialogDescription></DialogHeader>
+        {groupDialog?.kind !== 'remove' ? <><label htmlFor="group-name" className="text-sm font-medium">{t('Group name')}</label><Input id="group-name" autoFocus maxLength={80} value={groupName} onChange={(event) => setGroupName(event.target.value)} placeholder={t('For example, Staging')} /></> : <p className="text-sm font-medium">{groupDialog.profile?.name}</p>}
+        {groupError ? <p role="alert" className="text-sm text-destructive">{translateError(groupError)}</p> : null}
+        <DialogFooter><Button type="button" variant="outline" disabled={busy} onClick={() => setGroupDialog(null)}>{t('Cancel')}</Button><Button type="submit" variant={groupDialog?.kind === 'remove' ? 'destructive' : 'default'} disabled={busy || (groupDialog?.kind !== 'remove' && !groupName.trim())}>{t(groupDialog?.kind === 'remove' ? 'Delete group' : groupDialog?.kind === 'rename' ? 'Save name' : 'Create group')}</Button></DialogFooter>
+      </form>
+    </DialogContent></Dialog>
     <Dialog open={!!pendingDelete} onOpenChange={(open) => !open && setPendingDelete(null)}><DialogContent><DialogHeader><DialogTitle>{t("Delete proxy rule?")}</DialogTitle><DialogDescription>{t('Delete {name} and its unsaved edits? This cannot be undone.', { name: pendingDelete?.name || '' })}</DialogDescription></DialogHeader><DialogFooter><Button variant="outline" onClick={() => setPendingDelete(null)}>{t("Cancel")}</Button><Button variant="destructive" disabled={busy} onClick={async () => { if (pendingDelete && await mutate('deleteProxyRule', { id: pendingDelete.id })) { if (draft?.id === pendingDelete.id) { setDraft(null); onDirtyChange(false); } setPendingDelete(null); } }}>{t("Delete rule")}</Button></DialogFooter></DialogContent></Dialog>
   </div>;
 }
@@ -163,6 +233,7 @@ function DataSettings({ state, reload }: { state: IProxyAppState; reload: () => 
   const [merge, setMerge] = useState(true);
   const [busy, setBusy] = useState(false);
   const counts = incoming ? previewImport(state, incoming, merge) : null;
+  const groupCounts = incoming ? previewGroupImport(state, incoming, merge) : null;
   const applyImport = async () => {
     if (!incoming) return;
     setBusy(true);
@@ -233,7 +304,8 @@ function DataSettings({ state, reload }: { state: IProxyAppState; reload: () => 
             <p className="text-sm">{t("Nothing has been changed yet. Legacy backups are converted to v2.")}</p>
             <Select value={merge ? 'merge' : 'replace'} onValueChange={(value) => setMerge(value === 'merge')}><SelectTrigger aria-label={t("Import mode")}><SelectValue>{merge ? t("Merge rules") : t("Replace configuration")}</SelectValue></SelectTrigger><SelectContent><SelectGroup><SelectItem value="merge">{t("Merge rules")}</SelectItem><SelectItem value="replace">{t("Replace configuration")}</SelectItem></SelectGroup></SelectContent></Select>
             <p className="text-sm">{t('{added} added · {replaced} replaced · {removed} removed · {total} total', { ...counts })}</p>
-            <p className="text-xs text-muted-foreground">{merge ? t("Matching IDs are overwritten; current settings and profiles are retained.") : t("All current rules, settings and profiles are replaced.")} {t("A local recovery backup is saved before applying; export it to restore through this same preview.")}</p>
+            {groupCounts ? <p className="text-sm">{t('{groups} groups · {paused} paused after import', groupCounts)}</p> : null}
+            <p className="text-xs text-muted-foreground">{merge ? t("Matching IDs are overwritten; current settings are retained and groups are merged.") : t("All current rules, settings and groups are replaced.")} {t("A local recovery backup is saved before applying; export it to restore through this same preview.")}</p>
             <div className="flex gap-2"><Button disabled={busy} onClick={applyImport}>{t("Apply import")}</Button><Button variant="outline" disabled={busy} onClick={() => setIncoming(null)}>{t("Cancel import")}</Button></div>
           </section> : null}
           {message ? <p className="w-full text-sm text-muted-foreground">{translateError(message)}</p> : null}

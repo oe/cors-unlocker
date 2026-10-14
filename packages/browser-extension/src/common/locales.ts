@@ -1,8 +1,10 @@
 // English source keys are the fallback. Technical values and user content are never translated.
+import { groupMessages } from "./group-messages";
 import { toolbarMessages } from "./toolbar-messages";
 
 export const messages: Record<string, Record<string, string>> = {
   ...toolbarMessages,
+  ...groupMessages,
   "Plain text": {
     "en": "Plain text",
     "zh-CN": "纯文本",

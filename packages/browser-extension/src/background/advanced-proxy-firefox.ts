@@ -7,6 +7,7 @@ import { mergeHeaderMaps } from '@/common/validation';
 import {
   APP_STATE_KEY,
   ensureProxyAppState,
+  effectiveRules,
   isProxyAppState,
   type IProxyAction,
   type IProxyRule,
@@ -417,7 +418,7 @@ browser.storage.onChanged.addListener((changes, areaName) => {
     for (const tabId of new Set([...sessions.keys(), ...pendingSessions.keys()])) void disableAdvancedProxy(tabId);
     return;
   }
-  cachedRules = value.rules;
+  cachedRules = effectiveRules(value);
   requestLogLimit = value.settings.requestLogLimit;
 });
 
@@ -459,7 +460,7 @@ async function startFirefoxSession(tabId: number, options: { quickControls?: Qui
   try {
     const state = await ensureProxyAppState();
     await checkSessionScope(tabId, connection);
-    cachedRules = state.rules;
+    cachedRules = effectiveRules(state);
     requestLogLimit = state.settings.requestLogLimit;
     sessions.set(tabId, {
       abort: new AbortController(),

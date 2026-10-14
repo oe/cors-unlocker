@@ -10,7 +10,7 @@ import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CodeEditor } from '@/components/code-editor';
-import { isProxyAction, type IProxyAction, type IProxyRule } from '@/common/proxy-state';
+import { isProxyAction, type IProxyAction, ruleGroup, type IProxyProfile, type IProxyRule } from '@/common/proxy-state';
 import { ActionFields, ACTION_LABELS } from '@/components/action-fields';
 import { explainRuleMatch } from '@/common/rule-explanation';
 import { needsProxy } from '@/common/quick-controls';
@@ -58,6 +58,7 @@ function actionTemplateLabel(template: ActionTemplate, isFirefox: boolean): stri
 }
 
 export type RuleDraft = {
+  groupId?: string;
   capturedRequest?: string;
   id?: string;
   source?: IProxyRule['source'];
@@ -81,8 +82,9 @@ export const EMPTY_DRAFT: RuleDraft = {
   actions: JSON.stringify(ACTION_TEMPLATES.responseHeaders, null, 2),
 };
 
-export function draftFromRule(rule: IProxyRule): RuleDraft {
+export function draftFromRule(rule: IProxyRule, profiles?: IProxyProfile[]): RuleDraft {
   return {
+    ...(profiles ? { groupId: ruleGroup(rule.id, profiles)?.id || '' } : {}),
     id: rule.id,
     source: rule.source,
     legacyRuleId: rule.legacyRuleId,
@@ -116,10 +118,12 @@ export function RuleEditorForm({
   onSaved,
   renderWorkspace,
   onDirtyChange,
+  profiles,
 }: {
   draft: RuleDraft | null;
+  profiles?: IProxyProfile[];
   onOpenChange: (open: boolean) => void;
-  onSaved: (rule?: IProxyRule) => Promise<void>;
+  onSaved: (rule?: IProxyRule, groupId?: string) => Promise<void>;
   renderWorkspace?: (parts: RuleEditorParts) => ReactNode;
   onDirtyChange?: (dirty: boolean) => void;
 }) {
@@ -196,6 +200,9 @@ export function RuleEditorForm({
     }
   }, [draft]);
 
+  const selectedGroupId = form.groupId ?? ruleGroup(form.id || '', profiles || [])?.id ?? '';
+  const selectedGroup = profiles?.find((profile) => profile.id === selectedGroupId);
+  const groupPaused = selectedGroup?.enabled === false;
   const save = async () => {
     try {
       setPending(true);
@@ -215,6 +222,7 @@ export function RuleEditorForm({
       const response = await browser.runtime.sendMessage({
         type: 'saveProxyRule',
         payload: {
+          ...(form.groupId !== undefined ? { groupId: profiles ? selectedGroup?.id || null : form.groupId || null } : {}),
           rule: {
             ...(form.id ? { id: form.id } : {}),
             name: form.name.trim(),
@@ -234,7 +242,7 @@ export function RuleEditorForm({
       if (!response?.success) throw new Error(response?.error || 'Unable to save rule.');
       setBaseline(JSON.stringify(form));
       onDirtyChange?.(false);
-      await onSaved(response.rule);
+      await onSaved(response.rule, profiles ? selectedGroup?.id || '' : form.groupId);
       if (!renderWorkspace) onOpenChange(false);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to save rule.');
@@ -248,6 +256,15 @@ export function RuleEditorForm({
             <FieldLabel htmlFor="rule-name">{t("Name")}</FieldLabel>
             <Input id="rule-name" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
           </Field>
+          {profiles ? <Field>
+            <FieldLabel htmlFor="rule-group">{t('Group')}</FieldLabel>
+            <select id="rule-group" className="h-9 w-full rounded-md border bg-background px-3 text-sm" value={selectedGroup?.id || ''} onChange={(event) => setForm({ ...form, groupId: event.target.value })}>
+              <option value="">{t('Ungrouped')}</option>
+              {profiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name}</option>)}
+            </select>
+            <FieldDescription>{t('Group off pauses its rules without changing their switches.')}</FieldDescription>
+            {groupPaused ? <p role="status" className="text-sm text-amber-700 dark:text-amber-400">{t('Group paused. This rule will not apply until the group is enabled.')}</p> : null}
+          </Field> : null}
           <div className="grid gap-4 sm:grid-cols-2">
             <Field>
               <FieldLabel htmlFor="rule-origins">{t("Page origins")}</FieldLabel>
@@ -343,6 +360,7 @@ export function RuleEditorForm({
           </>;
   const errorMessage = error ? <Alert variant="destructive"><AlertDescription>{translateError(error)}</AlertDescription></Alert> : null;
   const parts: RuleEditorParts = {
+    groupPaused,
     name: form.name, enabled: form.enabled, dirty, pending,
     actionJsonReveal: error === INVALID_ACTION_JSON ? actionJsonReveal : 0,
     setEnabled: (enabled) => setForm({ ...form, enabled }),
@@ -378,7 +396,7 @@ export function RuleEditorForm({
 }
 
 export type RuleEditorParts = {
-  name: string; enabled: boolean; dirty: boolean; pending: boolean; requiresAdvanced: boolean;
+  name: string; enabled: boolean; dirty: boolean; pending: boolean; requiresAdvanced: boolean; groupPaused: boolean;
   actionJsonReveal: number;
   setEnabled: (enabled: boolean) => void; save: () => void; close: () => void;
   matchFields: ReactNode; actionFields: ReactNode; testFields: ReactNode; errorMessage: ReactNode;

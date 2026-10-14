@@ -11,8 +11,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { RuleDialog, draftFromRule, EMPTY_DRAFT, ACTION_TEMPLATES, type RuleDraft } from '@/components/rule-dialog';
-import { APP_STATE_KEY, type IProxyRule } from '@/common/proxy-state';
+import { APP_STATE_KEY, isRuleEnabled, ruleGroup, type IProxyProfile, type IProxyRule } from '@/common/proxy-state';
 import { explainRuleMatch, ruleAppliesToOrigin } from '@/common/rule-explanation';
+import { RuleGroupControls } from '@/components/rule-group-controls';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -50,6 +51,7 @@ export function Inspector() {
   const [entries, setEntries] = useState<IRequestLogEntry[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [rules, setRules] = useState<IProxyRule[]>([]);
+  const [profiles, setProfiles] = useState<IProxyProfile[]>([]);
   const [draft, setDraft] = useState<RuleDraft | null>(null);
   const [verification, setVerification] = useState<{ ruleId: string; since: number } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -107,6 +109,7 @@ export function Inspector() {
     ]);
     if (version !== syncVersion.current) return;
     setRules(state.rules || []);
+    setProfiles(state.profiles || []);
     setStatus(nextStatus);
     setEntries(nextEntries || []);
   }, [requestedTabId]);
@@ -224,7 +227,7 @@ export function Inspector() {
 
       <div className="rounded-lg border bg-muted/20 p-2.5 text-xs">
         <p className="font-medium"><span>{t(status?.phase === 'connected' ? 'Tab session active' : 'Tab session stopped')}</span> · <span>{t(status?.phase === 'connected' && status.captureEnabled !== false ? 'Recording requests' : 'Not recording')}</span></p>
-        <p className="mt-1 text-muted-foreground">{t('{count} persistent rules enabled', { count: siteRules.filter((rule) => rule.enabled && hasPersistentActions(rule)).length })}</p>
+        <p className="mt-1 text-muted-foreground">{t('{count} persistent rules enabled', { count: siteRules.filter((rule) => isRuleEnabled(rule, profiles) && hasPersistentActions(rule)).length })}</p>
         <p className="mt-1 text-muted-foreground">{t('Stopping resets temporary changes and pauses session actions. Persistent rules stay enabled.')}</p>
       </div>
 
@@ -238,12 +241,12 @@ export function Inspector() {
         </Alert>
       ) : null}
       {savedRule ? <Alert role="status"><AlertTitle>{savedRule.name}</AlertTitle><AlertDescription className="text-wrap [&_p:not(:last-child)]:mb-2">
-        <p>{t(verificationMessage(savedRule, status?.phase === 'connected', verifiedRequest, hasNewRequests))}</p>
+        <p>{t(ruleGroup(savedRule.id, profiles)?.enabled === false ? 'Group paused. This rule will not apply until the group is enabled.' : verificationMessage(savedRule, status?.phase === 'connected', verifiedRequest, hasNewRequests))}</p>
         <div className="mt-2 flex flex-wrap gap-2">
           {verifiedRequest ? <Button size="sm" variant="outline" onClick={() => showRequest(verifiedRequest.id)}>{t('View request')}</Button> : null}
-          {savedRule.enabled && status?.phase !== 'connected' && !verifiedRequest ? <Button size="sm" disabled={busy || tabId === null} onClick={() => void toggle(true)}>{t('Start recording requests')}</Button> : null}
+          {isRuleEnabled(savedRule, profiles) && status?.phase !== 'connected' && !verifiedRequest ? <Button size="sm" disabled={busy || tabId === null} onClick={() => void toggle(true)}>{t('Start recording requests')}</Button> : null}
           {savedRule.enabled ? <Button size="sm" variant="outline" disabled={busy} onClick={() => void toggleRule(savedRule, false)}>{t('Disable this rule')}</Button> : null}
-          {savedRule.enabled && hasNewRequests && !verifiedRequest?.changes?.length ? <Button size="sm" variant="outline" disabled={busy} onClick={() => setDraft(draftFromRule(savedRule))}>{t('Edit proxy rule')}</Button> : null}
+          {savedRule.enabled && hasNewRequests && !verifiedRequest?.changes?.length ? <Button size="sm" variant="outline" disabled={busy} onClick={() => setDraft(draftFromRule(savedRule, profiles))}>{t('Edit proxy rule')}</Button> : null}
           <Button size="sm" variant="ghost" onClick={() => setVerification(null)}>{t('Dismiss')}</Button>
         </div>
       </AlertDescription></Alert> : null}
@@ -328,9 +331,9 @@ export function Inspector() {
               <p className="my-2 text-xs text-muted-foreground">{t("Rules above matched at capture. Matching does not guarantee every action ran.")}</p>
               <p className="my-2 text-xs text-muted-foreground">{t("Current conditions, not historical execution or priority. Trigger a new request after editing.")}</p>
               {siteRules.map((rule) => {
-                const reasons = explainRuleMatch(rule, origin, selected, __TARGET__ === 'firefox');
+                const reasons = explainRuleMatch(rule, origin, selected, __TARGET__ === 'firefox', profiles);
                 return <div key={rule.id} className="flex flex-col gap-1 py-2">
-                  <Button variant="link" className="justify-start" onClick={() => setDraft(draftFromRule(rule))}>{rule.name}</Button>
+                  <Button variant="link" className="justify-start" onClick={() => setDraft(draftFromRule(rule, profiles))}>{rule.name}</Button>
                   <p className="text-xs">{reasons.length ? reasons.map((reason) => translateError(reason)).join(' · ') : t("Conditions match now; see applied changes for execution evidence.")}</p>
                 </div>;
               })}
@@ -357,16 +360,22 @@ export function Inspector() {
       <Card size="sm" className="mt-3">
         <CardHeader><CardTitle>{t("Rules for this site")}</CardTitle><Button size="sm" variant="outline" onClick={() => browser.runtime.openOptionsPage()}>{t('Manage rules')}<ExternalLink /></Button></CardHeader>
         <CardContent className="flex flex-col gap-3">
+          <RuleGroupControls profiles={profiles} rules={siteRules} busy={busy} toggle={(profile, enabled) => {
+            setBusy(true); setMessage(null);
+            void browser.runtime.sendMessage({ type: 'proxyStateOperation', payload: { kind: 'updateGroup', id: profile.id, enabled } })
+              .then(async (response) => { if (!response?.state) throw new Error(response?.error || 'Unable to update rules.'); await sync(); })
+              .catch((error) => setMessage(String(error))).finally(() => setBusy(false));
+          }} />
           <Button variant="outline" disabled={tabId === null} onClick={() => setDraft({ ...EMPTY_DRAFT, origins: origin })}><Plus data-icon="inline-start" />{t("New rule for this site")}</Button>
           {!siteRules.length ? <><p className="text-sm text-muted-foreground">{t("No rules for this site yet.")}</p><Button variant="outline" onClick={() => setView('requests')}>{t('Start from a request')}</Button></> : null}
           {siteRules.map((rule) => <section key={rule.id} aria-label={rule.name} className="flex flex-col gap-2 rounded-lg border p-2">
             <div className="flex items-center justify-between gap-2">
-              <Button variant="ghost" className="min-w-0 justify-start" onClick={() => setDraft(draftFromRule(rule))}><span className="truncate">{rule.name}</span></Button>
-              <Switch checked={rule.enabled} disabled={busy} aria-label={t('Enable {name}', { name: rule.name })} onCheckedChange={(enabled) => void toggleRule(rule, enabled)} />
+              <Button variant="ghost" className="min-w-0 justify-start" onClick={() => setDraft(draftFromRule(rule, profiles))}><span className="truncate">{rule.name}</span></Button>
+              <Switch checked={rule.enabled} disabled={busy || ruleGroup(rule.id, profiles)?.enabled === false} aria-label={t('Enable {name}', { name: rule.name })} onCheckedChange={(enabled) => void toggleRule(rule, enabled)} />
             </div>
             <p className="break-all text-xs text-muted-foreground">{rule.match.methods?.join(', ') || t("All methods")} · {rule.match.urlPattern}</p>
             <div className="flex flex-wrap gap-1">
-              {!rule.enabled ? <Badge variant="outline">{t('Disabled')}</Badge> : <>
+              {ruleGroup(rule.id, profiles)?.enabled === false ? <Badge variant="outline">{t('Group paused')}</Badge> : !rule.enabled ? <Badge variant="outline">{t('Disabled')}</Badge> : <>
                 {hasPersistentActions(rule) ? <Badge variant="outline">{t('Persistent · across tabs')}</Badge> : null}
                 {needsProxy(rule) ? <Badge variant="outline">{t(status?.phase !== 'connected' ? 'Start a tab session to apply' : 'Active in this session')}</Badge> : null}
               </>}
@@ -378,7 +387,7 @@ export function Inspector() {
       </section>
       </TabsContent>
       </Tabs>
-      <RuleDialog key={draft?.id || (draft ? 'new' : 'closed')} draft={draft} onOpenChange={(open) => { if (!open) setDraft(null); }} onSaved={async (rule) => { if (rule) setVerification({ ruleId: rule.id, since: Date.now() }); setView('requests'); setMessage(null); await sync(); }} />
+      <RuleDialog profiles={profiles} key={draft?.id || (draft ? 'new' : 'closed')} draft={draft} onOpenChange={(open) => { if (!open) setDraft(null); }} onSaved={async (rule) => { if (rule) setVerification({ ruleId: rule.id, since: Date.now() }); setView('requests'); setMessage(null); await sync(); }} />
     </main>
   );
 }

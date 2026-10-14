@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import browser from 'webextension-polyfill';
 import {
-  APP_STATE_KEY, addProxyRule, ensureProxyAppState, initializeProxyStateWriter, isProxyAction,
+  APP_STATE_KEY, addProxyRule, effectiveRules, getCorsCompatibilityRules, ensureProxyAppState, initializeProxyStateWriter, isProxyAction,
   isProxyAppState, migrateLegacyState, performProxyStateOperation, removeProxyRule, updateProxyRule,
   type IProxyAppState, type IProxyRule,
 } from '../../src/common/proxy-state';
@@ -55,7 +55,7 @@ describe('serialized state writes', () => {
   it('rejects a merged import with duplicate compatibility IDs before changing storage', async () => {
     const state = migrateLegacyState([{ id: 9, origin: 'https://app.example', domain: 'app.example', createdAt: 1, updatedAt: 1 }], {}, 1);
     stored[APP_STATE_KEY] = state;
-    const incoming = { ...state, rules: [{ ...state.rules[0], id: 'imported-copy' }] };
+    const incoming = { ...state, rules: [{ ...state.rules[0], id: 'imported-copy' }], profiles: [{ ...state.profiles[0], ruleIds: ['imported-copy'] }] };
     await expect(performProxyStateOperation({ kind: 'import', state: incoming, merge: true })).rejects.toThrow('Invalid rule');
     expect(stored[APP_STATE_KEY]).toEqual(state);
     expect(stored.preImportBackup).toBeUndefined();
@@ -159,4 +159,79 @@ it('forwards an extension-page mutation to the authoritative background writer',
     expect(clientBrowser.runtime.sendMessage).toHaveBeenCalledWith({ type: 'proxyStateOperation', payload: { kind: 'add', input: input('from UI') } });
     expect(clientBrowser.storage.local.set).not.toHaveBeenCalled();
   } finally { vi.unstubAllGlobals(); }
+});
+
+
+describe('rule groups', () => {
+  const createGroup = async (name = 'Staging') => (await performProxyStateOperation({ kind: 'createGroup', name })).profiles.at(-1)!;
+  it('pauses the group without changing individual switches and restores only enabled members', async () => {
+    const group = await createGroup();
+    const on = await addProxyRule(input('On'), group.id);
+    const off = await addProxyRule({ ...input('Off'), enabled: false }, group.id);
+    const outside = await addProxyRule(input('Ungrouped'));
+    const paused = await performProxyStateOperation({ kind: 'updateGroup', id: group.id, enabled: false });
+    expect(paused.rules.map((rule) => rule.enabled)).toEqual([true, false, true]);
+    expect(effectiveRules(paused).filter((rule) => rule.enabled).map((rule) => rule.id)).toEqual([outside.id]);
+    const resumed = await performProxyStateOperation({ kind: 'updateGroup', id: group.id, enabled: true });
+    expect(effectiveRules(resumed).filter((rule) => rule.enabled).map((rule) => rule.id)).toEqual([on.id, outside.id]);
+    expect(resumed.rules.find((rule) => rule.id === off.id)?.enabled).toBe(false);
+  });
+  it('moves a rule atomically and rejects a deleted destination without saving edits', async () => {
+    const first = await createGroup(); const second = await createGroup('Local');
+    const rule = await addProxyRule(input('Rule'), first.id);
+    await updateProxyRule(rule.id, { name: 'Moved' }, second.id);
+    expect(stored[APP_STATE_KEY].profiles.map((profile: any) => profile.ruleIds)).toEqual([[], [rule.id]]);
+    await performProxyStateOperation({ kind: 'removeGroup', id: second.id });
+    const before = structuredClone(stored[APP_STATE_KEY]);
+    await expect(updateProxyRule(rule.id, { name: 'Lost' }, second.id)).rejects.toThrow('Group no longer exists');
+    expect(stored[APP_STATE_KEY]).toEqual(before);
+  });
+  it('deletes a group without deleting rules and retains their switches', async () => {
+    const group = await createGroup(); await addProxyRule(input('On'), group.id);
+    await addProxyRule({ ...input('Off'), enabled: false }, group.id);
+    await performProxyStateOperation({ kind: 'updateGroup', id: group.id, enabled: false });
+    const result = await performProxyStateOperation({ kind: 'removeGroup', id: group.id });
+    expect(result.profiles).toEqual([]);
+    expect(result.rules.map((rule) => rule.enabled)).toEqual([true, false]);
+  });
+  it('preserves paused CORS membership and switches through legacy SDK updates and cleanup', async () => {
+    await performProxyStateOperation({ kind: 'legacyPatch', intent: 'upsert', rule: { origin: 'https://app.example' } });
+    const group = await createGroup(); const id = stored[APP_STATE_KEY].rules[0].id;
+    await updateProxyRule(id, {}, group.id);
+    await performProxyStateOperation({ kind: 'updateGroup', id: group.id, enabled: false });
+    const result = await performProxyStateOperation({ kind: 'legacyPatch', intent: 'upsert', rule: { origin: 'https://app.example', credentials: true } });
+    expect(result.rules[0].enabled).toBe(true);
+    expect(result.profiles[0].ruleIds).toEqual([id]);
+    expect(getCorsCompatibilityRules(result)[0]).toMatchObject({ disabled: true, credentials: true });
+    expect((await performProxyStateOperation({ kind: 'cleanup' })).rules).toHaveLength(1);
+  });
+  it('merges group membership and paused flags without losing untouched local rules', async () => {
+    const group = await createGroup(); const local = await addProxyRule(input('Local'), group.id);
+    const overwritten = await addProxyRule(input('Old'), group.id);
+    const incoming = migrateLegacyState([], {}, 1);
+    incoming.rules = [{ ...overwritten, name: 'Imported' }];
+    incoming.profiles = [{ ...group, enabled: false, ruleIds: [overwritten.id] }];
+    const result = await performProxyStateOperation({ kind: 'import', state: incoming, merge: true });
+    expect(result.profiles[0]).toMatchObject({ enabled: false, ruleIds: [local.id, overwritten.id] });
+    expect(result.rules).toHaveLength(2);
+    expect(effectiveRules(result).some((rule) => rule.enabled)).toBe(false);
+    expect(stored.preImportBackup.state.profiles[0].enabled).toBe(true);
+  });
+  it('serializes group changes with rule edits and rolls back failed browser application', async () => {
+    const group = await createGroup(); const rule = await addProxyRule(input('Old'), group.id);
+    await Promise.all([updateProxyRule(rule.id, { name: 'Edited' }), performProxyStateOperation({ kind: 'updateGroup', id: group.id, enabled: false })]);
+    expect(stored[APP_STATE_KEY].rules[0]).toMatchObject({ name: 'Edited', enabled: true });
+    const before = structuredClone(stored[APP_STATE_KEY]);
+    initializeProxyStateWriter(vi.fn().mockRejectedValueOnce(new Error('DNR failed')).mockResolvedValue(undefined));
+    await expect(performProxyStateOperation({ kind: 'updateGroup', id: group.id, enabled: true })).rejects.toThrow('DNR failed');
+    expect(stored[APP_STATE_KEY]).toEqual(before);
+  });
+  it('rejects ambiguous, orphaned memberships and duplicate group IDs on import', async () => {
+    const group = await createGroup(); const rule = await addProxyRule(input('Rule'), group.id);
+    const state = structuredClone(stored[APP_STATE_KEY]);
+    for (const profiles of [[group, group], [{ ...group, ruleIds: ['missing'] }], [{ ...group, ruleIds: [rule.id] }, { ...group, id: 'other', ruleIds: [rule.id] }]]) {
+      expect(isProxyAppState({ ...state, profiles })).toBe(false);
+    }
+    await expect(createGroup(' staging ')).rejects.toThrow('already exists');
+  });
 });
