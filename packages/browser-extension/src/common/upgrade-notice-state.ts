@@ -1,5 +1,5 @@
 import browser from 'webextension-polyfill';
-import { ensureProxyAppState, isProxyAppState } from './proxy-state';
+import { APP_STATE_KEY, LEGACY_BACKUP_KEY, ensureProxyAppState, isProxyAppState } from './proxy-state';
 
 export const UPGRADE_SEEN_KEY = 'wireflipV2NoticeSeen';
 export const LEGACY_UPGRADE_KEY = 'wireflipUpgradedFromV1';
@@ -24,8 +24,23 @@ export function openPendingUpgradeNotice(): Promise<void> {
 }
 
 export async function recordLegacyUpgrade(details: { reason: string; previousVersion?: string }) {
-  if (details.reason === 'update' && /^1\./.test(details.previousVersion || '')) {
+  if (details.reason !== 'update') return;
+  let legacy = /^1\./.test(details.previousVersion || '');
+  if (details.previousVersion === '2.0.0') {
+    // AMO already distributed the first 2.0.0 before this notice was added.
+    // Only catch up an original v1 migration, not a new install/imported backup.
+    const stored = await browser.storage.local.get([APP_STATE_KEY, LEGACY_BACKUP_KEY]);
+    const state = stored[APP_STATE_KEY];
+    const backup = stored[LEGACY_BACKUP_KEY] as { schemaVersion?: unknown; capturedAt?: unknown; allowedOrigins?: unknown } | undefined;
+    legacy = isProxyAppState(state) && state.migration.source === 'cors-unlocker-v1'
+      && backup?.schemaVersion === 1 && backup.capturedAt === state.migration.migratedAt
+      && Array.isArray(backup.allowedOrigins) && backup.allowedOrigins.length > 0;
+  }
+  if (legacy) {
     await browser.storage.local.set({ [LEGACY_UPGRADE_KEY]: true });
+    // Bootstrap may have read the old, ineligible snapshot before this write.
+    // Finish that check, then read the recorded update rather than losing it.
+    if (opening) await opening.catch(() => undefined);
     await openPendingUpgradeNotice();
   }
 }

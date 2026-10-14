@@ -144,7 +144,10 @@ restore flow. A separate `preRecoveryBackup` retains the data replaced by an exp
 
 Updating from 1.x opens a local extension explanation page once, showing the old and new
 names and logos, preserved CORS rules, the new request lab, and browser-specific limits.
-Fresh installs and later 2.x updates do not show this notice. Popup and Workspace retain
+Fresh installs do not show this notice. A first patch of the already distributed 2.0.0
+can also deliver it to v1 users identified by their original local migration snapshot;
+importing someone else's rules does not qualify. After delivery, later updates do not
+automatically reopen it. Popup and Workspace retain
 a short reminder until **Got it** is selected; acknowledgment is local, shared across
 surfaces, and excluded from portable rule exports. Opening the explanation never starts
 an interception session. If configuration migration fails, it points to Data & recovery

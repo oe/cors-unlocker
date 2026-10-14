@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import browser from 'webextension-polyfill';
-import { migrateLegacyState } from '../../src/common/proxy-state';
+import { APP_STATE_KEY, LEGACY_BACKUP_KEY, migrateLegacyState } from '../../src/common/proxy-state';
 import { LEGACY_UPGRADE_KEY, UPGRADE_OPENED_KEY, UPGRADE_SEEN_KEY, UPGRADE_PAGE, openPendingUpgradeNotice, recordLegacyUpgrade, upgradeNoticeStatus } from '../../src/common/upgrade-notice-state';
 
 vi.mock('../../src/common/proxy-state', async (original) => ({
@@ -32,6 +32,17 @@ describe('v1 upgrade delivery', () => {
     expect(browser.tabs.create).toHaveBeenCalledOnce();
     expect(upgradeNoticeStatus(migrateLegacyState([], {}), undefined, true)).toEqual({ visible: true, recovered: true });
   });
+  it('delivers the upgrade when the startup check reads storage before the update event records it', async () => {
+    let finishStartupRead!: (value: Record<string, unknown>) => void;
+    vi.mocked(browser.storage.local.get).mockImplementationOnce(() => new Promise((resolve) => { finishStartupRead = resolve; }));
+    const startup = openPendingUpgradeNotice();
+    const update = recordLegacyUpgrade({ reason: 'update', previousVersion: '1.1.0' });
+    await vi.waitFor(() => expect(stored[LEGACY_UPGRADE_KEY]).toBe(true));
+    finishStartupRead({});
+    await Promise.all([startup, update]);
+    expect(browser.tabs.create).toHaveBeenCalledOnce();
+    expect(stored[UPGRADE_OPENED_KEY]).toBe('2.0');
+  });
   it('deduplicates simultaneous delivery and retries a failed tab creation without marking it delivered', async () => {
     stored[LEGACY_UPGRADE_KEY] = true;
     vi.mocked(browser.tabs.create).mockRejectedValueOnce(new Error('No browser window'));
@@ -46,6 +57,19 @@ describe('v1 upgrade delivery', () => {
     await openPendingUpgradeNotice();
     expect(browser.tabs.create).not.toHaveBeenCalled();
     expect(upgradeNoticeStatus(migrateLegacyState([], {}), '2.0', true).visible).toBe(false);
+  });
+  it('catches up an original v1 user on the first 2.0.0 patch, but never infers that from a fresh install or imported state', async () => {
+    const rule = { id: 42, origin: 'https://upgrade.example', domain: 'upgrade.example', disabled: false, credentials: false, extraHeaders: '', createdAt: 1, updatedAt: 1 };
+    stored[APP_STATE_KEY] = migrateLegacyState([rule], {}, 10);
+    // A fresh install/import keeps its original empty recovery snapshot.
+    stored[LEGACY_BACKUP_KEY] = { schemaVersion: 1, capturedAt: 2, allowedOrigins: [], extConfig: {} };
+    await recordLegacyUpgrade({ reason: 'update', previousVersion: '2.0.0' });
+    expect(browser.tabs.create).not.toHaveBeenCalled();
+    stored[LEGACY_BACKUP_KEY] = { schemaVersion: 1, capturedAt: 10, allowedOrigins: [rule], extConfig: {} };
+    await recordLegacyUpgrade({ reason: 'update', previousVersion: '2.0.0' });
+    expect(browser.tabs.create).toHaveBeenCalledOnce();
+    await recordLegacyUpgrade({ reason: 'update', previousVersion: '2.0.0' });
+    expect(browser.tabs.create).toHaveBeenCalledOnce();
   });
   it('does not claim migration succeeded when stored configuration is damaged', () => {
     expect(upgradeNoticeStatus({ schemaVersion: 99 }, undefined, true)).toEqual({ visible: true, recovered: false });
