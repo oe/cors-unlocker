@@ -31,3 +31,4 @@ test-results
 .webextrc.*
 extension*.zip
 *.tgz
+artifacts/legacy-sdk/

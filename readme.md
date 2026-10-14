@@ -179,6 +179,8 @@ The Firefox archive is written to `packages/browser-extension/dist/wireflip-fire
 
 ## Verification
 
+Before publishing, follow the [release checklist](docs/release-checklist.md), including old SDK/domain compatibility, store approval, npm publication and post-release verification. The [legacy SDK documentation patch](release/legacy-sdk/README.md) prepares `cors-unlocker@0.1.1` without changing its published runtime code.
+
 ```bash
 pnpm --filter browser-wireflip check
 ```
