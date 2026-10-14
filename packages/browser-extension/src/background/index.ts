@@ -1,3 +1,4 @@
+import './upgrade-lifecycle';
 import './state-writer';
 import browser from 'webextension-polyfill';
 import { dataStorage, autoCleanupDisabledRules } from '@/common/storage';
@@ -15,11 +16,7 @@ import { createFirefoxMessageRouter } from './message-routing';
 import { forgetToolbarTab, initializeToolbarStatus, refreshAllToolbar, refreshToolbarTab } from './toolbar-status';
 import { LANGUAGE_KEY } from '@/common/locale';
 import type { IProxyRule } from '@/common/proxy-state';
-import { openPendingUpgradeNotice, recordLegacyUpgrade } from '@/common/upgrade-notice-state';
-
-browser.runtime.onInstalled.addListener((details) => {
-  void recordLegacyUpgrade(details).catch((error) => logger.error('Unable to record upgrade notice:', error));
-});
+import { openPendingUpgradeNotice } from '@/common/upgrade-notice-state';
 
 async function applyBrowserRules(rules: IProxyRule[]) {
   await reconcileProxyDnrRules(rules);

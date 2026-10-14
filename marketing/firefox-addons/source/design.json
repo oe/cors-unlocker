@@ -1,0 +1,163 @@
+{
+  "reference": "https://github.com/kacperkapusciak/goldie",
+  "target": "firefox-addons",
+  "layout": "classic",
+  "screenOnly": true,
+  "rotation": 0,
+  "perspective": false,
+  "background": "linear-gradient(145deg, #f4f7fd 0%, #edf3fc 55%, #dce8fb 100%)",
+  "headlineColor": "#10223b",
+  "accentColor": "#435d91",
+  "subheadColor": "#425675",
+  "brand": "Wireflip",
+  "locales": [
+    "en"
+  ],
+  "copy": {
+    "en": {
+      "headlineLead": "Your requests · ",
+      "headlineAccent": "Your rules",
+      "subhead": "Fix CORS · Mock APIs · Inspect changes inside Firefox",
+      "sample": "Sample data"
+    },
+    "zh-CN": {
+      "headlineLead": "你的请求，",
+      "headlineAccent": "由你掌控",
+      "subhead": "修复跨域、模拟接口、检查改动，直接在 Firefox 中完成",
+      "sample": "示例数据"
+    }
+  },
+  "formats": {
+    "screenshot": {
+      "width": 1280,
+      "height": 800,
+      "layout": "classic"
+    },
+    "small": {
+      "width": 440,
+      "height": 280,
+      "layout": "classic",
+      "copy": {
+        "en": {
+          "headlineLead": "Mock APIs · ",
+          "headlineAccent": "Fix CORS",
+          "subhead": "Right inside Firefox"
+        }
+      }
+    },
+    "marquee": {
+      "width": 1400,
+      "height": 560,
+      "layout": "offset",
+      "copy": {
+        "en": {
+          "headlineLead": "Your requests",
+          "headlineAccent": "Your rules",
+          "subhead": "Fix CORS · Mock APIs\nInspect changes inside Firefox"
+        }
+      }
+    }
+  },
+  "scenes": [
+    {
+      "id": "01-popup",
+      "capture": "popup",
+      "layout": "portrait",
+      "screen": {
+        "left": 826,
+        "top": 102,
+        "width": 350
+      },
+      "copy": {
+        "en": {
+          "headlineLead": "Quick fixes",
+          "headlineAccent": "One popup",
+          "subhead": "Repair response CORS headers\nChoose credential controls for your current tab"
+        },
+        "zh-CN": {
+          "headlineLead": "常用调试",
+          "headlineAccent": "一点就开",
+          "subhead": "跨域修复、禁用 HTTP 缓存\n在 Popup 中快速控制当前标签页"
+        }
+      }
+    },
+    {
+      "id": "02-inspector",
+      "capture": "inspector",
+      "layout": "portrait",
+      "screen": {
+        "left": 754,
+        "top": 78,
+        "width": 430
+      },
+      "copy": {
+        "en": {
+          "headlineLead": "See what changed",
+          "headlineAccent": "In each request",
+          "subhead": "Select a captured request\nReview matched rules and applied changes"
+        },
+        "zh-CN": {
+          "headlineLead": "请求改了什么",
+          "headlineAccent": "一眼看清",
+          "subhead": "选中已捕获的请求\n查看匹配规则与实际执行的改动"
+        }
+      }
+    },
+    {
+      "id": "03-mock",
+      "capture": "workspace",
+      "layout": "classic",
+      "copy": {
+        "en": {
+          "headlineLead": "Replace response bodies · ",
+          "headlineAccent": "Keep building",
+          "subhead": "Edit local JSON while Firefox keeps the upstream server and HTTP status"
+        },
+        "zh-CN": {
+          "headlineLead": "接口还没好，",
+          "headlineAccent": "页面先做好",
+          "subhead": "用本地 JSON 模拟响应，代码高亮与一键格式化让编辑更轻松"
+        }
+      }
+    },
+    {
+      "id": "04-scope",
+      "capture": "matching",
+      "layout": "classic",
+      "copy": {
+        "en": {
+          "headlineLead": "Match precisely · ",
+          "headlineAccent": "Stay in control",
+          "subhead": "Choose the page origin, request URL and methods your rule should match"
+        },
+        "zh-CN": {
+          "headlineLead": "只改选定请求，",
+          "headlineAccent": "范围由你定",
+          "subhead": "按页面来源、请求地址和方法设置匹配范围，让规则只作用于目标请求"
+        }
+      }
+    },
+    {
+      "id": "05-delay",
+      "capture": "popup-delay",
+      "layout": "portrait",
+      "screen": {
+        "left": 826,
+        "top": 102,
+        "width": 350
+      },
+      "copy": {
+        "en": {
+          "headlineLead": "Test slow networks",
+          "headlineAccent": "Before users do",
+          "subhead": "Add a one-second delay to Fetch / XHR\nCheck loading states on your current tab"
+        },
+        "zh-CN": {
+          "headlineLead": "慢一点",
+          "headlineAccent": "问题看得见",
+          "subhead": "为当前标签页的 Fetch / XHR 添加 1 秒延迟\n提前检查加载状态与慢网络体验"
+        }
+      }
+    }
+  ]
+}

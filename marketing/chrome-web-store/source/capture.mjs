@@ -9,8 +9,10 @@ const require = createRequire(
   path.join(repo, "packages/browser-extension/package.json"),
 );
 const { chromium } = require("@playwright/test");
-const root = path.join(repo, "packages/browser-extension/dist/chrome");
-const folder = path.join(source, "captures");
+const target = process.env.WIREFLIP_MARKETING_TARGET || 'chrome';
+if (!['chrome', 'firefox'].includes(target)) throw new Error('Unsupported marketing target');
+const root = path.join(repo, `packages/browser-extension/dist/${target}`);
+const folder = process.env.WIREFLIP_MARKETING_CAPTURES || path.join(source, "captures");
 mkdirSync(folder, { recursive: true });
 const server = createServer((req, res) => {
   try {
@@ -435,7 +437,7 @@ try {
     );
   }
   if (errors.length) throw new Error(errors.join("\n"));
-  console.log("CAPTURE OK: current Chrome production UI with sample data.");
+  console.log(`CAPTURE OK: current ${target} production UI with sample data.`);
 } finally {
   await browser?.close();
   server.closeAllConnections();

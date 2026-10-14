@@ -281,7 +281,8 @@
         },
         title = `${active.headlineLead}<em>${active.headlineAccent}</em>`,
         sub = active.subhead.replaceAll("\n", "<br>");
-      el.innerHTML = `<div class="brand">${d.brand}</div><div class="platform">${zh ? "Chrome 浏览器插件" : "Chrome extension"}</div><h1>${title}</h1><p class="subhead">${sub}</p><div class="screen"><img src="captures/${scene?.capture || (format === "small" ? "json-detail" : "workspace")}-${locale}.png" alt="Actual extension UI with sample data"></div><div class="sample">${c.sample}</div>`;
+      const browserName = d.target === 'firefox-addons' ? 'Firefox' : 'Chrome';
+      el.innerHTML = `<div class="brand">${d.brand}</div><div class="platform">${zh ? `${browserName} 浏览器插件` : `${browserName} extension`}</div><h1>${title}</h1><p class="subhead">${sub}</p><div class="screen"><img src="captures/${scene?.capture || (format === "small" ? "json-detail" : "workspace")}-${locale}.png" alt="Actual extension UI with sample data"></div><div class="sample">${c.sample}</div>`;
       if (scene?.screen) {
         const screen = el.querySelector(".screen");
         for (const [key, value] of Object.entries(scene.screen))

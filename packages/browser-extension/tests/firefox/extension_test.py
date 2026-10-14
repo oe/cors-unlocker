@@ -687,8 +687,11 @@ class FirefoxTests(unittest.TestCase):
         self.assertFalse(self.extension_js('return (await browser.tabs.query({})).some(t=>t.url.includes("/src/upgrade/"));'))
         legacy = Path(self.temp.name) / 'legacy-v1.xpi'
         # Use the published, signed v1 install: temporary reloads do not model AMO updates.
-        with urllib.request.urlopen('https://addons.mozilla.org/firefox/downloads/file/4522390/cors_unlocker-1.1.0.xpi', timeout=30) as response:
-            legacy_bytes = response.read()
+        if os.environ.get('FIREFOX_LEGACY_XPI'):
+            legacy_bytes = Path(os.environ['FIREFOX_LEGACY_XPI']).read_bytes()
+        else:
+            with urllib.request.urlopen('https://addons.mozilla.org/firefox/downloads/file/4522390/cors_unlocker-1.1.0.xpi', timeout=30) as response:
+                legacy_bytes = response.read()
         self.assertEqual(hashlib.sha256(legacy_bytes).hexdigest(), '2a8e9b68f623f44c5da448c96a2e13377c23ea3a4285ca656642cdd97890d356')
         legacy.write_bytes(legacy_bytes)
         with zipfile.ZipFile(legacy) as archive:

@@ -77,6 +77,7 @@ jobs:
         env:
           FIREFOX_BINARY: ${{ runner.temp }}/wireflip-firefox/firefox/firefox
           GECKODRIVER: ${{ runner.temp }}/wireflip-firefox/geckodriver
+          FIREFOX_LEGACY_XPI: ${{ runner.temp }}/wireflip-firefox/legacy-v1.xpi
         run: pnpm --filter browser-wireflip test:e2e:firefox
 
       - name: Verify packaged SDKs in native Firefox

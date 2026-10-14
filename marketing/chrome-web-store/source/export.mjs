@@ -6,14 +6,15 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const source = path.dirname(fileURLToPath(import.meta.url));
-const root = path.dirname(source);
+const root = process.env.WIREFLIP_MARKETING_OUTPUT || path.dirname(source);
+const captures = process.env.WIREFLIP_MARKETING_CAPTURES || path.join(source, 'captures');
 const repo = process.env.WIREFLIP_REPO || path.resolve(source, "../../..");
 const require = createRequire(
   path.join(repo, "packages/browser-extension/package.json"),
 );
 const { chromium } = require("@playwright/test");
 const design = JSON.parse(
-  readFileSync(path.join(source, "design.json"), "utf8"),
+  readFileSync(process.env.WIREFLIP_MARKETING_DESIGN || path.join(source, "design.json"), "utf8"),
 );
 const mimeTypes = {
   ".html": "text/html",
@@ -60,11 +61,17 @@ assert.equal(
 
 const server = createServer((request, response) => {
   try {
+    const pathname = new URL(request.url, 'http://localhost').pathname;
+    if (pathname === '/design.json') {
+      response.setHeader('Content-Type', 'application/json');
+      response.end(JSON.stringify(design));
+      return;
+    }
     const file = path.resolve(
-      source,
-      "." + new URL(request.url, "http://localhost").pathname,
+      pathname.startsWith('/captures/') ? captures : source,
+      pathname.startsWith('/captures/') ? pathname.slice('/captures/'.length) : '.' + pathname,
     );
-    if (!file.startsWith(source + path.sep)) throw new Error("Invalid path");
+    if (!file.startsWith(source + path.sep) && !file.startsWith(captures + path.sep)) throw new Error("Invalid path");
     response.setHeader(
       "Content-Type",
       mimeTypes[path.extname(file)] || "application/octet-stream",
@@ -225,7 +232,7 @@ try {
     JSON.stringify(checks, null, 2) + "\n",
   );
   console.log(
-    `Exported and verified ${checks.length} Chrome Web Store images.`,
+    `Exported and verified ${checks.length} ${design.target || 'chrome-web-store'} images.`,
   );
 } finally {
   await browser?.close();
