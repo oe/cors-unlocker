@@ -97,6 +97,9 @@ class FirefoxTests(unittest.TestCase):
         if url.startswith('moz-extension:'):
             # Firefox restricts privileged URL navigation to the native browser context.
             previous_url = cls.js('return location.href;')
+            # Loading the same URL must wait for a new document, not the old ready page.
+            marker = str(time.monotonic_ns())
+            cls.js('window.__wireflipTestNavigationMarker=arguments[0];', marker)
             cls.command('POST', '/moz/context', {'context': 'chrome'})
             try:
                 cls.js('''const target=gBrowser.browsers.find(b=>b.currentURI.spec===arguments[1]);
@@ -105,7 +108,7 @@ class FirefoxTests(unittest.TestCase):
                 target.loadURI(Services.io.newURI(arguments[0]),{triggeringPrincipal:Services.scriptSecurityManager.getSystemPrincipal()});''', url, previous_url)
             finally:
                 cls.command('POST', '/moz/context', {'context': 'content'})
-            cls.wait(lambda: cls.js('return location.href === arguments[0] && document.readyState === "complete";', url))
+            cls.wait(lambda: cls.js('return location.href === arguments[0] && document.readyState === "complete" && window.__wireflipTestNavigationMarker !== arguments[1];', url, marker))
         else:
             cls.command('POST', '/url', {'url': url})
 
