@@ -373,6 +373,54 @@ export const messages: Record<string, Record<string, string>> = {
     "fr": "Les données originales sont conservées. Exportez-les avant de restaurer une sauvegarde valide.",
     "es": "Los datos originales se conservan. Expórtalos antes de restaurar una copia válida."
   },
+  "Settings": {
+    "en": "Settings",
+    "zh-CN": "设置",
+    "ko": "설정",
+    "ja": "設定",
+    "fr": "Paramètres",
+    "es": "Configuración"
+  },
+  "Theme": {
+    "en": "Theme",
+    "zh-CN": "主题",
+    "ko": "테마",
+    "ja": "テーマ",
+    "fr": "Thème",
+    "es": "Tema"
+  },
+  "Follow system": {
+    "en": "Follow system",
+    "zh-CN": "跟随系统",
+    "ko": "시스템 설정",
+    "ja": "システムに合わせる",
+    "fr": "Suivre le système",
+    "es": "Seguir el sistema"
+  },
+  "Light": {
+    "en": "Light",
+    "zh-CN": "浅色",
+    "ko": "라이트",
+    "ja": "ライト",
+    "fr": "Clair",
+    "es": "Claro"
+  },
+  "Dark": {
+    "en": "Dark",
+    "zh-CN": "深色",
+    "ko": "다크",
+    "ja": "ダーク",
+    "fr": "Sombre",
+    "es": "Oscuro"
+  },
+  "Unable to save theme.": {
+    "en": "Unable to save theme.",
+    "zh-CN": "无法保存主题",
+    "ko": "테마를 저장할 수 없습니다",
+    "ja": "テーマを保存できません",
+    "fr": "Impossible d’enregistrer le thème",
+    "es": "No se pudo guardar el tema"
+  },
   "Language": {
     "en": "Language",
     "zh-CN": "语言",

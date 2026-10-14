@@ -97,6 +97,9 @@ class FirefoxTests(unittest.TestCase):
         if url.startswith('moz-extension:'):
             # Firefox restricts privileged URL navigation to the native browser context.
             previous_url = cls.js('return location.href;')
+            # Loading the same URL must wait for a new document, not the old ready page.
+            marker = str(time.monotonic_ns())
+            cls.js('window.__wireflipTestNavigationMarker=arguments[0];', marker)
             cls.command('POST', '/moz/context', {'context': 'chrome'})
             try:
                 cls.js('''const target=gBrowser.browsers.find(b=>b.currentURI.spec===arguments[1]);
@@ -105,7 +108,7 @@ class FirefoxTests(unittest.TestCase):
                 target.loadURI(Services.io.newURI(arguments[0]),{triggeringPrincipal:Services.scriptSecurityManager.getSystemPrincipal()});''', url, previous_url)
             finally:
                 cls.command('POST', '/moz/context', {'context': 'content'})
-            cls.wait(lambda: cls.js('return location.href === arguments[0] && document.readyState === "complete";', url))
+            cls.wait(lambda: cls.js('return location.href === arguments[0] && document.readyState === "complete" && window.__wireflipTestNavigationMarker !== arguments[1];', url, marker))
         else:
             cls.command('POST', '/url', {'url': url})
 
@@ -271,12 +274,88 @@ class FirefoxTests(unittest.TestCase):
             self.switch(self.control)
             self.message('proxyStateOperation', kind='removeGroup', id=group['id'])
 
+    def test_settings_theme_sync_persistence_and_localized_menu(self):
+        original = self.extension_js('return (await browser.storage.local.get("uiTheme")).uiTheme ?? null;')
+        pages = []
+        try:
+            rule = self.save([{'type': 'setRequestHeaders', 'headers': {'X-Theme-QA': 'unchanged'}}])
+            before = self.message('getProxyState')
+            self.switch(self.control)
+            self.navigate(EXTENSION + '/src/options/index.html')
+            self.wait(lambda: self.js('return !!document.querySelector("[data-rule-select]");'))
+            self.js('document.querySelector("[data-rule-select]").click();')
+            self.wait(lambda: self.js('return !!document.querySelector("#rule-name");'))
+            element = self.command('POST', '/element', {'using': 'css selector', 'value': '#rule-name'})
+            element_id = next(iter(element.values()))
+            self.command('POST', f'/element/{element_id}/clear', {})
+            self.command('POST', f'/element/{element_id}/value', {'text': 'Preferences preserve this draft'})
+            pages = [self.new_page(EXTENSION + '/src/popup/index.html'), self.new_page(EXTENSION + '/src/sidepanel/index.html')]
+            self.switch(self.control)
+            self.js('document.querySelector(\'nav [aria-label="Settings"]\').click();')
+            def choose(label):
+                self.switch(self.control)
+                self.js('document.querySelector(\'[aria-label="Theme"]\').click();')
+                self.wait(lambda: self.js('return Array.from(document.querySelectorAll(\'[role="option"]\')).some(e=>e.textContent.trim()===arguments[0]&&e.getBoundingClientRect().height>0);', label))
+                self.js('Array.from(document.querySelectorAll(\'[role="option"]\')).find(e=>e.textContent.trim()===arguments[0]).click();', label)
+                self.wait(lambda: self.js('return document.querySelector(\'[aria-label="Theme"]\').getAttribute("aria-expanded")==="false";'))
+            def check(dark):
+                for page in [self.control, *pages]:
+                    self.switch(page)
+                    self.wait(lambda: self.js('return document.documentElement.classList.contains("dark");'), lambda value: value == dark)
+                self.switch(self.control)
+                self.assertEqual(self.js('return document.querySelector("#rule-name").value;'), 'Preferences preserve this draft')
+            choose('Dark'); check(True)
+            self.assertEqual(self.js('return document.documentElement.style.colorScheme;'), 'dark')
+            choose('Light'); check(False)
+            choose('Follow system')
+            self.assertEqual(self.js('return document.documentElement.classList.contains("dark");'), self.js('return matchMedia("(prefers-color-scheme: dark)").matches;'))
+            choose('Dark')
+            self.command('POST', '/moz/context', {'context': 'chrome'})
+            try:
+                self.js('SidebarController.hide();')
+            finally:
+                self.command('POST', '/moz/context', {'context': 'content'})
+            self.command('POST', '/window/rect', {'width': 500, 'height': 844})
+            self.wait(lambda: self.js('return innerWidth;'), lambda width: 450 <= width <= 550)
+            for locale in ['en', 'zh-CN', 'ko', 'ja', 'fr', 'es']:
+                self.extension_js('await browser.storage.local.set({uiLanguage:arguments[0]});', locale)
+                self.wait(lambda: self.js('return document.documentElement.lang;'), lambda value: value == locale)
+                self.async_js('await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));')
+                self.assertTrue(self.js('const box=document.querySelector("[data-slot=popover-content]").getBoundingClientRect();return box.left>=0&&box.right<=innerWidth&&box.top>=0&&box.bottom<=innerHeight;'))
+                self.assertTrue(self.js('return document.documentElement.scrollWidth<=innerWidth;'))
+                (ARTIFACTS / f'settings-dark-{locale}.png').write_bytes(base64.b64decode(self.command('GET', '/screenshot')))
+            self.extension_js('await browser.storage.local.set({uiLanguage:"en"});')
+            self.wait(lambda: self.js('return document.documentElement.lang;'), lambda value: value == 'en')
+            self.js('document.querySelector("[data-slot=popover-content]").dispatchEvent(new KeyboardEvent("keydown",{key:"Escape",bubbles:true}));')
+            self.wait(lambda: self.js('return !document.querySelector("[data-slot=popover-content]");'))
+            self.js('document.querySelector(\'[aria-label="Back to rules"]\').click();')
+            self.wait(lambda: self.js('return !!document.querySelector(\'[role="dialog"]\');'))
+            self.js('Array.from(document.querySelectorAll("button")).find(e=>e.textContent.trim()==="Discard changes").click();')
+            self.wait(lambda: self.js('return !document.querySelector(\'[role="dialog"]\');'))
+            self.js('document.documentElement.dataset.reloadMarker="before";')
+            self.navigate(EXTENSION + '/src/options/index.html')
+            self.wait(lambda: self.js('return !document.documentElement.dataset.reloadMarker && !!document.querySelector("main");'))
+            self.assertEqual(self.js('return document.documentElement.dataset.theme;'), 'dark')
+            self.js('document.querySelector(\'nav [aria-label="Settings"]\').click();')
+            self.wait(lambda: self.js('return !!document.querySelector(\'[aria-label="Theme"]\');'))
+            self.assertIn('Dark', self.js('return document.querySelector(\'[aria-label="Theme"]\').textContent;'))
+            self.assertEqual(self.message('getProxyState'), before)
+            self.assertEqual(self.message('getProxyState')['rules'][0]['id'], rule['id'])
+        finally:
+            self.extension_js('await browser.storage.local.set({uiLanguage:"en"});if(arguments[0]===null)await browser.storage.local.remove("uiTheme");else await browser.storage.local.set({uiTheme:arguments[0]});', original)
+            self.js('document.querySelector("nav button[aria-expanded=true]")?.click();')
+            self.command('POST', '/window/rect', {'width': 1280, 'height': 800})
+            for page in pages:
+                self.switch(page); self.command('DELETE', '/window')
+            self.switch(self.control)
+
     def test_workspace_group_editor_and_narrow_layout(self):
         self.switch(self.control)
         self.navigate(EXTENSION + '/src/options/index.html')
         self.wait(lambda: self.js('return !!Array.from(document.querySelectorAll("button")).find(b=>b.textContent.trim()==="New group");'))
         self.js('Array.from(document.querySelectorAll("button")).find(b=>b.textContent.trim()==="New group").click();')
         def fill(selector, text):
+            self.wait(lambda: self.js('const node=document.querySelector(arguments[0]);return !!node && node.getClientRects().length>0;', selector))
             element = self.command('POST', '/element', {'using': 'css selector', 'value': selector})
             element_id = next(iter(element.values()))
             self.command('POST', f'/element/{element_id}/clear', {})
@@ -315,7 +394,7 @@ class FirefoxTests(unittest.TestCase):
         const header=document.querySelector('[data-workspace-header]').getBoundingClientRect();
         const name=document.querySelector('#rule-name').getBoundingClientRect();
         const group=document.querySelector('#rule-group').getBoundingClientRect();
-        const language=document.querySelector('[aria-label="Language"]').getBoundingClientRect();
+        const language=document.querySelector('nav [aria-label="Settings"]').getBoundingClientRect();
         return {height:innerHeight,headerHeight:header.height,listTop:list.top,listHeight:list.height,editorTop:editor.top,languageTop:language.top,nameTop:name.top,groupTop:group.top,groupLeft:group.left,nameRight:name.right};''')
         self.assertEqual(layout['headerHeight'], 44)
         self.assertEqual(layout['listTop'], 44)
@@ -347,11 +426,15 @@ class FirefoxTests(unittest.TestCase):
         self.assertFalse(self.js('return Array.from(document.querySelectorAll("[data-workspace-header] button")).some(e=>e.textContent==="Save rule");'))
         self.assertTrue(self.js('return document.documentElement.scrollWidth<=innerWidth;'))
         (ARTIFACTS / 'groups-narrow.png').write_bytes(base64.b64decode(self.command('GET', '/screenshot')))
+        self.js('document.querySelector(\'nav [aria-label="Settings"]\').click();')
+        self.wait(lambda: self.js('return !!document.querySelector(\'[aria-label="Language"]\');'))
         self.js('document.querySelector(\'[aria-label="Language"]\').click();')
         self.wait(lambda: self.js('return !!document.querySelector(\'[role="option"]\');'))
         self.js('Array.from(document.querySelectorAll(\'[role="option"]\')).find(b=>b.textContent.trim()==="Español").click();')
         self.wait(lambda: self.js('return document.documentElement.lang;'), lambda value: value == 'es')
-        self.assertIn('Español', self.js('return document.querySelector("nav [role=combobox]").title;'))
+        self.assertIn('Español', self.js('return document.querySelector("[data-slot=popover-content] [role=combobox]").textContent;'))
+        self.js('document.querySelector("[data-slot=popover-content]").dispatchEvent(new KeyboardEvent("keydown",{key:"Escape",bubbles:true}));')
+        self.wait(lambda: self.js('return !document.querySelector("[data-slot=popover-content]");'))
         self.assertTrue(self.js('return document.documentElement.scrollWidth<=innerWidth;'))
         (ARTIFACTS / 'workspace-list-narrow-es.png').write_bytes(base64.b64decode(self.command('GET', '/screenshot')))
         self.extension_js("await browser.storage.local.set({uiLanguage:'en'});")

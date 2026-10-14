@@ -177,9 +177,11 @@ test('localizes all surfaces and preserves drafts and settings across language c
   await control.getByRole('button', { name: 'New rule', exact: true }).click();
   const draftName = '用户 $& / custom draft';
   await control.getByRole('textbox', { name: 'Name', exact: true }).fill(draftName);
+  await control.getByRole('button', { name: 'Settings', exact: true }).click();
   await control.getByRole('combobox', { name: 'Language', exact: true }).click();
   await control.getByRole('option', { name: '简体中文', exact: true }).click();
   await expect(control.locator('html')).toHaveAttribute('lang', 'zh-CN');
+  await control.keyboard.press('Escape');
   const popup = await context.newPage();
   await popup.goto(`chrome-extension://${extensionId}/src/popup/index.html`);
   await popup.setViewportSize({ width: 360, height: 800 });
@@ -210,6 +212,7 @@ test('localizes all surfaces and preserves drafts and settings across language c
     expect(await control.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState)).toEqual(original);
     await control.reload();
     await expect(control.locator('html')).toHaveAttribute('lang', 'es');
+    await control.getByRole('button', { name: messages.Settings.es, exact: true }).click();
     await expect(control.getByRole('combobox', { name: messages.Language.es, exact: true })).toContainText('Español');
   } finally {
     await control.evaluate(() => chrome.storage.local.set({ uiLanguage: 'en' }));
@@ -385,8 +388,8 @@ test('keeps compact workspace actions accessible on desktop and narrow windows',
     expect((await header.boundingBox())!.height).toBe(44);
     expect((await list.boundingBox())!.y).toBe(44);
     expect((await list.boundingBox())!.height).toBe(756);
-    const language = navigation.getByRole('combobox', { name: 'Language', exact: true });
-    expect((await language.boundingBox())!.y).toBeGreaterThan(740);
+    const settings = navigation.getByRole('button', { name: 'Settings', exact: true });
+    expect((await settings.boundingBox())!.y).toBeGreaterThan(740);
     await list.getByRole('button', { name: 'New rule', exact: true }).click();
     await control.getByLabel('Name', { exact: true }).fill('Compact workspace draft');
     await expect(header.getByRole('heading', { name: 'Compact workspace draft', exact: true })).toBeVisible();
@@ -431,11 +434,14 @@ test('keeps compact workspace actions accessible on desktop and narrow windows',
     await expect(list.getByRole('button', { name: 'New rule', exact: true })).toBeVisible();
     await expect(header.getByRole('heading', { name: 'Rules', exact: true })).toBeVisible();
     await expect(header.getByRole('button', { name: 'Save rule', exact: true })).toHaveCount(0);
-    // The compact selector remains operable even when its value is visually hidden.
+    // Preferences remain reachable from the settings icon in narrow windows.
+    await settings.click();
+    const language = control.getByRole('combobox', { name: 'Language', exact: true });
     await language.click();
     await control.getByRole('option', { name: 'Español', exact: true }).click();
     await expect(control.locator('html')).toHaveAttribute('lang', 'es');
-    await expect(navigation.getByRole('combobox', { name: messages.Language.es, exact: true })).toHaveAttribute('title', `${messages.Language.es} · Español`);
+    await expect(control.getByRole('combobox', { name: messages.Language.es, exact: true })).toContainText('Español');
+    await control.keyboard.press('Escape');
     await control.screenshot({ path: testInfo.outputPath('workspace-list-narrow-es.png') });
     for (const locale of ['en', 'zh-CN', 'ko', 'ja', 'fr', 'es']) {
       await control.evaluate((uiLanguage) => chrome.storage.local.set({ uiLanguage }), locale);
@@ -458,6 +464,90 @@ test('keeps compact workspace actions accessible on desktop and narrow windows',
     control.off('pageerror', onError);
     await control.evaluate(() => chrome.storage.local.set({ uiLanguage: 'en' }));
     await control.setViewportSize({ width: 1280, height: 720 });
+  }
+});
+
+test('persists appearance settings, follows the system and syncs every extension surface', async () => {
+  const testInfo = test.info();
+  await control.reload();
+  const original = await control.evaluate(async () => (await chrome.storage.local.get('uiTheme')).uiTheme);
+  const rules = await control.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState);
+  const popup = await context.newPage();
+  const panel = await context.newPage();
+  const pages = [control, popup, panel];
+  const errors: string[] = [];
+  const onError = (error: Error) => errors.push(error.message);
+  pages.forEach((page) => page.on('pageerror', onError));
+  try {
+    await popup.goto(`chrome-extension://${extensionId}/src/popup/index.html`);
+    await panel.goto(`chrome-extension://${extensionId}/src/sidepanel/index.html`);
+    await control.setViewportSize({ width: 390, height: 844 });
+    await control.getByRole('button', { name: 'New rule', exact: true }).click();
+    await control.getByLabel('Name', { exact: true }).fill('Preferences preserve this draft');
+    const settings = control.getByRole('button', { name: 'Settings', exact: true });
+    await settings.click();
+    const menu = control.locator('[data-slot=popover-content]');
+    const choose = async (label: string) => {
+      await menu.getByRole('combobox', { name: 'Theme', exact: true }).click();
+      await control.getByRole('option', { name: label, exact: true }).click();
+    };
+    const check = async (dark: boolean) => {
+      for (const page of pages) await expect.poll(() => page.evaluate(() => document.documentElement.classList.contains('dark'))).toBe(dark);
+      await expect(control.getByLabel('Name', { exact: true })).toHaveValue('Preferences preserve this draft');
+    };
+    await choose('Dark');
+    await check(true);
+    expect(await control.evaluate(() => document.documentElement.style.colorScheme)).toBe('dark');
+    expect(await control.evaluate(async () => (await chrome.storage.local.get('uiTheme')).uiTheme)).toBe('dark');
+    await control.screenshot({ path: testInfo.outputPath('settings-dark-narrow.png') });
+    for (const page of pages) await page.emulateMedia({ colorScheme: 'dark' });
+    await choose('Light');
+    await check(false);
+    await choose('Follow system');
+    await check(true);
+    for (const page of pages) await page.emulateMedia({ colorScheme: 'light' });
+    await check(false);
+    await choose('Dark');
+    for (const locale of ['en', 'zh-CN', 'ko', 'ja', 'fr', 'es']) {
+      await control.evaluate((uiLanguage) => chrome.storage.local.set({ uiLanguage }), locale);
+      await expect(control.locator('html')).toHaveAttribute('lang', locale);
+      await expect(menu.getByRole('combobox', { name: messages.Language[locale], exact: true })).toBeVisible();
+      await expect(menu.getByRole('combobox', { name: messages.Theme[locale], exact: true })).toContainText(messages.Dark[locale]);
+      const bounds = (await menu.boundingBox())!;
+      expect(bounds.x).toBeGreaterThanOrEqual(0);
+      expect(bounds.x + bounds.width).toBeLessThanOrEqual(390);
+      expect(bounds.y).toBeGreaterThanOrEqual(0);
+      expect(bounds.y + bounds.height).toBeLessThanOrEqual(844);
+      expect(await control.evaluate(() => document.documentElement.scrollWidth <= innerWidth), locale).toBe(true);
+    }
+    await control.evaluate(() => chrome.storage.local.set({ uiLanguage: 'en' }));
+    await expect(control.locator('html')).toHaveAttribute('lang', 'en');
+    await control.keyboard.press('Escape');
+    await expect(menu).toHaveCount(0);
+    await expect(settings).toBeFocused();
+    await settings.click();
+    await expect(menu.getByRole('combobox', { name: 'Theme', exact: true })).toContainText('Dark');
+    await control.getByLabel('Name', { exact: true }).click();
+    await expect(menu).toHaveCount(0);
+    await control.getByRole('button', { name: 'Back to rules' }).click();
+    await control.getByRole('button', { name: 'Discard changes', exact: true }).click();
+    await control.reload();
+    await expect(control.locator('html')).toHaveAttribute('data-theme', 'dark');
+    await settings.click();
+    await expect(menu.getByRole('combobox', { name: 'Theme', exact: true })).toContainText('Dark');
+    expect(await control.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState)).toEqual(rules);
+    expect(errors).toEqual([]);
+  } finally {
+    pages.forEach((page) => page.off('pageerror', onError));
+    await popup.close(); await panel.close();
+    await control.emulateMedia({ colorScheme: null });
+    await control.evaluate(async (uiTheme) => {
+      await chrome.storage.local.set({ uiLanguage: 'en' });
+      if (uiTheme === undefined) await chrome.storage.local.remove('uiTheme');
+      else await chrome.storage.local.set({ uiTheme });
+    }, original);
+    await control.setViewportSize({ width: 1280, height: 720 });
+    await control.reload();
   }
 });
 

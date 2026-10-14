@@ -68,9 +68,13 @@ section tabs, avoiding a second title toolbar. Narrow windows let the header wra
 titles, state, and actions stay reachable.
 
 The left sidebar holds the Wireflip brand aligned with that header, Rules, Data, and
-the language selector at the bottom. Both wide and narrow windows show navigation
+Settings at the bottom. Both wide and narrow windows show navigation
 labels; narrow windows stack short labels beneath their icons. Accessible names and
-hover titles retain the full Data & migration description.
+hover titles retain the full Data & migration description. Settings opens a small popover
+with Language and Theme selectors. Theme offers Follow system, Light, and Dark; preferences
+persist locally and update all open Workspace, Popup, and Inspector pages. System changes
+apply only while Follow system is selected. Escape or clicking outside closes the popover
+without discarding a rule draft.
 
 New rule and New group sit at the top of the rule list, beside search and filters.
 List and editor scroll independently beneath the shared header, keeping their actions
