@@ -40,6 +40,7 @@ jobs:
           pnpm --filter wireflip build
           mkdir -p artifacts/npm
           pnpm --dir packages/npm pack --pack-destination ../../artifacts/npm
+          node scripts/verify-sdk-packages.mjs
 
       - name: Verify and package Chrome extension
         run: |
@@ -48,6 +49,9 @@ jobs:
           pnpm --filter browser-wireflip test:run
           pnpm --filter browser-wireflip build:chrome
           pnpm --filter browser-wireflip package:chrome
+
+      - name: Build product website and legacy bridge
+        run: pnpm --filter website build
 
       - name: Run Chrome extension end-to-end tests
         run: |
@@ -75,6 +79,12 @@ jobs:
           GECKODRIVER: ${{ runner.temp }}/wireflip-firefox/geckodriver
         run: pnpm --filter browser-wireflip test:e2e:firefox
 
+      - name: Verify packaged SDKs in native Firefox
+        env:
+          FIREFOX_BINARY: ${{ runner.temp }}/wireflip-firefox/firefox/firefox
+          GECKODRIVER: ${{ runner.temp }}/wireflip-firefox/geckodriver
+        run: python3 packages/browser-extension/tests/firefox/sdk_package_test.py
+
       - name: Upload Firefox diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -84,8 +94,13 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-      - name: Build product website
-        run: pnpm --filter website build
+      - name: Upload SDK acceptance archives and checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: wireflip-sdk-preflight-${{ github.sha }}
+          path: artifacts/sdk-preflight
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Validate extension packages
         run: |

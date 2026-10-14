@@ -56,7 +56,7 @@ class FirefoxTests(unittest.TestCase):
         request = urllib.request.Request(cls.base + path, data=payload, method=method,
                                          headers={'Content-Type': 'application/json'})
         try:
-            with urllib.request.urlopen(request, timeout=35) as response:
+            with urllib.request.urlopen(request, timeout=90 if path == '/session' else 35) as response:
                 value = json.load(response)['value']
         except urllib.error.HTTPError as error:
             raise AssertionError(error.read().decode()) from error
@@ -153,9 +153,10 @@ class FirefoxTests(unittest.TestCase):
                 return False
         cls.wait(ready)
         result = cls.request('POST', '/session', {'capabilities': {'alwaysMatch': {
-            'browserName': 'firefox', 'moz:firefoxOptions': {'binary': firefox, 'args': ['-headless'], 'prefs': {
+            'browserName': 'firefox', 'acceptInsecureCerts': getattr(cls, 'accept_insecure_certs', False), 'moz:firefoxOptions': {'binary': firefox, 'args': ['-headless'], 'prefs': {
                 'extensions.webextensions.uuids': json.dumps({ADDON_ID: UUID}),
                 'datareporting.policy.dataSubmissionEnabled': False,
+                **getattr(cls, 'test_preferences', {}),
             }}}}})
         cls.session = result['sessionId']
         (ARTIFACTS / 'browser.json').write_text(json.dumps(result['capabilities'], indent=2))
@@ -191,7 +192,11 @@ class FirefoxTests(unittest.TestCase):
                 cls.server.server_close()
             if hasattr(cls, 'driver'):
                 cls.driver.terminate()
-                cls.driver.wait(timeout=10)
+                try:
+                    cls.driver.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    cls.driver.kill()
+                    cls.driver.wait(timeout=10)
             if hasattr(cls, 'driver_log'):
                 cls.driver_log.close()
             cls.temp.cleanup()

@@ -44,3 +44,12 @@ must submit operations rather than writing `proxyAppState` directly. Add a new o
 that dispatcher when extending settings or rule editing; keep validation and quotas there.
 DNR session rules are rebuilt from complete page origins and current tabs. Do not reintroduce
 hostname-only dynamic rules or per-window CORS switching.
+
+## SDK archive release acceptance
+
+After building the SDK, run `node scripts/verify-sdk-packages.mjs` from the repository root,
+then build the website so its production legacy bridge is available. The Chrome suite
+loads the exact new and legacy archives. Firefox additionally runs
+`python3 tests/firefox/sdk_package_test.py` with the same browser environment variables.
+These are isolated HTTPS transport fixtures with real extension APIs, not checks of live DNS
+or hosting. See [release preflight](../../docs/release-preflight.md).

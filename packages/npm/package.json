@@ -9,9 +9,14 @@
   "jsdelivr": "dist/index.umd.js",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     }
   },
   "files": [
@@ -33,16 +38,16 @@
     "test": "vitest run"
   },
   "keywords": [
-    "cors", 
-    "cross-origin", 
-    "api-testing", 
+    "cors",
+    "cross-origin",
+    "api-testing",
     "browser-extension",
     "request-interception",
     "api-mocking",
-    "http-headers", 
-    "fetch", 
-    "ajax", 
-    "web-development", 
+    "http-headers",
+    "fetch",
+    "ajax",
+    "web-development",
     "typescript",
     "lightweight"
   ],
@@ -55,5 +60,6 @@
     "vite": "catalog:",
     "vite-plugin-dts": "^4.5.3",
     "vitest": "^2.1.8"
-  }
+  },
+  "type": "module"
 }

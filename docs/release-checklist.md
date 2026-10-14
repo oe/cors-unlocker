@@ -13,6 +13,8 @@
 | 产物及校验值 | 待填写 |
 | 域名验证证据 | 待填写 |
 
+本轮本地准备和可复现验收见 [发布前验收记录](release-preflight.md)。新旧 SDK 归档验收现在进入 CI；公网域名及正式渠道的检查仍须在发布时填写证据。
+
 ## 1. 兼容边界与发布准备
 
 - [ ] 保留 Chrome ID `knhlkjdfmgkmelcjfnbbhpphkmjjacng` 和 Firefox ID `cors-unlocker@forth.ink`；在原商店条目发布，不新建条目替代旧版。
