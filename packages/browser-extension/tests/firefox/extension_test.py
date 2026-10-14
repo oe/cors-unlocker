@@ -1,5 +1,6 @@
 """Real Firefox + temporary production add-on; stdlib WebDriver, no mocked APIs."""
 import base64
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -676,17 +677,20 @@ class FirefoxTests(unittest.TestCase):
         self.assertFalse(self.js("return !!document.querySelector('[aria-label=\"About your Wireflip upgrade\"]');"))
         self.assertFalse(self.extension_js('return (await browser.tabs.query({})).some(t=>t.url.includes("/src/upgrade/"));'))
         legacy = Path(self.temp.name) / 'legacy-v1.xpi'
-        with zipfile.ZipFile(legacy, 'w', zipfile.ZIP_DEFLATED) as archive:
-            archive.writestr('manifest.json', json.dumps({
-                'manifest_version': 3, 'name': 'Legacy upgrade fixture', 'version': '1.1.0',
-                'permissions': ['storage'], 'options_ui': {'page': 'legacy.html'},
-                'browser_specific_settings': {'gecko': {'id': ADDON_ID, 'strict_min_version': '142.0'}},
-            }))
-            archive.writestr('legacy.html', '<title>Legacy upgrade fixture</title>')
+        # Use the published, signed v1 install: temporary reloads do not model AMO updates.
+        with urllib.request.urlopen('https://addons.mozilla.org/firefox/downloads/file/4522390/cors_unlocker-1.1.0.xpi', timeout=30) as response:
+            legacy_bytes = response.read()
+        self.assertEqual(hashlib.sha256(legacy_bytes).hexdigest(), '2a8e9b68f623f44c5da448c96a2e13377c23ea3a4285ca656642cdd97890d356')
+        legacy.write_bytes(legacy_bytes)
+        with zipfile.ZipFile(legacy) as archive:
+            manifest = json.loads(archive.read('manifest.json'))
+        self.assertEqual(manifest['version'], '1.1.0')
+        self.assertEqual(manifest['browser_specific_settings']['gecko']['id'], ADDON_ID)
         # Replacing an add-on closes its documents. Keep WebDriver on a regular tab.
         self.switch(self.target)
-        self.assertEqual(self.command('POST', '/moz/addon/install', {'path': str(legacy), 'temporary': True}), ADDON_ID)
-        type(self).control = self.new_page(EXTENSION + '/legacy.html')
+        self.command('POST', '/moz/addon/uninstall', {'id': ADDON_ID})
+        self.assertEqual(self.command('POST', '/moz/addon/install', {'path': str(legacy), 'temporary': False}), ADDON_ID)
+        type(self).control = self.new_page(EXTENSION + '/' + manifest['options_page'])
         self.extension_js('''await browser.storage.local.clear();await browser.storage.local.set({allowedOrigins:[{
             id:42,origin:"https://upgrade.example",domain:"upgrade.example",disabled:false,credentials:true,
             extraHeaders:"",createdAt:1,updatedAt:1}],extConfig:{maxRules:250},uiLanguage:"en",uiTheme:"light"});''')
