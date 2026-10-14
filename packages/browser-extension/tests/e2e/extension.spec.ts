@@ -373,8 +373,11 @@ test('keeps compact workspace actions accessible on desktop and narrow windows',
   control.on('pageerror', onError);
   try {
     await control.setViewportSize({ width: 1280, height: 800 });
-    const navigation = control.getByRole('navigation', { name: 'Workspace navigation' });
-    const list = control.getByRole('complementary', { name: 'Rule list' });
+    // Scope by stable landmarks: their accessible labels change with the language.
+    const navigation = control.getByRole('navigation');
+    const list = control.getByRole('complementary');
+    await expect(navigation).toHaveAttribute('aria-label', 'Workspace navigation');
+    await expect(list).toHaveAttribute('aria-label', 'Rule list');
     await expect(navigation.getByRole('heading', { name: 'Wireflip' })).toBeVisible();
     await expect(list.getByRole('button', { name: 'New rule', exact: true })).toBeVisible();
     expect((await list.boundingBox())!.y).toBe(0);
