@@ -23,7 +23,7 @@ Routes:
 - `/migration/` — user-facing domain and SDK migration guide
 - `/message/` — legacy hidden bridge retained for clients using SDK 0.1
 
-The intended canonical site is `https://wireflip.forth.ink`. Until separate old-origin hosting is deployed and verified, `public/CNAME` deliberately keeps GitHub Pages on `cors.forth.ink` so published SDK clients remain functional. Do not switch this binding early: DNS alone cannot make GitHub Pages serve both hostnames.
+The canonical site is `https://wireflip.forth.ink`. On 2026-10-15, the successful CI website artifact from `200cb674f15fbc63c35525bbdd701d75f8e3b7a2` was deployed independently to the Cloudflare Pages project `cors-unlocker-legacy`. Its proxied custom domain `cors.forth.ink` serves the retained bridge. Both exact legacy SDK archives (`0.1.0` and the documentation-only `0.1.1`) passed real public HTTPS bridge acceptance before changing the GitHub Pages CNAME. GitHub Pages now targets the new hostname; deployment and certificate checks are recorded in the release evidence.
 
 ## Domain migration
 

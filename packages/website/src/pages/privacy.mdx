@@ -16,6 +16,22 @@ Wireflip is designed to keep request-debugging data on your device.
 - Sensitive header values—including Authorization, Cookie, Proxy-Authorization, and Set-Cookie—are redacted in the inspector by default.
 - The website does not need an account to use the extension or SDK.
 
+Local processing includes the active tab's URL and origin, request URLs, methods,
+resource types, status codes, timing, request/response headers and rule matches.
+The inspector uses these details to show the traffic in a session you explicitly
+start. Authentication headers may be handled while applying your rules; their
+values are masked before being added to inspector logs. Custom headers, URLs and
+mock bodies you enter are stored as part of your local rules. URLs and custom
+values can themselves contain sensitive information, so review them before
+exporting a backup or sharing a screenshot.
+
+This local processing supports only the request debugging features described in
+the extension. Wireflip does not sell or transfer this data to third parties,
+use it for advertising or unrelated purposes, or use it to determine
+creditworthiness. The developer does not receive or read your traffic or rules.
+Wireflip's use of data follows the Chrome Web Store User Data Policy, including
+its Limited Use requirements.
+
 ## Permissions
 
 `<all_urls>` allows rules to target developer-selected endpoints and lets the local SDK bridge identify the real calling page. `declarativeNetRequest` applies fast rules. `debugger` enables opt-in Advanced mode. `tabs`, `storage`, and `sidePanel` provide tab scope, persistence, and the inspector.
@@ -28,7 +44,7 @@ Advanced mode attaches only after an explicit action for an HTTP or HTTPS tab. C
 
 ## SDK boundary
 
-The SDK communicates through a packaged content-script bridge—there is no hosted relay. The extension derives scope from Chrome's actual sender tab instead of trusting an origin supplied by page JavaScript.
+The new `wireflip` SDK communicates through a packaged content-script bridge. The retained `cors-unlocker` SDK uses its original iframe on `cors.forth.ink`; that bridge exchanges messages locally between the calling page and extension and does not upload request logs. The extension derives scope from the actual calling page instead of trusting an arbitrary origin supplied by page JavaScript.
 
 Enabling CORS requires confirmation. Rule drafts created by an app are always disabled and bound to that app's origin so the user can inspect them before activation. SDK calls are size- and rate-limited.
 
