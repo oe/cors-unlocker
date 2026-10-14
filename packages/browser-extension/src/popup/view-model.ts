@@ -2,6 +2,8 @@ import browser from 'webextension-polyfill';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { isSupportedProtocol } from '@/common/utils';
 import { inspectorPathForTab, parseInspectorTabId } from '@/common/inspector-target';
+import { countTabBrowserRules } from '@/background/toolbar-state';
+import { summarizeTabRules } from '@/common/tab-rule-summary';
 import { APP_STATE_KEY, type IProxyProfile, type IProxyRule } from '@/common/proxy-state';
 import { EMPTY_QUICK_CONTROLS, PINNED_RULES_KEY, type QuickControls } from '@/common/quick-controls';
 import { ruleAppliesToOrigin } from '@/common/rule-explanation';
@@ -10,6 +12,7 @@ import type { IAdvancedProxyStatus } from '@/background/advanced-proxy';
 export function useViewModel() {
   const [origin, setOrigin] = useState('');
   const [rules, setRules] = useState<IProxyRule[]>([]);
+  const [persistentCount, setPersistentCount] = useState(0);
   const [profiles, setProfiles] = useState<IProxyProfile[]>([]);
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
   const [status, setStatus] = useState<IAdvancedProxyStatus | null>(null);
@@ -24,11 +27,12 @@ export function useViewModel() {
   const sync = useCallback(async () => {
     const current = ++version.current;
     if (tabId.current === null) return;
-    const [tab, nextStatus, state, pins] = await Promise.all([
+    const [tab, nextStatus, state, pins, nativeRules] = await Promise.all([
       browser.tabs.get(tabId.current),
       browser.runtime.sendMessage({ type: 'getAdvancedProxyStatus', payload: { tabId: tabId.current } }),
       browser.runtime.sendMessage({ type: 'getProxyState' }),
       browser.storage.local.get(PINNED_RULES_KEY),
+      browser.declarativeNetRequest.getSessionRules(),
     ]);
     if (!mounted.current || current !== version.current) return;
     const url = tab.url ? new URL(tab.url) : null;
@@ -37,6 +41,7 @@ export function useViewModel() {
     setRules(state.rules);
     setProfiles(state.profiles || []);
     setStatus(nextStatus);
+    setPersistentCount(countTabBrowserRules(nativeRules, tabId.current));
     setPinnedIds(Array.isArray(pins[PINNED_RULES_KEY]) ? pins[PINNED_RULES_KEY].filter((id: unknown) => typeof id === 'string') : []);
     setReady(true);
   }, []);
@@ -45,6 +50,7 @@ export function useViewModel() {
     mounted.current = true;
     const refresh = () => { void sync().catch((cause) => { if (mounted.current) setError(String(cause)); }); };
     const onMessage = (message: any) => {
+      if (message?.type === 'browserRulesChanged') refresh();
       if (message?.type === 'advancedProxyStatusChange' && message.payload?.tabId === tabId.current) refresh();
     };
     const onStorage = (changes: Record<string, browser.Storage.StorageChange>, area: string) => {
@@ -54,7 +60,7 @@ export function useViewModel() {
       if (id === tabId.current && change.url) refresh();
     };
     const onRemoved = (id: number) => {
-      if (id === tabId.current) { ++version.current; tabId.current = null; setOrigin(''); setStatus(null); }
+      if (id === tabId.current) { ++version.current; tabId.current = null; setOrigin(''); setStatus(null); setPersistentCount(0); }
     };
     browser.runtime.onMessage.addListener(onMessage);
     browser.storage.onChanged.addListener(onStorage);
@@ -90,8 +96,9 @@ export function useViewModel() {
     finally { busyRef.current = false; if (mounted.current) setBusy(false); }
   };
 
-  const connected = status?.phase === 'connected';
-  const quickControls = connected ? status.quickControls || EMPTY_QUICK_CONTROLS : EMPTY_QUICK_CONTROLS;
+  const phase = status?.origin && status.origin !== origin ? 'disabled' : status?.phase || 'disabled';
+  const connected = phase === 'connected';
+  const quickControls = connected ? status?.quickControls || EMPTY_QUICK_CONTROLS : EMPTY_QUICK_CONTROLS;
   const sendSession = async (type: string, controls?: QuickControls) => {
     if (tabId.current === null) throw new Error('No active tab found or tab URL is unavailable');
     const next = await browser.runtime.sendMessage({ type, payload: { tabId: tabId.current, quickControls: controls } });
@@ -102,7 +109,16 @@ export function useViewModel() {
     const controls = { ...quickControls, ...patch };
     await sendSession(connected ? 'updateQuickControls' : 'enableAdvancedProxy', controls);
   });
-  const toggleSession = () => run(() => sendSession(connected ? 'disableAdvancedProxy' : 'enableAdvancedProxy'));
+  const toggleSession = () => {
+    if (phase === 'connecting') {
+      // Cancellation must remain usable while the original connection promise is pending.
+      setError(null);
+      return sendSession('disableAdvancedProxy').then(sync).catch((cause) => {
+        if (mounted.current) setError(cause instanceof Error ? cause.message : String(cause));
+      });
+    }
+    return run(() => sendSession(connected ? 'disableAdvancedProxy' : 'enableAdvancedProxy'));
+  };
   const toggleRule = (rule: IProxyRule, enabled: boolean) => run(async () => {
     const result = await browser.runtime.sendMessage({ type: 'saveProxyRule', payload: { rule: { id: rule.id, enabled } } });
     if (!result?.success) throw new Error(result?.error || 'Failed to update rule');
@@ -129,7 +145,8 @@ export function useViewModel() {
 
   const siteRules = rules.filter((rule) => ruleAppliesToOrigin(rule, origin));
   return {
-    origin, ready, busy, error, connected, quickControls, status, profiles, toggleGroup,
+    origin, ready, busy, error, connected, phase, quickControls, status, profiles, toggleGroup, persistentCount,
+    summary: summarizeTabRules({ rules, profiles }, origin),
     isSupported: ready && !!origin,
     siteRules,
     pinnedRules: siteRules.filter((rule) => pinnedIds.includes(rule.id)),

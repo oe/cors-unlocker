@@ -64,6 +64,10 @@ a tab session is connected. Amber **…** means connecting, and red **!** means 
 error. Hover for the localized session state and persistent rule count. A connected session
 does not by itself prove that a request was modified.
 
+When all saved changes for this site are paused by groups, gray **OFF** makes that pause visible. Other active persistent rules keep the icon blue, and an attached session stays green even when groups are paused. Hover lists paused group names, enabled rules waiting for a tab session, temporary controls and connection errors. These describe configuration and connection state, not proof that a request changed.
+
+Click the icon to open the popup. Relevant group switches are directly below the tab status; restore only the group you need. The session button offers Start, Stop, Cancel while connecting, or Retry after an error. A reopened popup still shows the session error. Its persistent count follows installed browser rules and refreshes after rule application finishes, so it matches the toolbar. Restoring a group never connects automatically.
+
 Stopping a session returns the icon to blue if browser rules remain, or gray otherwise.
 Enabled mocks and delays waiting for a connection do not turn it blue. Switching tabs,
 navigation, rule changes, language changes and background initialization refresh the status

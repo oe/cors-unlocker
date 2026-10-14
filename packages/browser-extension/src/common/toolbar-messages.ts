@@ -111,5 +111,61 @@ export const toolbarMessages = {
     "ja": "リクエストの記録は無効",
     "fr": "Enregistrement des requêtes désactivé",
     "es": "Registro de solicitudes desactivado"
+  },
+  "Saved rules paused": {
+    "en": "Saved rules paused",
+    "zh-CN": "已保存规则已暂停",
+    "ko": "저장된 규칙 일시 중지됨",
+    "ja": "保存済みルール停止中",
+    "fr": "Règles enregistrées en pause",
+    "es": "Reglas guardadas pausadas"
+  },
+  "Rules waiting for a tab session: {count}": {
+    "en": "Rules waiting for a tab session: {count}",
+    "zh-CN": "{count} 条规则等待连接标签页",
+    "ko": "규칙 {count}개에 탭 세션이 필요합니다",
+    "ja": "{count} 件のルールにタブ接続が必要",
+    "fr": "{count} règles nécessitent une session d’onglet",
+    "es": "{count} reglas necesitan una sesión de pestaña"
+  },
+  "Paused groups: {count}": {
+    "en": "Paused groups: {count}",
+    "zh-CN": "{count} 个分组已暂停",
+    "ko": "그룹 {count}개 일시 중지됨",
+    "ja": "{count} グループが停止中",
+    "fr": "{count} groupes en pause",
+    "es": "{count} grupos pausados"
+  },
+  "Click for session controls and group switches": {
+    "en": "Click for session controls and group switches",
+    "zh-CN": "点击管理本页会话和分组开关",
+    "ko": "클릭하여 세션과 그룹 스위치 관리",
+    "ja": "クリックしてセッションとグループを操作",
+    "fr": "Cliquez pour gérer la session et les groupes",
+    "es": "Haz clic para controlar la sesión y los grupos"
+  },
+  "Cancel connection": {
+    "en": "Cancel connection",
+    "zh-CN": "取消连接",
+    "ko": "연결 취소",
+    "ja": "接続をキャンセル",
+    "fr": "Annuler la connexion",
+    "es": "Cancelar conexión"
+  },
+  "Retry connection": {
+    "en": "Retry connection",
+    "zh-CN": "重试连接",
+    "ko": "연결 재시도",
+    "ja": "接続を再試行",
+    "fr": "Réessayer la connexion",
+    "es": "Reintentar conexión"
+  },
+  "Individual switches are preserved": {
+    "en": "Individual switches are preserved",
+    "zh-CN": "各规则开关已保留",
+    "ko": "개별 스위치 유지됨",
+    "ja": "個別スイッチを保持",
+    "fr": "Interrupteurs individuels conservés",
+    "es": "Se conservan los interruptores individuales"
   }
 } as const;

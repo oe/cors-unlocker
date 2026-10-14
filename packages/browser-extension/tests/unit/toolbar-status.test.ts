@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import browser from 'webextension-polyfill';
 import type { IAdvancedProxyStatus } from '../../src/background/advanced-proxy';
+import { migrateLegacyState } from '../../src/common/proxy-state';
 import { EMPTY_QUICK_CONTROLS } from '../../src/common/quick-controls';
 
 vi.mock('../../src/background/toolbar-state', async (importOriginal) => ({
@@ -55,7 +56,7 @@ describe('event-driven toolbar updates', () => {
     await toolbar.refreshAllToolbar();
     expect(action.setBadgeText).toHaveBeenCalledWith({ tabId: 1, text: 'ON' });
     expect(action.setBadgeText).toHaveBeenCalledWith({ tabId: 2, text: '' });
-    expect(browser.storage.local.get).toHaveBeenLastCalledWith('uiLanguage');
+    expect(browser.storage.local.get).toHaveBeenLastCalledWith(['uiLanguage', 'proxyAppState']);
   });
   it('skips identical paints and updates tooltips when the language preference changes', async () => {
     await toolbar.refreshToolbarTab(1); expect(action.setIcon).not.toHaveBeenCalled();
@@ -92,4 +93,22 @@ describe('event-driven toolbar updates', () => {
     expect(action.setIcon).toHaveBeenCalledTimes(2);
     expect(action.setBadgeText).toHaveBeenLastCalledWith({ tabId: 1, text: '!' });
   });
+  it('refreshes paused group names and OFF independently from installed-rule counts', async () => {
+    const state = migrateLegacyState([], {}, 1);
+    state.rules = [{ id: 'header', name: 'Header', enabled: true, source: 'user', createdAt: 1, updatedAt: 1,
+      match: { initiatorOrigins: ['https://app.example.test'], urlPattern: '*' }, actions: [{ type: 'setRequestHeaders', headers: { 'X-Test': 'yes' } }] }];
+    state.profiles = [{ id: 'staging', name: 'Staging', enabled: false, ruleIds: ['header'] }];
+    vi.mocked(browser.storage.local.get).mockResolvedValue({ uiLanguage: 'en', proxyAppState: state });
+    await toolbar.refreshToolbarTab(1);
+    expect(action.setBadgeText).toHaveBeenLastCalledWith({ tabId: 1, text: 'OFF' });
+    expect(action.setTitle.mock.calls.at(-1)?.[0].title).toContain('• Staging');
+    state.profiles[0].name = 'Local';
+    await toolbar.refreshAllToolbar();
+    expect(action.setTitle.mock.calls.at(-1)?.[0].title).toContain('• Local');
+    vi.mocked(browser.declarativeNetRequest.getSessionRules).mockResolvedValue([{ id: 9, condition: { tabIds: [1] }, action: { type: 'block' } }]);
+    await toolbar.refreshToolbarTab(1);
+    expect(action.setBadgeText).toHaveBeenLastCalledWith({ tabId: 1, text: '1' });
+    expect(action.setBadgeBackgroundColor).toHaveBeenLastCalledWith({ tabId: 1, color: '#2563eb' });
+  });
+
 });

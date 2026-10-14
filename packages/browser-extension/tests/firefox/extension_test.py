@@ -235,6 +235,42 @@ class FirefoxTests(unittest.TestCase):
     def toolbar(self):
         return self.extension_js('return {title:await browser.action.getTitle({tabId:arguments[0]}),badge:await browser.action.getBadgeText({tabId:arguments[0]}),color:await browser.action.getBadgeBackgroundColor({tabId:arguments[0]})};', self.tab_id)
 
+    def test_toolbar_group_off_and_popup_restore_shortcut(self):
+        group = self.message('proxyStateOperation', kind='createGroup', name='Toolbar staging')['state']['profiles'][-1]
+        header = self.save([{'type': 'setRequestHeaders', 'headers': {'X-Group': 'yes'}}], '/echo')
+        mock = self.save([{'type': 'mockResponse', 'status': 200, 'headers': {}, 'body': 'local'}], '/mock')
+        for rule in [header, mock]:
+            self.message('saveProxyRule', rule={'id': rule['id']}, groupId=group['id'])
+        self.wait(self.toolbar, lambda value: value['badge'] == '1' and 'Rules waiting for a tab session: 1' in value['title'])
+        self.message('proxyStateOperation', kind='updateGroup', id=group['id'], enabled=False)
+        state = self.wait(self.toolbar, lambda value: value['badge'] == 'OFF')
+        self.assertEqual(state['color'], [100, 116, 139, 255])
+        self.assertIn('• Toolbar staging', state['title'])
+        popup = self.new_page(EXTENSION + f'/src/popup/index.html?tabId={self.tab_id}')
+        try:
+            self.wait(lambda: self.js('return document.body.textContent.includes("Saved rules paused");'))
+            self.js('document.querySelector(\'[role="switch"][aria-label="Enable group Toolbar staging"]\').click();')
+            self.wait(self.toolbar, lambda value: value['badge'] == '1')
+            self.switch(popup)
+            self.wait(lambda: self.js('return document.body.textContent.includes("1 persistent rules stay on after stopping");'))
+            self.assertIn('Rules waiting for a tab session: 1', self.js('return document.body.textContent;'))
+            self.js('Array.from(document.querySelectorAll("button")).find(button=>button.textContent.trim()==="Start tab session").click();')
+            self.wait(self.toolbar, lambda value: value['badge'] == 'ON')
+            self.message('proxyStateOperation', kind='updateGroup', id=group['id'], enabled=False)
+            self.wait(self.toolbar, lambda value: value['badge'] == 'ON' and 'Paused groups: 1' in value['title'])
+            self.switch(popup)
+            self.js('Array.from(document.querySelectorAll("button")).find(button=>button.textContent.trim()==="Stop tab session").click();')
+            self.wait(self.toolbar, lambda value: value['badge'] == 'OFF')
+            self.switch(popup)
+            self.wait(lambda: self.js('return document.body.textContent.includes("Saved rules paused");'))
+            self.wait(lambda: self.js('return !Array.from(document.querySelectorAll("button")).find(button=>button.textContent.trim()==="Start tab session").disabled;'))
+            (ARTIFACTS / 'toolbar-groups-popup.png').write_bytes(base64.b64decode(self.command('GET', '/screenshot')))
+        finally:
+            self.switch(popup)
+            self.command('DELETE', '/window')
+            self.switch(self.control)
+            self.message('proxyStateOperation', kind='removeGroup', id=group['id'])
+
     def test_workspace_group_editor_and_narrow_layout(self):
         self.switch(self.control)
         self.navigate(EXTENSION + '/src/options/index.html')

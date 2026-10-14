@@ -133,7 +133,7 @@ test('keeps native toolbar colors, badges and tooltips in sync with each tab', a
     expect(await title()).not.toContain('500 ms');
     // Explicitly started sessions keep recording when the last quick control is cleared.
     await update(0, false);
-    await expect.poll(title).toBe('Wireflip\nTab session active\nRecording requests\n1 persistent rules enabled');
+    await expect.poll(title).toBe('Wireflip\nTab session active\nRecording requests\n1 persistent rules enabled\nClick for session controls and group switches');
     await expectState('ON', [21, 128, 61], 'Recording requests');
     await control.evaluate((id) => chrome.runtime.sendMessage({ type: 'disableAdvancedProxy', payload: { tabId: id } }), tabId);
     await expectState('1', [37, 99, 235], 'Tab session stopped');
@@ -1028,7 +1028,7 @@ test('disable cache bypasses real HTTP cache for one tab and restores it on stop
     await popup.getByRole('switch', { name: 'Disable cache', exact: true }).click();
     await expect(popup.getByRole('switch', { name: 'Disable cache', exact: true })).toBeChecked();
     await expect.poll(toolbarBadge).toBe('ON');
-    await expect.poll(toolbarTitle).toBe('Wireflip\nTab session active\nNot recording requests\nThis tab · temporary\n• Disable cache\n0 persistent rules enabled');
+    await expect.poll(toolbarTitle).toBe('Wireflip\nTab session active\nNot recording requests\nThis tab · temporary\n• Disable cache\n0 persistent rules enabled\nClick for session controls and group switches');
     await control.evaluate(() => chrome.storage.local.set({ uiLanguage: 'zh-CN' }));
     await expect.poll(toolbarTitle).toContain('未开启请求记录\n当前页 · 临时\n• 禁用缓存');
     await control.evaluate(() => chrome.storage.local.set({ uiLanguage: 'en' }));
@@ -1044,7 +1044,7 @@ test('disable cache bypasses real HTTP cache for one tab and restores it on stop
     await expect(popup.getByRole('switch', { name: 'Disable cache', exact: true })).not.toBeChecked();
     await expect(popup.getByText('Tab session stopped', { exact: true })).toBeVisible();
     await expect.poll(toolbarBadge).toBe('');
-    await expect.poll(toolbarTitle).toBe('Wireflip\nTab session stopped\n0 persistent rules enabled');
+    await expect.poll(toolbarTitle).toBe('Wireflip\nTab session stopped\n0 persistent rules enabled\nClick for session controls and group switches');
     // getTargets().attached also sees Playwright's own connection. Verify this extension's access.
     await expect.poll(() => control.evaluate(async (id) => {
       try {
@@ -1401,5 +1401,95 @@ test('saves and moves a grouped rule without losing membership on subsequent edi
   } finally {
     if (id) await send('deleteProxyRule', { id });
     await send('proxyStateOperation', { kind: 'removeGroup', id: profile.id });
+  }
+});
+
+test('keeps toolbar group hints and popup recovery actions in sync', async () => {
+  const target = await context.newPage();
+  const popup = await context.newPage();
+  const ids: string[] = [];
+  let groupId: string | undefined;
+  const origin = 'http://toolbar-groups.localhost:3000';
+  await target.goto(origin + '/');
+  const tabId = await getTabId(origin + '/');
+  const worker = await currentWorker();
+  const send = (type: string, payload: any) => control.evaluate(({ type, payload }) => chrome.runtime.sendMessage({ type, payload }), { type, payload });
+  const badge = () => control.evaluate((id) => chrome.action.getBadgeText({ tabId: id }), tabId);
+  const title = () => control.evaluate((id) => chrome.action.getTitle({ tabId: id }), tabId);
+  const color = () => control.evaluate((id) => chrome.action.getBadgeBackgroundColor({ tabId: id }), tabId);
+  try {
+    groupId = (await send('proxyStateOperation', { kind: 'createGroup', name: 'Toolbar staging' })).state.profiles.at(-1).id;
+    for (const actions of [[{ type: 'setRequestHeaders', headers: { 'X-Toolbar-Group': 'yes' } }], [{ type: 'mockResponse', status: 200, headers: {}, body: 'toolbar mock' }]]) {
+      const result = await send('saveProxyRule', { groupId, rule: { name: 'Toolbar grouped rule', enabled: true, match: { initiatorOrigins: [origin], urlPattern: origin + '/api/users/1' }, actions } });
+      expect(result.success).toBe(true); ids.push(result.rule.id);
+    }
+    await popup.goto(`chrome-extension://${extensionId}/src/popup/index.html?tabId=${tabId}`);
+    await popup.setViewportSize({ width: 360, height: 800 });
+    await expect.poll(badge).toBe('1');
+    await expect(popup.getByText('Rules waiting for a tab session: 1', { exact: true })).toBeVisible();
+    const groups = popup.getByRole('region', { name: 'Rule groups', exact: true });
+    expect((await groups.boundingBox())!.y).toBeLessThan((await popup.getByRole('heading', { name: 'Temporary changes', exact: true }).boundingBox())!.y);
+    await popup.getByRole('switch', { name: 'Enable group Toolbar staging', exact: true }).click();
+    await expect.poll(badge).toBe('OFF');
+    await expect.poll(color).toEqual([100, 116, 139, 255]);
+    await expect.poll(title).toContain('• Toolbar staging');
+    await expect(popup.getByText('Saved rules paused', { exact: true })).toBeVisible();
+    await expect(popup.getByText('0 persistent rules stay on after stopping', { exact: true })).toBeVisible();
+    await expect(popup.getByText('Rules waiting for a tab session: 1', { exact: true })).toHaveCount(0);
+    await popup.screenshot({ path: 'test-results/toolbar-groups-paused.png', fullPage: true });
+    await popup.getByRole('switch', { name: 'Enable group Toolbar staging', exact: true }).click();
+    await expect.poll(badge).toBe('1');
+    await expect(popup.getByText('1 persistent rules stay on after stopping', { exact: true })).toBeVisible();
+    // A persisted session error must be visible when the popup is opened, with a working retry.
+    await worker.evaluate(() => {
+      const native = chrome.debugger.attach.bind(chrome.debugger);
+      chrome.debugger.attach = (async (..._args: any[]) => {
+        chrome.debugger.attach = native;
+        throw new Error('Connection fixture failure');
+      }) as typeof chrome.debugger.attach;
+    });
+    await popup.getByRole('button', { name: 'Start tab session', exact: true }).click();
+    await expect.poll(badge).toBe('!');
+    await popup.reload();
+    await expect(popup.getByRole('alert')).toContainText('Connection fixture failure');
+    await expect(popup.getByRole('button', { name: 'Retry connection', exact: true })).toBeVisible();
+    await popup.getByRole('button', { name: 'Retry connection', exact: true }).click();
+    await expect.poll(badge).toBe('ON');
+    await expect(popup.getByRole('alert')).toHaveCount(0);
+    await popup.getByRole('switch', { name: 'Enable group Toolbar staging', exact: true }).click();
+    await expect.poll(badge).toBe('ON');
+    await expect.poll(title).toContain('Paused groups: 1');
+    await popup.getByRole('switch', { name: 'Disable cache', exact: true }).click();
+    await expect.poll(title).toContain('• Disable cache');
+    await popup.getByRole('button', { name: 'Stop tab session', exact: true }).click();
+    await expect.poll(badge).toBe('OFF');
+    await expect(popup.getByText('Saved rules paused', { exact: true })).toBeVisible();
+    await popup.getByRole('switch', { name: 'Enable group Toolbar staging', exact: true }).click();
+    await expect.poll(badge).toBe('1');
+    // Cancel stays usable while the original attach is waiting.
+    await worker.evaluate(() => {
+      const native = chrome.debugger.attach.bind(chrome.debugger);
+      (self as any).__toolbarCancelGate = {};
+      chrome.debugger.attach = (async (...args: any[]) => {
+        chrome.debugger.attach = native;
+        await new Promise<void>((resolve) => { (self as any).__toolbarCancelGate.release = resolve; });
+        return (native as any)(...args);
+      }) as typeof chrome.debugger.attach;
+    });
+    await popup.getByRole('button', { name: 'Start tab session', exact: true }).click();
+    await expect(popup.getByRole('button', { name: 'Cancel connection', exact: true })).toBeEnabled();
+    await expect.poll(() => worker.evaluate(() => typeof (self as any).__toolbarCancelGate.release)).toBe('function');
+    await popup.getByRole('button', { name: 'Cancel connection', exact: true }).click();
+    await worker.evaluate(() => { (self as any).__toolbarCancelGate.release(); });
+    await expect.poll(badge).toBe('1');
+    await expect(popup.getByRole('button', { name: 'Start tab session', exact: true })).toBeEnabled();
+    expect((await send('getAdvancedProxyStatus', { tabId })).phase).toBe('disabled');
+    await expect(popup.getByRole('alert')).toHaveCount(0);
+  } finally {
+    await worker.evaluate(() => { (self as any).__toolbarCancelGate?.release?.(); });
+    await send('disableAdvancedProxy', { tabId });
+    for (const id of ids) await send('deleteProxyRule', { id });
+    if (groupId) await send('proxyStateOperation', { kind: 'removeGroup', id: groupId });
+    await popup.close(); await target.close();
   }
 });

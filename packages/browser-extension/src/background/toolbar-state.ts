@@ -4,12 +4,13 @@ import { toolbarMessages } from '@/common/toolbar-messages';
 import type { Locale } from '@/common/locale';
 import { TEMPORARY_CORS_RULE_ID_BASE } from '@/common/session-dnr';
 import { BRAND_PATHS, BRAND_VIEWBOX } from '@/common/brand-geometry';
+import type { TabRuleSummary } from '@/common/tab-rule-summary';
 
 export const TOOLBAR_COLORS = { idle: '#64748b', rules: '#2563eb', connected: '#15803d', connecting: '#b45309', error: '#dc2626' } as const;
 export type ToolbarState = keyof typeof TOOLBAR_COLORS;
 export interface ToolbarPresentation { state: ToolbarState; badge: string; title: string }
 
-export function toolbarPresentation(url: string | undefined, status: IAdvancedProxyStatus, persistentCount: number, locale: Locale): ToolbarPresentation {
+export function toolbarPresentation(url: string | undefined, status: IAdvancedProxyStatus, persistentCount: number, locale: Locale, summary?: TabRuleSummary): ToolbarPresentation {
   const text = (key: keyof typeof toolbarMessages) => toolbarMessages[key][locale];
   let origin: string;
   try {
@@ -21,11 +22,12 @@ export function toolbarPresentation(url: string | undefined, status: IAdvancedPr
   const phase = status.origin && status.origin !== origin ? 'disabled' : status.phase;
   const state: ToolbarState = phase === 'error' ? 'error' : phase === 'connecting' ? 'connecting'
     : phase === 'connected' ? 'connected' : persistentCount > 0 ? 'rules' : 'idle';
-  const heading = text(state === 'error' ? 'Tab session error' : state === 'connecting' ? 'Connecting…'
+  const allPaused = state === 'idle' && !!summary?.pausedRules && !summary.sessionRules;
+  const heading = text(state === 'error' ? 'Tab session error' : state === 'connecting' ? 'Connecting…' : allPaused ? 'Saved rules paused'
     : state === 'connected' ? 'Tab session active' : 'Tab session stopped');
   const count = text('{count} persistent rules enabled').replace('{count}', String(persistentCount));
   const badge = state === 'rules' ? (persistentCount > 99 ? '99+' : String(persistentCount))
-    : state === 'connected' ? 'ON' : state === 'connecting' ? '…' : state === 'error' ? '!' : '';
+    : state === 'connected' ? 'ON' : state === 'connecting' ? '…' : state === 'error' ? '!' : allPaused ? 'OFF' : '';
   const details: string[] = [];
   // Report applied controls only; pending, failed and previous-origin sessions are inactive.
   if (phase === 'connected') {
@@ -41,7 +43,16 @@ export function toolbarPresentation(url: string | undefined, status: IAdvancedPr
     if (controls?.failure) active.push(text('Simulate failure'));
     if (active.length) details.push(text('This tab · temporary'), ...active.map((label) => `• ${label}`));
   }
-  return { state, badge, title: ['Wireflip', heading, ...details, count].join('\n') };
+  if (summary) {
+    if (phase !== 'connected' && summary.sessionRules) details.push(text('Rules waiting for a tab session: {count}').replace('{count}', String(summary.sessionRules)));
+    if (summary.pausedGroups.length) {
+      details.push(text('Paused groups: {count}').replace('{count}', String(summary.pausedGroups.length)));
+      // User names must not create extra tooltip lines; keep the native hover card compact.
+      details.push(...summary.pausedGroups.slice(0, 3).map((name) => `• ${name.replace(/[\r\n\t]/g, ' ').slice(0, 60)}`));
+    }
+    if (phase === 'error' && status.error) details.push(status.error.replace(/[\r\n\t]/g, ' ').slice(0, 180));
+  }
+  return { state, badge, title: ['Wireflip', heading, ...details, count, ...(summary ? [text('Click for session controls and group switches')] : [])].join('\n') };
 }
 
 export function countTabBrowserRules(rules: browser.DeclarativeNetRequest.Rule[], tabId: number): number {
