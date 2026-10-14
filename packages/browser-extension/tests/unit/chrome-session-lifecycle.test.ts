@@ -5,7 +5,7 @@ import { EMPTY_QUICK_CONTROLS } from '../../src/common/quick-controls';
 
 vi.mock('../../src/common/proxy-state', async (importOriginal) => ({
   ...await importOriginal<typeof import('../../src/common/proxy-state')>(),
-  ensureProxyAppState: vi.fn(async () => ({ rules: [], settings: { requestLogLimit: 500 } })),
+  ensureProxyAppState: vi.fn(async () => ({ rules: [], profiles: [], settings: { requestLogLimit: 500 } })),
 }));
 let storageChanged: (changes: any, area: string) => void;
 let tabUpdated: (tabId: number, changes: browser.Tabs.OnUpdatedChangeInfoType) => void;
@@ -227,4 +227,27 @@ it('stops interception when stored configuration becomes invalid', async () => {
   expect(debuggerApi.detach).toHaveBeenCalledWith({ tabId: 9 });
   await Promise.resolve(); await Promise.resolve();
   expect(engine.getAdvancedProxyStatus(9).phase).toBe('disabled');
+});
+
+
+it('pauses and resumes group header actions in an already connected Chrome tab', async () => {
+  const state = migrateLegacyState([], {});
+  state.rules = [{ id: 'group-header', name: 'Header', enabled: true, source: 'user', createdAt: 1, updatedAt: 1,
+    match: { initiatorOrigins: ['https://example.com'], urlPattern: '*' },
+    actions: [{ type: 'setRequestHeaders', headers: { 'X-Group': 'yes' } }] }];
+  state.profiles = [{ id: 'group', name: 'Staging', enabled: true, ruleIds: ['group-header'] }];
+  vi.mocked(ensureProxyAppState).mockResolvedValueOnce(state);
+  await engine.enableAdvancedProxy(9);
+  const request = (requestId: string) => event({ tabId: 9 }, 'Fetch.requestPaused', { requestId, resourceType: 'Fetch',
+    request: { url: 'https://example.com/api', method: 'GET', headers: {} } });
+  await request('on');
+  expect(debuggerApi.sendCommand).toHaveBeenLastCalledWith({ tabId: 9 }, 'Fetch.continueRequest', expect.objectContaining({ headers: [{ name: 'X-Group', value: 'yes' }] }));
+  state.profiles[0].enabled = false;
+  storageChanged({ proxyAppState: { newValue: state } }, 'local');
+  await request('off');
+  expect(debuggerApi.sendCommand).toHaveBeenLastCalledWith({ tabId: 9 }, 'Fetch.continueRequest', { requestId: 'off' });
+  state.profiles[0].enabled = true;
+  storageChanged({ proxyAppState: { newValue: state } }, 'local');
+  await request('resumed');
+  expect(debuggerApi.sendCommand).toHaveBeenLastCalledWith({ tabId: 9 }, 'Fetch.continueRequest', expect.objectContaining({ headers: [{ name: 'X-Group', value: 'yes' }] }));
 });

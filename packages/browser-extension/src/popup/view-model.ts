@@ -2,7 +2,7 @@ import browser from 'webextension-polyfill';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { isSupportedProtocol } from '@/common/utils';
 import { inspectorPathForTab, parseInspectorTabId } from '@/common/inspector-target';
-import { APP_STATE_KEY, type IProxyRule } from '@/common/proxy-state';
+import { APP_STATE_KEY, type IProxyProfile, type IProxyRule } from '@/common/proxy-state';
 import { EMPTY_QUICK_CONTROLS, PINNED_RULES_KEY, type QuickControls } from '@/common/quick-controls';
 import { ruleAppliesToOrigin } from '@/common/rule-explanation';
 import type { IAdvancedProxyStatus } from '@/background/advanced-proxy';
@@ -10,6 +10,7 @@ import type { IAdvancedProxyStatus } from '@/background/advanced-proxy';
 export function useViewModel() {
   const [origin, setOrigin] = useState('');
   const [rules, setRules] = useState<IProxyRule[]>([]);
+  const [profiles, setProfiles] = useState<IProxyProfile[]>([]);
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
   const [status, setStatus] = useState<IAdvancedProxyStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -34,6 +35,7 @@ export function useViewModel() {
     setOrigin(url && isSupportedProtocol(url.protocol) ? url.origin : '');
     if (!state?.rules) throw new Error(state?.error || 'Failed to load rule data');
     setRules(state.rules);
+    setProfiles(state.profiles || []);
     setStatus(nextStatus);
     setPinnedIds(Array.isArray(pins[PINNED_RULES_KEY]) ? pins[PINNED_RULES_KEY].filter((id: unknown) => typeof id === 'string') : []);
     setReady(true);
@@ -105,6 +107,10 @@ export function useViewModel() {
     const result = await browser.runtime.sendMessage({ type: 'saveProxyRule', payload: { rule: { id: rule.id, enabled } } });
     if (!result?.success) throw new Error(result?.error || 'Failed to update rule');
   });
+  const toggleGroup = (profile: IProxyProfile, enabled: boolean) => run(async () => {
+    const response = await browser.runtime.sendMessage({ type: 'proxyStateOperation', payload: { kind: 'updateGroup', id: profile.id, enabled } });
+    if (!response?.state) throw new Error(response?.error || 'Unable to update rules.');
+  });
   const pinRule = (id: string, pinned: boolean) => run(async () => {
     const next = pinned ? [...new Set([...pinnedIds, id])] : pinnedIds.filter((value) => value !== id);
     await browser.storage.local.set({ [PINNED_RULES_KEY]: next });
@@ -123,7 +129,7 @@ export function useViewModel() {
 
   const siteRules = rules.filter((rule) => ruleAppliesToOrigin(rule, origin));
   return {
-    origin, ready, busy, error, connected, quickControls, status,
+    origin, ready, busy, error, connected, quickControls, status, profiles, toggleGroup,
     isSupported: ready && !!origin,
     siteRules,
     pinnedRules: siteRules.filter((rule) => pinnedIds.includes(rule.id)),

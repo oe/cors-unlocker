@@ -7,6 +7,7 @@ import { mergeHeaderMaps } from '@/common/validation';
 import {
   APP_STATE_KEY,
   ensureProxyAppState,
+  effectiveRules,
   isProxyAppState,
   type IProxyAction,
   type IProxyRule,
@@ -461,7 +462,7 @@ async function startCapture(tabId: number, session: IAdvancedProxySession): Prom
 
 async function refreshRuleCache() {
   const state = await ensureProxyAppState();
-  cachedRules = state.rules;
+  cachedRules = effectiveRules(state);
   requestLogLimit = state.settings.requestLogLimit;
 }
 
@@ -518,7 +519,7 @@ if (__TARGET__ === 'chrome') {
       for (const tabId of new Set([...sessions.keys(), ...pendingConnections.keys()])) void disableAdvancedProxy(tabId);
       return;
     }
-    cachedRules = value.rules;
+    cachedRules = effectiveRules(value);
     requestLogLimit = value.settings.requestLogLimit;
     for (const [tabId, session] of sessions) {
       if (!session.captureEnabled && requiresCapture(session)) {

@@ -1,4 +1,4 @@
-import { isProxyAppState, migrateLegacyState, type IProxyAppState } from './proxy-state';
+import { isProxyAppState, mergeProxyState, migrateLegacyState, type IProxyAppState } from './proxy-state';
 import type { IRuleItem } from '../types';
 
 /** Parse without touching storage. Legacy backups are converted once into v2. */
@@ -28,4 +28,9 @@ export function previewImport(current: IProxyAppState, incoming: IProxyAppState,
     removed: merge ? 0 : current.rules.filter((rule) => !incomingIds.has(rule.id)).length,
     total: merge ? new Set([...ids, ...incomingIds]).size : incoming.rules.length,
   };
+}
+
+export function previewGroupImport(current: IProxyAppState, incoming: IProxyAppState, merge: boolean) {
+  const result = merge ? mergeProxyState(current, incoming) : incoming;
+  return { groups: result.profiles.length, paused: result.profiles.filter((profile) => !profile.enabled).length };
 }

@@ -409,6 +409,7 @@ test('edits structured actions, protects drafts and previews imports', async () 
   const before = await control.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState);
   const incoming = structuredClone(before);
   incoming.rules = [{ ...incoming.rules[0], id: 'import-preview-qa', source: 'user', legacyRuleId: undefined, name: 'Imported QA', enabled: false }];
+  incoming.profiles = []; // The synthetic backup contains one ungrouped rule, not the original memberships.
   await control.locator('#import-state').setInputFiles({ name: 'backup.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ version: '2.0', state: incoming })) });
   await expect(control.getByRole('region', { name: 'Import preview' })).toContainText('1 added');
   expect(await control.evaluate(async () => (await chrome.storage.local.get('proxyAppState')).proxyAppState)).toEqual(before);
@@ -1288,5 +1289,117 @@ test('preserves simultaneous background writes and recovers damaged data through
     expect(await control.evaluate(async () => (await chrome.storage.local.get('preRecoveryBackup')).preRecoveryBackup.state)).toEqual(damaged);
   } finally {
     await control.evaluate((state) => chrome.storage.local.set({ proxyAppState: state }), original);
+  }
+});
+
+test('manages familiar rule groups and applies their switches to browser traffic', async () => {
+  const target = await context.newPage();
+  const popup = await context.newPage();
+  const ids: string[] = [];
+  let groupId: string | undefined;
+  const errors: string[] = [];
+  const onError = (error: Error) => errors.push(error.message);
+  control.on('pageerror', onError);
+  const origin = 'http://groups.localhost:3000';
+  await target.goto(origin + '/');
+  const tabId = await getTabId(origin + '/');
+  const send = (type: string, payload: any) => control.evaluate(({ type, payload }) => chrome.runtime.sendMessage({ type, payload }), { type, payload });
+  const headers = () => target.evaluate(async () => (await (await fetch('/api/headers-echo')).json()).data.headers);
+  const mockBody = () => target.evaluate(async () => (await fetch('/api/users/1')).text());
+  try {
+    await control.goto(`chrome-extension://${extensionId}/src/options/index.html`);
+    await control.getByRole('button', { name: 'New group', exact: true }).click();
+    await control.getByLabel('Group name', { exact: true }).fill('Staging');
+    await control.getByRole('button', { name: 'Create group', exact: true }).click();
+    await expect(control.getByRole('switch', { name: 'Enable group Staging', exact: true })).toBeChecked();
+    groupId = (await send('getProxyState', undefined)).profiles.find((profile: any) => profile.name === 'Staging').id;
+    const save = async (name: string, actions: any[], enabled = true, group = groupId, pattern = '*') => {
+      const result = await send('saveProxyRule', { groupId: group || null, rule: { name, enabled, source: 'user', match: { initiatorOrigins: [origin], urlPattern: pattern }, actions } });
+      expect(result.success, result.error).toBe(true); ids.push(result.rule.id); return result.rule.id;
+    };
+    const headerId = await save('Staging header', [{ type: 'setRequestHeaders', headers: { 'X-Group': 'staging' } }]);
+    await save('Kept off', [{ type: 'setRequestHeaders', headers: { 'X-Group-Off': 'unexpected' } }], false);
+    await save('Staging mock', [{ type: 'mockResponse', status: 200, headers: {}, body: 'group-body' }], true, groupId, origin + '/api/users/1');
+    await save('Independent header', [{ type: 'setRequestHeaders', headers: { 'X-Independent': 'yes' } }], true, '', '*');
+    await expect(control.getByRole('button', { name: 'Edit Staging header', exact: true })).toBeVisible();
+    expect((await headers())['x-group']).toBe('staging');
+    expect((await headers())['x-group-off']).toBeUndefined();
+    // Turning a group on does not start interception.
+    expect((await send('getAdvancedProxyStatus', { tabId })).phase).toBe('disabled');
+    expect(await mockBody()).not.toBe('group-body');
+    await send('enableAdvancedProxy', { tabId });
+    expect(await mockBody()).toBe('group-body');
+    await popup.goto(`chrome-extension://${extensionId}/src/popup/index.html?tabId=${tabId}`);
+    await popup.getByRole('switch', { name: 'Enable group Staging', exact: true }).click();
+    await expect(control.getByRole('switch', { name: 'Enable group Staging', exact: true })).not.toBeChecked();
+    await expect(control.getByRole('switch', { name: 'Toggle Staging header', exact: true })).toBeDisabled();
+    const paused = await headers();
+    expect(paused['x-group']).toBeUndefined(); expect(paused['x-independent']).toBe('yes');
+    expect(await mockBody()).not.toBe('group-body');
+    expect((await send('getProxyState', undefined)).rules.find((rule: any) => rule.id === headerId).enabled).toBe(true);
+    await popup.getByRole('switch', { name: 'Enable group Staging', exact: true }).click();
+    expect((await headers())['x-group']).toBe('staging'); expect((await headers())['x-group-off']).toBeUndefined();
+    expect(await mockBody()).toBe('group-body');
+    // Collapsed groups do not conceal search results or break keyboard navigation.
+    const group = control.getByRole('region', { name: 'Staging', exact: true });
+    await group.locator('button[aria-expanded]').click();
+    await expect(control.getByRole('button', { name: 'Edit Staging header', exact: true })).toBeHidden();
+    await control.getByRole('textbox', { name: 'Search rules', exact: true }).fill('Staging header');
+    await control.getByRole('button', { name: 'Edit Staging header', exact: true }).click();
+    await expect(control.getByLabel('Group', { exact: true })).toHaveValue(groupId!);
+    await control.getByRole('textbox', { name: 'Search rules', exact: true }).fill('');
+    await group.locator('button[aria-expanded]').click();
+    await control.getByRole('button', { name: 'Rename group Staging', exact: true }).click();
+    await control.getByLabel('Group name', { exact: true }).fill('Preview');
+    await control.getByRole('button', { name: 'Save name', exact: true }).click();
+    await expect(control.getByRole('switch', { name: 'Enable group Preview', exact: true })).toBeVisible();
+    await control.screenshot({ path: '/tmp/wireflip-groups-desktop.png', fullPage: false });
+    await control.setViewportSize({ width: 390, height: 844 });
+    await control.getByRole('button', { name: 'Back to rules', exact: true }).click();
+    await expect(control.getByRole('button', { name: 'Rename group Preview', exact: true })).toBeVisible();
+    await control.screenshot({ path: '/tmp/wireflip-groups-mobile.png', fullPage: false });
+    expect(await control.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await control.setViewportSize({ width: 1280, height: 720 });
+    await control.getByRole('switch', { name: 'Enable group Preview', exact: true }).click();
+    await control.getByRole('button', { name: 'Delete group Preview', exact: true }).click();
+    await expect(control.getByRole('dialog')).toContainText('Enabled rules in a paused group will resume');
+    await control.getByRole('button', { name: 'Delete group', exact: true }).click();
+    await expect(control.getByRole('switch', { name: 'Enable group Preview', exact: true })).toHaveCount(0);
+    expect((await headers())['x-group']).toBe('staging');
+    expect((await headers())['x-group-off']).toBeUndefined();
+    expect((await send('getProxyState', undefined)).rules.filter((rule: any) => ids.includes(rule.id))).toHaveLength(4);
+    expect(errors).toEqual([]);
+  } finally {
+    control.off('pageerror', onError);
+    await control.setViewportSize({ width: 1280, height: 720 });
+    await send('disableAdvancedProxy', { tabId });
+    for (const id of ids) await send('deleteProxyRule', { id });
+    if (groupId && (await send('getProxyState', undefined)).profiles.some((profile: any) => profile.id === groupId)) await send('proxyStateOperation', { kind: 'removeGroup', id: groupId });
+    await popup.close(); await target.close();
+  }
+});
+
+test('saves and moves a grouped rule without losing membership on subsequent edits', async () => {
+  const send = (type: string, payload: any) => control.evaluate(({ type, payload }) => chrome.runtime.sendMessage({ type, payload }), { type, payload });
+  const profile = (await send('proxyStateOperation', { kind: 'createGroup', name: 'Editor group' })).state.profiles.at(-1);
+  let id: string | undefined;
+  try {
+    await control.goto(`chrome-extension://${extensionId}/src/options/index.html`);
+    await control.getByRole('button', { name: 'Create rule in Editor group', exact: true }).click();
+    await control.getByLabel('Name', { exact: true }).fill('Grouped editor rule');
+    await control.getByLabel('Page origins', { exact: true }).fill('https://group.example');
+    await control.getByLabel('Request URL pattern', { exact: true }).fill('*');
+    await control.getByRole('button', { name: 'Save rule', exact: true }).click();
+    await expect(control.getByLabel('Group', { exact: true })).toHaveValue(profile.id);
+    id = (await send('getProxyState', undefined)).rules.find((rule: any) => rule.name === 'Grouped editor rule').id;
+    await control.getByLabel('Name', { exact: true }).fill('Edited twice');
+    await control.getByRole('button', { name: 'Save rule', exact: true }).click();
+    expect((await send('getProxyState', undefined)).profiles.find((item: any) => item.id === profile.id).ruleIds).toContain(id);
+    await control.getByLabel('Group', { exact: true }).selectOption('');
+    await control.getByRole('button', { name: 'Save rule', exact: true }).click();
+    expect((await send('getProxyState', undefined)).profiles.find((item: any) => item.id === profile.id).ruleIds).not.toContain(id);
+  } finally {
+    if (id) await send('deleteProxyRule', { id });
+    await send('proxyStateOperation', { kind: 'removeGroup', id: profile.id });
   }
 });

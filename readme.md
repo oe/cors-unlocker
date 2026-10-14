@@ -23,6 +23,14 @@ See the [migration guide](packages/website/src/pages/migration.mdx) for the API 
 - **Local-only operation** — rules and logs stay in the extension; logs are held in memory and cleared when the service worker stops.
 - **Safe v1 upgrade** — the first 2.0 startup migrates `allowedOrigins` and `extConfig` into the v2 schema and stores a recovery snapshot. After migration, v2 storage is the only source of truth.
 
+## Rule groups
+
+Organize rules by scenario, such as Local development or Staging. In the workspace, choose **New group**, add rules with the group's **+** button, or change a rule's **Group** in the editor. Groups can be renamed and collapsed; searching reveals matching rules even inside collapsed groups.
+
+Turning a group off pauses all its saved rules while remembering each individual switch. Turning it back on restores only the rules that were already on. Popup and Inspector show groups relevant to the current site, with **Group paused** beside paused rules. Group switches affect matching saved rules across tabs; they never start a proxy session. Mocks, delays and other session actions still require an explicitly connected tab.
+
+Deleting a group moves its rules to **Ungrouped**, retaining individual switches. Enabled rules in a paused group resume, as the deletion dialog explains. No rules are deleted. Grouping does not change execution priority or request matching. Export/import includes group membership and paused states; merge retains current settings and merges groups by ID, including imported group switches.
+
 ## Popup debugging controls
 
 The popup is a developer control surface for the current tab, with an Inspector entry point,

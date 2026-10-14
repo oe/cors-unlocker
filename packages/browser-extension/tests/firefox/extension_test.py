@@ -122,8 +122,8 @@ class FirefoxTests(unittest.TestCase):
         return cls.async_js(source, *args)
 
     @classmethod
-    def message(cls, kind, **payload):
-        return cls.extension_js('return browser.runtime.sendMessage(arguments[0]);', {'type': kind, 'payload': payload})
+    def message(cls, message_type, **payload):
+        return cls.extension_js('return browser.runtime.sendMessage(arguments[0]);', {'type': message_type, 'payload': payload})
 
     @classmethod
     def fetch(cls, path, handle=None, **options):
@@ -234,6 +234,85 @@ class FirefoxTests(unittest.TestCase):
 
     def toolbar(self):
         return self.extension_js('return {title:await browser.action.getTitle({tabId:arguments[0]}),badge:await browser.action.getBadgeText({tabId:arguments[0]}),color:await browser.action.getBadgeBackgroundColor({tabId:arguments[0]})};', self.tab_id)
+
+    def test_workspace_group_editor_and_narrow_layout(self):
+        self.switch(self.control)
+        self.navigate(EXTENSION + '/src/options/index.html')
+        self.wait(lambda: self.js('return !!Array.from(document.querySelectorAll("button")).find(b=>b.textContent.trim()==="New group");'))
+        self.js('Array.from(document.querySelectorAll("button")).find(b=>b.textContent.trim()==="New group").click();')
+        def fill(selector, text):
+            element = self.command('POST', '/element', {'using': 'css selector', 'value': selector})
+            element_id = next(iter(element.values()))
+            self.command('POST', f'/element/{element_id}/clear', {})
+            self.command('POST', f'/element/{element_id}/value', {'text': text})
+        fill('#group-name', 'UI scenario')
+        self.js('Array.from(document.querySelectorAll("button")).find(b=>b.textContent.trim()==="Create group").click();')
+        self.wait(lambda: self.js('return !!document.querySelector(\'[aria-label="Create rule in UI scenario"]\');'))
+        self.js('document.querySelector(\'[aria-label="Create rule in UI scenario"]\').click();')
+        fill('#rule-name', 'Group editor example')
+        fill('#rule-origins', self.origin)
+        fill('#rule-pattern', '*')
+        self.js('Array.from(document.querySelectorAll("button")).find(b=>b.textContent.trim()==="Save rule").click();')
+        self.wait(lambda: self.message('getProxyState')['rules'], lambda rules: any(rule['name'] == 'Group editor example' for rule in rules))
+        state = self.message('getProxyState')
+        profile = next(group for group in state['profiles'] if group['name'] == 'UI scenario')
+        rule = next(rule for rule in state['rules'] if rule['name'] == 'Group editor example')
+        self.switch(self.control)
+        self.assertEqual(self.js('return document.querySelector("#rule-group").value;'), profile['id'])
+        fill('#rule-name', 'Edited again')
+        self.js('Array.from(document.querySelectorAll("button")).find(b=>b.textContent.trim()==="Save rule").click();')
+        self.wait(lambda: self.message('getProxyState')['rules'], lambda rules: any(item['name'] == 'Edited again' for item in rules))
+        state = self.message('getProxyState')
+        self.assertIn(rule['id'], next(group for group in state['profiles'] if group['id'] == profile['id'])['ruleIds'])
+        self.switch(self.control)
+        # Close the native browser sidebar (which may belong to a built-in panel).
+        # sidebarAction.close() only closes our own panel and cannot ensure the viewport.
+        self.command('POST', '/moz/context', {'context': 'chrome'})
+        try:
+            self.js('SidebarController.hide();')
+        finally:
+            self.command('POST', '/moz/context', {'context': 'content'})
+        self.command('POST', '/window/rect', {'width': 1280, 'height': 800})
+        self.wait(lambda: self.js('return innerWidth;'), lambda width: width >= 1200)
+        (ARTIFACTS / 'groups-desktop.png').write_bytes(base64.b64decode(self.command('GET', '/screenshot')))
+        # Firefox's native window minimum is 500px; Chrome separately covers a 390px viewport.
+        self.command('POST', '/window/rect', {'width': 500, 'height': 844})
+        self.wait(lambda: self.js('return innerWidth;'), lambda width: 450 <= width <= 550)
+        (ARTIFACTS / 'groups-viewport.json').write_text(json.dumps(self.js('return {width:innerWidth,height:innerHeight,outerWidth,dpr:devicePixelRatio};')))
+        self.js('document.querySelector(\'[aria-label="Back to rules"]\').click();')
+        self.wait(lambda: self.js('return !!document.querySelector(\'[aria-label="Rename group UI scenario"]\');'))
+        self.assertTrue(self.js('return document.documentElement.scrollWidth<=innerWidth;'))
+        (ARTIFACTS / 'groups-narrow.png').write_bytes(base64.b64decode(self.command('GET', '/screenshot')))
+        self.command('POST', '/window/rect', {'width': 1280, 'height': 800})
+        self.message('proxyStateOperation', kind='removeGroup', id=profile['id'])
+
+    def test_group_switch_pauses_persistent_headers_and_connected_body_replacement(self):
+        group = self.message('proxyStateOperation', kind='createGroup', name='Firefox staging')['state']['profiles'][-1]
+        header = self.save([{'type': 'setRequestHeaders', 'headers': {'X-Group': 'on'}}], '/echo')
+        mock = self.save([{'type': 'mockResponse', 'status': 200, 'headers': {}, 'body': 'group-body'}], '/mock')
+        for rule in [header, mock]:
+            self.assertTrue(self.message('saveProxyRule', rule={'id': rule['id']}, groupId=group['id'])['success'])
+        disabled = self.save([{'type': 'setRequestHeaders', 'headers': {'X-Group-Off': 'unexpected'}}], '/echo')
+        self.assertTrue(self.message('saveProxyRule', rule={'id': disabled['id'], 'enabled': False}, groupId=group['id'])['success'])
+        self.assertEqual(self.message('getAdvancedProxyStatus', tabId=self.tab_id)['phase'], 'disabled')
+        self.assertEqual(json.loads(self.fetch('/echo')['body'])['headers'].get('X-Group'), 'on')
+        self.start()
+        self.assertEqual(self.fetch('/mock')['body'], 'group-body')
+        self.switch(self.control)
+        self.wait(lambda: self.js('return !!document.querySelector(\'[role="switch"][aria-label="Enable group Firefox staging"]\');'))
+        self.js('document.querySelector(\'[role="switch"][aria-label="Enable group Firefox staging"]\').click();')
+        self.wait(lambda: self.message('getProxyState')['profiles'][-1]['enabled'], lambda value: value is False)
+        self.assertNotIn('X-Group', json.loads(self.fetch('/echo')['body'])['headers'])
+        self.assertNotEqual(self.fetch('/mock')['body'], 'group-body')
+        state = self.message('getProxyState')
+        self.assertTrue(next(rule for rule in state['rules'] if rule['id'] == header['id'])['enabled'])
+        self.assertFalse(next(rule for rule in state['rules'] if rule['id'] == disabled['id'])['enabled'])
+        self.message('proxyStateOperation', kind='updateGroup', id=group['id'], enabled=True)
+        self.assertEqual(json.loads(self.fetch('/echo')['body'])['headers'].get('X-Group'), 'on')
+        self.assertNotIn('X-Group-Off', json.loads(self.fetch('/echo')['body'])['headers'])
+        self.assertEqual(self.fetch('/mock')['body'], 'group-body')
+        self.message('proxyStateOperation', kind='removeGroup', id=group['id'])
+        self.assertEqual(len(self.message('getProxyState')['rules']), 3)
 
     def test_persistent_headers_redirect_block_and_origin_scope(self):
         self.save([{'type': 'setRequestHeaders', 'headers': {'X-Wireflip-Test': 'native-firefox'}}, {'type': 'setResponseHeaders', 'headers': {'X-Wireflip-Response': 'patched'}}], '/echo')
