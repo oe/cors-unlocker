@@ -1,0 +1,74 @@
+---
+layout: ../components/doc-layout.astro
+title: Migrating from CORS Unlocker
+description: Keep your existing CORS Unlocker integration working and upgrade to the Wireflip SDK when you are ready.
+---
+
+# Migrating from CORS Unlocker
+
+CORS Unlocker is now Wireflip. Existing integrations using `cors-unlocker@0.1.0` are retained; changing the product name does not require you to immediately rewrite your application.
+
+## What stays available
+
+- The old hostname `cors.forth.ink` is retained. Public documentation pages move to `wireflip.forth.ink`, with redirects preserving paths and query parameters.
+- The hosted `/message/` bridge stays on `cors.forth.ink` for the published SDK. Keep that address in existing integrations; replacing it with the new hostname is not an SDK upgrade.
+- The extension keeps its existing IDs. Updating the extension converts existing CORS settings automatically; reinstalling it or clearing settings is unnecessary.
+
+No removal date for the old SDK bridge has been announced. Migration is optional. This describes the compatibility policy; domain migration is complete only after DNS, HTTPS and the old-origin bridge deployment have been verified.
+
+## When to upgrade
+
+Use the new SDK for a packaged local bridge, browser capability detection and disabled rule drafts. It communicates directly with the installed extension rather than loading a hosted iframe.
+
+**Release status:** the `wireflip` npm package is not yet published. Keep using `cors-unlocker@0.1.0` until the new SDK and a compatible Wireflip extension are publicly available. The following steps apply after release.
+
+## Upgrade your application
+
+1. Update the browser extension to Wireflip 2.0 using the same store listing. Check that it is enabled.
+2. Replace the npm dependency:
+
+```bash
+npm uninstall cors-unlocker
+npm install wireflip
+```
+
+3. Replace hosted-bridge initialization with a local session:
+
+```ts
+import { intercept } from 'wireflip';
+
+if (await intercept.isAvailable()) {
+  const session = await intercept.connect();
+  const status = await session.getStatus();
+  console.log(status.cors);
+
+  // Call from an explicit user action, such as an Enable CORS button
+  await session.requestCors({
+    credentials: false,
+    reason: 'Preview staging API data',
+  });
+}
+```
+
+4. Update calls using this mapping:
+
+| Old API | New API |
+|---|---|
+| `isExtInstalled()` | `intercept.isAvailable()` |
+| `isEnabled()` | `(await session.getStatus()).cors` |
+| `enable(options)` | `(await session.requestCors(options)).cors` |
+| `disable()` | `session.disableCors()` |
+| `openExtOptions()` | `session.openWorkspace()` |
+| `openStorePage()` | `intercept.openStorePage()` |
+
+The old function names are also exported by `wireflip` to ease adoption, but use its new local bridge. They do not load the old hosted iframe.
+
+## Behavior changes to check
+
+CORS requests through the new SDK require user confirmation and affect only the application's actual page origin. Handle rejection or an unavailable extension in your UI; do not enable CORS silently during page load. SDK calls do not start a tab interception session. Rule drafts are disabled until the user reviews and enables them.
+
+Test both CORS enabled and disabled, user cancellation, an unavailable extension, and any credentialed requests. Read [the SDK documentation](/docs/#sdk) for capability differences between Chrome and Firefox.
+
+## Staying on the old SDK
+
+Keep the existing package and hosted-bridge address. Do not redirect the iframe to another origin or change its extension ID. No application changes are required solely for the rename. If the bridge cannot load, report it through [GitHub issues](https://github.com/oe/cors-unlocker/issues) with the browser and extension version, without including credentials or private request data.

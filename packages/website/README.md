@@ -20,6 +20,7 @@ Routes:
 - `/playground/` — live origin-scoped SDK bridge test
 - `/faq/` — product, migration, and browser-disclosure answers
 - `/privacy/` — permissions, local data, and SDK trust boundary
+- `/migration/` — user-facing domain and SDK migration guide
 - `/message/` — legacy hidden bridge retained for clients using SDK 0.1
 
 The canonical site is `https://wireflip.forth.ink`. The tracked `public/CNAME` configures GitHub Pages; it does not create DNS records.
@@ -31,7 +32,7 @@ The canonical site is `https://wireflip.forth.ink`. The tracked `public/CNAME` c
 3. Keep the `cors.forth.ink` DNS record proxied through Cloudflare. Configure a Single Redirect for public pages using the expression below, a dynamic destination `concat("https://wireflip.forth.ink", http.request.uri.path)`, status 301 and Preserve query string enabled.
 
 ```text
-(http.host eq "cors.forth.ink" and not (http.request.uri.path eq "/message" or starts_with(http.request.uri.path, "/message/")))
+(http.host eq "cors.forth.ink" and not (http.request.uri.path eq "/message" or starts_with(http.request.uri.path, "/message/") or starts_with(http.request.uri.path, "/_astro/")))
 ```
 
 Do not redirect the legacy `/message/` iframe across origins: published SDK 0.1 clients depend on its original origin. Serve the built `message/index.html` at `/message/` on `cors.forth.ink` using a separate static deployment behind Cloudflare, with `/message` normalized to `/message/`. GitHub Pages supports one custom hostname per site, so changing its CNAME alone cannot host the old bridge. Deploy the website output including its `_astro/` assets (without reusing the new site's CNAME), and preserve the bridge's original origin; the extension continues to allow `https://cors.forth.ink`.
