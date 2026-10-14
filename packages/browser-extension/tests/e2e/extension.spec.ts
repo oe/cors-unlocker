@@ -1028,7 +1028,7 @@ test('disable cache bypasses real HTTP cache for one tab and restores it on stop
     await popup.getByRole('switch', { name: 'Disable cache', exact: true }).click();
     await expect(popup.getByRole('switch', { name: 'Disable cache', exact: true })).toBeChecked();
     await expect.poll(toolbarBadge).toBe('ON');
-    await expect.poll(toolbarTitle).toBe('Wireflip\nTab session active\nNot recording requests\nThis tab · temporary\n• Disable cache\n0 persistent rules enabled');
+    await expect.poll(toolbarTitle).toBe('Wireflip\nTab session active\nNot recording requests\nThis tab · temporary\n• Disable cache\n0 persistent rules enabled\nClick for session controls and group switches');
     await control.evaluate(() => chrome.storage.local.set({ uiLanguage: 'zh-CN' }));
     await expect.poll(toolbarTitle).toContain('未开启请求记录\n当前页 · 临时\n• 禁用缓存');
     await control.evaluate(() => chrome.storage.local.set({ uiLanguage: 'en' }));
