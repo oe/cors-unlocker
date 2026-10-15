@@ -74,11 +74,14 @@ try {
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'Desktop overflow: ' + route);
     if (route === '/playground/') await page.getByRole('heading', { name: 'Extension not connected', exact: true }).waitFor();
     const loaded = await page.evaluate(() => performance.getEntriesByType('resource').map(item => item.name).filter(name => new URL(name).origin === location.origin && new URL(name).pathname.endsWith('.js')));
-    const jsBytes = [...new Set(loaded)].reduce((sum, name) => sum + gzipSync(readFileSync(path.join(dist, new URL(name).pathname))).length, 0);
+    const externalJsBytes = [...new Set(loaded)].reduce((sum, name) => sum + gzipSync(readFileSync(path.join(dist, new URL(name).pathname))).length, 0);
+    const inlineScripts = await page.locator('script:not([src])').evaluateAll(scripts => scripts.filter(script => !script.type || ['module', 'text/javascript', 'application/javascript'].includes(script.type)).map(script => script.textContent || ''));
+    const inlineJsBytes = inlineScripts.reduce((sum, source) => sum + gzipSync(source).length, 0);
+    const jsBytes = externalJsBytes + inlineJsBytes;
     const budget = route === '/playground/' ? 90 * 1024 : 15 * 1024;
     assert(jsBytes <= budget, 'JS gzip budget exceeded: ' + route + ': ' + jsBytes);
     if (route !== '/playground/') assert(!loaded.some(name => /\/client\.[^/]+\.js$/.test(name)), 'React must stay off static pages');
-    results.pages.push({ route, identity: 'passed', content: 'passed', metadata: 'passed', overflow: 'passed', runtimeJsGzipBytes: jsBytes, budget });
+    results.pages.push({ route, identity: 'passed', content: 'passed', metadata: 'passed', overflow: 'passed', runtimeJsGzipBytes: jsBytes, externalJsGzipBytes: externalJsBytes, inlineJsGzipBytes: inlineJsBytes, budget });
     for (const href of await page.locator('a[href]').evaluateAll(elements => elements.map(element => element.getAttribute('href')))) {
       if (href.startsWith('/') || href.startsWith('#')) internalLinks.add(new URL(href, base + route).href);
     }
@@ -160,7 +163,7 @@ try {
       await run('pnpm', ['dlx', 'lighthouse@12.8.2', base + route, '--chrome-flags=--headless --no-sandbox --disable-dev-shm-usage', '--only-categories=performance,accessibility,best-practices,seo', '--output=json', '--output-path=' + report, '--quiet'], { cwd: root, env: { ...process.env, CHROME_PATH: chromium.executablePath() }, maxBuffer: 12 * 1024 * 1024 });
       const data = JSON.parse(readFileSync(report));
       const scores = Object.fromEntries(Object.entries(data.categories).map(([key, value]) => [key, Math.round(value.score * 100)]));
-      results.lighthouse.push({ route, scores, lcp: data.audits['largest-contentful-paint'].numericValue, cls: data.audits['cumulative-layout-shift'].numericValue });
+      results.lighthouse.push({ route, scores, failedAudits: Object.entries(data.audits).filter(([, audit]) => audit.score === 0 && audit.scoreDisplayMode === 'binary').map(([id, audit]) => ({ id, title: audit.title })), lcp: data.audits['largest-contentful-paint'].numericValue, cls: data.audits['cumulative-layout-shift'].numericValue });
       console.log('WEBSITE_LIGHTHOUSE ' + JSON.stringify(results.lighthouse.at(-1)));
       writeFileSync(path.join(output, 'checks.json'), JSON.stringify(results, null, 2));
       assert(scores.performance >= 90, 'Mobile performance below 90: ' + route);
