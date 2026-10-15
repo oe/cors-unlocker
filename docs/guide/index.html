@@ -1,0 +1,85 @@
+<!DOCTYPE html><html lang="en" class="h-full"> <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Extension guide · Wireflip</title><meta name="description" content="Learn Wireflip's Popup, rule editor, Inspector, groups, toolbar status, backups, language and theme controls."><meta name="theme-color" content="#ffffff"><link rel="canonical" href="https://wireflip.forth.ink/docs/guide/"><link rel="icon" href="/brand-mark.svg" type="image/svg+xml"><meta property="og:url" content="https://wireflip.forth.ink/docs/guide/"><meta property="og:type" content="website"><meta property="og:site_name" content="Wireflip"><meta property="og:title" content="Extension guide · Wireflip"><meta property="og:description" content="Learn Wireflip's Popup, rule editor, Inspector, groups, toolbar status, backups, language and theme controls."><meta property="og:image" content="https://wireflip.forth.ink/og-v2.png"><meta property="og:image:alt" content="Wireflip — inspect and modify requests inside your browser"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="Extension guide · Wireflip"><meta name="twitter:description" content="Learn Wireflip's Popup, rule editor, Inspector, groups, toolbar status, backups, language and theme controls."><meta name="twitter:image" content="https://wireflip.forth.ink/og-v2.png"><script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Extension guide · Wireflip","description":"Learn Wireflip's Popup, rule editor, Inspector, groups, toolbar status, backups, language and theme controls.","url":"https://wireflip.forth.ink/docs/guide/","isPartOf":{"@type":"WebSite","name":"Wireflip","url":"https://wireflip.forth.ink"}}</script><link rel="stylesheet" href="/_astro/docs.CBYgUVgA.css"></head> <body class="flex min-h-full flex-col"> <a class="skip-link focus-ring" href="#main-content">Skip to content</a> <header class="sticky top-0 z-50 border-b hairline bg-white/95 backdrop-blur-xl"> <div class="site-shell flex h-16 items-center justify-between gap-3"> <a href="/" class="focus-ring flex shrink-0 items-center gap-2 rounded-lg font-semibold tracking-tight" aria-label="Wireflip home"> <img class="size-7 object-contain" width="28" height="28" src="/brand-mark.svg" alt=""> <span class="hidden min-[400px]:inline">Wireflip</span> </a> <nav class="hidden items-center gap-6 text-sm text-neutral-600 md:flex" aria-label="Primary navigation"> <a class="focus-ring rounded hover:text-black aria-[current=page]:font-semibold aria-[current=page]:text-black" href="/#product">Product</a><a class="focus-ring rounded hover:text-black aria-[current=page]:font-semibold aria-[current=page]:text-black" href="/docs/" aria-current="page">Docs</a><a class="focus-ring rounded hover:text-black aria-[current=page]:font-semibold aria-[current=page]:text-black" href="/playground/">Playground</a><a class="focus-ring rounded hover:text-black aria-[current=page]:font-semibold aria-[current=page]:text-black" href="https://github.com/oe/cors-unlocker" target="_blank" rel="noopener noreferrer">GitHub</a> </nav> <div class="flex items-center gap-3"> <div data-install-links data-chrome-url="https://chromewebstore.google.com/detail/knhlkjdfmgkmelcjfnbbhpphkmjjacng" data-firefox-url="https://addons.mozilla.org/en-US/firefox/addon/cors-unlocker/" class="flex flex-wrap items-center gap-3"> <a data-install-primary class="button-primary focus-ring h-9 min-h-9 px-3" href="/docs/#install">
+Install extension
+</a> <a data-install-alternate class="focus-ring hidden rounded text-sm text-neutral-600 hover:text-black sm:inline-flex" href="https://addons.mozilla.org/en-US/firefox/addon/cors-unlocker/" target="_blank" rel="noopener noreferrer">Firefox</a> </div> <script type="module">const n=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent),r=/Firefox|FxiOS/i.test(navigator.userAgent),a=/Chrome|Chromium|Edg|OPR/i.test(navigator.userAgent);for(const e of document.querySelectorAll("[data-install-links]")){const t=e.querySelector("[data-install-primary]"),o=e.querySelector("[data-install-alternate]");if(n||!r&&!a){t.textContent=n?"Get desktop extension":"Choose your browser";continue}t.href=r?e.dataset.firefoxUrl:e.dataset.chromeUrl,t.textContent=r?"Add to Firefox":"Add to Chrome",t.target="_blank",t.rel="noopener noreferrer",o.href=r?e.dataset.chromeUrl:e.dataset.firefoxUrl,o.textContent=r?"Chrome":"Firefox"}</script> <details data-mobile-navigation class="relative md:hidden"> <summary class="focus-ring cursor-pointer list-none rounded-lg border hairline px-2.5 py-2 text-sm font-medium">Menu</summary> <nav class="absolute right-0 top-12 flex min-w-48 flex-col gap-1 rounded-xl border hairline bg-white p-2 text-sm shadow-lg" aria-label="Mobile navigation"> <a class="focus-ring rounded-lg px-3 py-2.5 hover:bg-neutral-100" href="/#product">Product</a><a class="focus-ring rounded-lg px-3 py-2.5 hover:bg-neutral-100" href="/docs/" aria-current="page">Docs</a><a class="focus-ring rounded-lg px-3 py-2.5 hover:bg-neutral-100" href="/playground/">Playground</a><a class="focus-ring rounded-lg px-3 py-2.5 hover:bg-neutral-100" href="https://github.com/oe/cors-unlocker" target="_blank" rel="noopener noreferrer">GitHub</a> <a class="focus-ring rounded-lg px-3 py-2.5 hover:bg-neutral-100" href="/docs/#install">Choose a browser</a> </nav> </details> </div> </div> </header> <script type="module">for(const e of document.querySelectorAll("[data-mobile-navigation]"))document.addEventListener("click",n=>{e.open&&n.target instanceof Node&&!e.contains(n.target)&&(e.open=!1)}),e.addEventListener("keydown",n=>{n.key==="Escape"&&(e.open=!1,e.querySelector("summary")?.focus())});</script> <main id="main-content" class="flex-1" tabindex="-1"> <div class="site-shell grid gap-10 py-10 lg:grid-cols-[200px_minmax(0,760px)] lg:justify-center lg:py-16"> <aside class="lg:sticky lg:top-24 lg:self-start"> <p class="text-xs font-semibold uppercase tracking-[.16em] text-neutral-500">Documentation</p> <nav class="mt-4 flex flex-wrap gap-x-4 gap-y-3 text-sm text-neutral-600 lg:flex-col" aria-label="Documentation"> <a class="focus-ring rounded aria-[current=page]:font-semibold aria-[current=page]:text-black" href="/docs/">Quick start</a><a class="focus-ring rounded aria-[current=page]:font-semibold aria-[current=page]:text-black" href="/docs/guide/" aria-current="page">Extension guide</a><a class="focus-ring rounded aria-[current=page]:font-semibold aria-[current=page]:text-black" href="/docs/sdk/">SDK integration</a><a class="focus-ring rounded aria-[current=page]:font-semibold aria-[current=page]:text-black" href="/docs/troubleshooting/">Troubleshooting</a><a class="focus-ring rounded aria-[current=page]:font-semibold aria-[current=page]:text-black" href="/migration/">Migration</a><a class="focus-ring rounded aria-[current=page]:font-semibold aria-[current=page]:text-black" href="/faq/">FAQ</a><a class="focus-ring rounded aria-[current=page]:font-semibold aria-[current=page]:text-black" href="/privacy/">Privacy</a> </nav> <a class="focus-ring mt-6 inline-flex rounded text-sm font-medium text-blue-700" href="/playground/">Try a recipe in Playground →</a> </aside> <article class="prose prose-neutral min-w-0 max-w-none prose-headings:tracking-tight prose-h1:text-4xl prose-h1:leading-[1.08] sm:prose-h1:text-5xl prose-a:text-blue-700 prose-pre:rounded-xl prose-pre:border prose-pre:border-neutral-800"> <h1 id="use-wireflip-in-your-browser">Use Wireflip in your browser</h1>
+<p>Use the <strong>Popup</strong> for current-tab controls, the <strong>workspace</strong> for saved rules, and the <strong>Inspector</strong> for captured requests. Start with the <a href="/docs/">quick start</a> if you have not installed the extension.</p>
+<h2 id="mock-an-api-response">Mock an API response</h2>
+<ol>
+<li>Open the target page, then click <strong>Inspect and modify requests</strong> in the Popup.</li>
+<li>Click <strong>Start tab session</strong>, reproduce a request, then select it in the Inspector.</li>
+<li>Choose <strong>Mock</strong> to create a rule using the captured request’s matcher. Give the rule a useful name.</li>
+<li>In <strong>Actions</strong>, choose a response format, enter the response body, and use <strong>Format JSON</strong> when working with JSON.</li>
+<li>Save and enable the rule. Reproduce the request again while the tab session is running.</li>
+<li>Select the new request and check <strong>Applied changes</strong>.</li>
+</ol>
+<p>You can also use <strong>New rule</strong> in the workspace and set the page origin and request URL in <strong>Match</strong>. A saved rule that is switched on still needs a tab session if its action requires one.</p>
+<p>Chrome can return a synthetic mock without contacting the server. Firefox replaces a real upstream response body, preserving its original HTTP status; it needs an actual server response.</p>
+<h2 id="modify-request-or-response-headers">Modify request or response headers</h2>
+<p>Create a rule from a captured request using <strong>Headers</strong>, or use <strong>New rule</strong> in the workspace. Set its page origin and request URL in <strong>Match</strong>, then add the request-header or response-header action in <strong>Actions</strong>.</p>
+<p>For example, set request header <code>X-Environment</code> to <code>staging</code>. Save and enable the rule, send the request again, and verify the outgoing header using browser DevTools. A header-only persistent rule does not need a tab session. Start a session when you also want Inspector activity.</p>
+<p>A redirect combined with header changes needs a tab session so the actions execute together against the original matcher. A redirect-only rule can run persistently.</p>
+<h2 id="test-loading-and-failure-states">Test loading and failure states</h2>
+<p>In the Popup, enable <strong>Request delay</strong>, choose 500 ms, 1 s or 3 s, then repeat a Fetch/XHR request. Use <strong>Simulate failure</strong> to test your application’s retry or error UI. These temporary controls apply only to the current tab.</p>
+<p>On Chrome, <strong>Disable cache</strong> bypasses the current tab’s HTTP cache. It does not clear stored browser data or bypass service workers. Turning it off restores normal cache use. Firefox does not show this control.</p>
+<p>Use <strong>Reset temporary changes</strong> to clear the quick controls, or <strong>Stop tab session</strong> to end the session and reset them all.</p>
+<h2 id="match-the-intended-requests">Match the intended requests</h2>
+<p>In a rule’s <strong>Match</strong> tab, choose the page origin, request URL pattern, and optional HTTP methods and resource types. Keep the page origin specific to your development or staging site.</p>
+<p>Use <strong>Test matching</strong> before saving when you need to check an example URL. In the Inspector, <strong>Check against current rules</strong> helps explain disabled rules or URL, method and resource-type mismatches.</p>
+<p>Keep rule scopes narrow. A blue enabled switch means the rule is configured; it does not prove a request matched or an action executed.</p>
+<h2 id="organize-rules-with-groups">Organize rules with groups</h2>
+<p>Choose <strong>New group</strong> in the workspace for scenarios such as Local development or Staging. Use a group’s <strong>+</strong> button to create a rule inside it, or choose <strong>Group</strong> in the editor to move an existing rule. Groups can be renamed and collapsed.</p>
+<p>Switch a group off to pause its saved rules. Individual rule switches are remembered, so resuming the group restores only rules that were already enabled. Popup and Inspector group switches affect the same saved rules across matching tabs.</p>
+<p>Enabling a group does not start a tab session. Temporary controls remain separate. Deleting a group keeps its rules under <strong>Ungrouped</strong>; enabled rules from a paused group resume, as explained in the confirmation dialog.</p>
+<h2 id="understand-the-toolbar">Understand the toolbar</h2>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Appearance</th><th>Meaning</th><th>Next action</th></tr></thead><tbody><tr><td>Gray</td><td>No active session or applicable browser rules</td><td>Open the Popup to choose a control</td></tr><tr><td>Blue with a count</td><td>Persistent browser rules apply</td><td>Review the site’s enabled saved rules</td></tr><tr><td>Green ON</td><td>A tab session is connected</td><td>Open the Inspector or stop the session</td></tr><tr><td>Amber …</td><td>Connection is in progress</td><td>Wait or cancel the connection</td></tr><tr><td>Red !</td><td>Connection failed</td><td>Open the Popup and retry</td></tr><tr><td>Gray OFF</td><td>The site’s otherwise enabled saved rules are paused by groups</td><td>Resume the relevant group</td></tr></tbody></table>
+<p>Active rules outside paused groups keep the icon blue. A connected session keeps it green. Hover over the toolbar icon for a summary of the current site’s rules, groups and temporary controls.</p>
+<h2 id="read-inspector-activity">Read Inspector activity</h2>
+<p>Select a request to see its matched rules and <strong>Applied changes</strong>, including headers, redirects, delay and mocks. Authorization, Cookie, Proxy-Authorization and Set-Cookie values are masked.</p>
+<p>Persistent browser rules may act before capture, so the Inspector is not a complete network log. Use DevTools Network for detailed response and timing analysis. A matched condition alone does not guarantee every configured action executed.</p>
+<p>Stopping a session clears temporary controls and pauses actions that need the session. Persistent rules stay enabled until you turn them off or pause their group.</p>
+<h2 id="back-up-rules-and-recover-data">Back up rules and recover data</h2>
+<p>Open <strong>Data</strong> in the workspace to export a backup or preview an import. Exports include rules, groups, membership and group switches. Review the preview before applying an import; a recovery backup is saved first.</p>
+<p>Upgrading from v1 migrates existing settings and retains a recovery snapshot. Avoid clearing extension data as a troubleshooting step. See <a href="/docs/troubleshooting/">Troubleshooting</a> or <a href="/migration/">Migration</a>.</p>
+<h2 id="language-and-appearance">Language and appearance</h2>
+<p>Click <strong>Settings</strong> at the bottom left of the workspace. Choose a language and <strong>Follow system</strong>, <strong>Light</strong> or <strong>Dark</strong>. Preferences are remembered and synchronized across the workspace, Popup and Inspector.</p>
+<p>You can change these preferences without losing an unsaved rule draft.</p> </article> </div> </main> <footer class="border-t hairline bg-white py-10"> <div class="site-shell flex flex-col gap-8 md:flex-row md:items-center md:justify-between"> <a href="/" class="focus-ring flex items-center gap-2 rounded font-semibold" aria-label="Wireflip home"> <img class="size-7 object-contain" width="28" height="28" src="/brand-mark.svg" alt="">Wireflip
+</a> <nav class="flex flex-wrap gap-x-6 gap-y-3 text-sm text-neutral-600" aria-label="Footer navigation"> <a href="/#product">Product</a><a href="/docs/">Docs</a><a href="/playground/">Playground</a><a href="https://github.com/oe/cors-unlocker" target="_blank" rel="noopener noreferrer">GitHub</a> <a href="/faq/">FAQ</a><a href="/privacy/">Privacy</a> </nav> <p class="text-sm text-neutral-500">Available for Chrome and Firefox</p> </div> <div class="site-shell mt-8 text-xs text-neutral-500">© 2026 Wireflip</div> </footer> </body></html>
