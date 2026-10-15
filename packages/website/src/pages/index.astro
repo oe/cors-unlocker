@@ -1,27 +1,27 @@
 ---
 import BaseLayout from '../components/base-layout.astro';
+import InstallLinks from '../components/install-links.astro';
 ---
-<BaseLayout title="Patch the request. Keep your flow" description="Inspect, rewrite, mock, and debug traffic in the active Chrome tab—no native client and no proxy setup.">
+<BaseLayout title="In-browser proxy for Chrome and Firefox" description="Inspect, rewrite, mock, and debug traffic in the active Chrome tab—no native client and no proxy setup.">
   <section class="site-shell grid min-h-[790px] items-center gap-14 py-16 lg:grid-cols-[1fr_1.25fr] lg:py-24">
     <div>
       <h1 class="max-w-xl text-[clamp(3.4rem,5.2vw,4.5rem)] font-semibold leading-[.96] tracking-[-.065em]">Patch the request.<br />Keep your flow.</h1>
       <p class="section-copy mt-7 max-w-xl text-xl">Inspect, rewrite, mock, and debug traffic in the tab you are already using—no native client, no proxy setup.</p>
       <div class="mt-9 flex flex-wrap gap-3">
-        <a class="button-primary focus-ring" href="https://chromewebstore.google.com/detail/knhlkjdfmgkmelcjfnbbhpphkmjjacng" target="_blank" rel="noreferrer">Chrome Web Store</a>
-        <a class="button-secondary focus-ring" href="https://addons.mozilla.org/en-US/firefox/addon/cors-unlocker/" target="_blank" rel="noreferrer">Add to Firefox</a>
-        <a class="button-secondary focus-ring" href="#sdk">Explore the SDK <span aria-hidden="true">→</span></a>
+        <InstallLinks />
+        <a class="button-secondary focus-ring" href="/playground/">Try Playground <span aria-hidden="true">→</span></a>
       </div>
-      <p class="mt-4 text-sm text-neutral-500">Firefox 2.0 is available · Chrome 2.0 is awaiting store review</p>
+      <p class="mt-4 text-sm text-neutral-500">Free and open source · No account or proxy server required</p>
     </div>
 
     <div class="surface overflow-hidden" aria-label="Wireflip traffic inspector preview">
       <div class="flex items-center justify-between border-b hairline px-4 py-3 text-xs">
-        <div class="flex items-center gap-2 font-semibold"><img class="size-6 object-contain" src="/brand-mark.svg" alt="" />Traffic inspector</div>
+        <div class="flex items-center gap-2 font-semibold"><img class="size-6 object-contain" width="24" height="24" src="/brand-mark.svg" alt="" />Traffic inspector</div>
         <div class="flex items-center gap-2 text-neutral-500"><span>Advanced</span><span class="relative h-5 w-9 rounded-full bg-blue-600"><span class="absolute right-0.5 top-0.5 size-4 rounded-full bg-white"></span></span></div>
       </div>
       <div class="grid min-h-[535px] md:grid-cols-[220px_1fr]">
         <div class="border-b hairline md:border-b-0 md:border-r">
-          <div class="border-b hairline p-3"><div class="rounded-lg border hairline px-3 py-2 text-xs text-neutral-400">Search requests</div></div>
+          <div class="border-b hairline p-3"><div class="rounded-lg border hairline px-3 py-2 text-xs text-neutral-500">Search requests</div></div>
           <div class="divide-y divide-neutral-100 text-xs">
             <div class="flex justify-between px-3 py-3"><span>GET&nbsp; /api/profile</span><span class="text-emerald-600">200</span></div>
             <div class="flex justify-between px-3 py-3"><span>POST&nbsp; /api/orders</span><span class="text-emerald-600">201</span></div>
@@ -79,10 +79,10 @@ import BaseLayout from '../components/base-layout.astro';
           <li class="flex gap-4"><span class="flex size-7 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">2</span><span><strong class="block">Ask for one capability</strong><span class="mt-1 block text-neutral-500">CORS access is scoped to the current origin.</span></span></li>
           <li class="flex gap-4"><span class="flex size-7 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">3</span><span><strong class="block">Create safe drafts</strong><span class="mt-1 block text-neutral-500">Apps can prepare disabled rules; users review before enabling.</span></span></li>
         </ol>
-        <a class="mt-9 inline-flex text-sm font-semibold text-blue-700 hover:underline" href="/docs/#sdk">Read the SDK guide →</a>
+        <a class="mt-9 inline-flex text-sm font-semibold text-blue-700 hover:underline" href="/docs/sdk/">Read the SDK guide →</a>
       </div>
       <div class="overflow-hidden rounded-2xl border border-neutral-800 bg-[#111418] text-neutral-100 shadow-2xl">
-        <div class="border-b border-neutral-700 px-5 py-3 font-mono text-xs text-neutral-400">app.ts</div>
+        <div class="border-b border-neutral-700 px-5 py-3 font-mono text-xs text-neutral-500">app.ts</div>
         <pre class="overflow-x-auto p-6 text-[13px] leading-7 sm:p-8"><code><span class="text-fuchsia-300">import</span> &#123; intercept &#125; <span class="text-fuchsia-300">from</span> <span class="text-lime-300">'wireflip'</span>;
 
 <span class="text-fuchsia-300">const</span> session = <span class="text-fuchsia-300">await</span> intercept.connect();
@@ -121,7 +121,7 @@ import BaseLayout from '../components/base-layout.astro';
   <section class="border-t hairline py-20">
     <div class="site-shell flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
       <h2 class="section-title max-w-xl">Make the browser your request lab.</h2>
-      <div class="flex flex-wrap gap-3"><a class="button-primary" href="https://addons.mozilla.org/en-US/firefox/addon/cors-unlocker/" target="_blank" rel="noreferrer">Add to Firefox</a><a class="button-secondary" href="/docs/">Read the docs</a></div>
+      <div class="flex flex-wrap gap-3"><InstallLinks /><a class="button-secondary focus-ring" href="/docs/">Get started</a></div>
     </div>
   </section>
 </BaseLayout>

@@ -1,178 +1,53 @@
 ---
 layout: ../components/doc-layout.astro
-title: Documentation
-description: Install Wireflip, choose the right interception mode, and connect a web app through the origin-scoped SDK.
+title: Quick start
+description: Install Wireflip for Chrome or Firefox and repair CORS, mock APIs, or inspect requests without writing code.
 ---
 
-# Wireflip documentation
+# Start with the extension
 
-Wireflip is an in-browser proxy for developers. It changes requests inside Chrome or Firefox; it is not an IP proxy, VPN, or system-wide traffic capture tool.
+Wireflip changes requests inside Chrome and Firefox. You can repair CORS, edit headers, mock APIs and test slow networks from the browser interface. You do not need the npm SDK to use the extension.
 
 ## Install
 
-[Chrome Web Store](https://chromewebstore.google.com/detail/knhlkjdfmgkmelcjfnbbhpphkmjjacng): version 2.0.0 is awaiting review. Until the update is publicly available, Chrome users should keep their existing SDK integration. Version 2 keeps the existing extension ID and automatically migrates existing settings.
+1. Add Wireflip from the [Chrome Web Store](https://chromewebstore.google.com/detail/knhlkjdfmgkmelcjfnbbhpphkmjjacng) or [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/cors-unlocker/).
+2. Pin Wireflip to the browser toolbar.
+3. Open the HTTP or HTTPS page you want to debug, then click the Wireflip icon. The Popup shows that page's origin so you can check the scope before changing anything.
 
-[Add Wireflip 2.0.0 to Firefox](https://addons.mozilla.org/en-US/firefox/addon/cors-unlocker/), then pin it to the toolbar. The public Firefox build supports the new SDK. It retains the existing add-on ID and migrates v1 settings. This initial Firefox release does not include the one-time upgrade explanation page added to the Chrome update.
+Browser settings pages and extension-store pages cannot be intercepted. Use a normal website or your local development page.
 
-## Choose a mode
+## Your first CORS repair
 
-| | Rules mode | Chrome Advanced | Firefox Intercept |
-|---|---|---|---|
-| Engine | `declarativeNetRequest` | Chrome DevTools Protocol `Fetch` | Blocking `webRequest` and `filterResponseData` |
-| Scope | Matching rules | Explicitly attached tab | Explicitly enabled tab |
-| Use for | CORS, headers, redirects, blocking | Inspection, preflight repair, mocks, delay, failures | Inspection, headers, redirects, block, delay, failure, body replacement |
-| Browser disclosure | None | Standard debugging banner while attached | Install-time permissions; no debugger banner |
+1. On the affected page, open Wireflip's Popup.
+2. Under **Temporary changes**, turn on **CORS repair**. This starts a session for the current tab. Chrome displays its standard debugging banner.
+3. Repeat the request in your application. If your application sends cookies or authentication credentials, enable **Allow credentials** only for a page you trust.
+4. Click **Inspect and modify requests** to see captured requests and their applied changes.
+5. Click **Stop tab session** when finished. Temporary changes reset.
 
-Interception stops when you switch it off, close the tab, or the top-level page navigates to a different origin. Chrome Advanced mode also detaches when another debugger takes over.
+Connecting a session alone does not turn on CORS repair. Enable the control explicitly. Firefox can repair response headers but cannot synthesize a failed preflight; that case still needs server support.
 
-## Popup quick controls
+## Choose your next task
 
-Open **Inspector** to inspect the current tab, or use **Start proxy session** to begin capture.
-Connecting alone does not enable CORS repair: it captures traffic and applies your enabled saved rules.
+| I want to… | Start here |
+| --- | --- |
+| Return sample API data | [Mock a response](/docs/guide/#mock-an-api-response) |
+| Add or replace an HTTP header | [Modify headers](/docs/guide/#modify-request-or-response-headers) |
+| Check loading and retry states | [Delay or fail a request](/docs/guide/#test-loading-and-failure-states) |
+| Switch several rules together | [Use rule groups](/docs/guide/#organize-rules-with-groups) |
+| Understand a blue, green or OFF icon | [Read toolbar status](/docs/guide/#understand-the-toolbar) |
+| Try a guided example | [Open Playground](/playground/) |
+| Fix a rule that is not applying | [Troubleshooting](/docs/troubleshooting/) |
 
-**Quick debug** offers CORS repair, **Disable cache**, a 500 ms / 1 s / 3 s request delay, and simulated request failure.
-Delay and failure affect only Fetch/XHR requests in this tab. Enabling a quick control starts the proxy;
-Chrome displays its debugging banner. **Allow credentials** is directly below the CORS switch.
+## Temporary controls and saved rules
 
-**Disable cache** bypasses HTTP cache for the current Chrome tab. It does not clear browser data or
-bypass service workers. Turning the switch off restores normal cache use. This control is hidden in Firefox.
+**Temporary changes** affect the current tab and reset when you stop its session, close it or navigate to another origin.
 
-**Stop this session**, closing the tab, or navigating to another origin clears these temporary controls.
-Existing site CORS rules are separate persistent rules and remain enabled until you turn them off.
-Pin named saved rules for quick access. Their switches change saved configuration; stopping the proxy
-does not disable saved rules, and DNR rules can continue across tabs. Saved mocks, delays, and failures
-need an active proxy session. Firefox CORS repair patches headers but cannot synthesize failed preflights.
+**Saved rules** keep their enabled state. Persistent header, redirect and blocking rules can continue across matching tabs after a session stops. Mocks, delays and simulated failures require a running tab session. A rule group pauses saved rules without changing their individual switches.
 
-## Toolbar status and shortcuts
-
-The toolbar follows the current tab: gray for no active session or browser rules, blue with the actual persistent-rule count, green **ON** for a connected session, amber **…** while connecting, and red **!** for a connection error. Gray **OFF** means all otherwise enabled saved changes for this site are paused by groups. Active rules outside those groups still keep the icon blue; temporary changes or an explicitly connected session keep it green.
-
-Hover to see paused group names, enabled rules waiting for a tab session, applied temporary controls and a connection error when present. Saved-rule counts describe configuration, not proof of a modified request.
-
-Click the icon for quick controls. Group switches appear below the current tab status. Use **Start tab session**, **Stop tab session**, **Cancel connection** or **Retry connection** according to the displayed state, or open Inspector. A session error remains visible when reopening the popup. Restoring a group only restores its saved switches; it does not start interception.
-
-## Rules
-
-A rule contains a page-origin match, request URL glob, optional HTTP methods and resource types, followed by one or more actions.
-
-```json
-{
-  "name": "Mock project API",
-  "enabled": true,
-  "match": {
-    "initiatorOrigins": ["https://app.example.com"],
-    "urlPattern": "https://api.example.com/projects/*",
-    "methods": ["GET"],
-    "resourceTypes": ["XHR", "Fetch"]
-  },
-  "actions": [
-    {
-      "type": "mockResponse",
-      "status": 200,
-      "headers": { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
-      "body": "{\"id\":123,\"state\":\"preview\"}"
-    }
-  ]
-}
-```
-
-Available actions are `cors`, `setRequestHeaders`, `setResponseHeaders`, `redirect`, `block`, `mockResponse`, `delay`, and `networkFailure`. Action scripts are validated JSON; arbitrary JavaScript is not evaluated.
-
-A redirect combined with request or response header changes requires a connected
-Chrome Advanced or Firefox Intercept session. The combination executes together
-against the original request matcher; it does not modify unrelated requests sent
-directly to the destination. A redirect-only rule still works in Rules mode.
-
-## Rule groups
-
-Use **New group** in the workspace to organize rules by scenario, such as Staging or Local development. Use the group's **+** button to create a rule inside it, or choose **Group** in a rule editor to move an existing rule. Groups can be renamed and collapsed. Search expands matching groups automatically.
-
-A group switch pauses or resumes the saved rules across matching tabs. Turning a group off preserves each rule's switch; turning it back on restores only rules that were already enabled. Paused rules are labeled **Group paused** in the workspace, Popup and Inspector. Temporary quick controls are separate and continue to work.
-
-Enabling a group does not start interception. Actions requiring a tab session still need an explicit connection. Deleting a group moves its rules to **Ungrouped** without deleting them; enabled rules in a paused group resume. The deletion dialog explains this before you confirm. Grouping does not change rule priority or matching.
-
-Configuration exports include groups, their switches and membership. Merge imports apply incoming rules and groups by ID while preserving unrelated local rules and current settings. The preview shows the resulting group and paused-group counts; a recovery backup is saved before applying.
-
-## Site controls
-
-Choose **Open Inspector** from the popup to manage rules for the current HTTP or HTTPS page. Toggle rules or click their names to edit them directly in the side panel. New rules default to the current page origin.
-
-Enable **Advanced proxy**, then reproduce a request on the page. This switch starts activity capture and applies enabled saved rules. Enable **CORS repair** separately in the popup, or use a saved CORS rule when needed. Select a captured request to create a Mock, Delay, Block, or Headers rule without leaving the panel. Save, trigger the request again, and inspect the recorded result.
-
-Activity shows captured rule names and applied changes, including header before/after values, redirects, delays, and local mocks. **Check against current rules** explains disabled rules and mismatched URL, method, or resource type conditions; it does not reconstruct historical rule priority. Authorization, Cookie, Proxy-Authorization, and Set-Cookie values are masked.
-
-Basic browser rules can act before activity capture, so this is not a complete network log. Use DevTools Network for detailed response and timing analysis. Recorded matches are evidence of condition matching, not proof that every configured action executed.
+Read the [extension guide](/docs/guide/) for the complete workflow, including rule matching, groups, Inspector and backups.
 
 ## SDK
 
-Using `cors-unlocker`? The old hostname and bridge are retained. [`wireflip@0.2.0`](https://www.npmjs.com/package/wireflip) is available and requires Wireflip 2.0. Firefox users can migrate; Chrome users should wait for the 2.0 store update. See the [migration guide](/migration/) before changing dependencies.
+The SDK is optional. Use it when your application needs to ask Wireflip for CORS access or prepare a rule for the user to review. See [SDK integration](/docs/sdk/).
 
-`wireflip` is the SDK package for Chrome and Firefox. Install and import it directly:
-
-```bash
-pnpm add wireflip
-```
-
-```ts
-import { intercept } from 'wireflip';
-
-const session = await intercept.connect();
-console.log(session.origin, session.capabilities);
-
-if (session.capabilities.interception.responseMock === 'body-replacement') {
-  console.log('Mocks preserve the upstream HTTP status in this browser.');
-}
-
-const status = await session.getStatus();
-
-await session.requestCors({
-  credentials: false,
-  reason: 'Preview staging API data',
-});
-```
-
-`requestCors()` always shows an extension-controlled confirmation and applies only to the real top-level page origin. A page cannot request changes for another origin.
-
-`session.capabilities.interception` reports whether the browser supports synthetic responses or body replacement, synthetic preflights or header-only repair, reasoned network failures or cancellation, and distinct or combined Fetch/XHR resource types. Applications should use these values instead of inferring behavior from the user agent.
-
-### Create a disabled rule draft
-
-```ts
-await session.createRuleDraft({
-  name: 'Simulate slow projects API',
-  urlPattern: 'https://api.example.com/projects/*',
-  methods: ['GET'],
-  resourceTypes: ['XHR', 'Fetch'],
-  actions: [{ type: 'delay', milliseconds: 800 }],
-});
-```
-
-SDK-created rules are always disabled and scoped to the calling page. By default, the workspace opens so the user can review and enable the draft.
-
-### API surface
-
-- `intercept.connect({ timeout? })` → `InterceptSession`
-- `intercept.isAvailable()` → `boolean`
-- `intercept.openStorePage()`
-- `session.getStatus()`
-- `session.requestCors({ credentials?, reason? })`
-- `session.disableCors()`
-- `session.createRuleDraft(rule, { openWorkspace? })`
-- `session.openWorkspace()`
-
-The legacy `isExtInstalled`, `isEnabled`, `enable`, `disable`, `openExtOptions`, and `openStorePage` exports continue to call the new local bridge.
-
-## Upgrade and data
-
-On first v2 startup, Wireflip reads `allowedOrigins` and `extConfig`, writes a `legacyBackupV1` recovery snapshot, validates the new `proxyAppState`, and then uses only the v2 state. Old keys are not used as live configuration or dual-written.
-
-The workspace imports old v1 rule exports and complete v2 exports. New exports use the v2 format.
-
-## Limitations
-
-- Chrome Advanced mode necessarily shows Chrome's debugging disclosure.
-- Firefox uses blocking WebRequest and does not attach a debugger.
-- Firefox response-body mocks preserve the server's original HTTP status and require an actual response.
-- Firefox applies CORS headers through DNR. Failed preflights still require server support; credentialed requests with custom headers must include those headers in the CORS rule's allow list.
-- Changes affect matching Chrome or Firefox traffic, not other applications.
-- Wireflip does not change your public IP address or decrypt traffic outside the browser.
+Existing CORS Unlocker users can keep their SDK and hosted bridge. See the [migration guide](/migration/); no reinstall or settings reset is required.

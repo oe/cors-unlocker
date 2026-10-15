@@ -14,13 +14,13 @@ CORS Unlocker is now Wireflip. Existing integrations using `cors-unlocker@0.1.0`
 - The hosted `/message/` bridge stays on `cors.forth.ink` for the published SDK. Keep that address in existing integrations; replacing it with the new hostname is not an SDK upgrade.
 - The extension keeps its existing IDs. Updating the extension converts existing CORS settings automatically; reinstalling it or clearing settings is unnecessary.
 
-No removal date for the old SDK bridge has been announced. Migration is optional. This describes the compatibility policy; domain migration is complete only after DNS, HTTPS and the old-origin bridge deployment have been verified.
+No removal date for the old SDK bridge has been announced. Migration is optional. The old bridge keeps its original origin; a domain redirect is not an SDK upgrade.
 
 ## When to upgrade
 
 Use the new SDK for a packaged local bridge, browser capability detection and disabled rule drafts. It communicates directly with the installed extension rather than loading a hosted iframe.
 
-**Release status:** [`wireflip@0.2.0`](https://www.npmjs.com/package/wireflip) is available on npm. It requires the Wireflip 2.0 extension. [Firefox 2.0.0 is publicly available](https://addons.mozilla.org/en-US/firefox/addon/cors-unlocker/). Chrome 2.0.0 is awaiting Chrome Web Store review; **Chrome users should keep their existing `cors-unlocker` dependency until the compatible store update is available**. Firefox users can follow the optional migration below.
+The [`wireflip` SDK](https://www.npmjs.com/package/wireflip) works with Wireflip 2.0 for [Chrome](https://chromewebstore.google.com/detail/knhlkjdfmgkmelcjfnbbhpphkmjjacng) and [Firefox](https://addons.mozilla.org/en-US/firefox/addon/cors-unlocker/). Update the extension before following the optional migration below.
 
 ## Upgrade your application
 
@@ -67,7 +67,7 @@ The old function names are also exported by `wireflip` to ease adoption, but use
 
 CORS requests through the new SDK require user confirmation and affect only the application's actual page origin. Handle rejection or an unavailable extension in your UI; do not enable CORS silently during page load. SDK calls do not start a tab interception session. Rule drafts are disabled until the user reviews and enables them.
 
-Test both CORS enabled and disabled, user cancellation, an unavailable extension, and any credentialed requests. Read [the SDK documentation](/docs/#sdk) for capability differences between Chrome and Firefox.
+Test both CORS enabled and disabled, user cancellation, an unavailable extension, and any credentialed requests. Read [the SDK documentation](/docs/sdk/) for capability differences between Chrome and Firefox.
 
 ## Staying on the old SDK
 

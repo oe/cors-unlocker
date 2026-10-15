@@ -39,3 +39,35 @@ The canonical site is `https://wireflip.forth.ink`. On 2026-10-15, the successfu
 Do not redirect the legacy `/message/` iframe across origins: published SDK 0.1 clients depend on its original origin. Serve the built `message/index.html` at `/message/` on `cors.forth.ink` using a separate static deployment behind Cloudflare, with `/message` normalized to `/message/`. GitHub Pages supports one custom hostname per site, so changing its CNAME alone cannot host the old bridge. Deploy the website output including its `_astro/` assets (without reusing the new site's CNAME), and preserve the bridge's original origin; the extension continues to allow `https://cors.forth.ink`.
 
 Before declaring migration complete, verify that an old public URL such as `https://cors.forth.ink/docs/?from=legacy` redirects to the same path and query on the new domain, and that `/message/` still serves the bridge at the old origin. `intercept.forth.ink` was an unpublished intermediate hostname and is not a compatibility requirement.
+
+## Website quality checks
+
+The website uses static Astro pages. React and the SDK are hydrated only on Playground.
+Install links share one browser-aware component and fall back to browser choices when
+JavaScript is unavailable or the visitor is using a mobile/unknown browser.
+
+Docs start with extension setup; the extension guide, optional SDK guide and troubleshooting
+have separate routes. Existing `/docs/#install` and `/docs/#sdk` entry points remain useful.
+
+After a production build, run:
+
+```bash
+pnpm --filter browser-wireflip exec playwright install chromium
+node packages/website/scripts/verify-site.mjs
+```
+
+Set `WIREFLIP_LIGHTHOUSE=1` to also run pinned Lighthouse 12.8.2 mobile checks.
+CI checks every public sitemap route at 1280px and 390px, internal links/anchors,
+browser-specific store choices, menu keyboard/outside dismissal, Playground UI states,
+canonical/OG/Twitter metadata, structured data and JavaScript gzip budgets.
+The probe UI test uses a deterministic network fixture; it is not an interception test.
+
+Budgets: 15 KiB runtime JavaScript gzip on static pages, 90 KiB on Playground;
+mobile Lighthouse performance ≥90, SEO ≥95, accessibility ≥90.
+Reports and native browser screenshots are saved under ignored `artifacts/website-qa/`
+and uploaded by the **Website quality** workflow. Screenshots may also be emitted in
+chunked CI evidence records for inspection when a local workspace is unavailable.
+
+Lighthouse is lab evidence, not real-user INP or a guarantee of search rankings.
+No analytics or third-party telemetry is added. The old message bridge keeps its
+`noindex` directive and is excluded from the public sitemap.

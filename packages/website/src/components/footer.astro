@@ -1,18 +1,17 @@
 ---
+import { GITHUB_URL, NAVIGATION } from '../site-config';
 const year = new Date().getFullYear();
 ---
 <footer class="border-t hairline bg-white py-10">
   <div class="site-shell flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
-    <div class="flex items-center gap-2 font-semibold">
-      <img class="size-7 object-contain" src="/brand-mark.svg" alt="" />
-      Wireflip
-    </div>
+    <a href="/" class="focus-ring flex items-center gap-2 rounded font-semibold" aria-label="Wireflip home">
+      <img class="size-7 object-contain" width="28" height="28" src="/brand-mark.svg" alt="" />Wireflip
+    </a>
     <nav class="flex flex-wrap gap-x-6 gap-y-3 text-sm text-neutral-600" aria-label="Footer navigation">
-      <a href="/#product">Product</a><a href="/#sdk">SDK</a><a href="/docs/">Docs</a>
+      {NAVIGATION.map(({ href, label }) => <a href={href} {...(href === GITHUB_URL ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>{label}</a>)}
       <a href="/faq/">FAQ</a><a href="/privacy/">Privacy</a>
-      <a href="https://github.com/oe/cors-unlocker" target="_blank" rel="noreferrer">GitHub</a>
     </nav>
-    <p class="text-sm text-neutral-500">Firefox 2.0 available <span class="px-1 text-blue-600">·</span> Chrome 2.0 pending review</p>
+    <p class="text-sm text-neutral-500">Available for Chrome and Firefox</p>
   </div>
-  <div class="site-shell mt-8 text-xs text-neutral-400">© {year} Wireflip</div>
+  <div class="site-shell mt-8 text-xs text-neutral-500">© {year} Wireflip</div>
 </footer>

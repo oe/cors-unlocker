@@ -6,6 +6,8 @@ import mdx from '@astrojs/mdx';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
+  site: 'https://wireflip.forth.ink',
+  trailingSlash: 'always',
   integrations: [react(), mdx()],
   markdown: {
     syntaxHighlight: 'shiki', // or 'prism' if preferred

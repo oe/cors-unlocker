@@ -1,0 +1,57 @@
+---
+layout: ../../components/doc-layout.astro
+title: Troubleshooting
+description: Fix inactive Wireflip rules, missing requests, CORS failures, paused groups, connection errors and SDK connection problems.
+---
+
+# Find out why a change is not applying
+
+## My rule is enabled but nothing changes
+
+Check the page origin, full request URL, method and resource type in **Match**. Then check whether the rule's group is paused. Mocks, delays, failures and redirect/header combinations need a running tab session.
+
+Start the session from the target page's Popup, then reproduce the request. Merely selecting a saved rule or connecting the website SDK does not start interception.
+
+## CORS still fails
+
+Enable **CORS repair** explicitly; starting a tab session alone only captures traffic and applies enabled saved rules.
+
+Enable **Allow credentials** only when your page needs credentialed requests and you trust it. In a saved CORS rule, explicitly allow any custom request headers your application sends.
+
+Firefox repairs response headers but cannot synthesize a failed preflight. If the server rejects OPTIONS, fix the server or use a suitable development endpoint. Wireflip cannot override every browser security policy.
+
+## The Inspector shows no requests
+
+Start a session for the correct HTTP or HTTPS tab and reproduce a request after capture starts. Clear search filters and confirm the page has not navigated to another origin.
+
+Some persistent browser rules execute before activity capture. Use DevTools Network alongside Wireflip when diagnosing those requests.
+
+## The toolbar shows OFF
+
+Saved changes for the current site are paused by rule groups. Open the Popup and resume the relevant group. Individual switches are preserved. Resuming a group does not automatically start a tab session.
+
+## The toolbar shows an error
+
+Open the Popup and use **Retry connection**. If Chrome DevTools or another extension has taken over the debugger, close the conflicting session first. **Cancel connection** remains available while connecting.
+
+## A Firefox mock keeps the server status
+
+That is expected: Firefox replaces a real response body and preserves the upstream HTTP status. Choose an endpoint that returns a usable response. Chrome's synthetic mocks can set a separate status.
+
+## Disable cache is missing or has no effect
+
+The control is available in Chrome. It bypasses HTTP cache for the current tab; it does not bypass a service worker or clear stored data. Turning it off or stopping the session restores normal caching.
+
+## Playground cannot connect
+
+Install and enable the extension in this browser, return to the page and select **Reconnect**. A connected website bridge is separate from the tab session used to apply mocks or delays.
+
+Review and enable the draft in the workspace, then start a session for the Playground tab using Wireflip's Popup. Return to Playground to run the probe.
+
+## I stopped a session but headers still change
+
+Persistent saved rules can keep acting across matching tabs. Disable the saved rule or pause its group. **Stop tab session** resets temporary controls; it does not switch off persistent configuration.
+
+## I still need help
+
+Open a [GitHub issue](https://github.com/oe/cors-unlocker/issues) with your browser, extension version and a minimal reproduction. Remove cookies, authorization headers, private URLs and response data before sharing.
