@@ -1,0 +1,87 @@
+---
+layout: ../../components/doc-layout.astro
+title: Extension guide
+description: Learn Wireflip's Popup, rule editor, Inspector, groups, toolbar status, backups, language and theme controls.
+---
+
+# Use Wireflip in your browser
+
+Use the **Popup** for current-tab controls, the **workspace** for saved rules, and the **Inspector** for captured requests. Start with the [quick start](/docs/) if you have not installed the extension.
+
+## Mock an API response
+
+1. Open the target page, then click **Inspect and modify requests** in the Popup.
+2. Click **Start tab session**, reproduce a request, then select it in the Inspector.
+3. Choose **Mock** to create a rule using the captured request's matcher. Give the rule a useful name.
+4. In **Actions**, choose a response format, enter the response body, and use **Format JSON** when working with JSON.
+5. Save and enable the rule. Reproduce the request again while the tab session is running.
+6. Select the new request and check **Applied changes**.
+
+You can also use **New rule** in the workspace and set the page origin and request URL in **Match**. A saved rule that is switched on still needs a tab session if its action requires one.
+
+Chrome can return a synthetic mock without contacting the server. Firefox replaces a real upstream response body, preserving its original HTTP status; it needs an actual server response.
+
+## Modify request or response headers
+
+Create a rule from a captured request using **Headers**, or use **New rule** in the workspace. Set its page origin and request URL in **Match**, then add the request-header or response-header action in **Actions**.
+
+For example, set request header `X-Environment` to `staging`. Save and enable the rule, send the request again, and verify the outgoing header using browser DevTools. A header-only persistent rule does not need a tab session. Start a session when you also want Inspector activity.
+
+A redirect combined with header changes needs a tab session so the actions execute together against the original matcher. A redirect-only rule can run persistently.
+
+## Test loading and failure states
+
+In the Popup, enable **Request delay**, choose 500 ms, 1 s or 3 s, then repeat a Fetch/XHR request. Use **Simulate failure** to test your application's retry or error UI. These temporary controls apply only to the current tab.
+
+On Chrome, **Disable cache** bypasses the current tab's HTTP cache. It does not clear stored browser data or bypass service workers. Turning it off restores normal cache use. Firefox does not show this control.
+
+Use **Reset temporary changes** to clear the quick controls, or **Stop tab session** to end the session and reset them all.
+
+## Match the intended requests
+
+In a rule's **Match** tab, choose the page origin, request URL pattern, and optional HTTP methods and resource types. Keep the page origin specific to your development or staging site.
+
+Use **Test matching** before saving when you need to check an example URL. In the Inspector, **Check against current rules** helps explain disabled rules or URL, method and resource-type mismatches.
+
+Keep rule scopes narrow. A blue enabled switch means the rule is configured; it does not prove a request matched or an action executed.
+
+## Organize rules with groups
+
+Choose **New group** in the workspace for scenarios such as Local development or Staging. Use a group's **+** button to create a rule inside it, or choose **Group** in the editor to move an existing rule. Groups can be renamed and collapsed.
+
+Switch a group off to pause its saved rules. Individual rule switches are remembered, so resuming the group restores only rules that were already enabled. Popup and Inspector group switches affect the same saved rules across matching tabs.
+
+Enabling a group does not start a tab session. Temporary controls remain separate. Deleting a group keeps its rules under **Ungrouped**; enabled rules from a paused group resume, as explained in the confirmation dialog.
+
+## Understand the toolbar
+
+| Appearance | Meaning | Next action |
+| --- | --- | --- |
+| Gray | No active session or applicable browser rules | Open the Popup to choose a control |
+| Blue with a count | Persistent browser rules apply | Review the site's enabled saved rules |
+| Green ON | A tab session is connected | Open the Inspector or stop the session |
+| Amber … | Connection is in progress | Wait or cancel the connection |
+| Red ! | Connection failed | Open the Popup and retry |
+| Gray OFF | The site's otherwise enabled saved rules are paused by groups | Resume the relevant group |
+
+Active rules outside paused groups keep the icon blue. A connected session keeps it green. Hover over the toolbar icon for a summary of the current site's rules, groups and temporary controls.
+
+## Read Inspector activity
+
+Select a request to see its matched rules and **Applied changes**, including headers, redirects, delay and mocks. Authorization, Cookie, Proxy-Authorization and Set-Cookie values are masked.
+
+Persistent browser rules may act before capture, so the Inspector is not a complete network log. Use DevTools Network for detailed response and timing analysis. A matched condition alone does not guarantee every configured action executed.
+
+Stopping a session clears temporary controls and pauses actions that need the session. Persistent rules stay enabled until you turn them off or pause their group.
+
+## Back up rules and recover data
+
+Open **Data** in the workspace to export a backup or preview an import. Exports include rules, groups, membership and group switches. Review the preview before applying an import; a recovery backup is saved first.
+
+Upgrading from v1 migrates existing settings and retains a recovery snapshot. Avoid clearing extension data as a troubleshooting step. See [Troubleshooting](/docs/troubleshooting/) or [Migration](/migration/).
+
+## Language and appearance
+
+Click **Settings** at the bottom left of the workspace. Choose a language and **Follow system**, **Light** or **Dark**. Preferences are remembered and synchronized across the workspace, Popup and Inspector.
+
+You can change these preferences without losing an unsaved rule draft.

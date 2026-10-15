@@ -1,17 +1,39 @@
-<header class="sticky top-0 z-50 border-b hairline bg-white/90 backdrop-blur-xl" transition:persist>
-  <div class="site-shell flex h-16 items-center justify-between gap-6">
-    <a href="/" class="focus-ring flex items-center gap-2.5 rounded-lg font-semibold tracking-tight" aria-label="Wireflip home">
-      <img class="size-7 object-contain" src="/brand-mark.svg" alt="" />
-      <span>Wireflip</span>
+---
+import InstallLinks from './install-links.astro';
+import { NAVIGATION } from '../site-config';
+const current = (href: string) => href.startsWith('/docs/') ? Astro.url.pathname.startsWith('/docs/') : href === Astro.url.pathname;
+---
+<header class="sticky top-0 z-50 border-b hairline bg-white/95 backdrop-blur-xl">
+  <div class="site-shell flex h-16 items-center justify-between gap-3">
+    <a href="/" class="focus-ring flex shrink-0 items-center gap-2 rounded-lg font-semibold tracking-tight" aria-label="Wireflip home">
+      <img class="size-7 object-contain" width="28" height="28" src="/brand-mark.svg" alt="" />
+      <span class="hidden min-[400px]:inline">Wireflip</span>
     </a>
-    <nav class="hidden items-center gap-7 text-sm text-neutral-600 md:flex" aria-label="Primary navigation">
-      <a class="focus-ring rounded hover:text-black" href="/#product">Product</a>
-      <a class="focus-ring rounded hover:text-black" href="/#sdk">SDK</a>
-      <a class="focus-ring rounded hover:text-black" href="/docs/">Docs</a>
-      <a class="focus-ring rounded hover:text-black" href="/privacy/">Privacy</a>
+    <nav class="hidden items-center gap-6 text-sm text-neutral-600 md:flex" aria-label="Primary navigation">
+      {NAVIGATION.map(({ href, label }) => <a class="focus-ring rounded hover:text-black aria-[current=page]:font-semibold aria-[current=page]:text-black" href={href} aria-current={current(href) ? 'page' : undefined} {...(href.startsWith('https:') ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>{label}</a>)}
     </nav>
-    <a class="button-primary focus-ring h-9 min-h-9 px-4" href="https://addons.mozilla.org/en-US/firefox/addon/cors-unlocker/" target="_blank" rel="noreferrer">
-      Add to Firefox
-    </a>
+    <div class="flex items-center gap-3">
+      <InstallLinks compact />
+      <details data-mobile-navigation class="relative md:hidden">
+        <summary class="focus-ring cursor-pointer list-none rounded-lg border hairline px-2.5 py-2 text-sm font-medium">Menu</summary>
+        <nav class="absolute right-0 top-12 flex min-w-48 flex-col gap-1 rounded-xl border hairline bg-white p-2 text-sm shadow-lg" aria-label="Mobile navigation">
+          {NAVIGATION.map(({ href, label }) => <a class="focus-ring rounded-lg px-3 py-2.5 hover:bg-neutral-100" href={href} aria-current={current(href) ? 'page' : undefined} {...(href.startsWith('https:') ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>{label}</a>)}
+          <a class="focus-ring rounded-lg px-3 py-2.5 hover:bg-neutral-100" href="/docs/#install">Choose a browser</a>
+        </nav>
+      </details>
+    </div>
   </div>
 </header>
+<script>
+  for (const menu of document.querySelectorAll<HTMLDetailsElement>('[data-mobile-navigation]')) {
+    document.addEventListener('click', (event) => {
+      if (menu.open && event.target instanceof Node && !menu.contains(event.target)) menu.open = false;
+    });
+    menu.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        menu.open = false;
+        menu.querySelector('summary')?.focus();
+      }
+    });
+  }
+</script>

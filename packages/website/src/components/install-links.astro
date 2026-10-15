@@ -1,0 +1,30 @@
+---
+import { CHROME_STORE, FIREFOX_STORE } from '../site-config';
+interface Props { compact?: boolean }
+const { compact = false } = Astro.props;
+---
+<div data-install-links data-chrome-url={CHROME_STORE} data-firefox-url={FIREFOX_STORE} class="flex flex-wrap items-center gap-3">
+  <a data-install-primary class:list={['button-primary focus-ring', compact && 'h-9 min-h-9 px-3']} href="/docs/#install">
+    Install extension
+  </a>
+  <a data-install-alternate class:list={[compact ? 'focus-ring hidden rounded text-sm text-neutral-600 hover:text-black sm:inline-flex' : 'button-secondary focus-ring']} href={FIREFOX_STORE} target="_blank" rel="noopener noreferrer">Firefox</a>
+</div>
+<script>
+  const mobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const firefox = /Firefox|FxiOS/i.test(navigator.userAgent);
+  const chromium = /Chrome|Chromium|Edg|OPR/i.test(navigator.userAgent);
+  for (const group of document.querySelectorAll<HTMLElement>('[data-install-links]')) {
+    const primary = group.querySelector<HTMLAnchorElement>('[data-install-primary]')!;
+    const alternate = group.querySelector<HTMLAnchorElement>('[data-install-alternate]')!;
+    if (mobile || (!firefox && !chromium)) {
+      primary.textContent = mobile ? 'Get desktop extension' : 'Choose your browser';
+      continue;
+    }
+    primary.href = (firefox ? group.dataset.firefoxUrl : group.dataset.chromeUrl)!;
+    primary.textContent = firefox ? 'Add to Firefox' : 'Add to Chrome';
+    primary.target = '_blank';
+    primary.rel = 'noopener noreferrer';
+    alternate.href = (firefox ? group.dataset.chromeUrl : group.dataset.firefoxUrl)!;
+    alternate.textContent = firefox ? 'Chrome' : 'Firefox';
+  }
+</script>

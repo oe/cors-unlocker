@@ -36,3 +36,5 @@ artifacts/legacy-sdk/
 artifacts/sdk-preflight/
 __pycache__/
 marketing/firefox-addons/qa/
+
+artifacts/website-qa/

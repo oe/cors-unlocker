@@ -43,3 +43,13 @@ button, input, textarea, select { font: inherit; }
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+
+[hidden] { display: none !important; }
+.skip-link { position: fixed; left: 12px; top: 12px; z-index: 100; padding: 10px 16px; border-radius: 8px; background: white; color: #111113; transform: translateY(-160%); }
+.skip-link:focus { transform: translateY(0); }
+:target { scroll-margin-top: 90px; }
+.prose :where(pre, table) { max-width: 100%; }
+.prose pre { overflow-x: auto; }
+.prose table { display: block; overflow-x: auto; }
+
+.button-primary:disabled, .button-secondary:disabled { opacity: .45; cursor: not-allowed; transform: none; }

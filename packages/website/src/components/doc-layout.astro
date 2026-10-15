@@ -1,20 +1,26 @@
 ---
 import BaseLayout from './base-layout.astro';
 const { frontmatter } = Astro.props;
+const sections = [
+  ['Quick start', '/docs/'],
+  ['Extension guide', '/docs/guide/'],
+  ['SDK integration', '/docs/sdk/'],
+  ['Troubleshooting', '/docs/troubleshooting/'],
+  ['Migration', '/migration/'],
+  ['FAQ', '/faq/'],
+  ['Privacy', '/privacy/'],
+];
 ---
 <BaseLayout frontmatter={frontmatter}>
-  <div class="site-shell grid gap-12 py-12 lg:grid-cols-[220px_minmax(0,760px)] lg:justify-center lg:py-20">
+  <div class="site-shell grid gap-10 py-10 lg:grid-cols-[200px_minmax(0,760px)] lg:justify-center lg:py-16">
     <aside class="lg:sticky lg:top-24 lg:self-start">
-      <p class="text-xs font-semibold uppercase tracking-[.16em] text-neutral-400">Documentation</p>
-      <nav class="mt-5 flex flex-wrap gap-x-5 gap-y-3 text-sm text-neutral-600 lg:flex-col" aria-label="Documentation">
-        <a href="/docs/">Overview & SDK</a>
-        <a href="/playground/">SDK playground</a>
-        <a href="/faq/">FAQ</a>
-        <a href="/privacy/">Privacy</a>
-        <a href="https://github.com/oe/cors-unlocker" target="_blank" rel="noreferrer">GitHub ↗</a>
+      <p class="text-xs font-semibold uppercase tracking-[.16em] text-neutral-500">Documentation</p>
+      <nav class="mt-4 flex flex-wrap gap-x-4 gap-y-3 text-sm text-neutral-600 lg:flex-col" aria-label="Documentation">
+        {sections.map(([label, href]) => <a class="focus-ring rounded aria-[current=page]:font-semibold aria-[current=page]:text-black" href={href} aria-current={Astro.url.pathname === href ? 'page' : undefined}>{label}</a>)}
       </nav>
+      <a class="focus-ring mt-6 inline-flex rounded text-sm font-medium text-blue-700" href="/playground/">Try a recipe in Playground →</a>
     </aside>
-    <article class="prose prose-neutral max-w-none prose-headings:tracking-tight prose-h1:text-5xl prose-h1:leading-[1.02] prose-a:text-blue-700 prose-pre:rounded-xl prose-pre:border prose-pre:border-neutral-800">
+    <article class="prose prose-neutral min-w-0 max-w-none prose-headings:tracking-tight prose-h1:text-4xl prose-h1:leading-[1.08] sm:prose-h1:text-5xl prose-a:text-blue-700 prose-pre:rounded-xl prose-pre:border prose-pre:border-neutral-800">
       <slot />
     </article>
   </div>

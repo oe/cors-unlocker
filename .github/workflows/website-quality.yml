@@ -1,0 +1,53 @@
+name: Website quality
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'packages/website/**'
+      - '.github/workflows/website-quality.yml'
+      - 'pnpm-lock.yaml'
+  push:
+    branches: [main]
+    paths:
+      - 'packages/website/**'
+      - '.github/workflows/website-quality.yml'
+      - 'pnpm-lock.yaml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  website-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.6.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build SDK and static website
+        run: |
+          pnpm --filter wireflip build
+          pnpm --filter website build
+      - name: Install acceptance browser
+        run: pnpm --filter browser-wireflip exec playwright install --with-deps chromium
+      - name: Verify navigation, metadata and mobile performance
+        env:
+          WIREFLIP_LIGHTHOUSE: '1'
+          WIREFLIP_INLINE_EVIDENCE: '1'
+        run: node packages/website/scripts/verify-site.mjs
+      - name: Upload screenshots and Lighthouse reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: website-quality-${{ github.sha }}
+          path: artifacts/website-qa
+          if-no-files-found: warn
+          retention-days: 14

@@ -1,0 +1,90 @@
+---
+layout: ../../components/doc-layout.astro
+title: SDK integration
+description: Connect your web application to Wireflip with the optional npm SDK, explicit CORS consent and safe rule drafts.
+---
+
+# Connect your application
+
+`wireflip` is the SDK package for Chrome and Firefox. Install and import it directly:
+
+```bash
+pnpm add wireflip
+```
+
+```ts
+import { intercept } from 'wireflip';
+
+const session = await intercept.connect();
+console.log(session.origin, session.capabilities);
+
+if (session.capabilities.interception.responseMock === 'body-replacement') {
+  console.log('Mocks preserve the upstream HTTP status in this browser.');
+}
+
+const status = await session.getStatus();
+
+await session.requestCors({
+  credentials: false,
+  reason: 'Preview staging API data',
+});
+```
+
+`requestCors()` always shows an extension-controlled confirmation and applies only to the real top-level page origin. A page cannot request changes for another origin.
+
+`session.capabilities.interception` reports whether the browser supports synthetic responses or body replacement, synthetic preflights or header-only repair, reasoned network failures or cancellation, and distinct or combined Fetch/XHR resource types. Applications should use these values instead of inferring behavior from the user agent.
+
+## Create a disabled rule draft
+
+```ts
+await session.createRuleDraft({
+  name: 'Simulate slow projects API',
+  urlPattern: 'https://api.example.com/projects/*',
+  methods: ['GET'],
+  resourceTypes: ['XHR', 'Fetch'],
+  actions: [{ type: 'delay', milliseconds: 800 }],
+});
+```
+
+SDK-created rules are always disabled and scoped to the calling page. By default, the workspace opens so the user can review and enable the draft.
+
+## API reference
+
+- `intercept.connect({ timeout? })` → `InterceptSession`
+- `intercept.isAvailable()` → `boolean`
+- `intercept.openStorePage()`
+- `session.getStatus()`
+- `session.requestCors({ credentials?, reason? })`
+- `session.disableCors()`
+- `session.createRuleDraft(rule, { openWorkspace? })`
+- `session.openWorkspace()`
+
+The legacy `isExtInstalled`, `isEnabled`, `enable`, `disable`, `openExtOptions`, and `openStorePage` exports continue to call the new local bridge.
+
+
+## Handle unavailable extensions and cancellation
+
+Install and enable the extension before connecting. Handle errors in your own interface so declining a request does not break the application.
+
+```ts
+import { intercept, InterceptError } from 'wireflip';
+
+try {
+  const session = await intercept.connect();
+  await session.requestCors({ reason: 'Preview staging data' });
+} catch (error) {
+  if (error instanceof InterceptError && error.type === 'user-cancel') {
+    // The user declined; leave normal application behavior in place
+  } else {
+    // Offer installation or a retry without blocking the rest of the application
+  }
+}
+```
+
+A connected SDK session means the website can communicate with the extension. It does not start request interception. Users start tab sessions and enable saved rules inside the extension.
+
+## Existing integrations
+
+The old `cors-unlocker` package and `cors.forth.ink/message/` bridge remain supported. Migration is optional. Follow the [migration guide](/migration/) when you are ready.
+
+For interactive rule examples, visit [Playground](/playground/). For direct browser use without application code, start with the [extension guide](/docs/guide/).
