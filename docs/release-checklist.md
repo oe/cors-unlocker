@@ -70,7 +70,7 @@
 - [x] 对**准确的待发布归档**执行 npm dry-run；在干净项目测试 ESM、CommonJS、类型声明和浏览器 SDK，不能只测源码。
 - [x] 负责人审核后发布新包；确认 npm registry 中的版本、dist-tag、归档完整性及 README，而不是只相信 publish 命令成功。
 - [x] 在干净项目从 registry 安装并验证，记录包版本和商店扩展版本。
-- [ ] 更新 [迁移指南](../packages/website/src/pages/migration.mdx)、主 README、SDK README、FAQ 和 docs 中“尚未发布”的说明，以真实公开状态为准。不要在新版可用之前删除提醒。
+- [x] 更新 [迁移指南](../packages/website/src/pages/migration.mdx)、主 README、SDK README、FAQ 和 docs 中“尚未发布”的说明，以真实公开状态为准。不要在新版可用之前删除提醒。
 
 ## 6. 旧 npm 文档补丁 `0.1.1`
 
@@ -95,8 +95,8 @@ npm publish ./artifacts/legacy-sdk/cors-unlocker-0.1.1.tgz --tag latest --ignore
 
 ## 7. 上线后检查与回退
 
-- [ ] 记录商店、npm、新旧域名的验证时间和链接；从普通用户网络再次检查，不仅使用 CI。
-- [ ] 核对所有公开文档、商店、安装提示及迁移链接可用，版本和浏览器支持状态一致。
+- [x] 记录商店、npm、新旧域名的验证时间和链接；从普通用户网络再次检查，不仅使用 CI。
+- [x] 核对所有公开文档、商店、安装提示及迁移链接可用，版本和浏览器支持状态一致。
 - [x] 创建 SDK tag / [GitHub Release](https://github.com/oe/cors-unlocker/releases/tag/sdk-v0.2.0)，绑定 `6ea7424`，附两个准确 registry 归档与 SHA256SUMS。
 - [ ] Chrome 公开并完成商店复验后创建扩展最终 Release；区分两端实际源码提交。
 - [x] 如新域名失败，先保持旧桥接可用，不把所有旧路径重定向到故障站点；必要时暂停普通页面跳转。若旧域名还依赖 Pages，优先恢复旧 CNAME。（回退预案已确认；本轮无需执行回退。）
@@ -113,3 +113,5 @@ npm publish ./artifacts/legacy-sdk/cors-unlocker-0.1.1.tgz --tag latest --ignore
 - 正式 Firefox 2.0.0 已按原签名 XPI 安装：本机和 CI 的三个 SDK 归档验收均通过。除 `META-INF/` 签名外，全部 23 个运行文件与初版受测构建逐字节相同。
 - npm 单独验证准确归档与正式 AMO 包：[SDK release against public Firefox](https://github.com/oe/cors-unlocker/actions/runs/38663236037)。该验收已全绿；网站及 README 明确 Chrome 仍待审核。
 - npm registry 验证、干净项目安装及公网旧桥接复验已完成，证据在 `npm-6ea7424/registry/`。总体发布仍有空框，不能宣称 checklist 全部完成。
+
+官网最终状态由成功部署 `38664474401` / `38664591420` 及真实公网首页、Docs、Migration、FAQ 的正文和全站页脚核验确认；浏览器再次确认 Firefox 安装入口与 Chrome 待审核提示。最后仅剩上面的两个 Chrome 上线相关空框。

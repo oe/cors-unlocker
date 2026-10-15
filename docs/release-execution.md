@@ -1,6 +1,6 @@
 # Wireflip 发布执行记录 — 2026-10-15
 
-代码验收完成；两端版本均保持 2.0.0。Chrome 最新包已提交审核，Firefox 保留已公开的初版 2.0.0；两个 npm 包已公开，准确归档、latest、干净消费者和公网旧桥接复验通过。
+本轮适用发布范围验收完成；两端版本均保持 2.0.0。Chrome 最新包已提交审核，Firefox 保留已公开的初版 2.0.0；两个 npm 包已公开，准确归档、latest、干净消费者和公网旧桥接复验通过。
 
 ## 受测候选与产物
 
@@ -55,7 +55,7 @@ Chrome 已保存中英文介绍、各五张截图、logo、宣传图、权限/�
 ## 完成发布前的剩余检查
 
 1. 等待 Chrome 审核及自动发布；当前仍为待审核，不能声称全部上线。
-2. 从公开 Chrome 渠道安装/升级并验收，确认老用户一次说明、新安装不显示提示、原有规则保留；Firefox 按保留公开版本的范围复验核心流程。
+2. 从公开 Chrome 渠道安装/升级并验收，确认老用户一次说明、新安装不显示提示、原有规则保留。Firefox 公开包的核心 SDK 流程已复验完成。
 3. Chrome 公开后同步更新 Chrome 待审核文案，并补正式商店版验收。npm 已完成发布，无需再等待 Chrome。
 4. SDK 已有独立 tag / Release；扩展完整上线后创建扩展最终 Release，分别记录 Chrome 与 Firefox 对应提交和准确产物，不把未发布的 Firefox 候选当成商店包。
 
@@ -66,7 +66,7 @@ Chrome 已保存中英文介绍、各五张截图、logo、宣传图、权限/�
 - 发布归档更新为 SDK 提交 `6ea7424c06a2463d736276a04e3bf7791210cb49` 的成功 CI：[SDK release against public Firefox](https://github.com/oe/cors-unlocker/actions/runs/38663236037)。只更新新 SDK README 的准确浏览器发布状态，运行文件与 `f756440` 逐字节相同。
 - 全部三个 SDK 归档通过正式 AMO 2.0.0 原签名 XPI 的真实安装及通信验收；CI 和本机官方 Firefox 157.0.1 均为 3/3。正式 XPI 除 `META-INF/` 签名外，全部 23 个文件与初版受测构建一致。
 - 新 SDK README 明确要求 Wireflip 2.0：Firefox 已公开，Chrome 尚待审核，Chrome 用户继续保留旧 SDK。
-- 准确待发布归档 SHA-256：`wireflip-0.2.0.tgz` 为 `7d3fd6306a4e41ab2b052cac9a359c32b16fea2923cf13f80d33a216765fda7e`；`cors-unlocker-0.1.1.tgz` 为 `300638ddadf913726ce5f4f62c1db0bcefdb863f7fce142e72aec1c94b8659bd`。上文 `f756440` 的 SDK 归档保留为历史候选，未发布。
+- 准确已发布归档 SHA-256：`wireflip-0.2.0.tgz` 为 `7d3fd6306a4e41ab2b052cac9a359c32b16fea2923cf13f80d33a216765fda7e`；`cors-unlocker-0.1.1.tgz` 为 `300638ddadf913726ce5f4f62c1db0bcefdb863f7fce142e72aec1c94b8659bd`。上文 `f756440` 的 SDK 归档保留为历史候选，未发布。
 - 发布账号 `evecalm` 已完成本次发布要求的二次验证；两个 publish 命令返回成功，未重复提交同一版本。
 - 后续完整扩展 CI 的 Firefox 升级说明测试失败仍如实记录；用户明确 Firefox 不需要升级页面，本轮不作为发布要求。没有声称该测试通过，也未替换 AMO 公开包。
 - 本机记录及准确产物：`artifacts/release-2026-10-15/npm-6ea7424/`。
@@ -79,3 +79,10 @@ Chrome 已保存中英文介绍、各五张截图、logo、宣传图、权限/�
 - [SDK GitHub Release](https://github.com/oe/cors-unlocker/releases/tag/sdk-v0.2.0) 绑定 SDK 提交 `6ea7424`，附两个实际 registry 归档及 SHA256SUMS。它不代表 Chrome 已公开；发布说明保留 Chrome 待审核状态。
 - 网站首页、安装文档、迁移页、FAQ、仓库 README 更新为真实浏览器/SDK 状态；Firefox beta 文案已替换为正式 AMO 链接。扩展完整发布仍等待 Chrome 审核和正式渠道复验。
 - Firefox 升级说明本轮不适用（用户明确无需）；此前等待两商店同时就绪不是 npm 的硬性限制。
+
+## 最终官网状态与未完成项
+
+- 官网状态更新部署：[Website and release packages](https://github.com/oe/cors-unlocker/actions/runs/38664474401) 与 [Pages deployment](https://github.com/oe/cors-unlocker/actions/runs/38664591420) 均成功，对应网站提交 `79d0be6`。
+- 普通公网访问及浏览器复验：首页、Docs、Migration、FAQ 均显示 npm 已公开、Firefox 2.0 可安装、Chrome 2.0 待审核；全站页脚不再包含 Firefox beta / Chrome stable 的旧状态，安装按钮指向正式 AMO 条目。
+- 清单仅保留两项未完成：Chrome 审核通过并公开后的正式安装/升级复验，以及此后扩展最终 Release。SDK Release 已完成。
+- Firefox 升级说明页按用户要求不适用；没有增加扩展版本号，没有重传已公开 Firefox 2.0.0。
