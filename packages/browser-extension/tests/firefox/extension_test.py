@@ -117,6 +117,10 @@ class FirefoxTests(unittest.TestCase):
     def new_page(cls, url):
         handle = cls.command('POST', '/window/new', {'type': 'tab'})['handle']
         cls.switch(handle)
+        if url.startswith('moz-extension:'):
+            # Add-on replacement can leave several about:blank tabs. Give this
+            # new document a unique native URI before privileged navigation.
+            cls.command('POST', '/url', {'url': 'about:blank#wireflip-' + str(time.monotonic_ns())})
         cls.navigate(url)
         return handle
 

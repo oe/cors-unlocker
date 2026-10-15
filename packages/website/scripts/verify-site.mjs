@@ -118,7 +118,7 @@ try {
   await mobileNav.getByRole('link', { name: 'Playground', exact: true }).click();
   await page.getByRole('heading', { name: 'Playground', exact: true }).waitFor();
   await page.getByRole('heading', { name: 'Extension not connected', exact: true }).waitFor();
-  assert(await page.getByRole('button', { name: 'Create disabled draft', exact: true }).isDisabled());
+  assert(await page.getByRole('button', { name: 'Review in Wireflip', exact: true }).isDisabled());
   await page.setViewportSize({ width: 1280, height: 800 });
   await evidence(page, 'playground-desktop');
   await page.setViewportSize({ width: 390, height: 844 });

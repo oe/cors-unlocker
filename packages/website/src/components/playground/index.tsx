@@ -119,6 +119,9 @@ const SCENARIOS: Scenario[] = [
   },
 ];
 
+const DEFAULT_SCENARIO = SCENARIOS.find(scenario => scenario.id === 'mock') || SCENARIOS[0];
+const ORDERED_SCENARIOS = [DEFAULT_SCENARIO, ...SCENARIOS.filter(scenario => scenario.id !== DEFAULT_SCENARIO.id)];
+
 type RequestResult = {
   kind: 'success' | 'error';
   summary: string;
@@ -142,11 +145,11 @@ function capabilityLabel(value: string | undefined): string {
 export default function Playground() {
   const [session, setSession] = useState<InterceptSession | null>(null);
   const [status, setStatus] = useState<InterceptStatus | null>(null);
-  const [selectedId, setSelectedId] = useState<ScenarioId>('mock');
-  const [name, setName] = useState('Playground · Mock response');
-  const [urlPattern, setUrlPattern] = useState(SCENARIOS[3].urlPattern);
-  const [testUrl, setTestUrl] = useState(SCENARIOS[3].testUrl);
-  const [actionJson, setActionJson] = useState(JSON.stringify(SCENARIOS[3].actions, null, 2));
+  const [selectedId, setSelectedId] = useState<ScenarioId>(DEFAULT_SCENARIO.id);
+  const [name, setName] = useState('Playground · ' + DEFAULT_SCENARIO.name);
+  const [urlPattern, setUrlPattern] = useState(DEFAULT_SCENARIO.urlPattern);
+  const [testUrl, setTestUrl] = useState(DEFAULT_SCENARIO.testUrl);
+  const [actionJson, setActionJson] = useState(JSON.stringify(DEFAULT_SCENARIO.actions, null, 2));
   const [message, setMessage] = useState('Looking for the local extension…');
   const [pending, setPending] = useState<'connect' | 'draft' | 'request' | null>('connect');
   const [result, setResult] = useState<RequestResult | null>(null);
@@ -205,14 +208,14 @@ export default function Playground() {
     try {
       const parsed = JSON.parse(actionJson);
       if (!Array.isArray(parsed) || parsed.length === 0) throw new Error('Action JSON must be a non-empty array.');
-      const draft = await session.createRuleDraft({
+      await session.createRuleDraft({
         name: name.trim() || `Playground · ${selected.name}`,
         urlPattern: urlPattern.trim(),
         methods: ['GET'],
         resourceTypes: ['XHR', 'Fetch'],
         actions: parsed as DraftAction[],
       });
-      setMessage(`Disabled draft ${draft.id} created. Review and enable it in the workspace.`);
+      setMessage('Rule draft created. Review and enable it in Wireflip before testing.');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Unable to create the draft.');
     } finally {
@@ -277,7 +280,7 @@ export default function Playground() {
 
       <ol className="grid gap-4 rounded-xl border border-neutral-200 bg-neutral-50 p-5 text-sm sm:grid-cols-3" aria-label="Try a recipe">
         <li><strong className="block text-neutral-950">1. Choose a recipe</strong><span className="mt-1 block leading-6 text-neutral-600">Start with Mock response or select another example.</span></li>
-        <li><strong className="block text-neutral-950">2. Review and enable</strong><span className="mt-1 block leading-6 text-neutral-600">Create the draft, enable it in the workspace, and start a tab session from the Wireflip Popup when needed.</span></li>
+        <li><strong className="block text-neutral-950">2. Review and enable</strong><span className="mt-1 block leading-6 text-neutral-600">Choose Review in Wireflip, enable the draft there, then start a tab session from the Popup when needed.</span></li>
         <li><strong className="block text-neutral-950">3. Run the request</strong><span className="mt-1 block leading-6 text-neutral-600">Return here, send the probe, then compare the result and Inspector changes.</span></li>
       </ol>
 
@@ -288,7 +291,7 @@ export default function Playground() {
             <span className="font-mono text-xs text-neutral-500">{SCENARIOS.length}</span>
           </div>
           <div className="grid gap-1 sm:grid-cols-2 lg:grid-cols-1">
-            {SCENARIOS.map((scenario) => {
+            {ORDERED_SCENARIOS.map((scenario) => {
               const Icon = scenario.icon;
               const active = scenario.id === selectedId;
               return (
@@ -323,9 +326,6 @@ export default function Playground() {
               </div>
               <p className="mt-1 text-sm text-neutral-600" role="status" aria-live="polite">{message}</p>
             </div>
-            <span className="rounded-md border border-neutral-200 bg-neutral-50 px-2.5 py-1 font-mono text-xs text-neutral-600">
-              protocol v{session?.capabilities.protocolVersion || 2}
-            </span>
           </div>
 
           <div className="grid gap-8 py-7 xl:grid-cols-[1fr_340px]">
@@ -348,9 +348,9 @@ export default function Playground() {
               </details>
               <div className="flex flex-wrap items-center gap-3">
                 <button className="button-primary focus-ring" disabled={!session || pending !== null} onClick={() => void createDraft()}>
-                  <FilePlus2 className="size-4" /> Create disabled draft
+                  <FilePlus2 className="size-4" /> Review in Wireflip
                 </button>
-                <p className="text-xs leading-5 text-neutral-500">The website cannot silently enable rules. Review is always extension-controlled.</p>
+                <p className="text-xs leading-5 text-neutral-500">Drafts start disabled. Review and enable the rule in Wireflip before testing.</p>
               </div>
             </div>
 
@@ -363,6 +363,7 @@ export default function Playground() {
               <details className="rounded-xl border border-neutral-200 p-4">
                 <summary className="focus-ring cursor-pointer rounded text-sm font-semibold">Browser capabilities</summary>
                 <dl className="mt-4 grid grid-cols-[1fr_auto] gap-x-4 gap-y-3 text-xs">
+                  <dt className="text-neutral-500">SDK protocol</dt><dd className="font-medium">v{session?.capabilities.protocolVersion || 2}</dd>
                   <dt className="text-neutral-500">Advanced mode</dt><dd className="font-medium capitalize">{status?.advancedMode || 'Unavailable'}</dd>
                   <dt className="text-neutral-500">Response mock</dt><dd className="font-medium">{capabilityLabel(capabilities?.responseMock)}</dd>
                   <dt className="text-neutral-500">Preflight</dt><dd className="font-medium">{capabilityLabel(capabilities?.preflight)}</dd>
