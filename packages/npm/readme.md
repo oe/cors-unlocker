@@ -2,7 +2,7 @@
 
 An origin-scoped browser SDK for connecting a web app to the locally installed Wireflip extension.
 
-The origin-scoped browser SDK for Chrome and Firefox. Install and import `wireflip` directly.
+Requires the Wireflip 2.0 extension. Firefox 2.0.0 is available on [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/cors-unlocker/). Chrome 2.0.0 has been submitted to the [Chrome Web Store](https://chromewebstore.google.com/detail/knhlkjdfmgkmelcjfnbbhpphkmjjacng) and is awaiting review; Chrome users should keep `cors-unlocker` until the update is available. Install and import `wireflip` directly once your browser has the compatible extension.
 
 ```bash
 pnpm add wireflip
@@ -55,4 +55,4 @@ Full documentation: [wireflip.forth.ink/docs](https://wireflip.forth.ink/docs/)
 
 Existing `cors-unlocker@0.1.0` applications can keep using the retained `cors.forth.ink/message/` bridge. The old domain is not being retired. This package uses a local bridge and requires user confirmation for CORS requests; migration is optional.
 
-The `wireflip` package is not yet published. Keep the old dependency until the new SDK and compatible extension are released. See the [migration guide](https://wireflip.forth.ink/migration/) for upgrade steps and the old-to-new API mapping.
+Migration is optional. Confirm that Wireflip 2.0 is installed in your browser before changing dependencies. See the [migration guide](https://wireflip.forth.ink/migration/) for current browser availability, upgrade steps and the old-to-new API mapping.

@@ -142,6 +142,8 @@ restore flow. A separate `preRecoveryBackup` retains the data replaced by an exp
 
 ## Upgrade behavior
 
+Release availability: Firefox 2.0.0 is [public on AMO](https://addons.mozilla.org/en-US/firefox/addon/cors-unlocker/); Chrome 2.0.0 is awaiting Chrome Web Store review. The following explanation-page behavior is included in the submitted Chrome update and current source. The initial public Firefox 2.0.0 predates that page and remains unchanged.
+
 Updating from 1.x opens a local extension explanation page once, showing the old and new
 names and logos, preserved CORS rules, the new request lab, and browser-specific limits.
 Fresh installs do not show this notice. A first patch of the already distributed 2.0.0

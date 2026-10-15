@@ -163,12 +163,18 @@ class FirefoxTests(unittest.TestCase):
         (ARTIFACTS / 'browser.json').write_text(json.dumps(result['capabilities'], indent=2))
         print(f"\nReal Firefox {result['capabilities']['browserVersion']}", flush=True)
         cls.command('POST', '/timeouts', {'script': 15000, 'pageLoad': 20000})
-        archive = Path(cls.temp.name) / 'extension.xpi'
-        with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as z:
-            for path in (ROOT / 'dist/firefox').rglob('*'):
-                if path.is_file():
-                    z.write(path, path.relative_to(ROOT / 'dist/firefox'))
-        assert cls.command('POST', '/moz/addon/install', {'path': str(archive), 'temporary': True}) == ADDON_ID
+        published_xpi = os.environ.get('FIREFOX_TEST_XPI')
+        archive = Path(published_xpi) if published_xpi else Path(cls.temp.name) / 'extension.xpi'
+        if published_xpi:
+            # Keep the downloaded marketplace archive intact, including its signature.
+            expected_hash = os.environ['FIREFOX_TEST_XPI_SHA256']
+            assert hashlib.sha256(archive.read_bytes()).hexdigest() == expected_hash
+        else:
+            with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as z:
+                for path in (ROOT / 'dist/firefox').rglob('*'):
+                    if path.is_file():
+                        z.write(path, path.relative_to(ROOT / 'dist/firefox'))
+        assert cls.command('POST', '/moz/addon/install', {'path': str(archive), 'temporary': not bool(published_xpi)}) == ADDON_ID
         cls.control = cls.command('GET', '/window')
         cls.navigate(EXTENSION + '/src/options/index.html')
         cls.wait(lambda: cls.js('return typeof browser !== "undefined" && !!document.querySelector("main");'))
