@@ -11,7 +11,7 @@ Add to Chrome
 <p>No removal date for the old SDK bridge has been announced. Migration is optional. This describes the compatibility policy; domain migration is complete only after DNS, HTTPS and the old-origin bridge deployment have been verified.</p>
 <h2 id="when-to-upgrade">When to upgrade</h2>
 <p>Use the new SDK for a packaged local bridge, browser capability detection and disabled rule drafts. It communicates directly with the installed extension rather than loading a hosted iframe.</p>
-<p><strong>Release status:</strong> the <code>wireflip</code> npm package is not yet published. Keep using <code>cors-unlocker@0.1.0</code> until the new SDK and a compatible Wireflip extension are publicly available. The following steps apply after release.</p>
+<p><strong>Release status:</strong> <a href="https://www.npmjs.com/package/wireflip"><code>wireflip@0.2.0</code></a> is available on npm. It requires the Wireflip 2.0 extension. <a href="https://addons.mozilla.org/en-US/firefox/addon/cors-unlocker/">Firefox 2.0.0 is publicly available</a>. Chrome 2.0.0 is awaiting Chrome Web Store review; <strong>Chrome users should keep their existing <code>cors-unlocker</code> dependency until the compatible store update is available</strong>. Firefox users can follow the optional migration below.</p>
 <h2 id="upgrade-your-application">Upgrade your application</h2>
 <ol>
 <li>Update the browser extension to Wireflip 2.0 using the same store listing. Check that it is enabled.</li>
