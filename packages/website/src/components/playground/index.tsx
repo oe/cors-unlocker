@@ -277,7 +277,7 @@ export default function Playground() {
 
       <ol className="grid gap-4 rounded-xl border border-neutral-200 bg-neutral-50 p-5 text-sm sm:grid-cols-3" aria-label="Try a recipe">
         <li><strong className="block text-neutral-950">1. Choose a recipe</strong><span className="mt-1 block leading-6 text-neutral-600">Start with Mock response or select another example.</span></li>
-        <li><strong className="block text-neutral-950">2. Review and enable</strong><span className="mt-1 block leading-6 text-neutral-600">Create the draft, enable it in the workspace, and start a tab session from Wireflip's Popup when needed.</span></li>
+        <li><strong className="block text-neutral-950">2. Review and enable</strong><span className="mt-1 block leading-6 text-neutral-600">Create the draft, enable it in the workspace, and start a tab session from the Wireflip Popup when needed.</span></li>
         <li><strong className="block text-neutral-950">3. Run the request</strong><span className="mt-1 block leading-6 text-neutral-600">Return here, send the probe, then compare the result and Inspector changes.</span></li>
       </ol>
 
@@ -357,7 +357,7 @@ export default function Playground() {
               <section className="rounded-xl border border-neutral-200 p-4" aria-label="Tab session">
                 <h3 className="text-sm font-semibold">Tab session</h3>
                 <p className="mt-2 text-sm text-neutral-700">{!session ? 'Connect the extension first' : status?.advancedMode === 'connected' ? 'Running for this page' : status?.advancedMode === 'connecting' ? 'Connecting…' : status?.advancedMode === 'error' ? 'Needs attention in Wireflip' : 'Stopped'}</p>
-                <p className="mt-2 text-xs leading-5 text-neutral-600">Mocks, delays and failures need a tab session. Start it from Wireflip's Popup for this page; the website cannot start one for you.</p>
+                <p className="mt-2 text-xs leading-5 text-neutral-600">Mocks, delays and failures need a tab session. Start it from the Wireflip Popup for this page; the website cannot start one for you.</p>
               </section>
               <details className="rounded-xl border border-neutral-200 p-4">
                 <summary className="focus-ring cursor-pointer rounded text-sm font-semibold">Browser capabilities</summary>
