@@ -1,6 +1,6 @@
 # Wireflip 发布执行记录 — 2026-10-15
 
-代码验收完成；两端版本均保持 2.0.0。Chrome 最新包已提交审核，Firefox 保留已公开的初版 2.0.0；npm 发布尚未完成。
+代码验收完成；两端版本均保持 2.0.0。Chrome 最新包已提交审核，Firefox 保留已公开的初版 2.0.0；两个 npm 包已公开，准确归档、latest、干净消费者和公网旧桥接复验通过。
 
 ## 受测候选与产物
 
@@ -35,9 +35,9 @@
 | 渠道 | 当前状态 | 后续步骤 |
 | --- | --- | --- |
 | Chrome Web Store | 2026-10-15 08:53 CST 已提交 `f756440` 对应的最新 2.0.0 ZIP；后台显示 **Pending review** / **This draft is pending review**；已勾选审核通过后自动发布 | 等待审核；公开后从商店安装/升级复验 |
-| Firefox AMO | 原条目的初版 2.0.0 已公开，文件 ID `5122149`、版本 ID `6578016`；此包不包含本次新增升级说明 | 按用户最终决定保留公开包，不升级版本、不重传源码；后续发布时再带入升级说明 |
+| Firefox AMO | 原条目的初版 2.0.0 已公开，文件 ID `5122149`、版本 ID `6578016`；此包不包含本次新增升级说明 | 按用户最终决定保留公开包，不升级版本、不重传源码；用户进一步明确 Firefox 不需要升级页，本轮该项不适用 |
 | Firefox 商店资料 | 新名称 Wireflip、logo、英文说明、官网/支持链接及初版 2.0.0 的对应源码已保存；五张 Firefox 专用新截图、对应标题和顺序已保存，公开页面与 AMO API 均确认生效 | 已完成本轮资料更新 |
-| npm | registry 复查：`wireflip` 尚不存在，`cors-unlocker` latest 仍为 0.1.0；发布账号已登录，两个准确归档已验收 | 等 Chrome 兼容版本公开可安装后，发布 `wireflip@0.2.0` 和 `cors-unlocker@0.1.1`，再验证 registry 与准确下载归档 |
+| npm | [`wireflip@0.2.0`](https://www.npmjs.com/package/wireflip) 与 [`cors-unlocker@0.1.1`](https://www.npmjs.com/package/cors-unlocker) 已公开，latest 指向正确版本；registry 归档 SHA-256/SHA-512 与成功 CI 完全一致；干净安装、ESM/CJS/NodeNext 类型及公网旧桥接复验通过 | npm 发布与验证完成；Chrome 用户按迁移指南继续保留旧 SDK，直到商店更新可安装 |
 
 用户最终决定：Firefox 保持现有公开 2.0.0，Chrome 使用补充升级说明后的 2.0.0，
 无需增加版本号。已明确说明 AMO 已公开版本不能同版本替换，因此 Firefox 本轮没有新增升级说明。
@@ -56,7 +56,26 @@ Chrome 已保存中英文介绍、各五张截图、logo、宣传图、权限/�
 
 1. 等待 Chrome 审核及自动发布；当前仍为待审核，不能声称全部上线。
 2. 从公开 Chrome 渠道安装/升级并验收，确认老用户一次说明、新安装不显示提示、原有规则保留；Firefox 按保留公开版本的范围复验核心流程。
-3. Chrome 公开就绪后发布两个 npm 包，验证 registry 版本、dist-tag、归档及真实浏览器调用。
-4. 按实际公开状态更新安装、迁移及 beta 文案，创建最终 tag / Release；分别记录 Chrome 与 Firefox 对应提交和准确产物，不把未发布的 Firefox 候选当成商店包。
+3. Chrome 公开后同步更新 Chrome 待审核文案，并补正式商店版验收。npm 已完成发布，无需再等待 Chrome。
+4. SDK 已有独立 tag / Release；扩展完整上线后创建扩展最终 Release，分别记录 Chrome 与 Firefox 对应提交和准确产物，不把未发布的 Firefox 候选当成商店包。
 
 商店 ID、旧 SDK 默认桥接、原有规则和配置均继续保留。
+
+## npm 发布验收补充
+
+- 发布归档更新为 SDK 提交 `6ea7424c06a2463d736276a04e3bf7791210cb49` 的成功 CI：[SDK release against public Firefox](https://github.com/oe/cors-unlocker/actions/runs/38663236037)。只更新新 SDK README 的准确浏览器发布状态，运行文件与 `f756440` 逐字节相同。
+- 全部三个 SDK 归档通过正式 AMO 2.0.0 原签名 XPI 的真实安装及通信验收；CI 和本机官方 Firefox 157.0.1 均为 3/3。正式 XPI 除 `META-INF/` 签名外，全部 23 个文件与初版受测构建一致。
+- 新 SDK README 明确要求 Wireflip 2.0：Firefox 已公开，Chrome 尚待审核，Chrome 用户继续保留旧 SDK。
+- 准确待发布归档 SHA-256：`wireflip-0.2.0.tgz` 为 `7d3fd6306a4e41ab2b052cac9a359c32b16fea2923cf13f80d33a216765fda7e`；`cors-unlocker-0.1.1.tgz` 为 `300638ddadf913726ce5f4f62c1db0bcefdb863f7fce142e72aec1c94b8659bd`。上文 `f756440` 的 SDK 归档保留为历史候选，未发布。
+- 发布账号 `evecalm` 已完成本次发布要求的二次验证；两个 publish 命令返回成功，未重复提交同一版本。
+- 后续完整扩展 CI 的 Firefox 升级说明测试失败仍如实记录；用户明确 Firefox 不需要升级页面，本轮不作为发布要求。没有声称该测试通过，也未替换 AMO 公开包。
+- 本机记录及准确产物：`artifacts/release-2026-10-15/npm-6ea7424/`。
+
+## npm 发布后验证结果
+
+- registry 实际公开时间：`wireflip@0.2.0` 于 2026-10-15 09:05:58 CST 下载核验；`cors-unlocker@0.1.1` 于 09:07:03 CST 下载核验。两者 latest 均指向本次版本，归档 SHA-256 见上节，SHA-512 见本机 `registry/verification.json`。
+- 从 registry 在独立目录、全新 npm cache 安装 `wireflip@0.2.0`；ESM、CommonJS、NodeNext `.mts` / `.cts` 类型消费均通过，实际安装的全部 7 个文件与 CI 归档逐字节相同。
+- 重新下载的旧包 0.1.1 的 bundles、类型声明及入口与公开 0.1.0 相同；用 registry 归档再次通过公网 `cors.forth.ink` 的检测、状态、取消/确认、credentials、origin 隔离、禁用及设置入口。
+- [SDK GitHub Release](https://github.com/oe/cors-unlocker/releases/tag/sdk-v0.2.0) 绑定 SDK 提交 `6ea7424`，附两个实际 registry 归档及 SHA256SUMS。它不代表 Chrome 已公开；发布说明保留 Chrome 待审核状态。
+- 网站首页、安装文档、迁移页、FAQ、仓库 README 更新为真实浏览器/SDK 状态；Firefox beta 文案已替换为正式 AMO 链接。扩展完整发布仍等待 Chrome 审核和正式渠道复验。
+- Firefox 升级说明本轮不适用（用户明确无需）；此前等待两商店同时就绪不是 npm 的硬性限制。

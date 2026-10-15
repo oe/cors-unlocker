@@ -8,7 +8,7 @@ No native client is required. Chrome Advanced mode uses Chrome DevTools Protocol
 
 ## Migrating from CORS Unlocker
 
-Existing `cors-unlocker@0.1.0` integrations remain supported. The old `cors.forth.ink` hostname and its `/message/` bridge are retained; public pages redirect to the new website. Upgrading the SDK is optional and does not require reinstalling the extension. The `wireflip` npm package is not yet published, so existing users should keep the old package until the new SDK and compatible extension are released.
+Existing `cors-unlocker@0.1.0` integrations remain supported. The old `cors.forth.ink` hostname and its `/message/` bridge are retained; public pages redirect to the new website. Upgrading the SDK is optional and does not require reinstalling the extension. [`wireflip@0.2.0`](https://www.npmjs.com/package/wireflip) is available on npm and requires Wireflip 2.0. Firefox 2.0.0 is public; Chrome 2.0.0 is awaiting review, so Chrome users should keep their existing SDK until the store update is available.
 
 See the [migration guide](packages/website/src/pages/migration.mdx) for the API mapping, user-confirmation changes and upgrade steps. DNS and old-origin bridge deployment remain separate operational prerequisites.
 
