@@ -295,8 +295,9 @@ export default function Playground() {
                 <button
                   key={scenario.id}
                   aria-pressed={active}
+                  disabled={pending === 'draft' || pending === 'request'}
                   onClick={() => chooseScenario(scenario)}
-                  className={`focus-ring flex min-h-16 items-start gap-3 rounded-xl px-3 py-3 text-left transition ${active ? 'bg-white shadow-sm ring-1 ring-neutral-200' : 'hover:bg-white/70'}`}
+                  className={`focus-ring flex min-h-16 disabled:cursor-not-allowed disabled:opacity-50 items-start gap-3 rounded-xl px-3 py-3 text-left transition ${active ? 'bg-white shadow-sm ring-1 ring-neutral-200' : 'hover:bg-white/70'}`}
                 >
                   <span className={`mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg ${active ? 'bg-black text-white' : 'bg-white text-neutral-600 ring-1 ring-neutral-200'}`}>
                     <Icon className="size-4" />

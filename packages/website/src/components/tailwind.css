@@ -51,3 +51,5 @@ button, input, textarea, select { font: inherit; }
 .prose :where(pre, table) { max-width: 100%; }
 .prose pre { overflow-x: auto; }
 .prose table { display: block; overflow-x: auto; }
+
+.button-primary:disabled, .button-secondary:disabled { opacity: .45; cursor: not-allowed; transform: none; }

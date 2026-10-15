@@ -119,6 +119,9 @@ try {
   await page.getByRole('heading', { name: 'Playground', exact: true }).waitFor();
   await page.getByRole('heading', { name: 'Extension not connected', exact: true }).waitFor();
   assert(await page.getByRole('button', { name: 'Create disabled draft', exact: true }).isDisabled());
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await evidence(page, 'playground-desktop');
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.getByText('Advanced: edit rule JSON', { exact: true }).click();
   const editor = page.getByLabel('Action JSON', { exact: true });
   await editor.fill('[{"type":"delay","milliseconds":800}]');
@@ -143,11 +146,16 @@ try {
     ['Unknown', 'WireflipTestBrowser/1.0', 'Choose your browser', '/docs/#install'],
     ['Mobile', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1', 'Get desktop extension', '/docs/#install'],
   ]) {
-    const variant = await browser.newContext({ userAgent, viewport: { width: 1280, height: 800 } });
+    const variant = await browser.newContext({ userAgent, viewport: { width: name === 'Mobile' ? 390 : 1280, height: 844 } });
     const target = await variant.newPage();
     await target.goto(base + '/');
     await target.waitForFunction(label => document.querySelector('[data-install-primary]').textContent.trim() === label, label);
     for (const link of await target.locator('[data-install-primary]').all()) assert.equal(await link.getAttribute('href'), href);
+    assert(await target.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'Browser choice overflow: ' + name);
+    if (name === 'Mobile') {
+      await target.setViewportSize({ width: 320, height: 844 });
+      assert(await target.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), '320px mobile overflow');
+    }
     results.browsers.push({ name, label, href, passed: true });
     await variant.close();
   }
