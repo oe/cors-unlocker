@@ -731,6 +731,7 @@ class FirefoxTests(unittest.TestCase):
         self.assertEqual(values['legacyBackupV1']['allowedOrigins'][0]['id'], 42)
         self.switch(self.target)
         self.assertEqual(self.command('POST', '/moz/addon/install', {'path': str(archive), 'temporary': True}), ADDON_ID)
+        installed_origin()
         type(self).control = self.new_page(EXTENSION + '/src/options/index.html')
         self.wait(lambda: self.js('return !!document.querySelector("main");'))
         reloaded = self.extension_js('return browser.storage.local.get(["proxyAppState","legacyBackupV1"]);')
