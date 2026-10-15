@@ -14,10 +14,10 @@ import InstallLinks from '../components/install-links.astro';
       <p class="mt-4 text-sm text-neutral-500">Free and open source · No account or proxy server required</p>
     </div>
 
-    <div class="surface overflow-hidden" aria-label="Wireflip traffic inspector preview">
+    <div class="surface overflow-hidden" aria-label="Illustrative Chrome traffic inspector">
       <div class="flex items-center justify-between border-b hairline px-4 py-3 text-xs">
         <div class="flex items-center gap-2 font-semibold"><img class="size-6 object-contain" width="24" height="24" src="/brand-mark.svg" alt="" />Traffic inspector</div>
-        <div class="flex items-center gap-2 text-neutral-500"><span>Advanced</span><span class="relative h-5 w-9 rounded-full bg-blue-600"><span class="absolute right-0.5 top-0.5 size-4 rounded-full bg-white"></span></span></div>
+        <div class="flex items-center gap-2 text-neutral-500"><span>Tab session</span><span class="relative h-5 w-9 rounded-full bg-blue-600"><span class="absolute right-0.5 top-0.5 size-4 rounded-full bg-white"></span></span></div>
       </div>
       <div class="grid min-h-[535px] md:grid-cols-[220px_1fr]">
         <div class="border-b hairline md:border-b-0 md:border-r">
@@ -41,7 +41,7 @@ import InstallLinks from '../components/install-links.astro';
           </div>
           <div class="mt-6 rounded-xl border border-blue-200 bg-blue-50/60 p-4">
             <div class="flex items-center gap-2 font-semibold text-blue-900"><span class="flex size-5 items-center justify-center rounded-full bg-blue-600 text-[10px] text-white">✓</span>CORS repaired</div>
-            <p class="mt-2 leading-5 text-blue-800">Preflight synthesized locally. Response headers were patched before browser enforcement.</p>
+            <p class="mt-2 leading-5 text-blue-800">Chrome synthesized the preflight locally and patched response headers before enforcement.</p>
           </div>
         </div>
       </div>
@@ -51,19 +51,19 @@ import InstallLinks from '../components/install-links.astro';
   <section id="product" class="border-y hairline py-24 sm:py-32">
     <div class="site-shell">
       <h2 class="section-title max-w-4xl">Fast when rules are enough.<br />Deep when they are not.</h2>
-      <p class="section-copy mt-5 max-w-2xl">One extension, with two deliberately different execution paths.</p>
+      <p class="section-copy mt-5 max-w-2xl">Keep browser rules for everyday changes. Start a tab session for inspection and temporary controls.</p>
       <div class="mt-14 grid overflow-hidden rounded-2xl border hairline lg:grid-cols-2">
         <article class="p-7 sm:p-10 lg:border-r hairline">
           <div class="flex size-10 items-center justify-center rounded-lg border border-blue-300 text-blue-600">≡</div>
-          <h3 class="mt-7 text-2xl font-semibold tracking-tight">Rules mode</h3>
-          <p class="mt-2 text-sm text-neutral-500">Chrome declarativeNetRequest</p>
-          <ul class="mt-8 space-y-4 text-sm"><li>✓ CORS, headers, redirects, and blocking</li><li>✓ High performance and low overhead</li><li>✓ No debugging banner</li><li>✓ Always-on rules when you need them</li></ul>
+          <h3 class="mt-7 text-2xl font-semibold tracking-tight">Saved browser rules</h3>
+          <p class="mt-2 text-sm text-neutral-500">Persistent changes across matching pages</p>
+          <ul class="mt-8 space-y-4 text-sm"><li>✓ Headers, redirects, and blocking</li><li>✓ High performance and low overhead</li><li>✓ No debugging banner</li><li>✓ Always-on rules when you need them</li></ul>
         </article>
         <article class="bg-neutral-50 p-7 sm:p-10">
           <div class="flex size-10 items-center justify-center rounded-lg border border-blue-300 font-mono text-blue-600">&lt;/&gt;</div>
-          <h3 class="mt-7 text-2xl font-semibold tracking-tight">Advanced mode</h3>
-          <p class="mt-2 text-sm text-neutral-500">Tab-scoped Chrome DevTools Protocol</p>
-          <ul class="mt-8 space-y-4 text-sm"><li>✓ Inspect requests and responses</li><li>✓ Repair failed preflights and CORS responses</li><li>✓ Static mocks, delay, and network failure</li><li>✓ Chrome shows its standard debugging disclosure</li></ul>
+          <h3 class="mt-7 text-2xl font-semibold tracking-tight">Tab sessions</h3>
+          <p class="mt-2 text-sm text-neutral-500">Explicitly started for the current tab</p>
+          <ul class="mt-8 space-y-4 text-sm"><li>✓ Inspect requests and responses</li><li>✓ Repair CORS responses</li><li>✓ Static mocks, delay, and network failure</li><li>✓ Chrome shows its standard debugging disclosure</li></ul>
         </article>
       </div>
     </div>
@@ -104,7 +104,7 @@ import InstallLinks from '../components/install-links.astro';
         <div class="grid gap-2 py-6 sm:grid-cols-[220px_1fr]"><strong>No traffic upload</strong><span class="text-neutral-600">Requests, responses, rules, and logs are not sent to our servers.</span></div>
         <div class="grid gap-2 py-6 sm:grid-cols-[220px_1fr]"><strong>No native client</strong><span class="text-neutral-600">Everything runs inside Chrome or Firefox.</span></div>
         <div class="grid gap-2 py-6 sm:grid-cols-[220px_1fr]"><strong>Sensitive headers redacted</strong><span class="text-neutral-600">Authorization and cookie values are masked in the inspector.</span></div>
-        <div class="grid gap-2 py-6 sm:grid-cols-[220px_1fr]"><strong>Tab-scoped attach</strong><span class="text-neutral-600">Advanced mode detaches on disable, tab close, or cross-origin navigation.</span></div>
+        <div class="grid gap-2 py-6 sm:grid-cols-[220px_1fr]"><strong>Tab sessions</strong><span class="text-neutral-600">Sessions stop on disable, tab close, or cross-origin navigation. Persistent rules stay on until you turn them off.</span></div>
       </div>
     </div>
   </section>

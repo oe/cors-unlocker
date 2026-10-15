@@ -20,11 +20,11 @@ Yes. The first v2 startup performs a one-time migration, keeps a local recovery 
 
 ## Why does Chrome show a debugging banner?
 
-Advanced mode uses Chrome's `debugger` API and the DevTools Protocol to pause requests before browser CORS enforcement. Chrome always discloses this attachment. Rules mode does not use CDP and does not show the banner.
+A tab session uses Chrome's `debugger` API and the DevTools Protocol to pause requests before browser CORS enforcement. Chrome always discloses this attachment. Persistent header, redirect and blocking rules do not use CDP and do not show the banner.
 
-## When does Advanced mode detach?
+## When does a tab session stop?
 
-When you switch it off, close the tab, another debugger takes over, or navigate the top-level tab to a different origin.
+When you stop it, close the tab or navigate to another origin. Chrome also stops its session when another debugger takes over.
 
 ## Does Wireflip upload my traffic?
 
@@ -36,7 +36,7 @@ Not arbitrary JavaScript. Wireflip accepts validated JSON action scripts. This k
 
 ## What can a website do through the npm SDK?
 
-It can detect the installed extension, read status for its own origin, ask the user to enable CORS, disable its own CORS rule, open the workspace, or create a disabled rule draft. It cannot silently enable arbitrary interception, attach Advanced mode, or affect another origin.
+It can detect the installed extension, read status for its own origin, ask the user to enable CORS, disable its own CORS rule, open the workspace, or create a disabled rule draft. It cannot silently enable arbitrary interception, start a tab session, or affect another origin.
 
 ## Which npm package should I install?
 
