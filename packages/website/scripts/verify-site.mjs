@@ -40,7 +40,7 @@ assert(routes.length >= 9 && routes.includes('/docs/sdk/') && !routes.includes('
 assert(readFileSync(path.join(dist, 'robots.txt'), 'utf8').includes(origin + '/sitemap.xml'));
 assert(/name="robots"\s+content="noindex"/.test(readFileSync(path.join(dist, 'message/index.html'), 'utf8')));
 const results = { pages: [], browsers: [], interactions: [], lighthouse: [], capture: 'Native Playwright built-site screenshots; no extension API mocks' };
-let browser;
+let browser, evidencePage;
 async function evidence(page, name) {
   const image = await page.screenshot({ path: path.join(output, 'screenshots', name + '.png'), animations: 'disabled', fullPage: false });
   if (process.env.WIREFLIP_INLINE_EVIDENCE === '1') {
@@ -54,6 +54,7 @@ try {
   // This deterministic network response tests the probe UI, not interception.
   await context.route('https://jsonplaceholder.typicode.com/**', route => route.fulfill({ contentType: 'application/json', body: '{"source":"website UI fixture","id":1}' }));
   const page = await context.newPage(), errors = [], internalLinks = new Set();
+  evidencePage = page;
   page.on('pageerror', error => errors.push(error.message));
   for (const route of routes) {
     assert.equal((await page.goto(base + route)).status(), 200, route);
@@ -169,6 +170,12 @@ try {
   }
   writeFileSync(path.join(output, 'checks.json'), JSON.stringify(results, null, 2) + '\n');
   console.log('WEBSITE_QA ' + JSON.stringify(results));
+} catch (error) {
+  if (evidencePage && !evidencePage.isClosed()) {
+    await evidence(evidencePage, 'failure-state');
+    console.error('WEBSITE_FAILURE_DOM ' + await evidencePage.locator('main').ariaSnapshot());
+  }
+  throw error;
 } finally {
   await browser?.close();
   server.closeAllConnections();

@@ -341,7 +341,7 @@ export default function Playground() {
                 <summary className="focus-ring cursor-pointer rounded text-sm font-medium">Advanced: edit rule JSON</summary>
                 <label className="mt-4 flex flex-col gap-2 text-sm font-medium">
                   Action JSON
-                  <textarea className="focus-ring min-h-64 resize-y rounded-lg border border-neutral-300 bg-neutral-950 p-4 font-mono text-[13px] leading-6 text-neutral-100" value={actionJson} onChange={(event) => setActionJson(event.target.value)} spellCheck={false} />
+                  <textarea aria-label="Action JSON" className="focus-ring min-h-64 resize-y rounded-lg border border-neutral-300 bg-neutral-950 p-4 font-mono text-[13px] leading-6 text-neutral-100" value={actionJson} onChange={(event) => setActionJson(event.target.value)} spellCheck={false} />
                 </label>
                 <button className="focus-ring mt-3 rounded text-sm font-medium text-blue-700" onClick={formatActions}>Format JSON</button>
               </details>
