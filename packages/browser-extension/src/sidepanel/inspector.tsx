@@ -303,7 +303,7 @@ export function Inspector() {
           </div>
         )}
       </ScrollArea>
-      <details className="text-xs text-muted-foreground"><summary className="cursor-pointer">{t('About request capture')}</summary><p className="mt-2">{t('Matched rule requests appear automatically. Start recording for other traffic. This is not a complete browser network log.')}</p><p className="mt-2">{t(__TARGET__ === 'chrome' ? 'Chrome may show its debugging indicator on matching pages. You can disable this rule in Wireflip at any time.' : 'Firefox CORS: response headers only.')}</p></details>
+      <details className="text-xs text-muted-foreground"><summary className="cursor-pointer">{t('About request capture')}</summary><p className="mt-2">{t('Start recording to inspect this tab’s traffic. Saved rules work without recording.')}</p><p className="mt-2">{t(__TARGET__ === 'chrome' ? 'Chrome may show its debugging indicator on matching pages. You can disable this rule in Wireflip at any time.' : 'Firefox CORS: response headers only.')}</p></details>
 
       {!selected && filtered.length > 0 ? <p className="text-xs text-muted-foreground">{t("Select a request to mock its response or change its behavior.")}</p> : null}
       {selected ? (

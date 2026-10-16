@@ -54,11 +54,11 @@ function App() {
       <section className="rounded-lg border bg-muted/20 px-2.5 py-1.5" aria-label={t('Current tab')}>
         <div className="control-row">
           <p className="min-w-0 flex-1 truncate text-sm font-medium" title={vm.origin}>{vm.origin || t(vm.ready ? 'Select an HTTP or HTTPS tab.' : 'Loading…')}</p>
+          <Button className="ml-auto" size="xs" variant="ghost" disabled={!vm.isSupported || (vm.busy && vm.phase !== 'connecting')} onClick={vm.toggleSession}>{t(sessionAction)}</Button>
         </div>
         <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
           <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full" style={{ backgroundColor: TOOLBAR_COLORS[presentation.state] }} />
           <span>{t(heading)}</span>
-          <Button className="ml-auto" size="xs" variant="ghost" disabled={!vm.isSupported || (vm.busy && vm.phase !== 'connecting')} onClick={vm.toggleSession}>{t(sessionAction)}</Button>
         </div>
         <p className="mt-1 text-xs text-muted-foreground">{t('Enabled rules run automatically on matching pages.')}</p>
         {vm.summary.pausedGroups.length ? <p className="mt-1 text-xs text-muted-foreground">{t('Paused groups: {count}', { count: vm.summary.pausedGroups.length })} · {t('Individual switches are preserved')}</p> : null}
