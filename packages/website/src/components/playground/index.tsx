@@ -123,7 +123,7 @@ const DEFAULT_SCENARIO = SCENARIOS.find(scenario => scenario.id === 'mock') || S
 const ORDERED_SCENARIOS = [DEFAULT_SCENARIO, ...SCENARIOS.filter(scenario => scenario.id !== DEFAULT_SCENARIO.id)];
 
 type RequestResult = {
-  kind: 'success' | 'error';
+  kind: 'verified' | 'observed' | 'error';
   summary: string;
   detail: string;
 };
@@ -153,6 +153,15 @@ export default function Playground() {
   const [message, setMessage] = useState('Looking for the local extension…');
   const [pending, setPending] = useState<'connect' | 'draft' | 'request' | null>('connect');
   const [result, setResult] = useState<RequestResult | null>(null);
+  const [draftFingerprint, setDraftFingerprint] = useState<string | null>(null);
+  const fingerprint = JSON.stringify([name, urlPattern, actionJson]);
+  const draftCreated = draftFingerprint === fingerprint;
+  let actions: DraftAction[] = [];
+  try { const parsed: unknown = JSON.parse(actionJson); if (Array.isArray(parsed)) actions = parsed; } catch { /* The editor reports syntax errors on submission. */ }
+  const requiresSession = actions.some(action => ['mockResponse', 'cors', 'delay', 'networkFailure'].includes(action?.type))
+    || (actions.some(action => action?.type === 'redirect') && actions.some(action => action?.type === 'setRequestHeaders' || action?.type === 'setResponseHeaders'));
+  const mock = actions.find(action => action?.type === 'mockResponse');
+  const readyToTest = !!session && draftCreated && (!requiresSession || status?.advancedMode === 'connected');
 
   const selected = SCENARIOS.find((scenario) => scenario.id === selectedId) || SCENARIOS[0];
 
@@ -162,7 +171,7 @@ export default function Playground() {
       const next = await intercept.connect();
       setSession(next);
       setStatus(await next.getStatus());
-      setMessage('The extension is ready. Review a recipe below; request interception is controlled in Wireflip.');
+      setMessage('Extension detected. Add the recipe, enable its rule in Wireflip, then return to this tab.');
     } catch (error) {
       setSession(null);
       setStatus(null);
@@ -185,7 +194,8 @@ export default function Playground() {
     };
     window.addEventListener('focus', refresh);
     document.addEventListener('visibilitychange', refresh);
-    return () => { active = false; window.removeEventListener('focus', refresh); document.removeEventListener('visibilitychange', refresh); };
+    const timer = window.setInterval(refresh, 2_000);
+    return () => { active = false; window.clearInterval(timer); window.removeEventListener('focus', refresh); document.removeEventListener('visibilitychange', refresh); };
   }, [session]);
 
   const formatActions = () => {
@@ -200,12 +210,14 @@ export default function Playground() {
     setTestUrl(scenario.testUrl);
     setActionJson(JSON.stringify(scenario.actions, null, 2));
     setResult(null);
+    setDraftFingerprint(null);
   };
 
   const createDraft = async () => {
     if (!session) return;
     setPending('draft');
     try {
+      if (draftCreated) { await session.openWorkspace(); return; }
       const parsed = JSON.parse(actionJson);
       if (!Array.isArray(parsed) || parsed.length === 0) throw new Error('Action JSON must be a non-empty array.');
       await session.createRuleDraft({
@@ -215,7 +227,8 @@ export default function Playground() {
         resourceTypes: ['XHR', 'Fetch'],
         actions: parsed as DraftAction[],
       });
-      setMessage('Rule draft created. Review and enable it in Wireflip before testing.');
+      setDraftFingerprint(fingerprint);
+      setMessage('Rule added disabled. Turn on its switch in Wireflip, then return to the Playground tab' + (requiresSession ? ' and open the toolbar icon → Start tab session.' : ' to test it.'));
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Unable to create the draft.');
     } finally {
@@ -224,26 +237,37 @@ export default function Playground() {
   };
 
   const sendRequest = async () => {
+    if (!session || !draftCreated) return;
     setPending('request');
     setResult(null);
-    const startedAt = performance.now();
     const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 15_000);
+    let timeout: number | undefined;
+    const startedAt = performance.now();
     try {
-      const response = await fetch(testUrl, { signal: controller.signal });
+      const current = await session.getStatus();
+      setStatus(current);
+      if (requiresSession && current.advancedMode !== 'connected') {
+        setMessage('This tab’s session is stopped. Return to the Playground tab, click the Wireflip toolbar icon, then Start tab session.');
+        return;
+      }
+      timeout = window.setTimeout(() => controller.abort(), 15_000);
+      const response = await fetch(testUrl, { signal: controller.signal, cache: 'no-store' });
       const body = await response.text();
       const elapsed = Math.round(performance.now() - startedAt);
+      const matches = mock?.type === 'mockResponse' && body.trim() === mock.body.trim();
+      const summary = mock
+        ? matches ? 'Mock verified' : 'Mock did not match'
+        : response.ok ? 'Response received · check the changes in Inspector' : 'HTTP error';
       setResult({
-        kind: 'success',
-        summary: `${response.status} ${response.statusText || 'Response'} · ${elapsed} ms`,
-        detail: body.slice(0, 2_000) || '(empty body)',
+        kind: mock ? matches ? 'verified' : 'error' : response.ok ? 'observed' : 'error',
+        summary: summary + ` · ${response.status} · ${elapsed} ms`,
+        detail: (mock && !matches ? 'The response differs from the expected Mock below. Check that the recipe rule is enabled, its group is on, and no other matching rule overrides it.\n\nReceived:\n' : '') + (body.slice(0, 2_000) || '(empty body)'),
       });
     } catch (error) {
-      const elapsed = Math.round(performance.now() - startedAt);
       setResult({
         kind: 'error',
-        summary: `Request failed · ${elapsed} ms`,
-        detail: error instanceof Error ? error.message : 'Unknown network error',
+        summary: `Request failed · ${Math.round(performance.now() - startedAt)} ms`,
+        detail: (error instanceof Error ? error.message : 'Unknown network error') + ' — For block or failure recipes, a failed request is expected; confirm the matching rule in Inspector.',
       });
     } finally {
       window.clearTimeout(timeout);
@@ -259,7 +283,7 @@ export default function Playground() {
         <div className="max-w-3xl">
           <h1 className="text-5xl font-semibold leading-[1.02] tracking-[-.05em] sm:text-6xl">Playground</h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-neutral-600">
-            Try a ready-made recipe, review its rule in Wireflip, then send a request to see the result. You do not need to add the SDK to your application.
+            Try a recipe in three steps. Adding a rule does not enable it or start interception. Follow the steps below, then test the actual response.
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -267,7 +291,7 @@ export default function Playground() {
             <RefreshCw className="size-4" /> Reconnect
           </button>
           {session ? (
-            <button className="button-primary focus-ring" onClick={() => void session.openWorkspace()}>
+            <button className="button-primary focus-ring" onClick={() => void session.openWorkspace().catch(error => setMessage(String(error)))}>
               Open workspace <ExternalLink className="size-4" />
             </button>
           ) : (
@@ -279,9 +303,9 @@ export default function Playground() {
       </div>
 
       <ol className="grid gap-4 rounded-xl border border-neutral-200 bg-neutral-50 p-5 text-sm sm:grid-cols-3" aria-label="Try a recipe">
-        <li><strong className="block text-neutral-950">1. Choose a recipe</strong><span className="mt-1 block leading-6 text-neutral-600">Start with Mock response or select another example.</span></li>
-        <li><strong className="block text-neutral-950">2. Review and enable</strong><span className="mt-1 block leading-6 text-neutral-600">Choose Review in Wireflip, enable the draft there, then start a tab session from the Popup when needed.</span></li>
-        <li><strong className="block text-neutral-950">3. Run the request</strong><span className="mt-1 block leading-6 text-neutral-600">Return here, send the probe, then compare the result and Inspector changes.</span></li>
+        <li><strong className="block text-neutral-950">1. Add and enable the rule</strong><span className="mt-1 block leading-6 text-neutral-600">Choose a recipe, click Add rule in Wireflip, then turn on its switch in the workspace. Website rules always start disabled.</span></li>
+        <li><strong className="block text-neutral-950">{requiresSession ? '2. Start this tab’s session' : '2. Return to Playground'}</strong><span className="mt-1 block leading-6 text-neutral-600">{requiresSession ? 'Return to this Playground tab first. Click the Wireflip icon beside the address bar → Start tab session. Starting one on the workspace tab will not work.' : 'This recipe uses saved browser rules and does not need a tab session.'}</span></li>
+        <li><strong className="block text-neutral-950">3. Test the recipe</strong><span className="mt-1 block leading-6 text-neutral-600">{mock ? 'Test mock unlocks when this tab’s session is running. We compare the actual response with the expected body.' : 'Send the request, then check the matching rule and changes in Inspector.'}</span></li>
       </ol>
 
       <div className="grid overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-xl shadow-black/5 lg:grid-cols-[280px_1fr]">
@@ -348,9 +372,9 @@ export default function Playground() {
               </details>
               <div className="flex flex-wrap items-center gap-3">
                 <button className="button-primary focus-ring" disabled={!session || pending !== null} onClick={() => void createDraft()}>
-                  <FilePlus2 className="size-4" /> Review in Wireflip
+                  <FilePlus2 className="size-4" /> {draftCreated ? 'Open rule in Wireflip' : 'Add rule in Wireflip'}
                 </button>
-                <p className="text-xs leading-5 text-neutral-500">Drafts start disabled. Review and enable the rule in Wireflip before testing.</p>
+                <p className="text-xs leading-5 text-neutral-500">{draftCreated ? 'Rule added — make sure its switch is on in the workspace' : 'Opens the workspace with a disabled rule for you to enable'}</p>
               </div>
             </div>
 
@@ -358,7 +382,7 @@ export default function Playground() {
               <section className="rounded-xl border border-neutral-200 p-4" aria-label="Tab session">
                 <h3 className="text-sm font-semibold">Tab session</h3>
                 <p className="mt-2 text-sm text-neutral-700">{!session ? 'Connect the extension first' : status?.advancedMode === 'connected' ? 'Running for this page' : status?.advancedMode === 'connecting' ? 'Connecting…' : status?.advancedMode === 'error' ? 'Needs attention in Wireflip' : 'Stopped'}</p>
-                <p className="mt-2 text-xs leading-5 text-neutral-600">Mocks, delays and failures need a tab session. Start it from the Wireflip Popup for this page; the website cannot start one for you.</p>
+                <p className="mt-2 text-xs leading-5 text-neutral-600">{requiresSession ? 'Return to this Playground tab → Wireflip toolbar icon → Start tab session. Enabling the saved rule alone is not enough.' : 'This recipe does not need a tab session.'}</p>
               </section>
               <details className="rounded-xl border border-neutral-200 p-4">
                 <summary className="focus-ring cursor-pointer rounded text-sm font-semibold">Browser capabilities</summary>
@@ -378,25 +402,26 @@ export default function Playground() {
               <section className="rounded-xl border border-neutral-200 p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <h3 className="text-sm font-semibold">Request probe</h3>
-                    <p className="mt-1 text-xs leading-5 text-neutral-500">Run once for a baseline, then again after enabling your rule.</p>
+                    <h3 className="text-sm font-semibold">3. Test the recipe</h3>
+                    <p className="mt-1 text-xs leading-5 text-neutral-500">{!session ? 'Install the extension and reconnect first' : !draftCreated ? 'First add and enable the recipe rule in Wireflip' : requiresSession && status?.advancedMode !== 'connected' ? 'Start a session for this Playground tab to unlock testing' : 'Session ready — the saved rule must also be enabled'}</p>
                   </div>
-                  <button aria-label="Send request" className="focus-ring flex size-10 shrink-0 items-center justify-center rounded-lg bg-black text-white disabled:opacity-40" disabled={pending !== null} onClick={() => void sendRequest()}>
-                    <Play className="size-4" />
+                  <button aria-label={mock ? 'Test mock' : 'Test recipe'} className="focus-ring flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-black px-3 text-sm text-white disabled:opacity-40" disabled={!readyToTest || pending !== null} onClick={() => void sendRequest()}>
+                    <Play className="size-4" /> {mock ? 'Test mock' : 'Test recipe'}
                   </button>
                 </div>
-                <p className="mt-3 text-xs leading-5 text-neutral-600">Probes contact the URL below. Public example services may be unavailable. Verify the expected body or change in the Inspector; a successful request alone does not prove a rule ran.</p>
+                <p className="mt-3 text-xs leading-5 text-neutral-600">Requests contact the URL below. Firefox replaces the server’s response body, so the endpoint must be reachable. A received response alone does not prove a rule ran.</p>
                 {selected.id === 'cors' ? <p className="mt-3 text-xs leading-5 text-neutral-600">The demo service may already allow CORS. Use your affected API URL to compare behavior before and after repair.</p> : null}
+                {mock?.type === 'mockResponse' ? <div className="mt-4 text-xs"><p className="font-semibold text-neutral-900">Expected Mock body</p><pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-all rounded-lg bg-neutral-100 p-3 font-mono text-neutral-700">{mock.body}</pre></div> : null}
                 <input aria-label="Probe URL" className="focus-ring mt-4 min-h-10 w-full rounded-lg border border-neutral-300 px-3 font-mono text-xs" value={testUrl} onChange={(event) => setTestUrl(event.target.value)} />
                 <div className="mt-4 min-h-32 overflow-hidden rounded-lg bg-neutral-950 p-3 font-mono text-xs leading-5 text-neutral-300">
                   {pending === 'request' ? 'Sending request…' : result ? (
                     <>
-                      <p className={`flex items-center gap-2 font-semibold ${result.kind === 'success' ? 'text-emerald-400' : 'text-red-400'}`}>
-                        {result.kind === 'success' ? <Check className="size-3.5" /> : <WifiOff className="size-3.5" />}{result.summary}
+                      <p className={`flex items-center gap-2 font-semibold ${result.kind === 'verified' ? 'text-emerald-400' : result.kind === 'observed' ? 'text-neutral-100' : 'text-red-400'}`}>
+                        {result.kind === 'verified' ? <Check className="size-3.5" /> : <WifiOff className="size-3.5" />}{result.summary}
                       </p>
                       <pre className="mt-2 max-h-44 overflow-auto whitespace-pre-wrap break-all text-neutral-500">{result.detail}</pre>
                     </>
-                  ) : 'Ready. No request sent yet.'}
+                  ) : 'No request sent. Complete the steps above to test this recipe.'}
                 </div>
               </section>
             </div>
