@@ -3,6 +3,7 @@ type Hooks = {
   ensure: (tabId: number) => Promise<unknown>;
   pause: (tabId: number, origin?: string) => void;
   resume: (tabId: number) => void;
+  pausedOrigin: (tabId: number) => string | undefined;
 };
 let hooks: Hooks | undefined;
 export function setRuleRuntimeHooks(value: Hooks) { hooks = value; }
@@ -14,3 +15,5 @@ export function scheduleSavedRuleRuntime(tabId: number) {
 }
 export function pauseSavedRuleRuntime(tabId: number, origin?: string) { hooks?.pause(tabId, origin); }
 export function resumeSavedRuleRuntime(tabId: number) { hooks?.resume(tabId); }
+
+export function pausedRuleOrigin(tabId: number) { return hooks?.pausedOrigin(tabId); }

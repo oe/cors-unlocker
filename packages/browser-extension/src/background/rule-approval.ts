@@ -7,7 +7,7 @@ import { disableAdvancedProxyTransport, getAdvancedProxyStatus } from '@/backgro
 
 type Approval = {
   id: string; origin: string; tabId: number; rule: Omit<IProxyRule, 'id' | 'createdAt' | 'updatedAt'>;
-  existingId?: string; windowId?: number; timer: ReturnType<typeof setTimeout>;
+  existingId?: string; windowId?: number; committing?: boolean; timer: ReturnType<typeof setTimeout>;
   finish: (result: unknown) => void;
 };
 const approvals = new Map<string, Approval>();
@@ -61,14 +61,16 @@ export async function resolveRuleApproval(id: string, accepted: boolean) {
   if (!accepted) { finish(request, { error: { type: 'user-cancel', message: 'The user declined the rule.' } }); return; }
   const tab = await browser.tabs.get(request.tabId);
   if (!tab.url || new URL(tab.url).origin !== request.origin) throw new Error('The requesting page has changed. Try again from that page.');
-  let saved: IProxyRule;
+  let saved: IProxyRule | undefined;
+  try {
   if (request.existingId) {
     const state = await ensureProxyAppState();
     const existing = state.rules.find(rule => rule.id === request.existingId);
     if (!existing || existing.source !== 'user' || existing.match.initiatorOrigins.length !== 1
       || existing.match.initiatorOrigins[0] !== request.origin) throw new Error('This page cannot change that rule.');
+    request.committing = true;
     saved = await updateProxyRule(existing.id, request.rule);
-  } else saved = await addProxyRule(request.rule);
+  } else { request.committing = true; saved = await addProxyRule(request.rule); }
   const state = await ensureProxyAppState();
   resumeSavedRuleRuntime(request.tabId);
   if (getAdvancedProxyStatus(request.tabId).phase === 'error') await disableAdvancedProxyTransport(request.tabId);
@@ -78,9 +80,14 @@ export async function resolveRuleApproval(id: string, accepted: boolean) {
   const ready = isRuleEnabled(saved, state.profiles) && (!needsProxy(saved) || status.phase === 'connected' && status.origin === request.origin && status.captureEnabled !== false);
   finish(request, { id: saved.id, enabled: true, ready, error: ready ? undefined : status.error || 'The rule group is paused.', workspaceOpened: false });
   await browser.tabs.update(request.tabId, { active: true }).catch(() => undefined);
+  } catch (error) {
+    request.committing = false;
+    if (saved) finish(request, { id: saved.id, enabled: true, ready: false, error: String(error), workspaceOpened: false });
+    else throw error;
+  }
 }
 browser.windows.onRemoved.addListener(windowId => {
-  for (const request of approvals.values()) if (request.windowId === windowId) {
+  for (const request of approvals.values()) if (request.windowId === windowId && !request.committing) {
     finish(request, { error: { type: 'user-cancel', message: 'The approval window was closed.' } });
   }
 });

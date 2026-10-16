@@ -1,4 +1,4 @@
-import { ensureSavedRuleRuntime, scheduleSavedRuleRuntime, resumeSavedRuleRuntime } from './rule-runtime-bridge';
+import { ensureSavedRuleRuntime, scheduleSavedRuleRuntime, resumeSavedRuleRuntime, pausedRuleOrigin } from './rule-runtime-bridge';
 import { batchTabNotifications, waitForDelay } from './session-work';
 import { refreshToolbarTab } from './toolbar-status';
 import { setFirefoxCorsSession } from './proxy-dnr';
@@ -295,6 +295,7 @@ function onBeforeSendHeaders(details: RequestDetails) {
   const original = headersToMap(details.requestHeaders);
   requestHeaders.set(keyFor(details), original);
   const { actions } = actionsFor(session, details);
+  if (!session.recording && actions.length === 0 && !requestIndexes.has(keyFor(details))) return {};
   const headerActions = actions.filter(
     (action): action is Extract<IProxyAction, { type: 'setRequestHeaders' }> => action.type === 'setRequestHeaders',
   );
@@ -437,7 +438,10 @@ export async function enableAdvancedProxy(
   if (closing) await closing;
 
   const pending = pendingSessions.get(tabId);
-  if (pending) return pending.promise;
+  if (pending) {
+    const result = await pending.promise;
+    return result.phase === 'connected' ? enableAdvancedProxy(tabId, options) : result;
+  }
   const connection: PendingSession = { abort: new AbortController(), closed: false, promise: Promise.resolve({ tabId, phase: 'disabled' }) };
   pendingSessions.set(tabId, connection);
   connection.promise = Promise.resolve().then(() => startFirefoxSession(tabId, options, connection))
@@ -565,7 +569,13 @@ export async function disableAdvancedProxy(tabId: number): Promise<IAdvancedProx
 }
 
 export function getAdvancedProxyStatus(tabId: number): IAdvancedProxyStatus {
-  return statuses.get(tabId) || { tabId, phase: 'disabled' };
+  const status = statuses.get(tabId);
+  const paused = pausedRuleOrigin(tabId);
+  if (paused && status?.phase !== 'connected') return {
+    tabId, origin: paused, phase: 'error', recording: false,
+    error: 'Rule execution was stopped from the browser. Choose Retry to resume.',
+  };
+  return status || { tabId, phase: 'disabled' };
 }
 
 export function getRequestLog(tabId: number): IRequestLogEntry[] {

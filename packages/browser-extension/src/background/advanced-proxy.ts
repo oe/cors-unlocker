@@ -1,4 +1,4 @@
-import { ensureSavedRuleRuntime, scheduleSavedRuleRuntime, pauseSavedRuleRuntime, resumeSavedRuleRuntime } from './rule-runtime-bridge';
+import { ensureSavedRuleRuntime, scheduleSavedRuleRuntime, pauseSavedRuleRuntime, resumeSavedRuleRuntime, pausedRuleOrigin } from './rule-runtime-bridge';
 import { batchTabNotifications, waitForDelay } from './session-work';
 import { refreshToolbarTab } from './toolbar-status';
 import browser from 'webextension-polyfill';
@@ -260,6 +260,10 @@ async function handleRequestPaused(tabId: number, params: IRequestPausedParams) 
     request: { ...params.request, url: original.url, method: original.method },
     resourceType: original.resourceType,
   } : params);
+  if (!session.recording && rules.length === 0 && !requestIndexes.has(key)) {
+    await continueUnchanged(tabId, params.requestId);
+    return;
+  }
   const actions = allActions(rules);
   const cors = actionOfType(actions, 'cors');
   const entry = isResponseStage
@@ -438,13 +442,13 @@ function onDebuggerDetach(source: chrome.debugger.Debuggee, reason: string) {
   const pending = pendingConnections.get(source.tabId);
   if (pending && !pending.cleaningUp) pending.abort.abort();
   const stoppedSession = sessions.get(source.tabId);
-  if (!pending?.cleaningUp && reason === 'canceled_by_user') pauseSavedRuleRuntime(source.tabId, stoppedSession?.origin);
+  if (!pending?.cleaningUp && reason === 'canceled_by_user') pauseSavedRuleRuntime(source.tabId, stoppedSession?.origin || pending?.origin);
   sessions.get(source.tabId)?.abort.abort();
   sessions.delete(source.tabId);
   for (const key of redirectedRequests.keys()) if (key.startsWith(`${source.tabId}:`)) redirectedRequests.delete(key);
   void notifyStatus({
     tabId: source.tabId,
-    phase: reason === 'canceled_by_user' && !!stoppedSession ? 'error' : 'disabled',
+    phase: reason === 'canceled_by_user' && !!(stoppedSession || pending) && !pending?.cleaningUp ? 'error' : 'disabled',
     origin: stoppedSession?.origin,
     error: reason === 'canceled_by_user' ? 'Chrome debugging was stopped by the user.' : undefined,
   });
@@ -677,6 +681,7 @@ export async function updateQuickControls(tabId: number, value: unknown): Promis
 async function disconnectTransport(tabId: number): Promise<IAdvancedProxyStatus> {
   const pending = pendingConnections.get(tabId);
   pending?.abort.abort();
+  if (pending) pending.cleaningUp = true;
   const session = sessions.get(tabId);
   sessions.get(tabId)?.abort.abort();
   sessions.delete(tabId);
@@ -719,7 +724,13 @@ export async function disableAdvancedProxy(tabId: number): Promise<IAdvancedProx
 }
 
 export function getAdvancedProxyStatus(tabId: number): IAdvancedProxyStatus {
-  return statuses.get(tabId) || { tabId, phase: 'disabled' };
+  const status = statuses.get(tabId);
+  const paused = pausedRuleOrigin(tabId);
+  if (paused && status?.phase !== 'connected') return {
+    tabId, origin: paused, phase: 'error', recording: false,
+    error: 'Rule execution was stopped from the browser. Choose Retry to resume.',
+  };
+  return status || { tabId, phase: 'disabled' };
 }
 
 export function getRequestLog(tabId: number): IRequestLogEntry[] {

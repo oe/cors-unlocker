@@ -36,7 +36,7 @@ export function reconcileSavedRuleTab(tabId: number): Promise<unknown> {
       status = getAdvancedProxyStatus(tabId);
     }
     if (paused.has(tabId) && paused.get(tabId) !== origin) {
-      paused.delete(tabId); persistPauses();
+      paused.delete(tabId); persistPauses(); status = getAdvancedProxyStatus(tabId);
     }
     const needed = !!origin && hasRuntimeRules(rules, origin);
     if (!needed) {
@@ -76,6 +76,7 @@ export function initializeSavedRuleRuntime() {
   }).catch(() => undefined);
   setRuleRuntimeHooks({
     ensure: reconcileSavedRuleTab,
+    pausedOrigin: id => paused.get(id),
     pause: (id, origin) => { if (origin) { paused.set(id, origin); persistPauses(); } },
     resume: id => { if (paused.delete(id)) persistPauses(); },
   });

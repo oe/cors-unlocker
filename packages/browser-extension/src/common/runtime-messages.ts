@@ -134,5 +134,13 @@ export const runtimeMessages: Record<string, Record<string, string>> = {
     "ja": "一時変更適用中",
     "fr": "Modifications temporaires actives",
     "es": "Cambios temporales activos"
+  },
+  "Rule execution was stopped from the browser. Choose Retry to resume.": {
+    "en": "Rule execution was stopped from the browser. Choose Retry to resume.",
+    "zh-CN": "规则执行已从浏览器中停止，请点击重试恢复。",
+    "ko": "브라우저에서 규칙 실행이 중지되었습니다. 다시 시도하여 재개하세요.",
+    "ja": "ブラウザーでルールの実行が停止されました。再試行で再開できます。",
+    "fr": "L’exécution a été arrêtée dans le navigateur. Réessayez pour reprendre.",
+    "es": "La ejecución se detuvo desde el navegador. Reintenta para continuar."
   }
 };

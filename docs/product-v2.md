@@ -1,5 +1,7 @@
 # Wireflip v2 product direction
 
+> The 2.1 candidate revises execution and activation around [the rule execution model](rule-execution.md). Published stores remain 2.0.0 until a separate release.
+
 ## Decision
 
 The product is **Wireflip**, described as **an in-browser proxy for developers** for Chrome and Firefox.
@@ -25,7 +27,7 @@ Requestly already covers a broad interceptor platform, team collaboration, deskt
 Wireflip should not compete by copying that breadth. Its useful wedge is:
 
 1. **Small, local, browser-only request lab** with no account and no native install.
-2. **Explicit execution paths:** warning-free DNR rules, opt-in tab-scoped CDP on Chrome, and blocking WebRequest interception on Firefox.
+2. **One saved-rule model:** enabling a rule applies it to all matching supported pages. DNR, Chrome debugger interception and Firefox WebRequest are execution details; optional recording and temporary tab controls remain separate.
 3. **Application-aware SDK:** a web app can detect the extension, request origin-scoped CORS access, and prepare a disabled rule draft for user review.
 4. **Upgrade continuity:** existing CORS Unlocker rules migrate automatically.
 
@@ -47,12 +49,14 @@ Allowed:
 - request CORS repair after confirmation;
 - disable that origin's CORS rule;
 - create a disabled, origin-scoped rule draft;
+- request a real-user-action, extension-owned confirmation to enable an origin-scoped rule;
 - open the workspace.
 
 Not allowed:
 
-- attach CDP silently;
-- enable a draft automatically;
+- enable rules from a website without explicit user approval;
+- bypass Chrome's native debugging indicator;
+- silently convert a disabled draft into an enabled rule;
 - target another page origin;
 - read captured traffic into page JavaScript;
 - execute arbitrary JavaScript.
@@ -89,7 +93,7 @@ prompt if needed); Ctrl/Cmd+S saves the selected rule. Changing language preserv
 
 - Home: positioning, real product surface, two execution paths, SDK wedge, privacy, v1 migration.
 - Docs: install, modes, rules, inspector, SDK API, migration, limitations.
-- SDK playground: live extension detection, consented CORS request, disabled draft creation.
+- Playground: choose an example, approve once in the extension, then compare the response; retain a capability-checked fallback for published 2.0.0 extensions.
 - FAQ: product category, CDP disclosure, script limits, Firefox status.
 - Privacy: local data boundary, permissions, detach behavior, SDK sender-origin trust boundary.
 
