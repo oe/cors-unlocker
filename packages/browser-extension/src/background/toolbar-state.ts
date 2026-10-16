@@ -54,7 +54,7 @@ export function toolbarPresentation(url: string | undefined, status: IAdvancedPr
       // User names must not create extra tooltip lines; keep the native hover card compact.
       details.push(...summary.pausedGroups.slice(0, 3).map((name) => `• ${name.replace(/[\r\n\t]/g, ' ').slice(0, 60)}`));
     }
-    if (phase === 'error' && status.error) details.push(status.error.replace(/[\r\n\t]/g, ' ').slice(0, 180));
+    if (phase === 'error' && status.error) details.push(text(status.error).replace(/[\r\n\t]/g, ' ').slice(0, 180));
   }
   return { state, badge, title: ['Wireflip', heading, ...details, count, ...(summary ? [text('Click for rules and temporary changes')] : [])].join('\n') };
 }

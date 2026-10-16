@@ -142,5 +142,21 @@ export const runtimeMessages: Record<string, Record<string, string>> = {
     "ja": "Wireflip でいつでもルールを無効にできます。Firefox はサーバーに接続し、ステータスを保持します。",
     "fr": "Vous pouvez désactiver la règle à tout moment. Firefox contacte toujours le serveur et conserve son statut.",
     "es": "Puedes desactivar la regla en cualquier momento. Firefox sigue contactando al servidor y conserva su estado."
+  },
+  "Only this tab. Reset here or stop recording to clear.": {
+    "en": "Only this tab. Reset here or stop recording to clear.",
+    "zh-CN": "仅当前标签页，可在此重置或停止记录以清除。",
+    "ko": "이 탭에만 적용됩니다. 여기서 초기화하거나 기록을 중지해 지우세요.",
+    "ja": "このタブのみ適用されます。ここでリセットするか記録を停止すると解除されます。",
+    "fr": "Cet onglet uniquement. Réinitialisez ici ou arrêtez l’enregistrement pour effacer.",
+    "es": "Solo esta pestaña. Restablece aquí o detén la grabación para borrar."
+  },
+  "Matched rule requests appear automatically. Start recording for other traffic. This is not a complete browser network log.": {
+    "en": "Matched rule requests appear automatically. Start recording for other traffic. This is not a complete browser network log.",
+    "zh-CN": "匹配规则的请求会自动显示。开始记录可查看其他流量，此处不是完整的浏览器网络日志。",
+    "ko": "규칙에 일치하는 요청은 자동 표시됩니다. 다른 트래픽은 기록을 시작하세요. 전체 브라우저 네트워크 로그는 아닙니다.",
+    "ja": "ルールに一致するリクエストは自動表示されます。他の通信には記録を開始してください。ブラウザー全体のログではありません。",
+    "fr": "Les requêtes correspondantes s’affichent automatiquement. Enregistrez les autres échanges. Ce journal n’est pas exhaustif.",
+    "es": "Las solicitudes coincidentes aparecen automáticamente. Graba para ver otro tráfico. No es un registro completo del navegador."
   }
 };

@@ -46,7 +46,7 @@ function App() {
       <UpgradeNotice onViewRules={vm.gotoOptionsPage} onViewRecovery={vm.gotoOptionsPage} />
 
       {error ? <Alert variant="destructive">
-        <AlertCircle /><AlertTitle>{t(sessionError ? 'Tab session error' : 'Action failed')}</AlertTitle>
+        <AlertCircle /><AlertTitle>{t(sessionError ? 'Rule execution needs attention' : 'Action failed')}</AlertTitle>
         <AlertDescription>{translateError(error)}</AlertDescription>
         {!sessionError ? <Button size="xs" variant="ghost" onClick={vm.clearError}>{t('Dismiss')}</Button> : null}
       </Alert> : null}
@@ -113,7 +113,7 @@ function App() {
             </div>
           </div>
         </div>
-        <p className="mt-1 text-xs text-muted-foreground">{t('Only this tab. Resets when the session stops.')}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{t('Only this tab. Reset here or stop recording to clear.')}</p>
         <p className="mt-1 text-xs text-muted-foreground">{t(__TARGET__ === 'chrome' ? 'Enabling starts Chrome debugging.' : 'Firefox CORS: response headers only.')}</p>
       </section>
 

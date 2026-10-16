@@ -255,8 +255,7 @@ export function Inspector() {
       <Tabs value={view} onValueChange={setView}>
       <TabsList className="w-full"><TabsTrigger value="requests">{t('Requests')} ({entries.length})</TabsTrigger><TabsTrigger value="rules">{t('Rules')} ({siteRules.length})</TabsTrigger></TabsList>
       <TabsContent value="requests" className="flex flex-col gap-3">
-      {status?.phase !== 'connected' && tabId !== null ? <p className="text-xs text-muted-foreground">{t(__TARGET__ === 'chrome' ? 'Chrome shows a debugging banner during the session. Requests stay on your device.' : 'Firefox CORS: response headers only.')}</p> : null}
-      {status?.phase === 'connected' && status.recording === false ? <Button disabled={busy} onClick={() => void toggle(true)}>{t('Start recording requests')}</Button> : null}
+      {status?.phase !== 'connected' && tabId !== null ? <p className="text-xs text-muted-foreground">{t(__TARGET__ === 'chrome' ? 'Chrome may show its debugging indicator on matching pages. You can disable this rule in Wireflip at any time.' : 'Firefox CORS: response headers only.')}</p> : null}
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-2 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -293,7 +292,7 @@ export function Inspector() {
           </div>
         )}
       </ScrollArea>
-      <details className="text-xs text-muted-foreground"><summary className="cursor-pointer">{t('About request capture')}</summary><p className="mt-2">{t('Advanced proxy records only. Basic browser rules may act before capture; this is not a complete network log.')}</p><p className="mt-2">{t(__TARGET__ === 'chrome' ? 'Chrome shows a debugging banner during the session. Requests stay on your device.' : 'Firefox CORS: response headers only.')}</p></details>
+      <details className="text-xs text-muted-foreground"><summary className="cursor-pointer">{t('About request capture')}</summary><p className="mt-2">{t('Matched rule requests appear automatically. Start recording for other traffic. This is not a complete browser network log.')}</p><p className="mt-2">{t(__TARGET__ === 'chrome' ? 'Chrome shows a debugging banner during the session. Requests stay on your device.' : 'Firefox CORS: response headers only.')}</p></details>
 
       {!selected && filtered.length > 0 ? <p className="text-xs text-muted-foreground">{t("Select a request to mock its response or change its behavior.")}</p> : null}
       {selected ? (

@@ -77,7 +77,7 @@ test('enables a Playground example with one native approval and runs saved rules
     }
     if (pathname === '/gesture') {
       response.writeHead(200, { 'Content-Type': 'text/html' });
-      response.end('<title>Gesture fixture</title><script>window.addEventListener("message",function(e){if(e.source===window&&e.data?.type==="wireflip:sdk-response"&&e.data.id==="no-gesture"){window.noGestureResult=e.data;console.log('WIREFLIP_GESTURE '+e.data.error?.type);}});setTimeout(function(){window.postMessage({type:"wireflip:sdk-request",clientId:"gesture-test",id:"no-gesture",method:"requestRule",payload:{rule:{name:"No gesture",urlPattern:"*",actions:[{type:"block"}]}}},location.origin);},100);</script>'); return;
+      response.end('<title>Gesture fixture</title><script>window.addEventListener("message",function(e){if(e.source===window&&e.data?.type==="wireflip:sdk-response"&&e.data.id==="no-gesture"){window.noGestureResult=e.data;console.log("WIREFLIP_GESTURE "+e.data.error?.type);}});setTimeout(function(){window.postMessage({type:"wireflip:sdk-request",clientId:"gesture-test",id:"no-gesture",method:"requestRule",payload:{rule:{name:"No gesture",urlPattern:"*",actions:[{type:"block"}]}}},location.origin);},100);</script>'); return;
     }
     if (pathname === '/peer') {
       response.writeHead(200, { 'Content-Type': 'text/html' }); response.end('<title>Peer request page</title>Peer'); return;

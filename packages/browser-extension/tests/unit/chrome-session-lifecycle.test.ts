@@ -269,3 +269,16 @@ it('keeps persistent interception running when request recording stops', async (
   });
   expect(debuggerApi.sendCommand).toHaveBeenLastCalledWith({ tabId: 9 }, 'Fetch.failRequest', { requestId: 'saved-after-stop', errorReason: 'Failed' });
 });
+
+it('applies quick controls when an automatic saved-rule runtime already exists', async () => {
+  const state = migrateLegacyState([], {}, 1);
+  state.rules = [{ id: 'saved', name: 'Saved', enabled: true, source: 'user', createdAt: 1, updatedAt: 1,
+    match: { initiatorOrigins: ['https://example.com'], urlPattern: '*' },
+    actions: [{ type: 'networkFailure', reason: 'Failed' }] }];
+  vi.mocked(ensureProxyAppState).mockResolvedValueOnce(state);
+  await engine.enableAdvancedProxy(9, { automatic: true });
+  expect(await engine.enableAdvancedProxy(9, { quickControls: cache })).toMatchObject({
+    phase: 'connected', recording: false, quickControls: { disableCache: true },
+  });
+  expect(debuggerApi.attach).toHaveBeenCalledTimes(1);
+});

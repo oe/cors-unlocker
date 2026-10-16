@@ -477,6 +477,7 @@ async function startFirefoxSession(tabId: number, options: { quickControls?: Qui
       existing.recording = true;
       await notifyStatus({ ...getAdvancedProxyStatus(tabId) });
     }
+    if (options.quickControls) return updateQuickControls(tabId, quickControls);
     return getAdvancedProxyStatus(tabId);
   }
   await notifyStatus({ tabId, phase: 'connecting', origin: url.origin });

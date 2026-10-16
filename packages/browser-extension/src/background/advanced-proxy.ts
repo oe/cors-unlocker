@@ -605,6 +605,7 @@ async function connectAdvancedProxy(tabId: number, options: { quickControls?: Qu
       existing.startedByQuickControls = false;
       await notifyStatus({ ...getAdvancedProxyStatus(tabId), captureEnabled: true });
     }
+    if (options.quickControls) return updateQuickControls(tabId, quickControls);
     return getAdvancedProxyStatus(tabId);
   }
 

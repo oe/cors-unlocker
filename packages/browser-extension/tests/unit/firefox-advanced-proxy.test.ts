@@ -340,3 +340,12 @@ it('keeps persistent interception running when request recording stops', async (
   expect(await listener(browser.webRequest.onBeforeRequest)(requestDetails(93, 'saved-after-stop'))).toEqual({ cancel: true });
   await engine.disableAdvancedProxyTransport(93);
 });
+
+it('applies quick controls when an automatic saved-rule runtime already exists', async () => {
+  vi.mocked(browser.storage.local.get).mockResolvedValue({ proxyAppState: state([{ type: 'networkFailure', reason: 'Failed' }]) });
+  await engine.enableAdvancedProxy(94, { automatic: true });
+  expect(await engine.enableAdvancedProxy(94, { quickControls: { cors: true, credentials: false, disableCache: false, delayMs: 0, failure: false } })).toMatchObject({
+    phase: 'connected', recording: false, quickControls: { cors: true },
+  });
+  await engine.disableAdvancedProxyTransport(94);
+});
