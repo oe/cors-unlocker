@@ -1,3 +1,5 @@
+import { runtimeMessages } from '@/common/runtime-messages';
+import { hasActiveQuickControls } from '@/common/quick-controls';
 import type browser from 'webextension-polyfill';
 import type { IAdvancedProxyStatus } from './advanced-proxy';
 import { toolbarMessages } from '@/common/toolbar-messages';
@@ -11,7 +13,7 @@ export type ToolbarState = keyof typeof TOOLBAR_COLORS;
 export interface ToolbarPresentation { state: ToolbarState; badge: string; title: string }
 
 export function toolbarPresentation(url: string | undefined, status: IAdvancedProxyStatus, persistentCount: number, locale: Locale, summary?: TabRuleSummary): ToolbarPresentation {
-  const text = (key: keyof typeof toolbarMessages) => toolbarMessages[key][locale];
+  const text = (key: string) => runtimeMessages[key]?.[locale] || toolbarMessages[key as keyof typeof toolbarMessages]?.[locale] || key;
   let origin: string;
   try {
     const parsed = new URL(url || '');
@@ -20,18 +22,20 @@ export function toolbarPresentation(url: string | undefined, status: IAdvancedPr
   } catch { return { state: 'idle', badge: '', title: `Wireflip\n${text('Select an HTTP or HTTPS tab.')}` }; }
   // A navigation can precede the engine's asynchronous detach notification.
   const phase = status.origin && status.origin !== origin ? 'disabled' : status.phase;
+  const automatic = phase === 'connected' && status.recording === false && !(status.quickControls && hasActiveQuickControls(status.quickControls));
+  persistentCount = summary?.enabledRules ?? persistentCount;
   const state: ToolbarState = phase === 'error' ? 'error' : phase === 'connecting' ? 'connecting'
-    : phase === 'connected' ? 'connected' : persistentCount > 0 ? 'rules' : 'idle';
+    : automatic ? 'rules' : phase === 'connected' ? 'connected' : persistentCount > 0 ? 'rules' : 'idle';
   const allPaused = state === 'idle' && !!summary?.pausedRules && !summary.sessionRules;
-  const heading = text(state === 'error' ? 'Tab session error' : state === 'connecting' ? 'Connecting…' : allPaused ? 'Saved rules paused'
-    : state === 'connected' ? 'Tab session active' : 'Tab session stopped');
+  const heading = text(state === 'error' ? 'Rule execution needs attention' : state === 'connecting' ? 'Connecting…' : allPaused ? 'Saved rules paused'
+    : state === 'rules' ? 'Saved rules active' : state === 'connected' ? 'Recording requests' : 'Not recording requests');
   const count = text('{count} persistent rules enabled').replace('{count}', String(persistentCount));
   const badge = state === 'rules' ? (persistentCount > 99 ? '99+' : String(persistentCount))
     : state === 'connected' ? 'ON' : state === 'connecting' ? '…' : state === 'error' ? '!' : allPaused ? 'OFF' : '';
   const details: string[] = [];
   // Report applied controls only; pending, failed and previous-origin sessions are inactive.
   if (phase === 'connected') {
-    if (status.captureEnabled !== undefined) details.push(text(status.captureEnabled ? 'Recording requests' : 'Not recording requests'));
+    if (status.captureEnabled !== undefined) details.push(text((status.recording ?? status.captureEnabled) ? 'Recording requests' : 'Not recording requests'));
     const controls = status.quickControls;
     const active: string[] = [];
     if (controls?.cors) active.push(text('CORS repair') + (controls.credentials ? ` · ${text('Allow credentials')}` : ''));
@@ -44,7 +48,7 @@ export function toolbarPresentation(url: string | undefined, status: IAdvancedPr
     if (active.length) details.push(text('This tab · temporary'), ...active.map((label) => `• ${label}`));
   }
   if (summary) {
-    if (phase !== 'connected' && summary.sessionRules) details.push(text('Rules waiting for a tab session: {count}').replace('{count}', String(summary.sessionRules)));
+    if (phase !== 'connected' && summary.sessionRules) details.push(text('Preparing enabled rules'));
     if (summary.pausedGroups.length) {
       details.push(text('Paused groups: {count}').replace('{count}', String(summary.pausedGroups.length)));
       // User names must not create extra tooltip lines; keep the native hover card compact.

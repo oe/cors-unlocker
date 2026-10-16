@@ -570,7 +570,7 @@ async function checkConnectionScope(tabId: number, connection: PendingConnection
   if (connection.abort.signal.aborted) throw new Error('Proxy connection cancelled.');
   const tab = await browser.tabs.get(tabId);
   const pendingUrl = (tab as browser.Tabs.Tab & { pendingUrl?: string }).pendingUrl;
-  if (connection.abort.signal.aborted || (!tab.url && !pendingUrl) || new URL(pendingUrl || tab.url).origin !== connection.origin) {
+  if (connection.abort.signal.aborted || (!tab.url && !pendingUrl) || new URL(pendingUrl || tab.url!).origin !== connection.origin) {
     connection.abort.abort();
     throw new Error('Proxy connection cancelled after navigation.');
   }

@@ -154,6 +154,7 @@ export default function Playground() {
   const [message, setMessage] = useState('Looking for the local extension…');
   const [pending, setPending] = useState<'connect' | 'draft' | 'request' | null>('connect');
   const [result, setResult] = useState<RequestResult | null>(null);
+  const [ruleId, setRuleId] = useState<string | undefined>();
   const [draftFingerprint, setDraftFingerprint] = useState<string | null>(null);
   const fingerprint = JSON.stringify([name, urlPattern, actionJson]);
   const draftCreated = draftFingerprint === fingerprint;
@@ -162,7 +163,10 @@ export default function Playground() {
   const requiresSession = actions.some(action => ['mockResponse', 'cors', 'delay', 'networkFailure'].includes(action?.type))
     || (actions.some(action => action?.type === 'redirect') && actions.some(action => action?.type === 'setRequestHeaders' || action?.type === 'setResponseHeaders'));
   const mock = actions.find(action => action?.type === 'mockResponse');
-  const readyToTest = !!session && draftCreated && (!requiresSession || status?.advancedMode === 'connected');
+  const directActivation = session?.capabilities.ruleActivation === true;
+  const readyToTest = !!session && draftCreated && (directActivation
+    ? !!ruleId && status?.rule?.id === ruleId && status.rule.ready
+    : !requiresSession || status?.advancedMode === 'connected');
 
   const selected = SCENARIOS.find((scenario) => scenario.id === selectedId) || SCENARIOS[0];
 
@@ -197,7 +201,7 @@ export default function Playground() {
       if (saved && SCENARIOS.some(scenario => scenario.id === saved.selectedId)
         && ['name', 'urlPattern', 'testUrl', 'actionJson', 'fingerprint'].every(key => typeof saved[key] === 'string')) {
         setSelectedId(saved.selectedId); setName(saved.name); setUrlPattern(saved.urlPattern);
-        setTestUrl(saved.testUrl); setActionJson(saved.actionJson); setDraftFingerprint(saved.fingerprint);
+        setTestUrl(saved.testUrl); setActionJson(saved.actionJson); setDraftFingerprint(saved.fingerprint); setRuleId(typeof saved.ruleId === 'string' ? saved.ruleId : undefined);
       }
     } catch { /* Storage may be unavailable. */ }
     void connect();
@@ -208,7 +212,7 @@ export default function Playground() {
     let active = true;
     const refresh = () => {
       if (document.visibilityState !== 'visible') return;
-      void session.getStatus().then((next) => { if (active) setStatus(next); }).catch(() => {
+      void session.getStatus(ruleId ? { ruleId } : undefined).then((next) => { if (active) setStatus(next); }).catch(() => {
         if (active) { setStatus(null); setSession(null); setMessage('Connection lost. Check the extension and reconnect.'); }
       });
     };
@@ -216,7 +220,7 @@ export default function Playground() {
     document.addEventListener('visibilitychange', refresh);
     const timer = window.setInterval(refresh, 2_000);
     return () => { active = false; window.clearInterval(timer); window.removeEventListener('focus', refresh); document.removeEventListener('visibilitychange', refresh); };
-  }, [session]);
+  }, [session, ruleId]);
 
   const formatActions = () => {
     setOperationError('');
@@ -233,6 +237,7 @@ export default function Playground() {
     setActionJson(JSON.stringify(scenario.actions, null, 2));
     setResult(null);
     setDraftFingerprint(null);
+    setRuleId(undefined);
   };
 
   const createDraft = async () => {
@@ -240,18 +245,24 @@ export default function Playground() {
     setPending('draft');
     setOperationError('');
     try {
-      if (draftCreated) { await session.openWorkspace(); return; }
+      if (draftCreated && !directActivation) { await session.openWorkspace(); return; }
       const parsed = JSON.parse(actionJson);
       if (!Array.isArray(parsed) || parsed.length === 0) throw new Error('Action JSON must be a non-empty array.');
-      await session.createRuleDraft({
+      const ruleInput = {
         name: name.trim() || `Playground · ${selected.name}`,
         urlPattern: urlPattern.trim(),
         methods: ['GET'],
         resourceTypes: ['XHR', 'Fetch'],
         actions: parsed as DraftAction[],
-      });
+      };
+      const added = directActivation
+        ? await session.requestRule(ruleInput, { id: ruleId })
+        : await session.createRuleDraft(ruleInput);
+      setRuleId(added.id);
+      setStatus(await session.getStatus({ ruleId: added.id }));
+      if ('ready' in added && !added.ready) setOperationError(added.error || 'The rule needs attention in Wireflip.');
       setDraftFingerprint(fingerprint);
-      try { sessionStorage.setItem('wireflip:playground-draft', JSON.stringify({ selectedId, name, urlPattern, testUrl, actionJson, fingerprint })); } catch { /* Testing still works without storage. */ }
+      try { sessionStorage.setItem('wireflip:playground-draft', JSON.stringify({ selectedId, name, urlPattern, testUrl, actionJson, fingerprint, ruleId: added.id })); } catch { /* Testing still works without storage. */ }
       setMessage('Rule added disabled. Turn on its switch in Wireflip, then return to the Playground tab' + (requiresSession ? ' and open the toolbar icon → Start tab session.' : ' to test it.'));
     } catch (error) {
       setOperationError(error instanceof Error ? error.message : 'Unable to create the draft.');
@@ -268,9 +279,13 @@ export default function Playground() {
     let timeout: number | undefined;
     const startedAt = performance.now();
     try {
-      const current = await session.getStatus();
+      const current = await session.getStatus(ruleId ? { ruleId } : undefined);
       setStatus(current);
-      if (requiresSession && current.advancedMode !== 'connected') {
+      if (directActivation && (!current.rule?.ready || current.rule.id !== ruleId)) {
+        setOperationError('Enable this example before testing it. Saved rules run automatically; recording is optional.');
+        return;
+      }
+      if (!directActivation && requiresSession && current.advancedMode !== 'connected') {
         setMessage('This tab’s session is stopped. Return to the Playground tab, click the Wireflip toolbar icon, then Start tab session.');
         return;
       }
@@ -301,8 +316,8 @@ export default function Playground() {
 
   const capabilities = session?.capabilities.interception;
   const sessionRunning = status?.advancedMode === 'connected';
-  const stepTitle = !session ? 'Connect Wireflip to try this example' : !draftCreated ? 'Add and enable the rule' : requiresSession && !sessionRunning ? 'Start this tab’s session' : requiresSession ? 'Session running' : 'Test the rule';
-  const stepHelp = !session ? 'Install the extension and reconnect first' : !draftCreated ? 'First add and enable the recipe rule in Wireflip, then return to this tab' : requiresSession && !sessionRunning ? 'Enable the rule in Wireflip. Return here, click the Wireflip toolbar icon → Start tab session for this Playground tab' : 'The saved rule and its group must be enabled in Wireflip';
+  const stepTitle = directActivation ? (readyToTest ? 'Example enabled' : draftCreated ? 'Enable this example' : 'Try this example') : !session ? 'Connect Wireflip to try this example' : !draftCreated ? 'Add and enable the rule' : requiresSession && !sessionRunning ? 'Start this tab’s session' : requiresSession ? 'Session running' : 'Test the rule';
+  const stepHelp = directActivation ? (readyToTest ? 'Runs automatically on matching pages · No tab session needed' : 'Confirm once in Wireflip, then test the response here') : !session ? 'Install the extension and reconnect first' : !draftCreated ? 'First add and enable the recipe rule in Wireflip, then return to this tab' : requiresSession && !sessionRunning ? 'Enable the rule in Wireflip. Return here, click the Wireflip toolbar icon → Start tab session for this Playground tab' : 'The saved rule and its group must be enabled in Wireflip';
   const displayBody = (body: string) => { try { return JSON.stringify(JSON.parse(body), null, 2); } catch { return body; } };
 
 
@@ -350,11 +365,12 @@ export default function Playground() {
               {!session ? <div className="flex flex-wrap gap-2">
                 <button className="button-primary focus-ring" onClick={() => intercept.openStorePage()}>Install extension <ExternalLink className="size-4" /></button>
                 <button className="button-secondary focus-ring" disabled={pending !== null} onClick={() => void connect()}><RefreshCw className="size-4" />Reconnect</button>
-              </div> : <button className={`${draftCreated ? 'button-secondary' : 'button-primary'} focus-ring`} disabled={pending !== null} onClick={() => void createDraft()}>
-                <FilePlus2 className="size-4" />{draftCreated ? 'Open rule in Wireflip' : 'Add rule in Wireflip'}
+              </div> : <button className={`${readyToTest || !directActivation && draftCreated ? 'button-secondary' : 'button-primary'} focus-ring`} disabled={pending !== null} onClick={() => { if (directActivation && readyToTest) void session.openWorkspace().catch(error => setOperationError(String(error))); else void createDraft(); }}>
+                <FilePlus2 className="size-4" />{directActivation ? readyToTest ? 'Open rule in Wireflip' : pending === 'draft' ? 'Waiting for approval…' : 'Enable example' : draftCreated ? 'Open rule in Wireflip' : 'Add rule in Wireflip'}
               </button>}
             </div>
           </section>
+          {status?.rule?.error && directActivation ? <p role="alert" className="mt-3 text-sm text-red-700">{status.rule.error}</p> : null}
           {operationError ? <p role="alert" className="mt-3 text-sm text-red-700">{operationError}</p> : null}
           <section className="mt-5" aria-label="Request">
             <label htmlFor="probe-url" className="text-xs font-medium text-neutral-700">Request URL</label>
@@ -401,8 +417,8 @@ export default function Playground() {
           <details className="mt-3 text-xs text-neutral-500">
             <summary className="focus-ring w-fit cursor-pointer rounded">How setup works</summary>
             <ol className="mt-3 list-decimal space-y-2 pl-5 leading-5">
-              <li>Add the example and enable its rule in Wireflip. Website rules start disabled and only apply to this origin.</li>
-              <li>{requiresSession ? 'Return to this Playground tab → Wireflip toolbar icon → Start tab session. A session on the workspace tab does not apply here.' : 'Return here. This example uses browser rules and does not need a tab session.'}</li>
+              <li>{directActivation ? 'Enable the example and approve it in Wireflip. It only applies to matching pages from this site.' : 'Add the example and enable its rule in Wireflip. Website drafts start disabled and only apply to this origin.'}</li>
+              <li>{directActivation ? 'Return here and test. Enabled rules run automatically; request recording is optional.' : requiresSession ? 'Return to this Playground tab → Wireflip toolbar icon → Start tab session. A session on the workspace tab does not apply here.' : 'Return here. This example uses browser rules and does not need a tab session.'}</li>
               <li>Test the request. A received response alone does not prove a rule ran; use Inspector to verify other actions.</li>
             </ol>
             <p className="mt-3 leading-5">Requests contact the URL above. Firefox replaces the upstream body and preserves its HTTP status, so the endpoint must be reachable.</p>

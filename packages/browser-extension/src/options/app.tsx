@@ -23,7 +23,6 @@ import { dataStorage } from '@/common/storage';
 import { APP_STATE_KEY, isProxyAppState, type IProxyProfile, type IProxyAppState, type IProxyRule } from '@/common/proxy-state';
 import { ACTION_TEMPLATES, draftFromRule, EMPTY_DRAFT, type RuleDraft } from '@/components/rule-dialog';
 import { ACTION_LABELS } from '@/components/action-fields';
-import { needsProxy } from '@/common/quick-controls';
 import { RESOURCE_TYPES } from '@/common/request-match';
 import { parseImport, previewImport, previewGroupImport } from '@/common/import-preview';
 import '@/common/tailwind.css';
@@ -141,7 +140,7 @@ function ProxyRules({ state, reload, navigate, onDirtyChange }: {
             }}>
             <span className="w-full truncate text-sm font-medium">{rule.name}</span>
             <span className="w-full truncate font-mono text-xs text-muted-foreground" title={rule.match.urlPattern}>{rule.match.urlPattern}</span>
-            <span className="w-full truncate text-xs text-muted-foreground" title={rule.match.initiatorOrigins.join(', ')}>{rule.actions.map((action) => t(ACTION_LABELS[action.type])).join(' · ')} · {groupsByRule.get(rule.id)?.enabled === false ? t('Group paused') : !rule.enabled ? t('Disabled') : needsProxy(rule) ? t('Requires a connected tab') : t('Enabled')}</span>
+            <span className="w-full truncate text-xs text-muted-foreground" title={rule.match.initiatorOrigins.join(', ')}>{rule.actions.map((action) => t(ACTION_LABELS[action.type])).join(' · ')} · {groupsByRule.get(rule.id)?.enabled === false ? t('Group paused') : !rule.enabled ? t('Disabled') : t('Enabled')}</span>
           </button>
           <Switch checked={rule.enabled} disabled={busy || groupsByRule.get(rule.id)?.enabled === false} aria-label={t('Toggle {name}', { name: rule.name })} onCheckedChange={(enabled) => toggle(rule, enabled)} />
         </div>;

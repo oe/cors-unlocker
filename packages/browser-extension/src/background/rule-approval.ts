@@ -2,7 +2,8 @@ import browser from 'webextension-polyfill';
 import { addProxyRule, ensureProxyAppState, isProxyRule, isRuleEnabled, updateProxyRule, type IProxyRule } from '@/common/proxy-state';
 import { needsProxy } from '@/common/quick-controls';
 import { reconcileSavedRuleRuntime, reconcileSavedRuleTab } from './saved-rule-runtime';
-import { getAdvancedProxyStatus } from '@/background/advanced-proxy';
+import { resumeSavedRuleRuntime } from './rule-runtime-bridge';
+import { disableAdvancedProxyTransport, getAdvancedProxyStatus } from '@/background/advanced-proxy';
 
 type Approval = {
   id: string; origin: string; tabId: number; rule: Omit<IProxyRule, 'id' | 'createdAt' | 'updatedAt'>;
@@ -68,6 +69,8 @@ export async function resolveRuleApproval(id: string, accepted: boolean) {
     saved = await updateProxyRule(existing.id, request.rule);
   } else saved = await addProxyRule(request.rule);
   const state = await ensureProxyAppState();
+  resumeSavedRuleRuntime(request.tabId);
+  if (getAdvancedProxyStatus(request.tabId).phase === 'error') await disableAdvancedProxyTransport(request.tabId);
   await reconcileSavedRuleRuntime(state);
   await reconcileSavedRuleTab(request.tabId);
   const status = getAdvancedProxyStatus(request.tabId);

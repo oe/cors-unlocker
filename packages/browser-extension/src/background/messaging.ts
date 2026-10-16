@@ -1,3 +1,4 @@
+import { needsProxy } from '@/common/quick-controls';
 import { requestRuleApproval, approvalInfo, resolveRuleApproval } from './rule-approval';
 import browser from 'webextension-polyfill';
 import type { IRuleItem } from '@/types';
@@ -26,6 +27,7 @@ import {
   removeProxyRule,
   updateProxyRule,
   performProxyStateOperation,
+  isRuleEnabled,
 } from '@/common/proxy-state';
 
 // Allowed external origins for security
@@ -257,12 +259,18 @@ async function handleSdkRequest(
         origin,
         capabilities: PRODUCT_CAPABILITIES,
       };
-    case 'getStatus':
+    case 'getStatus': {
+      const execution = getAdvancedProxyStatus(sender.tab.id);
+      const state = data?.ruleId ? await ensureProxyAppState() : undefined;
+      const rule = state?.rules.find(rule => rule.id === data.ruleId && rule.match.initiatorOrigins.includes(origin));
+      const enabled = rule && state ? isRuleEnabled(rule, state.profiles) : false;
       return {
         origin,
         cors: await isOriginEnabled(origin),
-        advancedMode: getAdvancedProxyStatus(sender.tab.id).phase,
+        advancedMode: execution.phase,
+        ...(data?.ruleId ? { rule: rule ? { id: rule.id, enabled, ready: enabled && (!needsProxy(rule) || execution.phase === 'connected'), error: execution.error } : null } : {}),
       };
+    }
     case 'requestCors': {
       await toggleRuleViaOrigin({
         origin,

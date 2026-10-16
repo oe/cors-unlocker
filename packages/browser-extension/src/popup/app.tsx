@@ -7,7 +7,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { BrandMark } from '@/components/brand-mark';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { EMPTY_QUICK_CONTROLS, hasActiveQuickControls, hasPersistentActions, needsProxy } from '@/common/quick-controls';
+import { EMPTY_QUICK_CONTROLS, hasActiveQuickControls } from '@/common/quick-controls';
 import { toolbarPresentation, TOOLBAR_COLORS } from '@/background/toolbar-state';
 import { RuleGroupControls } from '@/components/rule-group-controls';
 import { UpgradeNotice } from '@/components/upgrade-notice';
@@ -21,17 +21,15 @@ function App() {
   const vm = useViewModel();
   const [delay, setDelay] = useState(1000);
   const disabled = !vm.isSupported || vm.busy || vm.phase === 'connecting';
-  const persistent = vm.persistentCount;
+  const persistent = vm.summary.enabledRules ?? vm.persistentCount;
+  const recording = vm.connected && vm.status?.recording !== false;
   const presentation = toolbarPresentation(vm.origin, vm.status || { tabId: -1, phase: 'disabled' }, persistent, locale, vm.summary);
   const sessionError = presentation.state === 'error';
-  const error = vm.error || (sessionError ? vm.status?.error || t('Tab session error') : null);
-  const heading = sessionError ? 'Tab session error' : vm.phase === 'connecting' ? 'Connecting…' : vm.connected ? 'Tab session active' : presentation.badge === 'OFF' ? 'Saved rules paused' : 'Tab session stopped';
-  const sessionAction = vm.phase === 'connecting' ? 'Cancel connection' : sessionError ? 'Retry connection' : vm.connected ? 'Stop tab session' : 'Start tab session';
+  const error = vm.error || (sessionError ? vm.status?.error || t('Rule execution needs attention') : null);
+  const heading = sessionError ? 'Rule execution needs attention' : vm.phase === 'connecting' ? 'Connecting…' : recording ? 'Recording requests' : vm.connected ? 'Saved rules active' : presentation.badge === 'OFF' ? 'Saved rules paused' : 'Not recording requests';
+  const sessionAction = vm.phase === 'connecting' ? 'Cancel connection' : sessionError ? 'Retry connection' : recording ? 'Stop recording' : 'Start recording';
   const temporary = hasActiveQuickControls(vm.quickControls);
-  const scope = (rule: IProxyRule) => ruleGroup(rule.id, vm.profiles)?.enabled === false ? t('Group paused') : !rule.enabled ? t('Disabled') : [
-    ...(hasPersistentActions(rule) ? [t('Persistent · across tabs')] : []),
-    ...(needsProxy(rule) ? [t(vm.connected ? 'Active in this session' : 'Start a tab session to apply')] : []),
-  ].join(' · ');
+  const scope = (rule: IProxyRule) => ruleGroup(rule.id, vm.profiles)?.enabled === false ? t('Group paused') : !rule.enabled ? t('Disabled') : t('Enabled · matching pages');
 
   return (
     <main className="flex min-h-full flex-col gap-1.5 bg-background p-3 text-foreground">
@@ -62,10 +60,10 @@ function App() {
           <span>{t(heading)}</span>
           <Button className="ml-auto" size="xs" variant="ghost" disabled={!vm.isSupported || (vm.busy && vm.phase !== 'connecting')} onClick={vm.toggleSession}>{t(sessionAction)}</Button>
         </div>
-        <p className="mt-1 text-xs text-muted-foreground">{t('{count} persistent rules stay on after stopping', { count: persistent })}</p>
-        {!vm.connected && vm.summary.sessionRules ? <p className="mt-1 text-xs text-muted-foreground">{t('Rules waiting for a tab session: {count}', { count: vm.summary.sessionRules })}</p> : null}
+        <p className="mt-1 text-xs text-muted-foreground">{t('Enabled rules run automatically on matching pages.')}</p>
+        {!vm.connected && vm.summary.sessionRules ? <p className="mt-1 text-xs text-muted-foreground">{t('Preparing enabled rules')}</p> : null}
         {vm.summary.pausedGroups.length ? <p className="mt-1 text-xs text-muted-foreground">{t('Paused groups: {count}', { count: vm.summary.pausedGroups.length })} · {t('Individual switches are preserved')}</p> : null}
-        {vm.connected && vm.status?.captureEnabled === false ? <p className="mt-1 text-xs text-muted-foreground">{t('Not recording requests')}</p> : null}
+        {vm.connected && !recording ? <p className="mt-1 text-xs text-muted-foreground">{t('Not recording requests')}</p> : null}
         <Button className="mt-1 w-full" size="sm" disabled={disabled} aria-label={t('Open Inspector')} onClick={vm.openInspector}><Activity />{t('Inspect and modify requests')}<ArrowUpRight /></Button>
       </section>
 

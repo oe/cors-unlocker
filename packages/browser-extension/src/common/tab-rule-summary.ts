@@ -6,6 +6,7 @@ export interface TabRuleSummary {
   pausedGroups: string[];
   pausedRules: number;
   sessionRules: number;
+  enabledRules?: number;
 }
 
 /** Saved configuration for this origin, not evidence that a request was modified. */
@@ -15,6 +16,7 @@ export function summarizeTabRules(state: Pick<IProxyAppState, 'rules' | 'profile
   const groups = state.profiles.filter((profile) => !profile.enabled && profile.ruleIds.some((id) => ids.has(id)));
   const paused = new Set(groups.flatMap((profile) => profile.ruleIds));
   return {
+    enabledRules: rules.filter((rule) => rule.enabled && !paused.has(rule.id)).length,
     pausedGroups: groups.map((profile) => profile.name),
     pausedRules: rules.filter((rule) => rule.enabled && paused.has(rule.id)).length,
     sessionRules: rules.filter((rule) => rule.enabled && !paused.has(rule.id) && needsProxy(rule)).length,

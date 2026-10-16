@@ -110,5 +110,21 @@ export const runtimeMessages: Record<string, Record<string, string>> = {
     "ja": "ルールの実行を確認してください",
     "fr": "Exécution des règles à vérifier",
     "es": "Revisar ejecución de reglas"
+  },
+  "Click for rules and temporary changes": {
+    "en": "Click for rules and temporary changes",
+    "zh-CN": "点击查看规则和临时修改",
+    "ko": "클릭하여 규칙과 임시 변경 보기",
+    "ja": "クリックしてルールと一時変更を表示",
+    "fr": "Cliquer pour les règles et modifications temporaires",
+    "es": "Haz clic para ver reglas y cambios temporales"
+  },
+  "Start recording to include all requests from this tab.": {
+    "en": "Start recording to include all requests from this tab.",
+    "zh-CN": "开始记录以查看此标签页的所有请求。",
+    "ko": "기록을 시작하면 이 탭의 모든 요청을 볼 수 있습니다.",
+    "ja": "記録を開始すると、このタブのすべてのリクエストを表示します。",
+    "fr": "Démarrez l’enregistrement pour inclure toutes les requêtes de cet onglet.",
+    "es": "Inicia la grabación para incluir todas las solicitudes de esta pestaña."
   }
 };

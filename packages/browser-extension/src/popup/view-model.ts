@@ -117,7 +117,7 @@ export function useViewModel() {
         if (mounted.current) setError(cause instanceof Error ? cause.message : String(cause));
       });
     }
-    return run(() => sendSession(connected ? 'disableAdvancedProxy' : 'enableAdvancedProxy'));
+    return run(() => sendSession(connected && status?.recording !== false ? 'disableAdvancedProxy' : 'enableAdvancedProxy'));
   };
   const toggleRule = (rule: IProxyRule, enabled: boolean) => run(async () => {
     const result = await browser.runtime.sendMessage({ type: 'saveProxyRule', payload: { rule: { id: rule.id, enabled } } });

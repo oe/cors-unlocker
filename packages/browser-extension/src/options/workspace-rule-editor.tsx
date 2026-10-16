@@ -68,7 +68,7 @@ function EditorShell({ parts, onCopy, onDelete, headerTarget }: {
       </div>
     </Tabs>
     <footer className="shrink-0 border-t px-3 py-2 text-xs text-muted-foreground lg:px-4">
-      {parts.groupPaused ? t('Group paused. This rule will not apply until the group is enabled.') : parts.requiresAdvanced ? t("Requires a connected tab in Site controls. Enabled does not mean attached.") : t("Basic actions use browser rules. Verify actual effects in Site controls.")}
+      {parts.groupPaused ? t('Group paused. This rule will not apply until the group is enabled.') : t("Enabled rules run automatically on matching pages.")}
     </footer>
   </section>;
 }

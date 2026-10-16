@@ -50,6 +50,7 @@ export interface InterceptStatus {
     credentials: boolean;
   };
   advancedMode: 'disabled' | 'connecting' | 'connected' | 'error';
+  rule?: { id: string; enabled: boolean; ready: boolean; error?: string } | null;
 }
 
 export interface RequestCorsOptions {
@@ -179,8 +180,8 @@ export class InterceptSession {
     this.capabilities = capabilities;
   }
 
-  getStatus(): Promise<InterceptStatus> {
-    return this.bridge.request('getStatus');
+  getStatus(options?: { ruleId?: string }): Promise<InterceptStatus> {
+    return this.bridge.request('getStatus', options);
   }
 
   requestCors(options: RequestCorsOptions = {}): Promise<InterceptStatus> {
