@@ -8,7 +8,7 @@ No native client is required. Chrome Advanced mode uses Chrome DevTools Protocol
 
 ## Migrating from CORS Unlocker
 
-Existing `cors-unlocker@0.1.0` integrations remain supported. The old `cors.forth.ink` hostname and its `/message/` bridge are retained; public pages redirect to the new website. Upgrading the SDK is optional and does not require reinstalling the extension. [`wireflip@0.2.0`](https://www.npmjs.com/package/wireflip) is available on npm and requires Wireflip 2.0. Firefox 2.0.0 is public; Chrome 2.0.0 is awaiting review, so Chrome users should keep their existing SDK until the store update is available.
+Existing `cors-unlocker@0.1.0` integrations remain supported. The old `cors.forth.ink` hostname and its `/message/` bridge are retained; public pages redirect to the new website. Upgrading the SDK is optional and does not require reinstalling the extension. [`wireflip@0.2.0`](https://www.npmjs.com/package/wireflip) is available on npm and requires Wireflip 2.0. Wireflip 2.0.0 is available on the [Chrome Web Store](https://chromewebstore.google.com/detail/knhlkjdfmgkmelcjfnbbhpphkmjjacng) and [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/cors-unlocker/). Update the extension before migrating the SDK; existing integrations remain supported.
 
 See the [migration guide](packages/website/src/pages/migration.mdx) for the API mapping, user-confirmation changes and upgrade steps. DNS and old-origin bridge deployment remain separate operational prerequisites.
 
@@ -142,7 +142,7 @@ restore flow. A separate `preRecoveryBackup` retains the data replaced by an exp
 
 ## Upgrade behavior
 
-Release availability: Firefox 2.0.0 is [public on AMO](https://addons.mozilla.org/en-US/firefox/addon/cors-unlocker/); Chrome 2.0.0 is awaiting Chrome Web Store review. The following explanation-page behavior is included in the submitted Chrome update and current source. The initial public Firefox 2.0.0 predates that page and remains unchanged.
+Release availability: Wireflip 2.0.0 is public on the [Chrome Web Store](https://chromewebstore.google.com/detail/knhlkjdfmgkmelcjfnbbhpphkmjjacng) and [Firefox AMO](https://addons.mozilla.org/en-US/firefox/addon/cors-unlocker/). The following explanation-page behavior is included in the published Chrome update and current source. The initial public Firefox 2.0.0 predates that page and remains unchanged.
 
 Updating from 1.x opens a local extension explanation page once, showing the old and new
 names and logos, preserved CORS rules, the new request lab, and browser-specific limits.

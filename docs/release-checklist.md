@@ -1,10 +1,10 @@
 # Wireflip 发布 checklist
 
-本次执行清单（2026-10-15）。已验证项目勾选；未完成项目保留空框。用户明确豁免的 Firefox 升级说明列为不适用；不以豁免推断其他测试通过。CI 成功不等于商店已上线、npm 已发布或域名已可访问。
+本次执行清单（2026-10-16 更新；历史提交记录见执行记录）。已验证项目勾选；未完成项目保留空框。用户明确豁免的 Firefox 升级说明列为不适用；不以豁免推断其他测试通过。CI 成功不等于商店已上线、npm 已发布或域名已可访问。
 
 | 项目 | 本次记录 |
 |---|---|
-| 发布负责人 / 日期 | Codex 执行，用户已授权发布 / 2026-10-15 |
+| 发布负责人 / 日期 | Codex 执行，用户已授权发布 / 2026-10-15，2026-10-16 公开渠道复验 |
 | Git commit / PR / CI run | Chrome `f756440`；Firefox `200cb67`；SDK `6ea7424`；[执行记录](release-execution.md) |
 | 扩展版本 | 两端均 `2.0.0`；Firefox 保留初版公开包 |
 | 新 SDK 版本 | `wireflip@0.2.0` |
@@ -43,12 +43,12 @@
 
 ### Playground 必测流程（2026-10-16 补充）
 
-之前 SDK 协议测试和官网无插件 UI 测试分开运行，不能据此勾选 Playground 完整链路。后续发布必须附上 [Playground against public Firefox](https://github.com/oe/cors-unlocker/actions/workflows/playground-firefox.yml) 的成功记录；该任务安装哈希校验后的 AMO 签名包，运行构建后的网页和真实扩展 UI。
+之前 SDK 协议测试和官网无插件 UI 测试分开运行，不能据此勾选 Playground 完整链路。后续发布必须附上 [Firefox 商店版](https://github.com/oe/cors-unlocker/actions/workflows/playground-firefox.yml) 与 [Chrome 商店版](https://github.com/oe/cors-unlocker/actions/workflows/chrome-store-verification.yml) 的成功记录。Chrome 对照提交包永久指纹并原生安装公开签名包，PR 测候选网页，main 测部署后的 HTTPS 官网；Firefox 安装哈希校验后的 AMO 签名包。
 
-- [ ] 在目标商店版本上，从默认 Mock 示例完成添加规则、工作区启用、返回 Playground 标签页、Popup 启动会话、测试并核对实际响应内容。不能用 fetch stub、网络路由模拟或 SDK 连接成功替代。
-- [ ] 验证无插件、只启用规则但未启动会话、停止会话时不会误导用户发送 Mock 测试；规则关闭而会话仍在运行时必须显示响应不匹配。
-- [ ] 先收到可缓存的原始响应，再运行 Mock，仍能得到配置内容。Firefox 保留上游状态码，不把状态差异判为 body replacement 失败。
-- [ ] 重复打开规则、刷新网页不重复创建同一草稿；更换配方或编辑规则后重新核对实际配置。公网默认端点与确定性真实 HTTP 端点均需验收。
+- [x] 在目标商店版本上，从默认 Mock 示例完成添加规则、工作区启用、返回 Playground 标签页、Popup 启动会话、测试并核对实际响应内容。不能用 fetch stub、网络路由模拟或 SDK 连接成功替代。
+- [x] 验证无插件、只启用规则但未启动会话、停止会话时不会误导用户发送 Mock 测试；规则关闭而会话仍在运行时必须显示响应不匹配。
+- [x] 先收到可缓存的原始响应，再运行 Mock，仍能得到配置内容。Firefox 保留上游状态码，不把状态差异判为 body replacement 失败。
+- [x] 重复打开规则、刷新网页不重复创建同一草稿；更换配方或编辑规则后重新核对实际配置。公网默认端点与确定性真实 HTTP 端点均需验收。
 
 ## 3. 域名和网站迁移（先保兼容，再切绑定）
 
@@ -67,14 +67,15 @@
 - [x] Chrome Web Store 使用已验证的 Chrome ZIP；检查产品名称 Wireflip、简介、权限说明、隐私政策 URL、官网和版本号。
 - [x] 检查已批准 logo、各语言五张 1280×800 截图（包含 Popup）、440×280 宣传图；素材中的功能与发布版本一致。参考 [素材说明](../marketing/chrome-web-store/README.md)。
 - [x] 在原 Chrome 条目提交审核，设置审核通过后自动发布；后台确认 Pending review。
-- [ ] Chrome 审核通过并公开后，从商店安装/升级并验证实际版本和核心流程。
+- [x] Chrome 已公开 2.0.0，官方更新服务公开 CRX 与提交审核包一致；通过官方 Chrome 原生策略全新安装、公开条目及 Playground 核心流程复验，证据见执行记录和验收任务。
+- [ ] 在已有真实 1.x Chrome profile 上由商店原地更新，复验旧规则保留、一次升级说明及重启。源码候选的 v1 夹具已验证，但不代替此项。
 - [x] Firefox 使用已验证的 Firefox 产物完成 AMO 签名/审核；临时加载的 unsigned CI 构建不算正式发布。
 - [x] Firefox 正式版本从实际发布渠道安装/升级，验证 ID、权限及核心流程；若未正式上线，文档继续明确 beta 状态。
 - [x] 发布说明准确描述 Chrome debugger 提示、Firefox body replacement 限制和兼容政策，不承诺 VPN / IP 代理能力。
 
 ## 5. 新 npm SDK
 
-- [x] 商店兼容版本可实际安装，网站和桥接均可用，再准备推广新 SDK。 按浏览器分别判断：Firefox 已公开；Chrome 用户继续保留旧 SDK，直到 2.0 更新实际可用。
+- [x] 商店兼容版本可实际安装，网站和桥接均可用，再准备推广新 SDK。 Chrome 与 Firefox 2.0.0 均已公开可安装；更新扩展后可选迁移 SDK，旧 SDK 继续兼容。
 - [x] 从同一发布 commit 构建 `packages/npm` 并 pack，检查 package.json 的名称 `wireflip`、版本、exports、类型声明、README 和运行文件。
 - [x] 对**准确的待发布归档**执行 npm dry-run；在干净项目测试 ESM、CommonJS、类型声明和浏览器 SDK，不能只测源码。
 - [x] 负责人审核后发布新包；确认 npm registry 中的版本、dist-tag、归档完整性及 README，而不是只相信 publish 命令成功。
@@ -120,7 +121,7 @@ npm publish ./artifacts/legacy-sdk/cors-unlocker-0.1.1.tgz --tag latest --ignore
 - Firefox 保留 `200cb67` 的公开 2.0.0，AMO 文件 `5122149`；不上传本地后续候选，不增加版本号。
 - 后续完整 CI `38624777940`、`38662680590` 的 Firefox 升级说明用例未通过；这项不属于用户要求保留的公开 Firefox 包，按用户明确指示跳过本轮 Firefox 升级页，不声称该用例通过。
 - 正式 Firefox 2.0.0 已按原签名 XPI 安装：本机和 CI 的三个 SDK 归档验收均通过。除 `META-INF/` 签名外，全部 23 个运行文件与初版受测构建逐字节相同。
-- npm 单独验证准确归档与正式 AMO 包：[SDK release against public Firefox](https://github.com/oe/cors-unlocker/actions/runs/38663236037)。该验收已全绿；网站及 README 明确 Chrome 仍待审核。
+- npm 单独验证准确归档与正式 AMO 包：[SDK release against public Firefox](https://github.com/oe/cors-unlocker/actions/runs/38663236037)。该验收已全绿；当时的待审核状态属于历史，当前两端正式公开。
 - npm registry 验证、干净项目安装及公网旧桥接复验已完成，证据在 `npm-6ea7424/registry/`。总体发布仍有空框，不能宣称 checklist 全部完成。
 
-官网最终状态由成功部署 `38664474401` / `38664591420` 及真实公网首页、Docs、Migration、FAQ 的正文和全站页脚核验确认；浏览器再次确认 Firefox 安装入口与 Chrome 待审核提示。最后仅剩上面的两个 Chrome 上线相关空框。
+官网最终状态由成功部署 `38664474401` / `38664591420` 及真实公网首页、Docs、Migration、FAQ 的正文和全站页脚核验确认；浏览器再次确认 Firefox 安装入口与 Chrome 待审核提示。这是 2026-10-15 的历史状态。2026-10-16 已确认 Chrome 公开，全新商店安装和 Playground 复验完成；当前未完成项是上述真实 v1 profile 原地更新与扩展最终 GitHub Release。

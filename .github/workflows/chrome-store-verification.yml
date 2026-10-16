@@ -1,0 +1,104 @@
+name: Verify public Chrome Web Store release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - scripts/verify-public-chrome.mjs
+      - release/chrome-store-2.0.0.json
+      - packages/website/**
+      - .github/workflows/chrome-store-verification.yml
+  pull_request:
+    paths:
+      - scripts/verify-public-chrome.mjs
+      - release/chrome-store-2.0.0.json
+      - packages/website/**
+      - .github/workflows/chrome-store-verification.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  public-chrome:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.6.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: |
+          pnpm --filter wireflip build
+          pnpm --filter website build
+      - name: Download the exact submitted release ZIP for initial fingerprinting
+        if: hashFiles('release/chrome-store-2.0.0.json') == ''
+        uses: actions/download-artifact@v4
+        with:
+          name: extension-release-archives
+          path: artifacts/submitted-release
+          run-id: 38620854912
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install from public Web Store using native Chrome policy
+        run: |
+          google-chrome --version
+          sudo mkdir -p /etc/opt/chrome/policies/managed
+          sudo tee /etc/opt/chrome/policies/managed/wireflip-verification.json >/dev/null <<'JSON'
+          {"ExtensionInstallForcelist":["knhlkjdfmgkmelcjfnbbhpphkmjjacng;https://clients2.google.com/service/update2/crx"]}
+          JSON
+      - name: Verify signed public runtime and Playground
+        env:
+          WIREFLIP_BUILT_SITE: ${{ github.event_name == 'pull_request' && '1' || '0' }}
+        run: |
+          if test -d artifacts/submitted-release; then
+            release_archive="$(find artifacts/submitted-release -name 'wireflip-chrome-v2.0.0.zip' -print -quit)"
+          else
+            release_archive=''
+          fi
+          CHROME_RELEASE_ARCHIVE="$release_archive" xvfb-run -a node scripts/verify-public-chrome.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: public-chrome-verification-${{ github.sha }}
+          path: artifacts/public-chrome
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Remove test-only machine policy
+        if: always()
+        run: sudo rm -f /etc/opt/chrome/policies/managed/wireflip-verification.json
+
+  sync-sdk-release-notice:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: public-chrome
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Update the existing SDK release availability note after public verification
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: release } = await github.rest.repos.getReleaseByTag({
+              ...context.repo, tag: 'sdk-v0.2.0'
+            });
+            if (release.target_commitish !== '6ea7424c06a2463d736276a04e3bf7791210cb49') {
+              throw new Error('SDK release target changed; review its availability note manually');
+            }
+            const previous = '- Chrome 2.0.0 is awaiting Chrome Web Store review. Chrome users should keep the existing `cors-unlocker` integration until the compatible update is available.';
+            const replacement = '- Chrome 2.0.0 is [available on the Chrome Web Store](https://chromewebstore.google.com/detail/knhlkjdfmgkmelcjfnbbhpphkmjjacng). Update the extension before optionally migrating to `wireflip`; existing `cors-unlocker` integrations remain supported.';
+            if (release.body?.includes(previous)) {
+              await github.rest.repos.updateRelease({
+                ...context.repo, release_id: release.id,
+                body: release.body.replace(previous, replacement)
+                  + '\nChrome public-package verification: https://github.com/' + context.repo.owner + '/' + context.repo.repo + '/actions/runs/' + context.runId + '\n'
+              });
+              core.info('Updated availability only; tag, archives and package versions are unchanged');
+            } else {
+              core.info('The historical pending-review note is already absent; no release edit needed');
+            }

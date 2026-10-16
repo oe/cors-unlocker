@@ -103,7 +103,7 @@ class PlaygroundTests(native.FirefoxTests):
         self.assertIn('First add and enable', self.text())
         # Keep the exact recipe body; use a deterministic real upstream that returns 418.
         upstream = self.site_origin + '/probe/mock'
-        self.fill('input[value="https://jsonplaceholder.typicode.com/todos/1"]:not([aria-label])', upstream)
+        self.fill('input[value="https://jsonplaceholder.typicode.com/todos/2"]:not([aria-label])', upstream)
         self.fill('input[aria-label="Probe URL"]', upstream)
         self.click('Add rule in Wireflip')
         state = self.wait(lambda: self.message('getProxyState'), lambda state: len(state['rules']) == 1)

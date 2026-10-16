@@ -1,6 +1,22 @@
-# Wireflip 发布执行记录 — 2026-10-15
+# Wireflip 发布执行记录 — 2026-10-15，更新于 2026-10-16
 
-本轮适用发布范围验收完成；两端版本均保持 2.0.0。Chrome 最新包已提交审核，Firefox 保留已公开的初版 2.0.0；两个 npm 包已公开，准确归档、latest、干净消费者和公网旧桥接复验通过。
+当前 Chrome 和 Firefox 2.0.0 均已公开。2026-10-16 已通过 Google 官方更新服务下载 Chrome 公开 CRX，28 个运行文件与提交审核的 ZIP 逐字节一致；官方 Chrome 155.0.8059.39 已通过原生商店策略安装、公开条目及核心 Playground 链路验收。旧 SDK 和域名兼容继续保留。真实已有 v1 用户原地升级仍需单独补验，不用全新安装或旧数据夹具测试代替。
+
+## 2026-10-16 Chrome 公开渠道复验
+
+- 扩展 ID `knhlkjdfmgkmelcjfnbbhpphkmjjacng`，公开版本 `2.0.0`，对应源码 `f756440abe8ad5e3fdf19c6179ecf59435df0816`
+- 公开 CRX SHA-256：`fb7a4615a389e8dde3cc96ed878b69101af13ff0ecc91243c7313020cff0982e`
+- 提交 ZIP SHA-256：`59b7f60717ecdbd8eb77af34253f7e3519f6f8051e605099af50934306ef72e6`
+- 28 个运行文件逐字节相同，manifest 除商店管理的 key/update 元数据外相同；[永久文件指纹](../release/chrome-store-2.0.0.json) 避免验收依赖短期 CI 归档
+- 官方 Chrome 原生策略通过公开 Web Store 更新地址安装签名包，不使用 unpacked 加载；安装后的 JS/HTML/CSS 与公开包逐字节相同，Chrome 安装时规范化的 locale JSON 核对实际消息内容，PNG 不以安装后的重编码字节判断篡改
+- 公开商店条目显示 Wireflip 2.0.0；全新安装无升级说明误弹
+- 真实工作区开关、Popup 原生会话、Mock 内容校验、工具栏 ON/停止联动、关闭规则后不匹配、刷新后不重复创建规则均覆盖；流程不 stub fetch、扩展 API 或 debugger
+- 此验收发现 Chrome 默认 Mock 配方缺少 `Access-Control-Allow-Origin`，已补齐。未经自定义的旧默认配方会换为修正后的 `/todos/2` 配方，旧 `/todos/1` 规则不会覆盖它；自定义配置保留
+- [Chrome 验收任务](https://github.com/oe/cors-unlocker/actions/workflows/chrome-store-verification.yml)：PR 测构建后的网站，main 合并后等待部署并复验真实 HTTPS 官网。[Firefox 商店版复验](https://github.com/oe/cors-unlocker/actions/workflows/playground-firefox.yml) 同时覆盖修正后的配方
+- 仓库、SDK README 和当前 checklist 同步正式发布状态；已发布 npm 0.2.0 的 README 属于旧归档内容，不能原版本覆写，本轮不为状态文案重发包。已有 SDK GitHub Release 的待审核说明在 main 商店验收通过后自动更正
+- 保留尚未完成的真实旧 Chrome profile 原地升级及扩展最终 GitHub Release 项目
+
+以下为 2026-10-15 的提交、审核及 npm 发布历史，涉及“待审核”的文字描述当时状态。
 
 ## 受测候选与产物
 
@@ -52,7 +68,7 @@ Chrome 已保存中英文介绍、各五张截图、logo、宣传图、权限/�
 提交时没有选择“只改安全静态规则而跳过审核”；审核通过后自动发布已启用。
 本机证据：`f756440/chrome-pending-review.png`、`amo-public.png`、`amo-public-metadata.json`。
 
-## 完成发布前的剩余检查
+## 2026-10-15 当时的剩余检查（历史）
 
 1. 等待 Chrome 审核及自动发布；当前仍为待审核，不能声称全部上线。
 2. 从公开 Chrome 渠道安装/升级并验收，确认老用户一次说明、新安装不显示提示、原有规则保留。Firefox 公开包的核心 SDK 流程已复验完成。
@@ -80,7 +96,7 @@ Chrome 已保存中英文介绍、各五张截图、logo、宣传图、权限/�
 - 网站首页、安装文档、迁移页、FAQ、仓库 README 更新为真实浏览器/SDK 状态；Firefox beta 文案已替换为正式 AMO 链接。扩展完整发布仍等待 Chrome 审核和正式渠道复验。
 - Firefox 升级说明本轮不适用（用户明确无需）；此前等待两商店同时就绪不是 npm 的硬性限制。
 
-## 最终官网状态与未完成项
+## 2026-10-15 官网状态与未完成项（历史）
 
 - 官网状态更新部署：[Website and release packages](https://github.com/oe/cors-unlocker/actions/runs/38664474401) 与 [Pages deployment](https://github.com/oe/cors-unlocker/actions/runs/38664591420) 均成功，对应网站提交 `79d0be6`。
 - 普通公网访问及浏览器复验：首页、Docs、Migration、FAQ 均显示 npm 已公开、Firefox 2.0 可安装、Chrome 2.0 待审核；全站页脚不再包含 Firefox beta / Chrome stable 的旧状态，安装按钮指向正式 AMO 条目。
