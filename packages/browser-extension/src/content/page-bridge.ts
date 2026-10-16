@@ -12,6 +12,13 @@ const ALLOWED_METHODS = new Set([
   'openWorkspace',
 ]);
 
+// Page JavaScript can ask for approval, but cannot fabricate a trusted input event.
+// Consume one activation so a timer or a loop cannot open repeated approval windows.
+let activationDeadline = 0;
+const noteActivation = (event: Event) => { if (event.isTrusted) activationDeadline = performance.now() + 5_000; };
+window.addEventListener('click', noteActivation, true);
+window.addEventListener('keydown', noteActivation, true);
+
 interface PageRequest {
   type: typeof REQUEST_TYPE;
   clientId: string;
@@ -75,13 +82,14 @@ window.addEventListener('message', async (event) => {
         return;
       }
     }
-    if (request.method === 'requestRule' && !navigator.userActivation?.isActive) {
+    if (request.method === 'requestRule' && performance.now() > activationDeadline) {
       window.postMessage({
         type: RESPONSE_TYPE, clientId: request.clientId, id: request.id,
         error: { type: 'invalid-request', message: 'Enable a rule from a click or keyboard action on this page.' },
       }, location.origin);
       return;
     }
+    if (request.method === 'requestRule') activationDeadline = 0;
     const response = await browser.runtime.sendMessage({
       type: 'sdkRequest',
       payload: { method: request.method, data: request.payload },

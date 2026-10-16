@@ -62,7 +62,7 @@ export function clearSavedRuleRuntime() { rules = []; }
 export async function reconcileSavedRuleRuntime(state: IProxyAppState): Promise<void> {
   rules = effectiveRules(state);
   const tabs = await browser.tabs.query({});
-  await Promise.all(tabs.flatMap(tab => typeof tab.id === 'number' ? [reconcileSavedRuleTab(tab.id)] : []));
+  await Promise.all(tabs.flatMap(tab => typeof tab.id === 'number' ? [reconcileSavedRuleTab(tab.id).catch(error => { logger.debug('Rule preparation failed for tab:', tab.id, error); })] : []));
 }
 
 export function initializeSavedRuleRuntime() {

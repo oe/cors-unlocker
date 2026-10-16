@@ -234,7 +234,7 @@ export function Inspector() {
       {targetError || status?.phase === 'error' ? (
         <Alert>
           <CircleSlash2 />
-          <AlertTitle>{targetError ? t("This page is unavailable") : t("Advanced proxy could not start")}</AlertTitle>
+          <AlertTitle>{targetError ? t("This page is unavailable") : t("Rule execution needs attention")}</AlertTitle>
           <AlertDescription>
             {targetError || status?.error ? translateError(targetError || status?.error || '') : t("Enabled rules run automatically on matching pages.")}
           </AlertDescription>
@@ -292,7 +292,7 @@ export function Inspector() {
           </div>
         )}
       </ScrollArea>
-      <details className="text-xs text-muted-foreground"><summary className="cursor-pointer">{t('About request capture')}</summary><p className="mt-2">{t('Matched rule requests appear automatically. Start recording for other traffic. This is not a complete browser network log.')}</p><p className="mt-2">{t(__TARGET__ === 'chrome' ? 'Chrome shows a debugging banner during the session. Requests stay on your device.' : 'Firefox CORS: response headers only.')}</p></details>
+      <details className="text-xs text-muted-foreground"><summary className="cursor-pointer">{t('About request capture')}</summary><p className="mt-2">{t('Matched rule requests appear automatically. Start recording for other traffic. This is not a complete browser network log.')}</p><p className="mt-2">{t(__TARGET__ === 'chrome' ? 'Chrome may show its debugging indicator on matching pages. You can disable this rule in Wireflip at any time.' : 'Firefox CORS: response headers only.')}</p></details>
 
       {!selected && filtered.length > 0 ? <p className="text-xs text-muted-foreground">{t("Select a request to mock its response or change its behavior.")}</p> : null}
       {selected ? (

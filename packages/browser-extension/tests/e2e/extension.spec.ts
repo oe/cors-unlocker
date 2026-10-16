@@ -75,9 +75,13 @@ test('enables a Playground example with one native approval and runs saved rules
       response.writeHead(418, { 'Content-Type': 'application/json', 'Cache-Control': 'public,max-age=3600' });
       response.end('{"source":"server"}'); return;
     }
+    if (pathname === '/sdk.mjs') {
+      response.writeHead(200, { 'Content-Type': 'text/javascript' });
+      response.end(readFileSync(path.resolve(site, '../../npm/dist/index.mjs'))); return;
+    }
     if (pathname === '/gesture') {
       response.writeHead(200, { 'Content-Type': 'text/html' });
-      response.end('<title>Gesture fixture</title><script>window.addEventListener("message",function(e){if(e.source===window&&e.data?.type==="wireflip:sdk-response"&&e.data.id==="no-gesture"){window.noGestureResult=e.data;console.log("WIREFLIP_GESTURE "+e.data.error?.type);}});setTimeout(function(){window.postMessage({type:"wireflip:sdk-request",clientId:"gesture-test",id:"no-gesture",method:"requestRule",payload:{rule:{name:"No gesture",urlPattern:"*",actions:[{type:"block"}]}}},location.origin);},100);</script>'); return;
+      response.end('<title>Gesture fixture</title><script type="module">import {intercept} from "/sdk.mjs";try{const session=await intercept.connect();await session.requestRule({name:"No gesture",urlPattern:"*",actions:[{type:"block"}]});console.log("WIREFLIP_GESTURE unexpected");}catch(e){console.log("WIREFLIP_GESTURE "+e.type);}</script>'); return;
     }
     if (pathname === '/peer') {
       response.writeHead(200, { 'Content-Type': 'text/html' }); response.end('<title>Peer request page</title>Peer'); return;
@@ -99,9 +103,6 @@ test('enables a Playground example with one native approval and runs saved rules
   let ruleId: string | undefined;
   const request = (page: Page) => page.evaluate(async url => (await fetch(url, { cache: 'no-store' })).text(), origin + '/probe');
   try {
-    const denied = target.waitForEvent('console', { predicate: message => message.text() === 'WIREFLIP_GESTURE invalid-request', timeout: 10_000 });
-    await target.goto(origin + '/gesture');
-    await denied;
     await target.goto(origin + '/playground/');
     await expect(target.getByRole('button', { name: 'Enable example', exact: true })).toBeEnabled();
     await target.getByText('Advanced options', { exact: true }).click();
@@ -119,10 +120,12 @@ test('enables a Playground example with one native approval and runs saved rules
         if (!approval.isClosed() || !/has been closed/.test(String(error))) throw error;
       });
     };
+    const workspacesBefore = context.pages().filter(page => page.url().includes('/src/options/')).length;
     await approve(false);
     await expect(target.getByRole('alert')).toContainText('declined');
     await approve(true);
     await expect(target.getByRole('button', { name: 'Test mock', exact: true })).toBeEnabled();
+    expect(context.pages().filter(page => page.url().includes('/src/options/'))).toHaveLength(workspacesBefore);
     const state = await control.evaluate(() => chrome.runtime.sendMessage({ type: 'getProxyState' }));
     const saved = state.rules.filter((rule: any) => rule.match.initiatorOrigins.includes(origin));
     expect(saved).toHaveLength(1);
@@ -150,6 +153,10 @@ test('enables a Playground example with one native approval and runs saved rules
     expect(disabled.success).toBe(true);
     await expect(target.getByRole('button', { name: 'Test mock', exact: true })).toBeDisabled();
     expect(await request(peer)).toBe('{"source":"server"}');
+    const denied = target.waitForEvent('console', { predicate: message => message.text() === 'WIREFLIP_GESTURE invalid-request', timeout: 10_000 });
+    await target.goto(origin + '/gesture');
+    await denied;
+
   } finally {
     if (ruleId) await control.evaluate(id => chrome.runtime.sendMessage({ type: 'deleteProxyRule', payload: { id } }), ruleId);
     for (const page of [target, peer, unrelated, popup]) await page.close();
