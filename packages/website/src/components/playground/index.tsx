@@ -181,7 +181,10 @@ export default function Playground() {
     }
   };
 
-  useEffect(() => { void connect(); }, []);
+  useEffect(() => {
+    try { setDraftFingerprint(sessionStorage.getItem('wireflip:playground-draft')); } catch { /* Storage may be unavailable. */ }
+    void connect();
+  }, []);
 
   useEffect(() => {
     if (!session) return;
@@ -228,6 +231,7 @@ export default function Playground() {
         actions: parsed as DraftAction[],
       });
       setDraftFingerprint(fingerprint);
+      try { sessionStorage.setItem('wireflip:playground-draft', fingerprint); } catch { /* Testing still works without storage. */ }
       setMessage('Rule added disabled. Turn on its switch in Wireflip, then return to the Playground tab' + (requiresSession ? ' and open the toolbar icon → Start tab session.' : ' to test it.'));
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Unable to create the draft.');
@@ -417,7 +421,7 @@ export default function Playground() {
                   {pending === 'request' ? 'Sending request…' : result ? (
                     <>
                       <p className={`flex items-center gap-2 font-semibold ${result.kind === 'verified' ? 'text-emerald-400' : result.kind === 'observed' ? 'text-neutral-100' : 'text-red-400'}`}>
-                        {result.kind === 'verified' ? <Check className="size-3.5" /> : <WifiOff className="size-3.5" />}{result.summary}
+                        {result.kind !== 'error' ? <Check className="size-3.5" /> : <WifiOff className="size-3.5" />}{result.summary}
                       </p>
                       <pre className="mt-2 max-h-44 overflow-auto whitespace-pre-wrap break-all text-neutral-500">{result.detail}</pre>
                     </>

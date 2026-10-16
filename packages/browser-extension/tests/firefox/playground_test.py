@@ -57,6 +57,32 @@ class PlaygroundTests(native.FirefoxTests):
     def capture(self, name):
         (native.ARTIFACTS / (name + '.png')).write_bytes(base64.b64decode(self.command('GET', '/screenshot')))
 
+    def test_public_mock_recipe(self):
+        # Keep the public recipe URL and actions exactly as a visitor receives them.
+        self.switch(self.target)
+        self.navigate(self.site_origin + '/playground/')
+        self.wait(lambda: self.text(), lambda text: 'Extension connected · firefox' in text)
+        self.click('Add rule in Wireflip')
+        self.wait(lambda: self.message('getProxyState'), lambda state: len(state['rules']) == 1)
+        self.switch(self.control)
+        self.wait(lambda: self.js("""return !!document.querySelector('[role="switch"][aria-label="Toggle Playground · Mock response"]');"""))
+        self.js("""document.querySelector('[role="switch"][aria-label="Toggle Playground · Mock response"]').click();""")
+        self.wait(lambda: self.message('getProxyState')['rules'][0]['enabled'])
+        tab_id = self.extension_js('return (await browser.tabs.query({})).find(t=>t.url===arguments[0]).id;', self.site_origin + '/playground/')
+        popup = self.new_page(native.EXTENSION + f'/src/popup/index.html?tabId={tab_id}')
+        try:
+            self.click('Start tab session')
+            self.switch(self.target)
+            self.wait(lambda: self.js("""return !document.querySelector('button[aria-label="Test mock"]').disabled;"""))
+            self.click('Test mock')
+            self.wait(lambda: self.text(), lambda text: 'Mock verified · 200' in text, timeout=25)
+            self.capture('playground-public-recipe-verified')
+        finally:
+            self.message('disableAdvancedProxy', tabId=tab_id)
+            self.switch(popup)
+            self.command('DELETE', '/window')
+            self.switch(self.target)
+
     def test_mock_journey(self):
         self.switch(self.target)
         self.navigate(self.site_origin + '/playground/')
@@ -122,5 +148,5 @@ class PlaygroundTests(native.FirefoxTests):
 
 if __name__ == '__main__':
     result = unittest.TextTestRunner(verbosity=2).run(
-        unittest.TestSuite([PlaygroundTests('test_mock_journey')]))
+        unittest.TestSuite([PlaygroundTests('test_mock_journey'), PlaygroundTests('test_public_mock_recipe')]))
     raise SystemExit(not result.wasSuccessful())
