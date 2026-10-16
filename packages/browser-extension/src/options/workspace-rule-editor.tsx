@@ -45,7 +45,7 @@ function EditorShell({ parts, onCopy, onDelete, headerTarget }: {
           <Menu.Portal><Menu.Positioner sideOffset={6} align="end" className="z-50">
             <Menu.Popup className="min-w-44 rounded-lg border bg-popover p-1 text-sm text-popover-foreground shadow-md outline-none">
               {onCopy ? <Menu.Item disabled={parts.pending} className="flex cursor-default items-center gap-2 rounded px-3 py-2 outline-none data-disabled:opacity-50 data-highlighted:bg-accent" onClick={onCopy}><Copy className="size-4" />{t('Duplicate rule')}</Menu.Item> : null}
-              {onDelete ? <Menu.Item className="flex cursor-default items-center gap-2 rounded px-3 py-2 text-destructive outline-none data-disabled:opacity-50 data-highlighted:bg-accent" onClick={onDelete}><Trash2 className="size-4" />{t('Delete selected rule')}</Menu.Item> : null}
+              {onDelete ? <Menu.Item disabled={parts.pending} className="flex cursor-default items-center gap-2 rounded px-3 py-2 text-destructive outline-none data-disabled:opacity-50 data-highlighted:bg-accent" onClick={onDelete}><Trash2 className="size-4" />{t('Delete selected rule')}</Menu.Item> : null}
             </Menu.Popup>
           </Menu.Positioner></Menu.Portal>
         </Menu.Root> : null}
