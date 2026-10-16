@@ -70,7 +70,7 @@ const SCENARIOS: Scenario[] = [
   {
     id: 'mock',
     name: 'Mock response',
-    description: 'Return deterministic JSON without changing application code.',
+    description: 'Replace an API response with your own JSON',
     icon: FlaskConical,
     urlPattern: 'https://jsonplaceholder.typicode.com/todos/2',
     testUrl: 'https://jsonplaceholder.typicode.com/todos/2',
@@ -150,6 +150,7 @@ export default function Playground() {
   const [urlPattern, setUrlPattern] = useState(DEFAULT_SCENARIO.urlPattern);
   const [testUrl, setTestUrl] = useState(DEFAULT_SCENARIO.testUrl);
   const [actionJson, setActionJson] = useState(JSON.stringify(DEFAULT_SCENARIO.actions, null, 2));
+  const [operationError, setOperationError] = useState('');
   const [message, setMessage] = useState('Looking for the local extension…');
   const [pending, setPending] = useState<'connect' | 'draft' | 'request' | null>('connect');
   const [result, setResult] = useState<RequestResult | null>(null);
@@ -218,11 +219,13 @@ export default function Playground() {
   }, [session]);
 
   const formatActions = () => {
+    setOperationError('');
     try { setActionJson(JSON.stringify(JSON.parse(actionJson), null, 2)); }
-    catch { setMessage('Invalid action JSON. Fix the syntax before creating a draft.'); }
+    catch { setOperationError('Invalid action JSON. Fix the syntax before creating a draft.'); }
   };
 
   const chooseScenario = (scenario: Scenario) => {
+    setOperationError('');
     setSelectedId(scenario.id);
     setName(`Playground · ${scenario.name}`);
     setUrlPattern(scenario.urlPattern);
@@ -235,6 +238,7 @@ export default function Playground() {
   const createDraft = async () => {
     if (!session) return;
     setPending('draft');
+    setOperationError('');
     try {
       if (draftCreated) { await session.openWorkspace(); return; }
       const parsed = JSON.parse(actionJson);
@@ -250,7 +254,7 @@ export default function Playground() {
       try { sessionStorage.setItem('wireflip:playground-draft', JSON.stringify({ selectedId, name, urlPattern, testUrl, actionJson, fingerprint })); } catch { /* Testing still works without storage. */ }
       setMessage('Rule added disabled. Turn on its switch in Wireflip, then return to the Playground tab' + (requiresSession ? ' and open the toolbar icon → Start tab session.' : ' to test it.'));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to create the draft.');
+      setOperationError(error instanceof Error ? error.message : 'Unable to create the draft.');
     } finally {
       setPending(null);
     }
@@ -281,7 +285,7 @@ export default function Playground() {
       setResult({
         kind: mock ? matches ? 'verified' : 'error' : response.ok ? 'observed' : 'error',
         summary: summary + ` · ${response.status} · ${elapsed} ms`,
-        detail: (mock && !matches ? 'The response differs from the expected Mock below. Check that the recipe rule is enabled, its group is on, and no other matching rule overrides it.\n\nReceived:\n' : '') + (body.slice(0, 2_000) || '(empty body)'),
+        detail: (mock && !matches ? 'The response differs from the expected response. Check that the recipe rule is enabled, its group is on, and no other matching rule overrides it.\n\nReceived:\n' : '') + (body.slice(0, 2_000) || '(empty body)'),
       });
     } catch (error) {
       setResult({
@@ -296,163 +300,119 @@ export default function Playground() {
   };
 
   const capabilities = session?.capabilities.interception;
+  const sessionRunning = status?.advancedMode === 'connected';
+  const stepTitle = !session ? 'Connect Wireflip to try this example' : !draftCreated ? 'Add and enable the rule' : requiresSession && !sessionRunning ? 'Start this tab’s session' : 'Ready to test';
+  const stepHelp = !session ? 'Install the extension and reconnect first' : !draftCreated ? 'First add and enable the recipe rule in Wireflip, then return to this tab' : requiresSession && !sessionRunning ? 'Enable the rule in Wireflip. Return here, click the Wireflip toolbar icon → Start tab session for this Playground tab' : 'The saved rule and its group must be enabled in Wireflip';
+  const displayBody = (body: string) => { try { return JSON.stringify(JSON.parse(body), null, 2); } catch { return body; } };
+
 
   return (
-    <div className="flex flex-col gap-10">
-      <div className="grid items-end gap-8 lg:grid-cols-[1fr_auto]">
-        <div className="max-w-3xl">
-          <h1 className="text-5xl font-semibold leading-[1.02] tracking-[-.05em] sm:text-6xl">Playground</h1>
-          <p className="mt-6 max-w-2xl text-lg leading-8 text-neutral-600">
-            Try a recipe in three steps. Adding a rule does not enable it or start interception. Follow the steps below, then test the actual response.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <button className="button-secondary focus-ring" disabled={pending !== null} onClick={() => void connect()}>
-            <RefreshCw className="size-4" /> Reconnect
-          </button>
-          {session ? (
-            <button className="button-primary focus-ring" onClick={() => void session.openWorkspace().catch(error => setMessage(String(error)))}>
-              Open workspace <ExternalLink className="size-4" />
-            </button>
-          ) : (
-            <button className="button-primary focus-ring" onClick={() => intercept.openStorePage()}>
-              Install extension <ExternalLink className="size-4" />
-            </button>
-          )}
-        </div>
+    <div className="flex flex-col gap-5" data-playground-version="3">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Playground</h1>
+        <p className="mt-1 text-sm text-neutral-600">Try an example and compare the response</p>
       </div>
-
-      <ol className="grid gap-4 rounded-xl border border-neutral-200 bg-neutral-50 p-5 text-sm sm:grid-cols-3" aria-label="Try a recipe">
-        <li><strong className="block text-neutral-950">1. Add and enable the rule</strong><span className="mt-1 block leading-6 text-neutral-600">Choose a recipe, click Add rule in Wireflip, then turn on its switch in the workspace. Website rules always start disabled.</span></li>
-        <li><strong className="block text-neutral-950">{requiresSession ? '2. Start this tab’s session' : '2. Return to Playground'}</strong><span className="mt-1 block leading-6 text-neutral-600">{requiresSession ? 'Return to this Playground tab first. Click the Wireflip icon beside the address bar → Start tab session. Starting one on the workspace tab will not work.' : 'This recipe uses saved browser rules and does not need a tab session.'}</span></li>
-        <li><strong className="block text-neutral-950">3. Test the recipe</strong><span className="mt-1 block leading-6 text-neutral-600">{mock ? 'Test mock unlocks when this tab’s session is running. We compare the actual response with the expected body.' : 'Send the request, then check the matching rule and changes in Inspector.'}</span></li>
-      </ol>
-
-      <div className="grid overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-xl shadow-black/5 lg:grid-cols-[280px_1fr]">
-        <aside className="border-b border-neutral-200 bg-neutral-50 p-4 lg:border-b-0 lg:border-r">
-          <div className="mb-4 flex items-center justify-between px-2">
-            <p className="text-xs font-semibold uppercase tracking-[.14em] text-neutral-500">Rule recipes</p>
-            <span className="font-mono text-xs text-neutral-500">{SCENARIOS.length}</span>
-          </div>
-          <div className="grid gap-1 sm:grid-cols-2 lg:grid-cols-1">
-            {ORDERED_SCENARIOS.map((scenario) => {
+      <div className="grid overflow-hidden rounded-lg border border-neutral-200 bg-white lg:grid-cols-[200px_minmax(0,1fr)]">
+        <aside className="border-b border-neutral-200 bg-neutral-50 p-3 lg:border-b-0 lg:border-r" aria-label="Examples">
+          <label className="flex items-center gap-3 text-sm font-medium lg:hidden">
+            Example
+            <select aria-label="Example" className="focus-ring min-h-10 min-w-0 flex-1 rounded-md border border-neutral-300 bg-white px-2 font-normal" value={selectedId} disabled={pending === 'draft' || pending === 'request'} onChange={event => chooseScenario(SCENARIOS.find(scenario => scenario.id === event.target.value) || DEFAULT_SCENARIO)}>
+              {ORDERED_SCENARIOS.map(scenario => <option key={scenario.id} value={scenario.id}>{scenario.name}</option>)}
+            </select>
+          </label>
+          <p className="mb-3 hidden px-2 text-xs font-semibold text-neutral-500 lg:block">Examples</p>
+          <div className="hidden gap-1 lg:grid">
+            {ORDERED_SCENARIOS.map(scenario => {
               const Icon = scenario.icon;
-              const active = scenario.id === selectedId;
-              return (
-                <button
-                  key={scenario.id}
-                  aria-pressed={active}
-                  disabled={pending === 'draft' || pending === 'request'}
-                  onClick={() => chooseScenario(scenario)}
-                  className={`focus-ring flex min-h-16 disabled:cursor-not-allowed disabled:opacity-50 items-start gap-3 rounded-xl px-3 py-3 text-left transition ${active ? 'bg-white shadow-sm ring-1 ring-neutral-200' : 'hover:bg-white/70'}`}
-                >
-                  <span className={`mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg ${active ? 'bg-black text-white' : 'bg-white text-neutral-600 ring-1 ring-neutral-200'}`}>
-                    <Icon className="size-4" />
-                  </span>
-                  <span>
-                    <span className="block text-sm font-semibold text-neutral-900">{scenario.name}</span>
-                    <span className="mt-0.5 block text-xs leading-5 text-neutral-500">{scenario.description}</span>
-                  </span>
-                </button>
-              );
+              return <button key={scenario.id} aria-pressed={scenario.id === selectedId} disabled={pending === 'draft' || pending === 'request'} onClick={() => chooseScenario(scenario)} className={`focus-ring flex min-h-10 items-center gap-2.5 rounded-md px-2.5 text-left text-sm disabled:opacity-50 ${scenario.id === selectedId ? 'bg-white font-medium text-black ring-1 ring-neutral-200' : 'text-neutral-600 hover:bg-white'}`}>
+                <Icon className="size-4 shrink-0" />{scenario.name}
+              </button>;
             })}
           </div>
         </aside>
-
-        <div className="min-w-0 p-5 sm:p-8">
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-neutral-200 pb-6">
+        <div className="min-w-0 p-4 sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <div className="flex items-center gap-2">
-                <span className={`size-2.5 rounded-full ${session ? 'bg-emerald-500' : 'bg-neutral-300'}`} />
-                <h2 className="font-semibold">
-                  {session ? `Extension connected · ${session.capabilities.browser}` : pending === 'connect' ? 'Connecting to local extension' : 'Extension not connected'}
-                </h2>
-              </div>
-              <p className="mt-1 text-sm text-neutral-600" role="status" aria-live="polite">{message}</p>
+              <h2 className="text-lg font-semibold tracking-tight">{selected.name}</h2>
+              <p className="mt-1 text-sm text-neutral-600">{selected.description.replace(/\.$/, '')}</p>
             </div>
+            <h3 className="flex items-center gap-2 text-xs text-neutral-500">
+              <span aria-hidden="true" className={`size-1.5 rounded-full ${session ? 'bg-emerald-500' : 'bg-neutral-300'}`} />
+              {session ? `Extension connected · ${session.capabilities.browser}` : pending === 'connect' ? 'Connecting to local extension' : 'Extension not connected'}
+            </h3>
           </div>
-
-          <div className="grid gap-8 py-7 xl:grid-cols-[1fr_340px]">
-            <div className="flex min-w-0 flex-col gap-5">
-              <label className="flex flex-col gap-2 text-sm font-medium">
-                Rule name
-                <input className="focus-ring min-h-11 rounded-lg border border-neutral-300 px-3 font-normal" value={name} onChange={(event) => setName(event.target.value)} />
-              </label>
-              <label className="flex flex-col gap-2 text-sm font-medium">
-                Request URL pattern
-                <input className="focus-ring min-h-11 rounded-lg border border-neutral-300 px-3 font-mono text-sm font-normal" value={urlPattern} onChange={(event) => setUrlPattern(event.target.value)} />
-              </label>
-              <details className="rounded-xl border border-neutral-200 p-4">
-                <summary className="focus-ring cursor-pointer rounded text-sm font-medium">Advanced: edit rule JSON</summary>
-                <label className="mt-4 flex flex-col gap-2 text-sm font-medium">
-                  Action JSON
-                  <textarea aria-label="Action JSON" className="focus-ring min-h-64 resize-y rounded-lg border border-neutral-300 bg-neutral-950 p-4 font-mono text-[13px] leading-6 text-neutral-100" value={actionJson} onChange={(event) => setActionJson(event.target.value)} spellCheck={false} />
-                </label>
-                <button className="focus-ring mt-3 rounded text-sm font-medium text-blue-700" onClick={formatActions}>Format JSON</button>
-              </details>
-              <div className="flex flex-wrap items-center gap-3">
-                <button className="button-primary focus-ring" disabled={!session || pending !== null} onClick={() => void createDraft()}>
-                  <FilePlus2 className="size-4" /> {draftCreated ? 'Open rule in Wireflip' : 'Add rule in Wireflip'}
-                </button>
-                <p className="text-xs leading-5 text-neutral-500">{draftCreated ? 'Rule added — make sure its switch is on in the workspace' : 'Opens the workspace with a disabled rule for you to enable'}</p>
+          <section className="mt-5 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-3 sm:px-4" aria-label="Next step">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0 flex-1 basis-52">
+                <h3 className="text-sm font-medium">{stepTitle}</h3>
+                <p className="mt-1 text-xs leading-5 text-neutral-600">{stepHelp}</p>
               </div>
+              {!session ? <div className="flex flex-wrap gap-2">
+                <button className="button-primary focus-ring" onClick={() => intercept.openStorePage()}>Install extension <ExternalLink className="size-4" /></button>
+                <button className="button-secondary focus-ring" disabled={pending !== null} onClick={() => void connect()}><RefreshCw className="size-4" />Reconnect</button>
+              </div> : <button className={`${draftCreated ? 'button-secondary' : 'button-primary'} focus-ring`} disabled={pending !== null} onClick={() => void createDraft()}>
+                <FilePlus2 className="size-4" />{draftCreated ? 'Open rule in Wireflip' : 'Add rule in Wireflip'}
+              </button>}
             </div>
-
-            <div className="flex flex-col gap-6">
-              <section className="rounded-xl border border-neutral-200 p-4" aria-label="Tab session">
-                <h3 className="text-sm font-semibold">Tab session</h3>
-                <p className="mt-2 text-sm text-neutral-700">{!session ? 'Connect the extension first' : status?.advancedMode === 'connected' ? 'Running for this page' : status?.advancedMode === 'connecting' ? 'Connecting…' : status?.advancedMode === 'error' ? 'Needs attention in Wireflip' : 'Stopped'}</p>
-                <p className="mt-2 text-xs leading-5 text-neutral-600">{requiresSession ? 'Return to this Playground tab → Wireflip toolbar icon → Start tab session. Enabling the saved rule alone is not enough.' : 'This recipe does not need a tab session.'}</p>
-              </section>
-              <details className="rounded-xl border border-neutral-200 p-4">
-                <summary className="focus-ring cursor-pointer rounded text-sm font-semibold">Browser capabilities</summary>
-                <dl className="mt-4 grid grid-cols-[1fr_auto] gap-x-4 gap-y-3 text-xs">
-                  <dt className="text-neutral-500">SDK protocol</dt><dd className="font-medium">v{session?.capabilities.protocolVersion || 2}</dd>
-                  <dt className="text-neutral-500">Advanced mode</dt><dd className="font-medium capitalize">{status?.advancedMode || 'Unavailable'}</dd>
-                  <dt className="text-neutral-500">Response mock</dt><dd className="font-medium">{capabilityLabel(capabilities?.responseMock)}</dd>
-                  <dt className="text-neutral-500">Preflight</dt><dd className="font-medium">{capabilityLabel(capabilities?.preflight)}</dd>
-                  <dt className="text-neutral-500">Network failure</dt><dd className="font-medium">{capabilityLabel(capabilities?.networkFailure)}</dd>
-                  <dt className="text-neutral-500">Fetch / XHR</dt><dd className="font-medium">{capabilityLabel(capabilities?.resourceTypes)}</dd>
+          </section>
+          {operationError ? <p role="alert" className="mt-3 text-sm text-red-700">{operationError}</p> : null}
+          <section className="mt-5" aria-label="Request">
+            <label htmlFor="probe-url" className="text-xs font-medium text-neutral-700">Request URL</label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <div className="flex min-w-0 flex-1 basis-52 overflow-hidden rounded-md border border-neutral-300">
+                <span className="flex items-center border-r border-neutral-200 bg-neutral-50 px-3 font-mono text-xs text-neutral-600">GET</span>
+                <input id="probe-url" aria-label="Probe URL" className="focus-ring min-h-10 w-full min-w-0 px-3 font-mono text-xs" value={testUrl} onChange={event => setTestUrl(event.target.value)} />
+              </div>
+              <button aria-label={mock ? 'Test mock' : 'Test recipe'} className="focus-ring flex min-h-10 items-center justify-center gap-2 rounded-md bg-black px-4 text-sm text-white disabled:opacity-40" disabled={!readyToTest || pending !== null} onClick={() => void sendRequest()}>
+                <Play className="size-3.5" />{pending === 'request' ? 'Testing…' : mock ? 'Test mock' : 'Test recipe'}
+              </button>
+            </div>
+          </section>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <section className="min-w-0 overflow-hidden rounded-md border border-neutral-200" aria-label="Expected response">
+              <h3 className="border-b border-neutral-200 px-3 py-2 text-xs font-medium">Expected response</h3>
+              <pre className="min-h-36 max-h-56 overflow-auto whitespace-pre-wrap break-words bg-neutral-50 p-3 font-mono text-xs leading-6 text-neutral-700">{mock?.type === 'mockResponse' ? displayBody(mock.body) : selected.id === 'block' || selected.id === 'failure' ? 'Request fails\nConfirm the matched rule in Inspector' : selected.id === 'delay' ? 'Response arrives after the configured delay\nConfirm timing and the matched rule in Inspector' : selected.id === 'responseHeaders' ? 'Inspect response headers for the configured changes' : selected.id === 'requestHeaders' ? 'Inspect request headers for the configured changes' : selected.id === 'cors' ? 'Your affected API becomes readable by this page\nThe demo service may already allow CORS' : 'The request reaches the configured redirect URL'}</pre>
+            </section>
+            <section className="min-w-0 overflow-hidden rounded-md border border-neutral-200" aria-label="Actual response" aria-live="polite" aria-busy={pending === 'request'}>
+              <h3 className="border-b border-neutral-200 px-3 py-2 text-xs font-medium">Actual response</h3>
+              <div className="min-h-36 bg-neutral-50 p-3">
+                {result ? <><p className={`flex items-center gap-2 text-xs font-medium ${result.kind === 'verified' ? 'text-emerald-700' : result.kind === 'error' ? 'text-red-700' : 'text-neutral-700'}`}>{result.kind === 'error' ? <WifiOff className="size-3.5 shrink-0" /> : <Check className="size-3.5 shrink-0" />}{result.summary}</p><pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-words font-mono text-xs leading-6 text-neutral-700">{displayBody(result.detail)}</pre></> : <p className="py-2 text-xs text-neutral-500">{pending === 'request' ? 'Sending request…' : 'Run the request to see the response'}</p>}
+              </div>
+            </section>
+          </div>
+          <details className="mt-5 border-t border-neutral-200 pt-3">
+            <summary className="focus-ring cursor-pointer rounded text-xs font-medium text-neutral-600">Advanced options</summary>
+            <div className="mt-4 grid gap-4">
+              <label className="flex flex-col gap-2 text-sm font-medium">Rule name<input className="focus-ring min-h-10 rounded-md border border-neutral-300 px-3 font-normal" value={name} onChange={event => setName(event.target.value)} /></label>
+              <label className="flex flex-col gap-2 text-sm font-medium">Request URL pattern<input className="focus-ring min-h-10 rounded-md border border-neutral-300 px-3 font-mono text-xs font-normal" value={urlPattern} onChange={event => setUrlPattern(event.target.value)} /></label>
+              <label className="flex flex-col gap-2 text-sm font-medium">Action JSON<textarea aria-label="Action JSON" className="focus-ring min-h-56 resize-y rounded-md border border-neutral-300 bg-neutral-50 p-3 font-mono text-xs font-normal leading-6" value={actionJson} onChange={event => setActionJson(event.target.value)} spellCheck={false} /></label>
+              <button className="focus-ring w-fit rounded text-sm font-medium underline underline-offset-4" onClick={formatActions}>Format JSON</button>
+              <details>
+                <summary className="focus-ring cursor-pointer rounded text-xs font-medium">Browser capabilities</summary>
+                <dl className="mt-3 grid max-w-md grid-cols-[1fr_auto] gap-2 text-xs text-neutral-600">
+                  <dt>Response mock</dt><dd>{capabilityLabel(capabilities?.responseMock)}</dd>
+                  <dt>Preflight</dt><dd>{capabilityLabel(capabilities?.preflight)}</dd>
+                  <dt>Network failure</dt><dd>{capabilityLabel(capabilities?.networkFailure)}</dd>
+                  <dt>Fetch / XHR</dt><dd>{capabilityLabel(capabilities?.resourceTypes)}</dd>
                 </dl>
-                {session?.capabilities.browser === 'firefox' && selected.id === 'mock' ? (
-                  <p className="mt-4 rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-900">Firefox replaces an upstream body and preserves its HTTP status.</p>
-                ) : null}
               </details>
-
-              <section className="rounded-xl border border-neutral-200 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <h3 className="text-sm font-semibold">3. Test the recipe</h3>
-                    <p className="mt-1 text-xs leading-5 text-neutral-500">{!session ? 'Install the extension and reconnect first' : !draftCreated ? 'First add and enable the recipe rule in Wireflip' : requiresSession && status?.advancedMode !== 'connected' ? 'Start a session for this Playground tab to unlock testing' : 'Session ready — the saved rule must also be enabled'}</p>
-                  </div>
-                  <button aria-label={mock ? 'Test mock' : 'Test recipe'} className="focus-ring flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-black px-3 text-sm text-white disabled:opacity-40" disabled={!readyToTest || pending !== null} onClick={() => void sendRequest()}>
-                    <Play className="size-4" /> {mock ? 'Test mock' : 'Test recipe'}
-                  </button>
-                </div>
-                <p className="mt-3 text-xs leading-5 text-neutral-600">Requests contact the URL below. Firefox replaces the server’s response body, so the endpoint must be reachable. A received response alone does not prove a rule ran.</p>
-                {selected.id === 'cors' ? <p className="mt-3 text-xs leading-5 text-neutral-600">The demo service may already allow CORS. Use your affected API URL to compare behavior before and after repair.</p> : null}
-                {mock?.type === 'mockResponse' ? <div className="mt-4 text-xs"><p className="font-semibold text-neutral-900">Expected Mock body</p><pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-all rounded-lg bg-neutral-100 p-3 font-mono text-neutral-700">{mock.body}</pre></div> : null}
-                <input aria-label="Probe URL" className="focus-ring mt-4 min-h-10 w-full rounded-lg border border-neutral-300 px-3 font-mono text-xs" value={testUrl} onChange={(event) => setTestUrl(event.target.value)} />
-                <div className="mt-4 min-h-32 overflow-hidden rounded-lg bg-neutral-950 p-3 font-mono text-xs leading-5 text-neutral-300">
-                  {pending === 'request' ? 'Sending request…' : result ? (
-                    <>
-                      <p className={`flex items-center gap-2 font-semibold ${result.kind === 'verified' ? 'text-emerald-400' : result.kind === 'observed' ? 'text-neutral-100' : 'text-red-400'}`}>
-                        {result.kind !== 'error' ? <Check className="size-3.5" /> : <WifiOff className="size-3.5" />}{result.summary}
-                      </p>
-                      <pre className="mt-2 max-h-44 overflow-auto whitespace-pre-wrap break-all text-neutral-500">{result.detail}</pre>
-                    </>
-                  ) : 'No request sent. Complete the steps above to test this recipe.'}
-                </div>
-              </section>
             </div>
-          </div>
+          </details>
+          <details className="mt-3 text-xs text-neutral-500">
+            <summary className="focus-ring w-fit cursor-pointer rounded">How setup works</summary>
+            <ol className="mt-3 list-decimal space-y-2 pl-5 leading-5">
+              <li>Add the example and enable its rule in Wireflip. Website rules start disabled and only apply to this origin.</li>
+              <li>{requiresSession ? 'Return to this Playground tab → Wireflip toolbar icon → Start tab session. A session on the workspace tab does not apply here.' : 'Return here. This example uses browser rules and does not need a tab session.'}</li>
+              <li>Test the request. A received response alone does not prove a rule ran; use Inspector to verify other actions.</li>
+            </ol>
+            <p className="mt-3 leading-5">Requests contact the URL above. Firefox replaces the upstream body and preserves its HTTP status, so the endpoint must be reachable.</p>
+          </details>
+          <details className="mt-3 text-xs text-neutral-500">
+            <summary className="focus-ring w-fit cursor-pointer rounded">Connection details</summary>
+            <p className="mt-2 break-words leading-5" role="status">{message}</p>
+            {session ? <button className="focus-ring mt-2 rounded underline underline-offset-4" disabled={pending !== null} onClick={() => void connect()}>Reconnect</button> : null}
+          </details>
         </div>
-      </div>
-
-      <div className="grid gap-5 border-t border-neutral-200 pt-8 text-sm text-neutral-600 sm:grid-cols-3">
-        <p><strong className="block text-neutral-950">Local by design</strong><span className="mt-1 block leading-6">Traffic stays between this browser and the destination.</span></p>
-        <p><strong className="block text-neutral-950">Explicit control</strong><span className="mt-1 block leading-6">SDK recipes arrive disabled and scoped to this origin.</span></p>
-        <p><strong className="block text-neutral-950">Portable recipes</strong><span className="mt-1 block leading-6">Capability flags explain where browser behavior differs.</span></p>
       </div>
     </div>
   );

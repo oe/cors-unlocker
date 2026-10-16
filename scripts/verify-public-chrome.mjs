@@ -183,7 +183,7 @@ try {
     await wait(async () => {
       try {
         const response = await fetch(siteUrl + '/playground/?release-check=' + Date.now(), { cache: 'no-store', signal: AbortSignal.timeout(10_000) });
-        if (response.ok && (await response.text()).includes('https://jsonplaceholder.typicode.com/todos/2')) return true;
+        if (response.ok && (await response.text()).includes('data-playground-version="3"')) return true;
       } catch { /* A deploying site may be temporarily unavailable. */ }
       await new Promise(resolve => setTimeout(resolve, 2_000));
       return false;

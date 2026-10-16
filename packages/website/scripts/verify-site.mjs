@@ -116,11 +116,21 @@ try {
   await mobileNav.getByRole('link', { name: 'Playground', exact: true }).click();
   await page.getByRole('heading', { name: 'Playground', exact: true }).waitFor();
   await page.getByRole('heading', { name: 'Extension not connected', exact: true }).waitFor();
-  assert(await page.getByRole('button', { name: 'Add rule in Wireflip', exact: true }).isDisabled());
+  assert.equal(await page.locator('header [data-install-primary]').count(), 0);
+  assert(await page.getByRole('button', { name: 'Test mock', exact: true }).isDisabled());
   await page.setViewportSize({ width: 1280, height: 800 });
+  const requestBox = await page.getByLabel('Probe URL', { exact: true }).boundingBox();
+  assert(requestBox.y + requestBox.height < 650, 'Request is visible without scrolling on desktop');
+  assert(!(await page.getByText('Advanced options', { exact: true }).locator('..').getAttribute('open')));
   await evidence(page, 'playground-desktop');
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.getByText('Advanced: edit rule JSON', { exact: true }).click();
+  const mobileRequest = await page.getByLabel('Probe URL', { exact: true }).boundingBox();
+  assert(mobileRequest.y + mobileRequest.height < 844, 'Request is visible on the first mobile screen');
+  assert(await page.getByRole('combobox', { name: 'Example', exact: true }).isVisible());
+  await evidence(page, 'playground-mobile');
+  await page.getByRole('combobox', { name: 'Example', exact: true }).selectOption('delay');
+  await page.getByRole('heading', { name: 'Simulate latency', exact: true }).waitFor();
+  await page.getByText('Advanced options', { exact: true }).click();
   const editor = page.getByLabel('Action JSON', { exact: true });
   await editor.fill('[{"type":"delay","milliseconds":800}]');
   await page.getByRole('button', { name: 'Format JSON', exact: true }).click();
@@ -129,7 +139,7 @@ try {
   assert((await page.locator('main').innerText()).includes('Install the extension and reconnect first'));
   await page.getByRole('button', { name: 'Reconnect', exact: true }).click();
   await page.getByRole('heading', { name: 'Extension not connected', exact: true }).waitFor();
-  assert.equal(await page.getByRole('heading', { name: 'Tab session', exact: true }).count(), 1);
+  assert.equal(await page.getByRole('region', { name: 'Next step', exact: true }).count(), 1);
   for (const route of routes) {
     await page.goto(base + route);
     await page.locator('h1').waitFor();

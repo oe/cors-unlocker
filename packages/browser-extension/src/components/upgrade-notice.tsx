@@ -43,6 +43,18 @@ export function UpgradeNotice({ onViewRules, onViewRecovery, expanded = false, o
     finally { setBusy(false); }
   };
   if (!notice.visible) return null;
+  if (!expanded && notice.recovered) return <div role="region" aria-label={t('About your Wireflip upgrade')} className="flex flex-wrap items-start gap-x-4 gap-y-2 rounded-md border bg-muted/30 px-3 py-2">
+    <details className="min-w-0 flex-1 text-xs">
+      <summary className="w-fit cursor-pointer rounded font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{t('CORS Unlocker is now Wireflip')}</summary>
+      <p className="mt-2 leading-5 text-muted-foreground">{t('Your local rules and settings are preserved. Saved CORS rules are in Rules and Existing site CORS rules.')}</p>
+      <div className="mt-2 flex flex-wrap items-center gap-3">
+        <button className="rounded underline underline-offset-4" onClick={onViewRules}>{t('View saved rules')}</button>
+        <a href="https://wireflip.forth.ink/migration/" target="_blank" rel="noopener noreferrer" className="rounded underline underline-offset-4">{t('Read the migration guide')}</a>
+      </div>
+    </details>
+    <Button size="xs" variant="ghost" disabled={busy} onClick={() => void acknowledge()}>{t('Got it')}</Button>
+    {error ? <p role="alert" className="w-full text-xs text-destructive">{translateError(error)}</p> : null}
+  </div>;
   return <Alert role="region" aria-label={t('About your Wireflip upgrade')} className={expanded ? 'p-6' : undefined}>
     {expanded ? <div className="mb-5 flex flex-wrap items-center gap-4" aria-label={t('New name and logo')}>
       <div className="flex items-center gap-2"><img src="/icon/legacy-128.png" alt="CORS Unlocker" className="size-12 object-contain" /><span>CORS Unlocker</span></div>

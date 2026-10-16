@@ -29,6 +29,13 @@ async function getTabId(urlPrefix: string): Promise<number> {
   }, urlPrefix);
 }
 
+async function captureUX(page: Page, name: string) {
+  const data = (await page.screenshot({ path: 'test-results/' + name + '.png', animations: 'disabled' })).toString('base64');
+  if (process.env.WIREFLIP_INLINE_EVIDENCE !== '1') return;
+  const total = Math.ceil(data.length / 8192);
+  for (let index = 0; index < total; index++) console.log('WIREFLIP_IMAGE ' + JSON.stringify({ name, index, total, data: data.slice(index * 8192, (index + 1) * 8192) }));
+}
+
 test.beforeAll(async () => {
   const directory = path.dirname(fileURLToPath(import.meta.url));
   extensionPath = path.join(directory, '../../dist/chrome');
@@ -101,6 +108,15 @@ test('opens upgrade explanation only for a real v1 update and preserves acknowle
     })).toEqual({ id: 'legacy-cors-42', backup: 42, opened: '2.0', max: 250 });
     let workspace = await updating.newPage();
     await workspace.goto(`chrome-extension://${extensionId}/src/options/index.html`);
+    await workspace.setViewportSize({ width: 1280, height: 800 });
+    const compactNotice = workspace.getByRole('region', { name: 'About your Wireflip upgrade' });
+    await expect(compactNotice).toBeVisible();
+    expect((await compactNotice.boundingBox())!.height).toBeLessThan(70);
+    await expect(compactNotice.getByRole('button', { name: 'View saved rules' })).not.toBeVisible();
+    await compactNotice.locator('summary').click();
+    await expect(compactNotice.getByRole('button', { name: 'View saved rules' })).toBeVisible();
+    await compactNotice.locator('summary').click();
+    await captureUX(workspace, 'candidate-upgraded-workspace');
     let popup = await updating.newPage();
     await popup.goto(`chrome-extension://${extensionId}/src/popup/index.html`);
     await expect(popup.getByRole('region', { name: 'About your Wireflip upgrade' })).toBeVisible();
@@ -714,7 +730,17 @@ test('keeps editing continuous across toggles, shortcuts, duplication and narrow
   await expect(control.getByRole('tab', { name: 'Actions', exact: true })).toHaveAttribute('aria-selected', 'true');
   await control.mouse.move(0, 0);
   await control.screenshot({ path: 'test-results/workspace-desktop-actions.png', fullPage: true, animations: 'disabled' });
-  await control.getByRole('button', { name: 'Duplicate rule', exact: true }).click();
+  const actions = control.locator('[data-workspace-header]').getByRole('button', { name: 'More actions', exact: true });
+  await expect(control.getByRole('menuitem', { name: 'Duplicate rule', exact: true })).toHaveCount(0);
+  await captureUX(control, 'candidate-workspace-desktop');
+  await actions.focus();
+  await control.keyboard.press('ArrowDown');
+  await expect(control.getByRole('menuitem', { name: 'Duplicate rule', exact: true })).toBeFocused();
+  await captureUX(control, 'candidate-rule-actions');
+  await control.keyboard.press('Escape');
+  await expect(actions).toBeFocused();
+  await actions.click();
+  await control.getByRole('menuitem', { name: 'Duplicate rule', exact: true }).click();
   await expect(control.getByLabel('Name', { exact: true })).toHaveValue('Workspace QA edited copy');
   await expect(control.getByRole('switch', { name: 'Rule enabled', exact: true })).not.toBeChecked();
   await control.getByRole('button', { name: 'Save rule', exact: true }).click();
@@ -724,6 +750,7 @@ test('keeps editing continuous across toggles, shortcuts, duplication and narrow
   await expect(control.getByLabel('Name', { exact: true })).toBeVisible();
   expect(await control.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await control.screenshot({ path: 'test-results/workspace-narrow-editor.png', fullPage: true, animations: 'disabled' });
+  await captureUX(control, 'candidate-workspace-mobile');
   await control.getByRole('button', { name: 'Back to rules' }).click();
   await expect(control.getByLabel('Search rules')).toBeVisible();
   await expect(control.getByRole('region', { name: 'Rule editor', exact: true })).toHaveCount(0);
