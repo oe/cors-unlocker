@@ -1398,7 +1398,9 @@ test('popup controls are temporary, tab-scoped, and independent from saved rules
     await control.evaluate((uiLanguage) => chrome.storage.local.set({ uiLanguage }), locale);
     await expect(popup.locator('html')).toHaveAttribute('lang', locale);
     expect(await popup.evaluate(() => document.documentElement.scrollWidth <= innerWidth), locale).toBe(true);
-    expect(await popup.locator('main').evaluate((element) => element.scrollHeight), `${locale} compact height`).toBeLessThanOrEqual(560);
+    const height = await popup.locator('main').evaluate((element) => element.scrollHeight);
+    if (height > 560) await captureUX(popup, 'popup-overflow-' + locale);
+    expect(height, `${locale} compact height`).toBeLessThanOrEqual(560);
     await expect(popup.getByRole('switch', { name: messages['Allow credentials'][locale], exact: true })).toBeVisible();
     await expect(popup.getByRole('switch', { name: messages['CORS repair'][locale], exact: true })).toBeVisible();
   }

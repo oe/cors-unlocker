@@ -30,7 +30,7 @@ describe('toolbar and popup group summary', () => {
     const summary = { pausedGroups: ['Staging'], pausedRules: 2, sessionRules: 0 };
     expect(toolbarPresentation(origin, { tabId: 1, phase: 'disabled' }, 0, 'en', summary)).toMatchObject({ state: 'idle', badge: 'OFF' });
     expect(toolbarPresentation(origin, { tabId: 1, phase: 'disabled' }, 1, 'en', summary)).toMatchObject({ state: 'rules', badge: '1' });
-    expect(toolbarPresentation(origin, { tabId: 1, phase: 'disabled' }, 0, 'en', { ...summary, sessionRules: 1 }).badge).toBe('');
+    expect(toolbarPresentation(origin, { tabId: 1, phase: 'disabled' }, 0, 'en', { ...summary, sessionRules: 1 }).badge).toBe('…');
     expect(toolbarPresentation(origin, { tabId: 1, phase: 'disabled' }, 0, 'en', { ...summary, pausedRules: 0 }).badge).toBe('');
   });
   it('keeps temporary controls active while explaining paused groups', () => {
@@ -43,7 +43,7 @@ describe('toolbar and popup group summary', () => {
   it('offers useful waiting and error hints without letting names inject tooltip lines', () => {
     const result = toolbarPresentation(origin, { tabId: 1, phase: 'error', error: 'Debugger unavailable' }, 0, 'en', { pausedGroups: ['Staging\nFake status'], pausedRules: 1, sessionRules: 2 });
     expect(result).toMatchObject({ state: 'error', badge: '!' });
-    expect(result.title).toContain('Preparing enabled rules');
+    expect(result.title).not.toContain('Preparing enabled rules');
     expect(result.title).toContain('• Staging Fake status');
     expect(result.title).toContain('Debugger unavailable');
     expect(result.title).toContain('Click for rules and temporary changes');

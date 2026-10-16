@@ -164,7 +164,7 @@ export const runtimeMessages: Record<string, Record<string, string>> = {
     "zh-CN": "仅当前标签页，可随时重置",
     "ko": "이 탭에만 적용 · 언제든 초기화",
     "ja": "このタブのみ適用、いつでもリセットできます",
-    "fr": "Cet onglet uniquement. Réinitialisez à tout moment.",
+    "fr": "Cet onglet · Réinitialiser à tout moment",
     "es": "Solo esta pestaña. Restablece cuando quieras."
   },
   "Tests these conditions without sending a request.": {

@@ -49,7 +49,7 @@ export function toolbarPresentation(url: string | undefined, status: IAdvancedPr
     if (active.length) details.push(text('This tab · temporary'), ...active.map((label) => `• ${label}`));
   }
   if (summary) {
-    if (phase !== 'connected' && summary.sessionRules) details.push(text('Preparing enabled rules'));
+    if ((phase === 'disabled' || phase === 'connecting') && summary.sessionRules) details.push(text('Preparing enabled rules'));
     if (summary.pausedGroups.length) {
       details.push(text('Paused groups: {count}').replace('{count}', String(summary.pausedGroups.length)));
       // User names must not create extra tooltip lines; keep the native hover card compact.
