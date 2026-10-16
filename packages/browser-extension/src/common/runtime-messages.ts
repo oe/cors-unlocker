@@ -23,14 +23,6 @@ export const runtimeMessages: Record<string, Record<string, string>> = {
     "fr": "Chrome peut afficher son indicateur de débogage sur les pages correspondantes. Vous pouvez désactiver la règle dans Wireflip à tout moment.",
     "es": "Chrome puede mostrar su indicador de depuración en las páginas coincidentes. Puedes desactivar la regla en Wireflip en cualquier momento."
   },
-  "You can disable this rule in Wireflip at any time. Firefox response replacement keeps the upstream status.": {
-    "en": "You can disable this rule in Wireflip at any time. Firefox response replacement keeps the upstream status.",
-    "zh-CN": "你随时可以在 Wireflip 中关闭此规则。Firefox 替换响应时会保留服务器状态码。",
-    "ko": "Wireflip에서 언제든 규칙을 끌 수 있습니다. Firefox 응답 교체는 서버 상태 코드를 유지합니다.",
-    "ja": "Wireflip でいつでもルールを無効にできます。Firefox のレスポンス置換はサーバーのステータスを保持します。",
-    "fr": "Vous pouvez désactiver cette règle dans Wireflip à tout moment. Firefox conserve le statut du serveur lors du remplacement.",
-    "es": "Puedes desactivar la regla en Wireflip en cualquier momento. Firefox conserva el estado del servidor al sustituir la respuesta."
-  },
   "Enable rule": {
     "en": "Enable rule",
     "zh-CN": "启用规则",
@@ -142,5 +134,13 @@ export const runtimeMessages: Record<string, Record<string, string>> = {
     "ja": "ブラウザーでルールの実行が停止されました。再試行で再開できます。",
     "fr": "L’exécution a été arrêtée dans le navigateur. Réessayez pour reprendre.",
     "es": "La ejecución se detuvo desde el navegador. Reintenta para continuar."
+  },
+  "You can disable this rule in Wireflip at any time. Firefox still contacts the server and keeps its status.": {
+    "en": "You can disable this rule in Wireflip at any time. Firefox still contacts the server and keeps its status.",
+    "zh-CN": "你随时可以在 Wireflip 中关闭此规则。Firefox 仍会访问服务器，并保留其状态码。",
+    "ko": "Wireflip에서 언제든 규칙을 끌 수 있습니다. Firefox는 서버에 연결하며 서버 상태 코드를 유지합니다.",
+    "ja": "Wireflip でいつでもルールを無効にできます。Firefox はサーバーに接続し、ステータスを保持します。",
+    "fr": "Vous pouvez désactiver la règle à tout moment. Firefox contacte toujours le serveur et conserve son statut.",
+    "es": "Puedes desactivar la regla en cualquier momento. Firefox sigue contactando al servidor y conserva su estado."
   }
 };

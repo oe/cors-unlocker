@@ -75,7 +75,7 @@ export function UpgradeNotice({ onViewRules, onViewRecovery, expanded = false, o
           <p>{t('Stopping recording clears temporary changes. Saved rules keep running.')}</p>
           <p>{t(__TARGET__ === 'chrome'
             ? 'Chrome may show its debugging indicator on matching pages. You can disable this rule in Wireflip at any time.'
-            : 'You can disable this rule in Wireflip at any time. Firefox response replacement keeps the upstream status.')}</p>
+            : 'You can disable this rule in Wireflip at any time. Firefox still contacts the server and keeps its status.')}</p>
           <p>{t('No account or cloud sync. Your existing cors-unlocker SDK integration can keep using the original bridge.')}</p>
           <a href="https://wireflip.forth.ink/migration/" target="_blank" rel="noopener noreferrer" className="underline">{t('Read the migration guide')}</a>
         </div>

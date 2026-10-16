@@ -54,6 +54,9 @@ class AutomaticPlaygroundTests(playground.PlaygroundTests):
             self.switch(self.target)
             self.navigate(url)
             self.wait(lambda: self.js("""return !document.querySelector('button[aria-label="Test mock"]').disabled;"""))
+            self.click('Test mock')
+            self.wait(lambda: self.text(), lambda text: 'Mock verified · 418' in text)
+            print('CANDIDATE_NEXT_ACTION ' + self.js("""return Array.from(document.querySelectorAll('button')).find(b=>b.textContent.trim()==='Open rule in Wireflip').className;"""), flush=True)
             data = self.command('GET', '/screenshot')
             (native.ARTIFACTS / 'candidate-playground-one-approval.png').write_bytes(base64.b64decode(data))
             total = (len(data) + 8191) // 8192

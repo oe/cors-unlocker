@@ -75,6 +75,10 @@ test('enables a Playground example with one native approval and runs saved rules
       response.writeHead(418, { 'Content-Type': 'application/json', 'Cache-Control': 'public,max-age=3600' });
       response.end('{"source":"server"}'); return;
     }
+    if (pathname === '/gesture') {
+      response.writeHead(200, { 'Content-Type': 'text/html' });
+      response.end('<title>Gesture fixture</title><script>window.addEventListener("message",function(e){if(e.source===window&&e.data?.type==="wireflip:sdk-response"&&e.data.id==="no-gesture"){window.noGestureResult=e.data;console.log('WIREFLIP_GESTURE '+e.data.error?.type);}});setTimeout(function(){window.postMessage({type:"wireflip:sdk-request",clientId:"gesture-test",id:"no-gesture",method:"requestRule",payload:{rule:{name:"No gesture",urlPattern:"*",actions:[{type:"block"}]}}},location.origin);},100);</script>'); return;
+    }
     if (pathname === '/peer') {
       response.writeHead(200, { 'Content-Type': 'text/html' }); response.end('<title>Peer request page</title>Peer'); return;
     }
@@ -95,20 +99,11 @@ test('enables a Playground example with one native approval and runs saved rules
   let ruleId: string | undefined;
   const request = (page: Page) => page.evaluate(async url => (await fetch(url, { cache: 'no-store' })).text(), origin + '/probe');
   try {
+    const denied = target.waitForEvent('console', { predicate: message => message.text() === 'WIREFLIP_GESTURE invalid-request', timeout: 10_000 });
+    await target.goto(origin + '/gesture');
+    await denied;
     await target.goto(origin + '/playground/');
     await expect(target.getByRole('button', { name: 'Enable example', exact: true })).toBeEnabled();
-    const withoutGesture = await target.evaluate(() => new Promise<any>(resolve => {
-      const id = crypto.randomUUID();
-      const receive = (event: MessageEvent) => {
-        if (event.source === window && event.data?.type === 'wireflip:sdk-response' && event.data.id === id) {
-          window.removeEventListener('message', receive); resolve(event.data);
-        }
-      };
-      window.addEventListener('message', receive);
-      window.postMessage({ type: 'wireflip:sdk-request', clientId: 'gesture-test', id, method: 'requestRule',
-        payload: { rule: { name: 'No gesture', urlPattern: '*', actions: [{ type: 'block' }] } } }, location.origin);
-    }));
-    expect(withoutGesture.error.type).toBe('invalid-request');
     await target.getByText('Advanced options', { exact: true }).click();
     await target.getByLabel('Request URL pattern', { exact: true }).fill(origin + '/probe');
     await target.getByLabel('Probe URL', { exact: true }).fill(origin + '/probe');
