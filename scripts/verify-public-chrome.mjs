@@ -23,9 +23,13 @@ const candidateSha = '59b7f60717ecdbd8eb77af34253f7e3519f6f8051e605099af50934306
 const chromePath = process.env.CHROME_BINARY || '/usr/bin/google-chrome';
 const browserVersion = execFileSync(chromePath, ['--product-version'], { encoding: 'utf8' }).trim();
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
+const baselineFile = path.join(root, 'release/chrome-store-2.0.0.json');
+const recordedBaseline = existsSync(baselineFile) ? JSON.parse(readFileSync(baselineFile)) : null;
 const candidate = process.env.CHROME_RELEASE_ARCHIVE;
-assert(candidate && existsSync(candidate), 'Provide the exact submitted release ZIP');
-assert.equal(sha(readFileSync(candidate)), candidateSha, 'Submitted ZIP integrity');
+if (!recordedBaseline) {
+  assert(candidate && existsSync(candidate), 'Provide the exact submitted release ZIP for initial verification');
+  assert.equal(sha(readFileSync(candidate)), candidateSha, 'Submitted ZIP integrity');
+}
 const publicDir = path.join(output, 'public-package');
 const candidateDir = path.join(output, 'submitted-package');
 mkdirSync(publicDir, { recursive: true });
@@ -42,7 +46,7 @@ assert(zipOffset < crx.length && crx.readUInt32LE(zipOffset) === 0x04034b50);
 writeFileSync(path.join(output, 'public.crx'), crx);
 writeFileSync(path.join(output, 'public.zip'), crx.subarray(zipOffset));
 execFileSync('unzip', ['-q', path.join(output, 'public.zip'), '-d', publicDir]);
-execFileSync('unzip', ['-q', candidate, '-d', candidateDir]);
+if (!recordedBaseline) execFileSync('unzip', ['-q', candidate, '-d', candidateDir]);
 const publicManifest = JSON.parse(readFileSync(path.join(publicDir, 'manifest.json')));
 assert.equal(publicManifest.version, expectedVersion);
 const nameKey = /^__MSG_(.+)__$/.exec(publicManifest.name)?.[1];
@@ -59,13 +63,23 @@ const normalizedManifest = source => {
   for (const key of ['key', 'update_url', 'differential_fingerprint']) delete result[key];
   return canonical(result);
 };
-const candidateFiles = files(candidateDir);
-for (const file of candidateFiles) {
-  assert(existsSync(path.join(publicDir, file)), 'Missing store file: ' + file);
-  const actual = readFileSync(path.join(publicDir, file)), submitted = readFileSync(path.join(candidateDir, file));
-  if (file === 'manifest.json') assert.deepEqual(normalizedManifest(actual), normalizedManifest(submitted));
-  else assert.equal(sha(actual), sha(submitted), 'Runtime differs from submitted ZIP: ' + file);
+const baseline = recordedBaseline || {
+  extensionId: id, version: expectedVersion,
+  sourceCommit: 'f756440abe8ad5e3fdf19c6179ecf59435df0816',
+  submittedZipSha256: candidateSha,
+  runtimeHashes: Object.fromEntries(files(candidateDir).filter(file => file !== 'manifest.json').map(file => [file, sha(readFileSync(path.join(candidateDir, file)))])),
+  manifest: normalizedManifest(readFileSync(path.join(candidateDir, 'manifest.json'))),
+};
+assert.equal(baseline.extensionId, id);
+assert.equal(baseline.version, expectedVersion);
+assert.equal(baseline.submittedZipSha256, candidateSha);
+writeFileSync(path.join(output, 'submitted-baseline.json'), JSON.stringify(baseline, null, 2) + '\n');
+console.log('PUBLIC_CHROME_BASELINE ' + JSON.stringify(baseline));
+const candidateFiles = [...Object.keys(baseline.runtimeHashes), 'manifest.json'];
+for (const [file, hash] of Object.entries(baseline.runtimeHashes)) {
+  assert.equal(sha(readFileSync(path.join(publicDir, file))), hash, 'Runtime differs from submitted ZIP: ' + file);
 }
+assert.deepEqual(normalizedManifest(readFileSync(path.join(publicDir, 'manifest.json'))), baseline.manifest);
 const extras = files(publicDir).filter(file => !candidateFiles.includes(file));
 assert(extras.every(file => file.startsWith('_metadata/')), 'Unexpected store payload files: ' + extras);
 const results = {
