@@ -55,7 +55,12 @@ class PlaygroundTests(native.FirefoxTests):
         self.js("""const el=document.querySelector(arguments[0]);Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value").set.call(el,arguments[1]);el.dispatchEvent(new Event("input",{bubbles:true}));""", selector, value)
 
     def capture(self, name):
-        (native.ARTIFACTS / (name + '.png')).write_bytes(base64.b64decode(self.command('GET', '/screenshot')))
+        data = self.command('GET', '/screenshot')
+        (native.ARTIFACTS / (name + '.png')).write_bytes(base64.b64decode(data))
+        if name == 'playground-public-recipe-verified':
+            total = (len(data) + 8191) // 8192
+            for index in range(total):
+                print('WIREFLIP_IMAGE ' + json.dumps(dict(name=name, index=index, total=total, data=data[index*8192:(index+1)*8192])), flush=True)
 
     def test_public_mock_recipe(self):
         # Keep the public recipe URL and actions exactly as a visitor receives them.

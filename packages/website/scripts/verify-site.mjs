@@ -126,7 +126,7 @@ try {
   await page.getByRole('button', { name: 'Format JSON', exact: true }).click();
   assert((await editor.inputValue()).includes('\n'));
   assert(await page.getByRole('button', { name: 'Test recipe', exact: true }).isDisabled());
-  assert((await page.locator('main').innerText()).includes('First add and enable the recipe rule'));
+  assert((await page.locator('main').innerText()).includes('Install the extension and reconnect first'));
   await page.getByRole('button', { name: 'Reconnect', exact: true }).click();
   await page.getByRole('heading', { name: 'Extension not connected', exact: true }).waitFor();
   assert.equal(await page.getByRole('heading', { name: 'Tab session', exact: true }).count(), 1);
