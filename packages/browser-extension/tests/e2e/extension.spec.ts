@@ -136,6 +136,11 @@ test('enables a Playground example with one native approval and runs saved rules
     await target.getByText('Advanced options', { exact: true }).click();
     await captureUX(target, 'playground-one-confirmation-verified');
     await peer.goto(origin + '/peer');
+    // Navigation starts Chrome's native debugger asynchronously; no user action is required.
+    const peerId = await getTabId(origin + '/peer');
+    await expect.poll(() => control.evaluate(id => chrome.runtime.sendMessage({
+      type: 'getAdvancedProxyStatus', payload: { tabId: id },
+    }), peerId)).toMatchObject({ phase: 'connected', recording: false, captureEnabled: true });
     expect(JSON.parse(await request(peer))).toEqual({ source: 'Wireflip', mocked: true });
     await unrelated.goto('http://127.0.0.2:' + address.port + '/peer');
     expect(await unrelated.evaluate(async () => (await fetch('/probe')).text())).toBe('{"source":"server"}');

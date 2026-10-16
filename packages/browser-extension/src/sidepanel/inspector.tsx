@@ -244,7 +244,6 @@ export function Inspector() {
         <p>{t(ruleGroup(savedRule.id, profiles)?.enabled === false ? 'Group paused. This rule will not apply until the group is enabled.' : verificationMessage(savedRule, status?.phase === 'connected', verifiedRequest, hasNewRequests))}</p>
         <div className="mt-2 flex flex-wrap gap-2">
           {verifiedRequest ? <Button size="sm" variant="outline" onClick={() => showRequest(verifiedRequest.id)}>{t('View request')}</Button> : null}
-          {isRuleEnabled(savedRule, profiles) && status?.phase !== 'connected' && !verifiedRequest ? <Button size="sm" disabled={busy || tabId === null} onClick={() => void toggle(true)}>{t('Start recording requests')}</Button> : null}
           {savedRule.enabled ? <Button size="sm" variant="outline" disabled={busy} onClick={() => void toggleRule(savedRule, false)}>{t('Disable this rule')}</Button> : null}
           {savedRule.enabled && hasNewRequests && !verifiedRequest?.changes?.length ? <Button size="sm" variant="outline" disabled={busy} onClick={() => setDraft(draftFromRule(savedRule, profiles))}>{t('Edit proxy rule')}</Button> : null}
           <Button size="sm" variant="ghost" onClick={() => setVerification(null)}>{t('Dismiss')}</Button>
@@ -376,7 +375,7 @@ export function Inspector() {
             <div className="flex flex-wrap gap-1">
               {ruleGroup(rule.id, profiles)?.enabled === false ? <Badge variant="outline">{t('Group paused')}</Badge> : !rule.enabled ? <Badge variant="outline">{t('Disabled')}</Badge> : <>
                 {hasPersistentActions(rule) ? <Badge variant="outline">{t('Persistent · across tabs')}</Badge> : null}
-                {needsProxy(rule) ? <Badge variant="outline">{t(status?.phase !== 'connected' ? 'Preparing enabled rules' : 'Enabled · matching pages')}</Badge> : null}
+                {isRuleEnabled(rule, profiles) && needsProxy(rule) ? <Badge variant="outline">{t(status?.phase !== 'connected' ? 'Preparing enabled rules' : 'Enabled · matching pages')}</Badge> : null}
               </>}
               <Badge variant="secondary">{t('{count} recorded matches', { count: entries.filter((entry) => entry.matchedRuleIds.includes(rule.id)).length })}</Badge>
             </div>

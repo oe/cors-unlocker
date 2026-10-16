@@ -27,6 +27,7 @@ SDK `requestRule` and per-rule readiness are additive capabilities in the 0.3 ca
 - Chrome prepares debugger interception automatically where saved actions require it; its native debugging indicator cannot be hidden
 - Firefox prepares its WebRequest / response replacement and CORS network rules automatically
 - Existing matching tabs, newly opened tabs and origin changes reconcile from the current enabled rules
+- Chrome preparation is asynchronous on navigation. Requests sent before interception is ready may pass through; the Playground waits for readiness before enabling its test. Existing connections remain in place across reloads on the same origin
 - No eligible saved rules, recording or temporary controls means no interception connection is retained
 - Unmatched automatic traffic is not added to the request log
 - Browser-imposed restrictions and debugger conflicts are shown as execution errors rather than claimed as success
