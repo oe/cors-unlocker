@@ -6,6 +6,15 @@ import extension_test as native
 import playground_test as playground
 
 class AutomaticPlaygroundTests(playground.PlaygroundTests):
+    def click(self, label):
+        self.wait(lambda: self.js("""return Array.from(document.querySelectorAll('button')).some(b=>b.textContent.trim()===arguments[0] && !b.disabled);""", label))
+        element = self.command('POST', '/element', {'using': 'xpath', 'value': '//button[normalize-space(.)=' + json.dumps(label) + ']'})
+        try:
+            self.command('POST', '/element/' + element['element-6066-11e4-a52e-4f735466cecf'] + '/click', {})
+        except AssertionError as error:
+            if label != 'Enable rule' or not any(value in str(error) for value in ['no such window', 'Browsing context has been discarded']):
+                raise
+
     def test_one_approval_and_automatic_matching_tabs(self):
         self.switch(self.target)
         url = self.site_origin + '/playground/'

@@ -17,7 +17,7 @@ The browser toolbar uses blue for enabled saved rules, green for recording or te
 3. One explicit approval saves and enables the rule, prepares matching tabs, closes the approval and returns to the page
 4. The page enables its test only after the extension reports that exact rule ready
 
-Cancel, closing approval, invalid input and navigation before approval do not authorize a rule. A page cannot approve itself or broaden the initiating origin. An existing rule ID is checked against the actual sender origin before changes.
+Cancel, closing approval, invalid input and navigation before approval do not authorize a rule. A page cannot approve itself or broaden the initiating origin. Activation requests require a real click or keyboard action in the requesting page. An existing rule ID is checked against the actual sender origin before changes.
 
 SDK `requestRule` and per-rule readiness are additive capabilities in the 0.3 candidate. Existing `createRuleDraft` remains a disabled draft and preserves its existing workspace behavior. The website detects capabilities, so published 2.0.0 extensions retain the compatible setup path until their store update.
 

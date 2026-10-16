@@ -75,6 +75,13 @@ window.addEventListener('message', async (event) => {
         return;
       }
     }
+    if (request.method === 'requestRule' && !navigator.userActivation?.isActive) {
+      window.postMessage({
+        type: RESPONSE_TYPE, clientId: request.clientId, id: request.id,
+        error: { type: 'invalid-request', message: 'Enable a rule from a click or keyboard action on this page.' },
+      }, location.origin);
+      return;
+    }
     const response = await browser.runtime.sendMessage({
       type: 'sdkRequest',
       payload: { method: request.method, data: request.payload },

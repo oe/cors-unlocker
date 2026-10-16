@@ -82,8 +82,9 @@ test('enables a Playground example with one native approval and runs saved rules
       const relative = pathname === '/playground/' ? 'playground/index.html' : pathname === '/' ? 'index.html' : pathname.slice(1);
       const file = path.resolve(site, relative);
       if (!file.startsWith(site + path.sep)) throw Error('Invalid path');
+      const bytes = readFileSync(file);
       response.writeHead(200, { 'Content-Type': file.endsWith('.js') ? 'text/javascript' : file.endsWith('.css') ? 'text/css' : file.endsWith('.svg') ? 'image/svg+xml' : 'text/html' });
-      response.end(readFileSync(file));
+      response.end(bytes);
     } catch { response.writeHead(404); response.end('Not found'); }
   });
   await new Promise<void>(resolve => server.listen(0, '0.0.0.0', resolve));
@@ -96,6 +97,18 @@ test('enables a Playground example with one native approval and runs saved rules
   try {
     await target.goto(origin + '/playground/');
     await expect(target.getByRole('button', { name: 'Enable example', exact: true })).toBeEnabled();
+    const withoutGesture = await target.evaluate(() => new Promise<any>(resolve => {
+      const id = crypto.randomUUID();
+      const receive = (event: MessageEvent) => {
+        if (event.source === window && event.data?.type === 'wireflip:sdk-response' && event.data.id === id) {
+          window.removeEventListener('message', receive); resolve(event.data);
+        }
+      };
+      window.addEventListener('message', receive);
+      window.postMessage({ type: 'wireflip:sdk-request', clientId: 'gesture-test', id, method: 'requestRule',
+        payload: { rule: { name: 'No gesture', urlPattern: '*', actions: [{ type: 'block' }] } } }, location.origin);
+    }));
+    expect(withoutGesture.error.type).toBe('invalid-request');
     await target.getByText('Advanced options', { exact: true }).click();
     await target.getByLabel('Request URL pattern', { exact: true }).fill(origin + '/probe');
     await target.getByLabel('Probe URL', { exact: true }).fill(origin + '/probe');
