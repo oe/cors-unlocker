@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -76,7 +76,8 @@ const results = {
 };
 console.log('PUBLIC_CHROME_PACKAGE ' + JSON.stringify(results));
 const profile = mkdtempSync(path.join(tmpdir(), 'wireflip-public-chrome-'));
-let context, activePage;
+let context, activePage, browser, chromeProcess;
+const chromeLog = path.join(output, 'chrome.log');
 async function screenshot(page, name) {
   const bytes = await page.screenshot({ path: path.join(output, name + '.png'), fullPage: false, animations: 'disabled' });
   if (name === 'playground-verified') {
@@ -85,12 +86,6 @@ async function screenshot(page, name) {
   }
 }
 try {
-  context = await chromium.launchPersistentContext(profile, {
-    executablePath: chromePath, headless: false, viewport: { width: 1280, height: 900 },
-    ignoreDefaultArgs: ['--disable-extensions', '--disable-background-networking', '--disable-component-update'],
-    args: ['--no-sandbox'],
-  });
-  context.setDefaultTimeout(20_000);
   const wait = async (read, predicate, timeout = 120_000) => {
     const end = Date.now() + timeout; let last;
     while (Date.now() < end) {
@@ -100,13 +95,26 @@ try {
     }
     throw Error('Condition timed out: ' + JSON.stringify(last));
   };
-  await wait(() => context.serviceWorkers().map(worker => worker.url()), urls => urls.some(url => url.startsWith('chrome-extension://' + id + '/')));
+  chromeProcess = spawn(chromePath, ['--user-data-dir=' + profile, '--remote-debugging-port=0', '--no-first-run', '--no-default-browser-check', '--no-sandbox', '--window-size=1280,1000', 'about:blank']);
+  chromeProcess.stderr.on('data', data => writeFileSync(chromeLog, data, { flag: 'a' }));
+  chromeProcess.stdout.on('data', data => writeFileSync(chromeLog, data, { flag: 'a' }));
+  const portFile = path.join(profile, 'DevToolsActivePort');
+  await wait(() => existsSync(portFile), Boolean, 30_000);
+  browser = await chromium.connectOverCDP('http://127.0.0.1:' + readFileSync(portFile, 'utf8').split('\n')[0]);
+  context = browser.contexts()[0];
+  context.setDefaultTimeout(20_000);
+  context.setDefaultNavigationTimeout(30_000);
+  const policy = await context.newPage();
+  await policy.goto('chrome://policy');
+  console.log('PUBLIC_CHROME_POLICY ' + await policy.locator('body').innerText());
+  const extensionsRoot = path.join(profile, 'Default/Extensions', id);
+  const installedDirs = await wait(() => existsSync(extensionsRoot) ? readdirSync(extensionsRoot) : [],
+    dirs => dirs.some(name => name.startsWith(expectedVersion + '_')));
   const control = await context.newPage();
   await control.goto('chrome-extension://' + id + '/src/options/index.html');
   const installed = await control.evaluate(() => chrome.runtime.getManifest());
   assert.equal(installed.version, expectedVersion);
   assert.equal(installed.name, 'Wireflip');
-  const installedDirs = readdirSync(path.join(profile, 'Default/Extensions', id));
   const installedDir = path.join(profile, 'Default/Extensions', id, installedDirs.find(name => name.startsWith(expectedVersion + '_')));
   for (const file of candidateFiles.filter(file => file !== 'manifest.json')) {
     assert.equal(sha(readFileSync(path.join(installedDir, file))), sha(readFileSync(path.join(publicDir, file))), 'Installed public runtime differs: ' + file);
@@ -179,8 +187,15 @@ try {
     await screenshot(activePage, 'failure-state');
     console.error('PUBLIC_CHROME_FAILURE_DOM ' + await activePage.locator('body').innerText());
   }
+  if (existsSync(chromeLog)) console.error(readFileSync(chromeLog, 'utf8').slice(-15_000));
   throw error;
 } finally {
-  await context?.close();
+  await browser?.close();
+  if (chromeProcess && chromeProcess.exitCode === null) {
+    const exited = new Promise(resolve => chromeProcess.once('exit', resolve));
+    chromeProcess.kill('SIGTERM');
+    await Promise.race([exited, new Promise(resolve => setTimeout(resolve, 5_000))]);
+    if (chromeProcess.exitCode === null) chromeProcess.kill('SIGKILL');
+  }
   rmSync(profile, { recursive: true, force: true });
 }
