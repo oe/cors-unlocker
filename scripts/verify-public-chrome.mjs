@@ -5,6 +5,7 @@
  */
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
 import { execFileSync, spawn } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
@@ -76,7 +77,8 @@ const results = {
 };
 console.log('PUBLIC_CHROME_PACKAGE ' + JSON.stringify(results));
 const profile = mkdtempSync(path.join(tmpdir(), 'wireflip-public-chrome-'));
-let context, activePage, browser, chromeProcess;
+let context, activePage, browser, chromeProcess, server;
+let siteUrl = 'https://wireflip.forth.ink';
 const chromeLog = path.join(output, 'chrome.log');
 async function screenshot(page, name) {
   const bytes = await page.screenshot({ path: path.join(output, name + '.png'), fullPage: false, animations: 'disabled' });
@@ -86,6 +88,23 @@ async function screenshot(page, name) {
   }
 }
 try {
+  if (process.env.WIREFLIP_BUILT_SITE === '1') {
+    const dist = path.join(root, 'packages/website/dist');
+    const mime = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.json': 'application/json', '.png': 'image/png' };
+    server = createServer((request, response) => {
+      try {
+        const pathname = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);
+        let file = path.resolve(dist, '.' + pathname);
+        if (!file.startsWith(dist + path.sep) && file !== dist) throw Error('Invalid path');
+        if (statSync(file).isDirectory()) file = path.join(file, 'index.html');
+        response.setHeader('Content-Type', mime[path.extname(file)] || 'application/octet-stream');
+        response.end(readFileSync(file));
+      } catch { response.statusCode = 404; response.end('Not found'); }
+    });
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    siteUrl = 'http://127.0.0.1:' + server.address().port;
+  }
+  results.site = siteUrl;
   const wait = async (read, predicate, timeout = 120_000) => {
     const end = Date.now() + timeout; let last;
     while (Date.now() < end) {
@@ -147,7 +166,12 @@ try {
   activePage = page;
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
-  await page.goto('https://wireflip.forth.ink/playground/');
+  await page.goto(siteUrl + '/playground/');
+  // The main-branch check waits for the website deployment to publish this recipe.
+  await wait(async () => {
+    if (await page.getByLabel('Probe URL', { exact: true }).inputValue().catch(() => '') === 'https://jsonplaceholder.typicode.com/todos/2') return true;
+    await page.reload(); return false;
+  }, Boolean, 180_000);
   assert.equal(new URL(page.url()).pathname, '/playground/');
   assert((await page.title()).includes('Wireflip'));
   await page.getByRole('heading', { name: 'Extension connected · chrome', exact: true }).waitFor();
@@ -156,7 +180,8 @@ try {
   const state = () => control.evaluate(() => chrome.runtime.sendMessage({ type: 'getProxyState' }));
   let rule = (await wait(state, state => state.rules.length === 1)).rules[0];
   assert.equal(rule.enabled, false);
-  assert.deepEqual(rule.match.initiatorOrigins, ['https://wireflip.forth.ink']);
+  assert.deepEqual(rule.match.initiatorOrigins, [siteUrl]);
+  assert.equal(rule.actions[0].headers['Access-Control-Allow-Origin'], '*');
   await control.getByRole('switch', { name: 'Toggle Playground · Mock response', exact: true }).click();
   await wait(state, state => state.rules[0].enabled);
   assert(await page.getByRole('button', { name: 'Test mock', exact: true }).isDisabled());
@@ -174,7 +199,7 @@ try {
   await screenshot(page, 'playground-verified');
   const badge = () => control.evaluate(tabId => chrome.action.getBadgeText({ tabId }), tabId);
   assert.equal(await badge(), 'ON');
-  results.checks.push('Production HTTPS Playground: disabled draft → workspace enable → native Popup session → public recipe Mock verified; toolbar ON');
+  results.checks.push('Playground: disabled draft → workspace enable → native Popup session → public recipe Mock verified; toolbar ON');
 
   await control.getByRole('switch', { name: 'Toggle Playground · Mock response', exact: true }).click();
   await wait(state, state => !state.rules[0].enabled);
@@ -207,5 +232,6 @@ try {
     await Promise.race([exited, new Promise(resolve => setTimeout(resolve, 5_000))]);
     if (chromeProcess.exitCode === null) chromeProcess.kill('SIGKILL');
   }
-  rmSync(profile, { recursive: true, force: true });
+  if (server) { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }
+  rmSync(profile, { recursive: true, force: true, maxRetries: 20, retryDelay: 200 });
 }

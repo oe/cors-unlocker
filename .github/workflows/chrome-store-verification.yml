@@ -1,9 +1,16 @@
 name: Verify public Chrome Web Store release
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - scripts/verify-public-chrome.mjs
+      - packages/website/**
+      - .github/workflows/chrome-store-verification.yml
   pull_request:
     paths:
       - scripts/verify-public-chrome.mjs
+      - packages/website/**
       - .github/workflows/chrome-store-verification.yml
   workflow_dispatch:
 
@@ -25,6 +32,9 @@ jobs:
           node-version: '20'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: |
+          pnpm --filter wireflip build
+          pnpm --filter website build
       - name: Download the exact submitted release ZIP
         uses: actions/download-artifact@v4
         with:
@@ -39,7 +49,9 @@ jobs:
           sudo tee /etc/opt/chrome/policies/managed/wireflip-verification.json >/dev/null <<'JSON'
           {"ExtensionInstallForcelist":["knhlkjdfmgkmelcjfnbbhpphkmjjacng;https://clients2.google.com/service/update2/crx"]}
           JSON
-      - name: Verify signed public runtime and live Playground
+      - name: Verify signed public runtime and Playground
+        env:
+          WIREFLIP_BUILT_SITE: ${{ github.event_name == 'pull_request' && '1' || '0' }}
         run: |
           CHROME_RELEASE_ARCHIVE="$(find artifacts/submitted-release -name 'wireflip-chrome-v2.0.0.zip' -print -quit)" \
           xvfb-run -a node scripts/verify-public-chrome.mjs

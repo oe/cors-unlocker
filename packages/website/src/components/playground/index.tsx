@@ -72,12 +72,12 @@ const SCENARIOS: Scenario[] = [
     name: 'Mock response',
     description: 'Return deterministic JSON without changing application code.',
     icon: FlaskConical,
-    urlPattern: 'https://jsonplaceholder.typicode.com/todos/1',
-    testUrl: 'https://jsonplaceholder.typicode.com/todos/1',
+    urlPattern: 'https://jsonplaceholder.typicode.com/todos/2',
+    testUrl: 'https://jsonplaceholder.typicode.com/todos/2',
     actions: [{
       type: 'mockResponse',
       status: 200,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
       body: '{\n  "source": "Wireflip",\n  "mocked": true\n}',
     }],
   },
@@ -183,7 +183,16 @@ export default function Playground() {
 
   useEffect(() => {
     try {
-      const saved = JSON.parse(sessionStorage.getItem('wireflip:playground-draft') || 'null');
+      let saved = JSON.parse(sessionStorage.getItem('wireflip:playground-draft') || 'null');
+      // Replace only the untouched, previously shipped default recipe. Its old
+      // saved rule targets /todos/1 and cannot override the corrected /todos/2 recipe.
+      const oldActions = [{ type: 'mockResponse', status: 200, headers: { 'Content-Type': 'application/json' }, body: DEFAULT_SCENARIO.actions[0].type === 'mockResponse' ? DEFAULT_SCENARIO.actions[0].body : '' }];
+      if (saved?.selectedId === 'mock' && saved.name === 'Playground · Mock response'
+        && saved.urlPattern === 'https://jsonplaceholder.typicode.com/todos/1'
+        && saved.testUrl === saved.urlPattern && JSON.stringify(JSON.parse(saved.actionJson)) === JSON.stringify(oldActions)) {
+        saved = null;
+        sessionStorage.removeItem('wireflip:playground-draft');
+      }
       if (saved && SCENARIOS.some(scenario => scenario.id === saved.selectedId)
         && ['name', 'urlPattern', 'testUrl', 'actionJson', 'fingerprint'].every(key => typeof saved[key] === 'string')) {
         setSelectedId(saved.selectedId); setName(saved.name); setUrlPattern(saved.urlPattern);
@@ -278,7 +287,7 @@ export default function Playground() {
       setResult({
         kind: 'error',
         summary: `Request failed · ${Math.round(performance.now() - startedAt)} ms`,
-        detail: (error instanceof Error ? error.message : 'Unknown network error') + ' — For block or failure recipes, a failed request is expected; confirm the matching rule in Inspector.',
+        detail: (error instanceof Error ? error.message : 'Unknown network error') + (mock ? ' — For a cross-origin Mock, include Access-Control-Allow-Origin in the saved rule’s response headers. Also check that the endpoint is reachable in Firefox.' : ' — For block or failure recipes, a failed request is expected; confirm the matching rule in Inspector.'),
       });
     } finally {
       window.clearTimeout(timeout);
