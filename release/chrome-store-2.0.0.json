@@ -1,0 +1,92 @@
+{
+  "extensionId": "knhlkjdfmgkmelcjfnbbhpphkmjjacng",
+  "version": "2.0.0",
+  "sourceCommit": "f756440abe8ad5e3fdf19c6179ecf59435df0816",
+  "submittedZipSha256": "59b7f60717ecdbd8eb77af34253f7e3519f6f8051e605099af50934306ef72e6",
+  "runtimeHashes": {
+    "_locales/en/messages.json": "0dd63aff6c9541662c541e9567f1f41c091934ac31e1bbadca7621fae8f810f8",
+    "_locales/zh_CN/messages.json": "407c74f3ed7128ebbf51087fc4880bfbc189ae5753135ec40388c84eecb39618",
+    "appearance-settings.js": "da153850dea76ccef2a60f2d38e54e21acf4aba60ac3c49df80643fc25ca604d",
+    "icon/128.png": "427b3ed4dc4270b7f84da8529b68aff5e9269228d0148fa560d476640b890c90",
+    "icon/16.png": "cc37d0ccc5b0ff78aba0f0b17caba92882c6b28f6f6fef6e8114cb279c23c515",
+    "icon/32.png": "559fc4954a631e3e4b801a413e6080d8f6ebe228aea7c7ce6b26d476a0a904a4",
+    "icon/48.png": "35bfebdc171ad159fd38d51c47b79e6101b11ee65104b6043adae4a6f407d401",
+    "icon/legacy-128.png": "2c8cdca8d2447e6102a8b38c027ccf77642ab24d1c6ef65f629e17bd6b193549",
+    "index.css": "e6936e2d94ad80b2fedef0dd402eab35dd35271d26af8614758e651aa8777fc2",
+    "index2.css": "1b7e9549466cd6eaea589ebd689fdbd01afa77abde93c2b9ccf123603d0693c0",
+    "index3.css": "162a3a05526055a0dd889ed3b3f2d8ff6ee2915631f6031c926a2f8e1749da68",
+    "inspector-target.js": "cb797559951aad907f50a98492dee4cbda6ba9e62deab05dbc3078063812bf93",
+    "popover.js": "6f60b43992dd2cca254464843d2674c7f6cabe6891baa1691e1c59cc31004259",
+    "rule-explanation.js": "ba91e9f911abdcf5bbe9e4888cc0d4d886e4d4956294a5f816a4b9c8693a3479",
+    "src/background/index.js": "45443167c1ab8b56f9134a9173903f6a2e56047ef4556d18ef746faa017db506",
+    "src/content/page-bridge.js": "9a4e816bfc40b2492d9fb46730f2142f121e7873013a49a6ad05910ba6ad8b68",
+    "src/options/index.html": "c70aff775b310a2f075a555a279bf30487028695440be5fae4de10c5efbb9c04",
+    "src/options/index.js": "6817d764b189541fe28d69914662f1a9c44f5e5daa46e4c1314cf87fd087ca37",
+    "src/popup/index.html": "b8e3d3924ecd3dbef574241ecab64a9b6921fe37a6507c4b82d5be8439d7d9a5",
+    "src/popup/index.js": "912c99aebd15a7360e1efec846d18835596776ac82817c283c925ef8c4a008e1",
+    "src/sidepanel/index.html": "142e69980274a67b95a089549e6a4d572ba6cb4806bc7529b85fb41eea0a9f05",
+    "src/sidepanel/index.js": "4d8619999ec2d116b1bc4094957cf836bbcf6ecdf2a912580c46a240176158a5",
+    "src/upgrade/index.html": "59d91cc0aaeb9e2007a079d7e50298c12e53598a57b3213f6b5bbe6aa0acff8f",
+    "src/upgrade/index.js": "7ae4c2b15a99e70e954acd209422d627bff988d80ad23eca682183ae5362b15f",
+    "tabs.js": "cd2593ec85fd53e11302fa2cc4ce3480b0bc1ad9e6bfe0cfe16226bfd191ea16",
+    "tailwind.css": "e45d62d1afb84b9eb5279ff5d4dee104869c09cbf6809f5ba46778b8e99b014f",
+    "tailwind.js": "1e354ba2c7a1114ba9e608bfe14a8a9365f39be9d51fb0d5f863197ea84dd329",
+    "upgrade-notice.js": "c41c13a8a473bbf400dd8cf7af51caec8d61de99c992fe902206121e3726adaf"
+  },
+  "manifest": {
+    "action": {
+      "default_icon": {
+        "16": "icon/16.png",
+        "32": "icon/32.png",
+        "128": "icon/128.png"
+      },
+      "default_popup": "src/popup/index.html"
+    },
+    "background": {
+      "service_worker": "src/background/index.js"
+    },
+    "content_scripts": [
+      {
+        "all_frames": false,
+        "js": [
+          "src/content/page-bridge.js"
+        ],
+        "matches": [
+          "<all_urls>"
+        ],
+        "run_at": "document_start"
+      }
+    ],
+    "default_locale": "en",
+    "description": "__MSG_extDescription__",
+    "externally_connectable": {
+      "matches": [
+        "https://*.forth.ink/*"
+      ]
+    },
+    "host_permissions": [
+      "<all_urls>"
+    ],
+    "icons": {
+      "16": "icon/16.png",
+      "32": "icon/32.png",
+      "48": "icon/48.png",
+      "128": "icon/128.png"
+    },
+    "manifest_version": 3,
+    "name": "__MSG_extName__",
+    "options_page": "src/options/index.html",
+    "permissions": [
+      "declarativeNetRequest",
+      "declarativeNetRequestWithHostAccess",
+      "tabs",
+      "storage",
+      "debugger",
+      "sidePanel"
+    ],
+    "side_panel": {
+      "default_path": "src/sidepanel/index.html"
+    },
+    "version": "2.0.0"
+  }
+}

@@ -72,3 +72,33 @@ jobs:
       - name: Remove test-only machine policy
         if: always()
         run: sudo rm -f /etc/opt/chrome/policies/managed/wireflip-verification.json
+
+  sync-sdk-release-notice:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: public-chrome
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Update the existing SDK release availability note after public verification
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: release } = await github.rest.repos.getReleaseByTag({
+              ...context.repo, tag: 'sdk-v0.2.0'
+            });
+            if (release.target_commitish !== '6ea7424c06a2463d736276a04e3bf7791210cb49') {
+              throw new Error('SDK release target changed; review its availability note manually');
+            }
+            const previous = '- Chrome 2.0.0 is awaiting Chrome Web Store review. Chrome users should keep the existing `cors-unlocker` integration until the compatible update is available.';
+            const replacement = '- Chrome 2.0.0 is [available on the Chrome Web Store](https://chromewebstore.google.com/detail/knhlkjdfmgkmelcjfnbbhpphkmjjacng). Update the extension before optionally migrating to `wireflip`; existing `cors-unlocker` integrations remain supported.';
+            if (release.body?.includes(previous)) {
+              await github.rest.repos.updateRelease({
+                ...context.repo, release_id: release.id,
+                body: release.body.replace(previous, replacement)
+                  + '\nChrome public-package verification: https://github.com/' + context.repo.owner + '/' + context.repo.repo + '/actions/runs/' + context.runId + '\n'
+              });
+              core.info('Updated availability only; tag, archives and package versions are unchanged');
+            } else {
+              core.info('The historical pending-review note is already absent; no release edit needed');
+            }

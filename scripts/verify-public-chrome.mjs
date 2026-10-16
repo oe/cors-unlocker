@@ -128,7 +128,7 @@ try {
     }
     throw Error('Condition timed out: ' + JSON.stringify(last));
   };
-  chromeProcess = spawn(chromePath, ['--user-data-dir=' + profile, '--remote-debugging-port=0', '--no-first-run', '--no-default-browser-check', '--no-sandbox', '--window-size=1280,1000', 'about:blank']);
+  chromeProcess = spawn(chromePath, ['--user-data-dir=' + profile, '--remote-debugging-port=0', '--no-first-run', '--no-default-browser-check', '--no-sandbox', '--window-size=1280,1000', 'about:blank'], { detached: true });
   chromeProcess.stderr.on('data', data => writeFileSync(chromeLog, data, { flag: 'a' }));
   chromeProcess.stdout.on('data', data => writeFileSync(chromeLog, data, { flag: 'a' }));
   const portFile = path.join(profile, 'DevToolsActivePort');
@@ -180,6 +180,13 @@ try {
   activePage = page;
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
+  await page.goto(siteUrl + '/');
+  // Reproduce a visitor returning with the untouched pre-fix default recipe.
+  await page.evaluate(() => {
+    const actions = [{ type: 'mockResponse', status: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ source: 'Wireflip', mocked: true }, null, 2) }];
+    const saved = { selectedId: 'mock', name: 'Playground · Mock response', urlPattern: 'https://jsonplaceholder.typicode.com/todos/1', testUrl: 'https://jsonplaceholder.typicode.com/todos/1', actionJson: JSON.stringify(actions, null, 2) };
+    sessionStorage.setItem('wireflip:playground-draft', JSON.stringify({ ...saved, fingerprint: JSON.stringify([saved.name, saved.urlPattern, saved.actionJson]) }));
+  });
   await page.goto(siteUrl + '/playground/');
   // The main-branch check waits for the website deployment to publish this recipe.
   await wait(async () => {
@@ -240,12 +247,12 @@ try {
   throw error;
 } finally {
   await browser?.close();
-  if (chromeProcess && chromeProcess.exitCode === null) {
-    const exited = new Promise(resolve => chromeProcess.once('exit', resolve));
-    chromeProcess.kill('SIGTERM');
-    await Promise.race([exited, new Promise(resolve => setTimeout(resolve, 5_000))]);
-    if (chromeProcess.exitCode === null) chromeProcess.kill('SIGKILL');
+  if (chromeProcess) {
+    try { process.kill(-chromeProcess.pid, 'SIGTERM'); } catch (error) { if (error.code !== 'ESRCH') throw error; }
+    await new Promise(resolve => setTimeout(resolve, 500));
+    try { process.kill(-chromeProcess.pid, 'SIGKILL'); } catch (error) { if (error.code !== 'ESRCH') throw error; }
   }
   if (server) { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }
-  rmSync(profile, { recursive: true, force: true, maxRetries: 20, retryDelay: 200 });
+  try { rmSync(profile, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 }); }
+  catch { console.log('Temporary Chrome profile left for ephemeral runner cleanup'); }
 }

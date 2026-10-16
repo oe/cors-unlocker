@@ -2,7 +2,7 @@
 
 An origin-scoped browser SDK for connecting a web app to the locally installed Wireflip extension.
 
-Requires the Wireflip 2.0 extension. Firefox 2.0.0 is available on [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/cors-unlocker/). Chrome 2.0.0 has been submitted to the [Chrome Web Store](https://chromewebstore.google.com/detail/knhlkjdfmgkmelcjfnbbhpphkmjjacng) and is awaiting review; Chrome users should keep `cors-unlocker` until the update is available. Install and import `wireflip` directly once your browser has the compatible extension.
+Requires the Wireflip 2.0 extension. Wireflip 2.0.0 is available on the [Chrome Web Store](https://chromewebstore.google.com/detail/knhlkjdfmgkmelcjfnbbhpphkmjjacng) and [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/cors-unlocker/). Update the extension, then install and import `wireflip` directly. Existing `cors-unlocker` integrations remain supported; migration is optional.
 
 ```bash
 pnpm add wireflip
