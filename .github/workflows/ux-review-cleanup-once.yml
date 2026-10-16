@@ -1,0 +1,43 @@
+name: One-time merged branch cleanup
+
+on:
+  pull_request:
+    paths: [.github/workflows/ux-review-cleanup-once.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  cleanup:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'feat/clear-playground'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const candidates = [{"branch":"chore/verify-chrome-store-release","sha":"151d9a20b3739fbb88e3877f9da9b2300f2ee38b","pr":26},{"branch":"feat/website-product-guides","sha":"6a3a0d4918c9f300621ab65023ff558a69f1be57","pr":24},{"branch":"fix/playground-firefox-flow","sha":"46db5eadedecfed8ed494794d2375c6b9e4fa469","pr":25},{"branch":"fix/store-verification-deployment-wait","sha":"d69869995b64dcf6b69f1f2185f101e45ac40a8b","pr":27}];
+            const { data: repo } = await github.rest.repos.get(context.repo);
+            const open = await github.paginate(github.rest.pulls.list, { ...context.repo, state: 'open', per_page: 100 });
+            const deleted = [];
+            for (const item of candidates) {
+              if ([repo.default_branch, 'gh-pages', context.payload.pull_request.head.ref].includes(item.branch)) throw Error('Refusing a permanent/current branch');
+              if (open.some(pr => pr.head.ref === item.branch && pr.head.repo?.full_name === context.payload.repository.full_name)) throw Error('Open PR uses ' + item.branch);
+              const { data: pr } = await github.rest.pulls.get({ ...context.repo, pull_number: item.pr });
+              if (!pr.merged_at || pr.head.ref !== item.branch || pr.head.sha !== item.sha) throw Error('Merged PR identity changed');
+              let branch;
+              try {
+                branch = (await github.rest.repos.getBranch({ ...context.repo, branch: item.branch })).data;
+              } catch (error) {
+                if (error.status === 404) { core.info('Already absent: ' + item.branch); continue; }
+                throw error;
+              }
+              if (branch.protected || branch.commit.sha !== item.sha) throw Error('Branch changed or is protected: ' + item.branch);
+              const ref = await github.rest.git.getRef({ ...context.repo, ref: 'heads/' + item.branch });
+              if (ref.data.object.sha !== item.sha) throw Error('Branch moved: ' + item.branch);
+              await github.rest.git.deleteRef({ ...context.repo, ref: 'heads/' + item.branch });
+              deleted.push(item);
+              core.info('Deleted merged branch: ' + item.branch + ' at ' + item.sha);
+            }
+            await core.summary.addHeading('Explicitly requested merged-branch cleanup').addCodeBlock(JSON.stringify(deleted, null, 2), 'json').write();

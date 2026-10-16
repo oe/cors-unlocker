@@ -96,7 +96,7 @@ let siteUrl = 'https://wireflip.forth.ink';
 const chromeLog = path.join(output, 'chrome.log');
 async function screenshot(page, name) {
   const bytes = await page.screenshot({ path: path.join(output, name + '.png'), fullPage: false, animations: 'disabled' });
-  if (name === 'playground-verified') {
+  if (name === 'playground-verified' || process.env.WIREFLIP_UX_AUDIT === '1') {
     const data = bytes.toString('base64'), total = Math.ceil(data.length / 8192);
     for (let index = 0; index < total; index++) console.log('WIREFLIP_IMAGE ' + JSON.stringify({ name, index, total, data: data.slice(index * 8192, (index + 1) * 8192) }));
   }
@@ -166,6 +166,7 @@ try {
   assert.equal(context.pages().filter(page => page.url().includes('/src/upgrade/')).length, 0, 'Fresh install must not open upgrade notice');
   await control.getByRole('main').waitFor();
   assert.equal(await control.getByRole('region', { name: 'About your Wireflip upgrade' }).count(), 0);
+  if (process.env.WIREFLIP_UX_AUDIT === '1') await screenshot(control, 'audit-workspace-empty');
   results.checks.push('Native signed store installation, same ID/version/code and locale messages; no fresh-install upgrade notice');
 
   const store = await context.newPage();
@@ -205,12 +206,24 @@ try {
   await page.getByRole('heading', { name: 'Extension connected · chrome', exact: true }).waitFor();
   assert.equal(await page.getByLabel('Probe URL', { exact: true }).inputValue(), 'https://jsonplaceholder.typicode.com/todos/2');
   assert(await page.getByRole('button', { name: 'Test mock', exact: true }).isDisabled());
+  if (process.env.WIREFLIP_UX_AUDIT === '1') {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await screenshot(page, 'audit-playground-start-desktop');
+    await page.setViewportSize({ width: 390, height: 844 });
+    await screenshot(page, 'audit-playground-start-mobile');
+    await page.setViewportSize({ width: 1280, height: 800 });
+  }
   await page.getByRole('button', { name: 'Add rule in Wireflip', exact: true }).click();
   const state = () => control.evaluate(() => chrome.runtime.sendMessage({ type: 'getProxyState' }));
   let rule = (await wait(state, state => state.rules.length === 1)).rules[0];
   assert.equal(rule.enabled, false);
   assert.deepEqual(rule.match.initiatorOrigins, [siteUrl]);
   assert.equal(rule.actions[0].headers['Access-Control-Allow-Origin'], '*');
+  if (process.env.WIREFLIP_UX_AUDIT === '1') {
+    await control.locator('[data-rule-select]').click();
+    await control.locator('#rule-name').waitFor();
+    await screenshot(control, 'audit-workspace-editing-rule');
+  }
   await control.getByRole('switch', { name: 'Toggle Playground · Mock response', exact: true }).click();
   await wait(state, state => state.rules[0].enabled);
   assert(await page.getByRole('button', { name: 'Test mock', exact: true }).isDisabled());
@@ -222,6 +235,7 @@ try {
   await page.bringToFront();
   await page.getByRole('button', { name: 'Test mock', exact: true }).waitFor();
   await wait(() => page.getByRole('button', { name: 'Test mock', exact: true }).isEnabled(), Boolean, 30_000);
+  if (process.env.WIREFLIP_UX_AUDIT === '1') await screenshot(page, 'audit-playground-ready');
   await page.getByRole('button', { name: 'Test mock', exact: true }).click();
   await page.getByText(/Mock verified · 200/).waitFor();
   await page.getByText(/Mock verified · 200/).scrollIntoViewIfNeeded();
