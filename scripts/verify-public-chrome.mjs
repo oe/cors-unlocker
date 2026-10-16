@@ -117,13 +117,23 @@ try {
   assert.equal(installed.name, 'Wireflip');
   const installedDir = path.join(profile, 'Default/Extensions', id, installedDirs.find(name => name.startsWith(expectedVersion + '_')));
   for (const file of candidateFiles.filter(file => file !== 'manifest.json')) {
-    assert.equal(sha(readFileSync(path.join(installedDir, file))), sha(readFileSync(path.join(publicDir, file))), 'Installed public runtime differs: ' + file);
+    const installedBytes = readFileSync(path.join(installedDir, file));
+    const publicBytes = readFileSync(path.join(publicDir, file));
+    if (file.startsWith('_locales/')) {
+      // Chrome's signed-extension installer canonicalizes message keys/catalogs.
+      const messages = bytes => Object.fromEntries(Object.entries(JSON.parse(bytes)).map(([key, value]) => [key.toLowerCase(), { message: value.message, ...(value.placeholders ? { placeholders: canonical(value.placeholders) } : {}) }]));
+      assert.deepEqual(canonical(messages(installedBytes)), canonical(messages(publicBytes)), 'Installed locale messages differ: ' + file);
+    } else if (!file.endsWith('.png')) {
+      // Chrome may re-encode extension PNGs during signed installation.
+      assert.equal(sha(installedBytes), sha(publicBytes), 'Installed public code differs: ' + file);
+    }
+
   }
   await control.evaluate(() => chrome.storage.local.set({ uiLanguage: 'en' }));
   assert.equal(context.pages().filter(page => page.url().includes('/src/upgrade/')).length, 0, 'Fresh install must not open upgrade notice');
   await control.getByRole('main').waitFor();
   assert.equal(await control.getByRole('region', { name: 'About your Wireflip upgrade' }).count(), 0);
-  results.checks.push('Native signed store installation, same ID/version/runtime; no fresh-install upgrade notice');
+  results.checks.push('Native signed store installation, same ID/version/code and locale messages; no fresh-install upgrade notice');
 
   const store = await context.newPage();
   await store.goto('https://chromewebstore.google.com/detail/' + id + '?hl=en');
