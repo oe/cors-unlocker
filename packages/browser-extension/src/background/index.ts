@@ -1,3 +1,4 @@
+import { initializeSavedRuleRuntime, reconcileSavedRuleRuntime, clearSavedRuleRuntime } from './saved-rule-runtime';
 import './upgrade-lifecycle';
 import './state-writer';
 import browser from 'webextension-polyfill';
@@ -18,15 +19,18 @@ import { LANGUAGE_KEY } from '@/common/locale';
 import type { IProxyRule } from '@/common/proxy-state';
 import { openPendingUpgradeNotice } from '@/common/upgrade-notice-state';
 
-async function applyBrowserRules(rules: IProxyRule[]) {
+async function applyBrowserRules(rules: IProxyRule[], state?: Awaited<ReturnType<typeof ensureProxyAppState>>) {
+  if (!state) clearSavedRuleRuntime();
   await reconcileProxyDnrRules(rules);
+  if (state) void reconcileSavedRuleRuntime(state).catch(error => logger.error('Saved rule preparation failed:', error));
   void refreshAllToolbar();
   // Storage changes arrive before native rule installation finishes. Refresh open controls
   // after installation so their counts describe browser enforcement, not the old snapshot.
   void browser.runtime.sendMessage({ type: 'browserRulesChanged' }).catch(() => undefined);
 }
-initializeProxyStateWriter((state) => applyBrowserRules(effectiveRules(state)));
+initializeProxyStateWriter((state) => applyBrowserRules(effectiveRules(state), state));
 initializeToolbarStatus(getAdvancedProxyStatus);
+initializeSavedRuleRuntime();
 
 // Simple delay utility function
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -34,7 +38,7 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 async function bootstrap() {
   try {
     const state = await ensureProxyAppState();
-    await applyBrowserRules(effectiveRules(state));
+    await applyBrowserRules(effectiveRules(state), state);
     // Delivery failures must not disable otherwise valid saved browser rules.
     await openPendingUpgradeNotice().catch((error) => logger.error('Unable to open upgrade notice:', error));
   } catch (error) {
@@ -66,7 +70,7 @@ browser.runtime.onStartup.addListener(async () => {
     }
     
     const state = await ensureProxyAppState();
-    await applyBrowserRules(effectiveRules(state));
+    await applyBrowserRules(effectiveRules(state), state);
   } catch (error) {
     logger.error('Error during startup rule initialization:', error);
   }
@@ -103,7 +107,7 @@ browser.storage.onChanged.addListener((changes, areaName) => {
     void applyBrowserRules([]).catch((error) => logger.error('Unable to clear invalid rules:', error));
     return;
   }
-  void applyBrowserRules(state ? effectiveRules(state) : []).catch((error) => {
+  void applyBrowserRules(state ? effectiveRules(state) : [], state).catch((error) => {
     logger.error('Unable to reconcile proxy DNR rules:', error);
   });
 });
@@ -142,7 +146,7 @@ browser.windows.onRemoved.addListener(onWindowClose);
 
 async function refreshTabRules() {
   const state = await ensureProxyAppState();
-  await applyBrowserRules(effectiveRules(state));
+  await applyBrowserRules(effectiveRules(state), state);
 }
 browser.tabs.onRemoved.addListener((tabId) => {
   forgetToolbarTab(tabId);

@@ -1,4 +1,6 @@
-# Wireflip 2.0.1 candidate
+# Wireflip 2.0.1 candidate (superseded)
+
+The UI changes below are now included in the [unreleased 2.1 candidate](release-2.1.md). No 2.0.1 package was published.
 
 This patch simplifies the extension workspace. The published Chrome and Firefox versions remain 2.0.0 until a new store submission is reviewed and released.
 

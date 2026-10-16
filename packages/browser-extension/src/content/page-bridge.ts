@@ -8,8 +8,16 @@ const ALLOWED_METHODS = new Set([
   'requestCors',
   'disableCors',
   'createRuleDraft',
+  'requestRule',
   'openWorkspace',
 ]);
+
+// Page JavaScript can ask for approval, but cannot fabricate a trusted input event.
+// Consume one activation so a timer or a loop cannot open repeated approval windows.
+let activationDeadline = 0;
+const noteActivation = (event: Event) => { if (event.isTrusted) activationDeadline = performance.now() + 5_000; };
+window.addEventListener('click', noteActivation, true);
+window.addEventListener('keydown', noteActivation, true);
 
 interface PageRequest {
   type: typeof REQUEST_TYPE;
@@ -32,8 +40,8 @@ function isPageRequest(value: unknown): value is PageRequest {
 }
 
 function sendResponse(request: PageRequest, response: unknown) {
-  const result = response && typeof response === 'object' && 'error' in response
-    ? { error: { type: 'invalid-request', message: String((response as { error?: unknown }).error || 'Request failed.') } }
+  const result = response && typeof response === 'object' && 'error' in response && !('id' in response)
+    ? { error: typeof (response as { error?: unknown }).error === 'object' ? (response as { error: object }).error : { type: 'invalid-request', message: String((response as { error?: unknown }).error || 'Request failed.') } }
     : { data: response };
   window.postMessage({
     type: RESPONSE_TYPE,
@@ -74,6 +82,14 @@ window.addEventListener('message', async (event) => {
         return;
       }
     }
+    if (request.method === 'requestRule' && performance.now() > activationDeadline) {
+      window.postMessage({
+        type: RESPONSE_TYPE, clientId: request.clientId, id: request.id,
+        error: { type: 'invalid-request', message: 'Enable a rule from a click or keyboard action on this page.' },
+      }, location.origin);
+      return;
+    }
+    if (request.method === 'requestRule') activationDeadline = 0;
     const response = await browser.runtime.sendMessage({
       type: 'sdkRequest',
       payload: { method: request.method, data: request.payload },

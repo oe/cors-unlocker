@@ -359,7 +359,7 @@ export function RuleEditorForm({
               <Field><FieldLabel>{t("Test resource type")}</FieldLabel><Select value={testType} onValueChange={(value) => value && setTestType(value)}><SelectTrigger aria-label={t("Test resource type")}><SelectValue /></SelectTrigger><SelectContent><SelectGroup>{RESOURCE_TYPES.map((type) => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectGroup></SelectContent></Select></Field>
               <Button variant="outline" onClick={testMatch}>{t("Test conditions")}</Button>
               {testResult ? <p role="status" className="text-sm">{testResult.split(' · ').map((reason) => translateError(reason)).join(' · ')}</p> : null}
-              <FieldDescription>{t("Checks unsaved conditions without sending any network requests. Uses advanced-proxy matching semantics.")}</FieldDescription>
+              <FieldDescription>{t("Tests these conditions without sending a request.")}</FieldDescription>
             </FieldGroup>
           </>;
   const errorMessage = error ? <Alert variant="destructive"><AlertDescription>{translateError(error)}</AlertDescription></Alert> : null;

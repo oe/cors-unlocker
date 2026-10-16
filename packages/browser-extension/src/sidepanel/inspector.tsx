@@ -1,4 +1,4 @@
-import { hasPersistentActions, needsProxy } from '@/common/quick-controls';
+import { needsProxy } from '@/common/quick-controls';
 import { t, translateError, useLocale } from '@/common/i18n';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import browser from 'webextension-polyfill';
@@ -29,7 +29,7 @@ function statusVariant(entry: IRequestLogEntry): 'default' | 'secondary' | 'dest
 
 function verificationMessage(rule: IProxyRule, connected: boolean, entry: IRequestLogEntry | null | undefined, hasNewRequests: boolean): string {
   if (!rule.enabled) return 'Rule disabled. Requests use their original behavior unless other rules apply.';
-  if (needsProxy(rule) && !connected) return 'Start a tab session to apply';
+  if (needsProxy(rule) && !connected) return 'Preparing enabled rules';
   if (!entry) return hasNewRequests
     ? 'Requests recorded, but none matched this rule. Repeat the target request or edit its conditions.'
     : 'Saved. Trigger the request again on the page to verify it.';
@@ -188,6 +188,17 @@ export function Inspector() {
     finally { setBusy(false); }
   };
 
+  const retryRules = async () => {
+    if (tabId === null) return;
+    setBusy(true); setMessage(null);
+    try {
+      const next = await browser.runtime.sendMessage({ type: 'retryRuleExecution', payload: { tabId } });
+      setStatus(next);
+      if (next?.error) setMessage(next.error);
+    } catch (error) { setMessage(String(error)); }
+    finally { setBusy(false); }
+  };
+
   const clear = async () => {
     if (tabId === null) return;
     await browser.runtime.sendMessage({ type: 'clearAdvancedProxyLog', payload: { tabId } });
@@ -219,32 +230,32 @@ export function Inspector() {
             <p className="truncate text-xs text-muted-foreground">{origin || t("No supported tab")}</p>
           </div>
         </div>
-        <Button size="sm" variant={status?.phase === 'connected' ? 'outline' : 'default'}
+        <Button size="sm" variant={status?.recording ? 'outline' : 'default'}
           disabled={busy || tabId === null || status?.phase === 'connecting'}
-          onClick={() => void toggle(status?.phase !== 'connected')}
-        >{t(status?.phase === 'connecting' ? 'Connecting…' : status?.phase === 'connected' ? 'Stop tab session' : 'Start tab session')}</Button>
+          onClick={() => void toggle(!status?.recording)}
+        >{t(status?.phase === 'connecting' ? 'Connecting…' : status?.recording ? 'Stop recording' : 'Start recording')}</Button>
       </header>
 
       <div className="rounded-lg border bg-muted/20 p-2.5 text-xs">
-        <p className="font-medium"><span>{t(status?.phase === 'connected' ? 'Tab session active' : 'Tab session stopped')}</span> · <span>{t(status?.phase === 'connected' && status.captureEnabled !== false ? 'Recording requests' : 'Not recording')}</span></p>
-        <p className="mt-1 text-muted-foreground">{t('{count} persistent rules enabled', { count: siteRules.filter((rule) => isRuleEnabled(rule, profiles) && hasPersistentActions(rule)).length })}</p>
-        <p className="mt-1 text-muted-foreground">{t('Stopping resets temporary changes and pauses session actions. Persistent rules stay enabled.')}</p>
+        <p className="font-medium"><span>{t(status?.phase === 'connected' ? (status.recording ? 'Recording requests' : 'Saved rules active') : 'Not recording requests')}</span></p>
+        <p className="mt-1 text-muted-foreground">{t('{count} persistent rules enabled', { count: siteRules.filter((rule) => isRuleEnabled(rule, profiles)).length })}</p>
+        <p className="mt-1 text-muted-foreground">{t('Stopping recording clears temporary changes. Saved rules keep running.')}</p>
       </div>
 
       {targetError || status?.phase === 'error' ? (
         <Alert>
           <CircleSlash2 />
-          <AlertTitle>{targetError ? t("This page is unavailable") : t("Advanced proxy could not start")}</AlertTitle>
+          <AlertTitle>{targetError ? t("This page is unavailable") : t("Rule execution needs attention")}</AlertTitle>
           <AlertDescription>
-            {targetError || status?.error ? translateError(targetError || status?.error || '') : t("Start the proxy, then trigger a request on the page. Enabled rules also apply.")}
+            {targetError || status?.error ? translateError(targetError || status?.error || '') : t("Enabled rules run automatically on matching pages.")}
           </AlertDescription>
+          {!targetError && siteRules.some(rule => isRuleEnabled(rule, profiles) && needsProxy(rule)) ? <Button size="sm" variant="outline" disabled={busy} onClick={() => void retryRules()}>{t('Retry rules')}</Button> : null}
         </Alert>
       ) : null}
       {savedRule ? <Alert role="status"><AlertTitle>{savedRule.name}</AlertTitle><AlertDescription className="text-wrap [&_p:not(:last-child)]:mb-2">
         <p>{t(ruleGroup(savedRule.id, profiles)?.enabled === false ? 'Group paused. This rule will not apply until the group is enabled.' : verificationMessage(savedRule, status?.phase === 'connected', verifiedRequest, hasNewRequests))}</p>
         <div className="mt-2 flex flex-wrap gap-2">
           {verifiedRequest ? <Button size="sm" variant="outline" onClick={() => showRequest(verifiedRequest.id)}>{t('View request')}</Button> : null}
-          {isRuleEnabled(savedRule, profiles) && status?.phase !== 'connected' && !verifiedRequest ? <Button size="sm" disabled={busy || tabId === null} onClick={() => void toggle(true)}>{t('Start recording requests')}</Button> : null}
           {savedRule.enabled ? <Button size="sm" variant="outline" disabled={busy} onClick={() => void toggleRule(savedRule, false)}>{t('Disable this rule')}</Button> : null}
           {savedRule.enabled && hasNewRequests && !verifiedRequest?.changes?.length ? <Button size="sm" variant="outline" disabled={busy} onClick={() => setDraft(draftFromRule(savedRule, profiles))}>{t('Edit proxy rule')}</Button> : null}
           <Button size="sm" variant="ghost" onClick={() => setVerification(null)}>{t('Dismiss')}</Button>
@@ -255,8 +266,7 @@ export function Inspector() {
       <Tabs value={view} onValueChange={setView}>
       <TabsList className="w-full"><TabsTrigger value="requests">{t('Requests')} ({entries.length})</TabsTrigger><TabsTrigger value="rules">{t('Rules')} ({siteRules.length})</TabsTrigger></TabsList>
       <TabsContent value="requests" className="flex flex-col gap-3">
-      {status?.phase !== 'connected' && tabId !== null ? <p className="text-xs text-muted-foreground">{t(__TARGET__ === 'chrome' ? 'Chrome shows a debugging banner during the session. Requests stay on your device.' : 'Firefox CORS: response headers only.')}</p> : null}
-      {status?.phase === 'connected' && status.captureEnabled === false ? <Button disabled={busy} onClick={() => void toggle(true)}>{t('Start recording requests')}</Button> : null}
+      {status?.phase !== 'connected' && tabId !== null ? <p className="text-xs text-muted-foreground">{t(__TARGET__ === 'chrome' ? 'Chrome may show its debugging indicator on matching pages. You can disable this rule in Wireflip at any time.' : 'Firefox CORS: response headers only.')}</p> : null}
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-2 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -287,13 +297,13 @@ export function Inspector() {
             ) : (
               <p className="text-xs leading-relaxed">{t(status?.phase === 'connected'
                 ? (status.captureEnabled === false ? 'Start recording requests' : 'Trigger a request on the page to see it here.')
-                : 'Start a tab session to record requests from this tab.')}</p>
+                : 'Start recording to include all requests from this tab.')}</p>
             )}
-            {entries.length === 0 ? <ol className="mt-2 space-y-2 text-left text-xs"><li>1. {t('Start a tab session.')}</li><li>2. {t('Repeat an action on your page, then select its request here.')}</li><li>3. {t('Choose a change, save it, and repeat the action to verify.')}</li></ol> : null}
+            {entries.length === 0 ? <ol className="mt-2 space-y-2 text-left text-xs"><li>1. {t('Start recording')}</li><li>2. {t('Repeat an action on your page, then select its request here.')}</li><li>3. {t('Choose a change, save it, and repeat the action to verify.')}</li></ol> : null}
           </div>
         )}
       </ScrollArea>
-      <details className="text-xs text-muted-foreground"><summary className="cursor-pointer">{t('About request capture')}</summary><p className="mt-2">{t('Advanced proxy records only. Basic browser rules may act before capture; this is not a complete network log.')}</p><p className="mt-2">{t(__TARGET__ === 'chrome' ? 'Chrome shows a debugging banner during the session. Requests stay on your device.' : 'Firefox CORS: response headers only.')}</p></details>
+      <details className="text-xs text-muted-foreground"><summary className="cursor-pointer">{t('About request capture')}</summary><p className="mt-2">{t('Start recording to inspect this tab’s traffic. Saved rules work without recording.')}</p><p className="mt-2">{t(__TARGET__ === 'chrome' ? 'Chrome may show its debugging indicator on matching pages. You can disable this rule in Wireflip at any time.' : 'Firefox CORS: response headers only.')}</p></details>
 
       {!selected && filtered.length > 0 ? <p className="text-xs text-muted-foreground">{t("Select a request to mock its response or change its behavior.")}</p> : null}
       {selected ? (
@@ -375,10 +385,7 @@ export function Inspector() {
             </div>
             <p className="break-all text-xs text-muted-foreground">{rule.match.methods?.join(', ') || t("All methods")} · {rule.match.urlPattern}</p>
             <div className="flex flex-wrap gap-1">
-              {ruleGroup(rule.id, profiles)?.enabled === false ? <Badge variant="outline">{t('Group paused')}</Badge> : !rule.enabled ? <Badge variant="outline">{t('Disabled')}</Badge> : <>
-                {hasPersistentActions(rule) ? <Badge variant="outline">{t('Persistent · across tabs')}</Badge> : null}
-                {needsProxy(rule) ? <Badge variant="outline">{t(status?.phase !== 'connected' ? 'Start a tab session to apply' : 'Active in this session')}</Badge> : null}
-              </>}
+              <Badge variant="outline">{t(ruleGroup(rule.id, profiles)?.enabled === false ? 'Group paused' : !rule.enabled ? 'Disabled' : needsProxy(rule) && status?.phase !== 'connected' ? 'Preparing enabled rules' : 'Enabled · matching pages')}</Badge>
               <Badge variant="secondary">{t('{count} recorded matches', { count: entries.filter((entry) => entry.matchedRuleIds.includes(rule.id)).length })}</Badge>
             </div>
           </section>)}

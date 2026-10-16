@@ -31,7 +31,7 @@ beforeEach(() => {
   debuggerApi.sendCommand.mockResolvedValue(undefined);
   vi.mocked(browser.tabs.get).mockResolvedValue({ id: 9, url: 'https://example.com/' } as browser.Tabs.Tab);
 });
-afterEach(async () => { await engine.disableAdvancedProxy(9); });
+afterEach(async () => { await engine.disableAdvancedProxyTransport(9); });
 
 describe('pending Chrome attachments', () => {
   it.each(['navigation', 'stop', 'close'] as const)('cancels a pending attachment on %s', async (reason) => {
@@ -43,7 +43,7 @@ describe('pending Chrome attachments', () => {
       vi.mocked(browser.tabs.get).mockResolvedValue({ id: 9, url: 'https://other.example.test/' } as browser.Tabs.Tab);
       tabUpdated(9, { url: 'https://other.example.test/' });
     } else if (reason === 'close') removed(9);
-    else await engine.disableAdvancedProxy(9);
+    else await engine.disableAdvancedProxyTransport(9);
     finish();
     expect((await pending).phase).toBe('disabled');
     expect(engine.getAdvancedProxyStatus(9).phase).toBe('disabled');
@@ -77,7 +77,7 @@ describe('pending Chrome attachments', () => {
     vi.mocked(browser.tabs.get).mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
     const pending = engine.enableAdvancedProxy(9);
     await vi.waitFor(() => expect(finish).toBeDefined());
-    await engine.disableAdvancedProxy(9);
+    await engine.disableAdvancedProxyTransport(9);
     finish({ id: 9, url: 'https://example.com/' } as browser.Tabs.Tab);
     expect((await pending).phase).toBe('disabled');
     expect(debuggerApi.attach).not.toHaveBeenCalled();
@@ -204,7 +204,7 @@ it('releases delayed work immediately when the session stops', async () => {
   try {
     await engine.enableAdvancedProxy(9, { quickControls: { ...cache, delayMs: 3000, failure: true } });
     const pending = event({ tabId: 9 }, 'Fetch.requestPaused', { requestId: 'waiting', resourceType: 'Fetch', request: { url: 'https://example.com/api', method: 'GET', headers: {} } });
-    await engine.disableAdvancedProxy(9);
+    await engine.disableAdvancedProxyTransport(9);
     await pending;
     expect(debuggerApi.sendCommand.mock.calls.some((call) => call[1] === 'Fetch.failRequest')).toBe(false);
   } finally { vi.useRealTimers(); }
@@ -250,4 +250,35 @@ it('pauses and resumes group header actions in an already connected Chrome tab',
   storageChanged({ proxyAppState: { newValue: state } }, 'local');
   await request('resumed');
   expect(debuggerApi.sendCommand).toHaveBeenLastCalledWith({ tabId: 9 }, 'Fetch.continueRequest', expect.objectContaining({ headers: [{ name: 'X-Group', value: 'yes' }] }));
+});
+
+it('keeps persistent interception running when request recording stops', async () => {
+  const state = migrateLegacyState([], {}, 1);
+  state.rules = [{
+    id: 'persistent-failure', name: 'Persistent failure', enabled: true, source: 'user', createdAt: 1, updatedAt: 1,
+    match: { initiatorOrigins: ['https://example.com'], urlPattern: '*' },
+    actions: [{ type: 'networkFailure', reason: 'Failed' }],
+  }];
+  vi.mocked(ensureProxyAppState).mockResolvedValueOnce(state);
+  await engine.enableAdvancedProxy(9);
+  debuggerApi.detach.mockClear();
+  expect(await engine.disableAdvancedProxy(9)).toMatchObject({ phase: 'connected', recording: false });
+  expect(debuggerApi.detach).not.toHaveBeenCalled();
+  await event({ tabId: 9 }, 'Fetch.requestPaused', {
+    requestId: 'saved-after-stop', resourceType: 'Fetch', request: { url: 'https://example.com/api', method: 'GET', headers: {} },
+  });
+  expect(debuggerApi.sendCommand).toHaveBeenLastCalledWith({ tabId: 9 }, 'Fetch.failRequest', { requestId: 'saved-after-stop', errorReason: 'Failed' });
+});
+
+it('applies quick controls when an automatic saved-rule runtime already exists', async () => {
+  const state = migrateLegacyState([], {}, 1);
+  state.rules = [{ id: 'saved', name: 'Saved', enabled: true, source: 'user', createdAt: 1, updatedAt: 1,
+    match: { initiatorOrigins: ['https://example.com'], urlPattern: '*' },
+    actions: [{ type: 'networkFailure', reason: 'Failed' }] }];
+  vi.mocked(ensureProxyAppState).mockResolvedValueOnce(state);
+  await engine.enableAdvancedProxy(9, { automatic: true });
+  expect(await engine.enableAdvancedProxy(9, { quickControls: cache })).toMatchObject({
+    phase: 'connected', recording: false, quickControls: { disableCache: true },
+  });
+  expect(debuggerApi.attach).toHaveBeenCalledTimes(1);
 });

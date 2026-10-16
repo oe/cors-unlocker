@@ -55,7 +55,7 @@ export function ActionFields({ action, onChange }: { action: IProxyAction; onCha
         <details><summary className="cursor-pointer text-sm font-medium">{t('Response headers')}</summary><div className="mt-3"><Headers value={action.headers} onChange={(headers) => onChange({ ...action, headers })} /></div></details>
       </FieldGroup>;
     case 'delay':
-      return <Field><FieldLabel>{t("Delay in milliseconds")}</FieldLabel><Input aria-label={t("Delay in milliseconds")} type="number" min={0} max={30000} value={action.milliseconds} onChange={(e) => onChange({ ...action, milliseconds: Number(e.target.value) })} /><FieldDescription>{t("0–30,000 ms. Requires advanced proxy.")}</FieldDescription></Field>;
+      return <Field><FieldLabel>{t("Delay in milliseconds")}</FieldLabel><Input aria-label={t("Delay in milliseconds")} type="number" min={0} max={30000} value={action.milliseconds} onChange={(e) => onChange({ ...action, milliseconds: Number(e.target.value) })} /><FieldDescription>0–30,000 ms</FieldDescription></Field>;
     case 'redirect':
       return <Field><FieldLabel>{t("Destination URL")}</FieldLabel><Input aria-label={t("Destination URL")} value={action.url} onChange={(e) => onChange({ ...action, url: e.target.value })} placeholder="https://localhost.example/api" /></Field>;
     case 'networkFailure':

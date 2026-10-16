@@ -2,7 +2,7 @@ import { t } from '@/common/i18n';
 import type { IProxyProfile, IProxyRule } from '@/common/proxy-state';
 import { Switch } from '@/components/ui/switch';
 
-/** Only groups relevant to this page; a switch changes saved rules, never starts a session. */
+/** Only groups relevant to this page; switches control saved execution across matching tabs. */
 export function RuleGroupControls({ profiles, rules, busy, toggle }: {
   profiles: IProxyProfile[]; rules: IProxyRule[]; busy: boolean;
   toggle: (profile: IProxyProfile, enabled: boolean) => void;
@@ -18,6 +18,5 @@ export function RuleGroupControls({ profiles, rules, busy, toggle }: {
       </div>
       <Switch aria-label={t('Enable group {name}', { name: profile.name })} checked={profile.enabled} disabled={busy} onCheckedChange={(enabled) => toggle(profile, enabled)} />
     </div>)}
-    <p className="text-xs text-muted-foreground">{t('Affects saved rules across tabs. Does not start a tab session.')}</p>
   </section>;
 }

@@ -1,3 +1,6 @@
+import { reconcileSavedRuleRuntime, retrySavedRuleTab } from './saved-rule-runtime';
+import { needsProxy } from '@/common/quick-controls';
+import { requestRuleApproval, approvalInfo, resolveRuleApproval } from './rule-approval';
 import browser from 'webextension-polyfill';
 import type { IRuleItem } from '@/types';
 import {
@@ -25,6 +28,7 @@ import {
   removeProxyRule,
   updateProxyRule,
   performProxyStateOperation,
+  isRuleEnabled,
 } from '@/common/proxy-state';
 
 // Allowed external origins for security
@@ -256,12 +260,18 @@ async function handleSdkRequest(
         origin,
         capabilities: PRODUCT_CAPABILITIES,
       };
-    case 'getStatus':
+    case 'getStatus': {
+      const execution = getAdvancedProxyStatus(sender.tab.id);
+      const state = data?.ruleId ? await ensureProxyAppState() : undefined;
+      const rule = state?.rules.find(rule => rule.id === data.ruleId && rule.match.initiatorOrigins.includes(origin));
+      const enabled = rule && state ? isRuleEnabled(rule, state.profiles) : false;
       return {
         origin,
         cors: await isOriginEnabled(origin),
-        advancedMode: getAdvancedProxyStatus(sender.tab.id).phase,
+        advancedMode: execution.phase,
+        ...(data?.ruleId ? { rule: rule ? { id: rule.id, enabled, ready: enabled && (!needsProxy(rule) || execution.phase === 'connected' && execution.origin === origin && execution.captureEnabled !== false), error: execution.error } : null } : {}),
       };
+    }
     case 'requestCors': {
       await toggleRuleViaOrigin({
         origin,
@@ -281,6 +291,8 @@ async function handleSdkRequest(
         cors: await isOriginEnabled(origin),
         advancedMode: getAdvancedProxyStatus(sender.tab.id).phase,
       };
+    case 'requestRule':
+      return requestRuleApproval(data, sender.tab.id, origin);
     case 'createRuleDraft': {
       const draft = data?.rule;
       if (!draft || typeof draft !== 'object') throw new Error('Missing rule draft.');
@@ -338,15 +350,28 @@ export async function onRuntimeMessage(
       case 'sdkRequest':
         return handleSdkRequest(message, sender);
 
+      case 'getRuleApproval':
+        return approvalInfo(message.payload?.id);
+      case 'resolveRuleApproval':
+        await resolveRuleApproval(message.payload?.id, message.payload?.accepted === true);
+        return { success: true };
+
       case 'proxyStateOperation':
         if (!isValidExtensionSender(sender)) throw new Error('State changes require an extension page.');
-        return { state: await performProxyStateOperation(message.payload) };
+        { const state = await performProxyStateOperation(message.payload); await reconcileSavedRuleRuntime(state); return { state }; }
 
       case 'updateQuickControls': {
         if (!isValidExtensionSender(sender)) throw new Error('Quick controls require an extension page.');
         const tabId = message.payload?.tabId;
         if (!Number.isInteger(tabId) || tabId < 0) throw new Error('Missing tab ID.');
         return updateQuickControls(tabId, message.payload?.quickControls);
+      }
+
+      case 'retryRuleExecution': {
+        const tabId = message.payload?.tabId;
+        if (!Number.isInteger(tabId) || tabId < 0) throw new Error('Missing tab ID.');
+        await retrySavedRuleTab(tabId);
+        return getAdvancedProxyStatus(tabId);
       }
 
       case 'getAdvancedProxyStatus': {
@@ -390,6 +415,7 @@ export async function onRuntimeMessage(
         const saved = rule.id
           ? await updateProxyRule(rule.id, rule, message.payload?.groupId)
           : await addProxyRule({ ...rule, source: 'user' }, message.payload?.groupId);
+        await reconcileSavedRuleRuntime(await ensureProxyAppState());
         return { success: true, rule: saved };
       }
 
@@ -397,6 +423,7 @@ export async function onRuntimeMessage(
         const id = message.payload?.id;
         if (typeof id !== 'string') return { success: false, error: 'Missing proxy rule ID.' };
         await removeProxyRule(id);
+        await reconcileSavedRuleRuntime(await ensureProxyAppState());
         return { success: true };
       }
 

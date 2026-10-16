@@ -71,9 +71,11 @@ export function UpgradeNotice({ onViewRules, onViewRecovery, expanded = false, o
         <div className="mt-2 flex flex-col gap-2">
           <p>{t('Inspect requests, create local mocks, and test delays and failures. Saved rules and temporary tab controls are separate.')}</p>
           <p>{t('Use Inspector for request activity, Rules for saved configurations, and Data & recovery for backups. Existing site CORS rules remain available in the popup.')}</p>
+          <p>{t('Enabled rules run automatically on matching pages.')}</p>
+          <p>{t('Stopping recording clears temporary changes. Saved rules keep running.')}</p>
           <p>{t(__TARGET__ === 'chrome'
-            ? 'Advanced features start only when you choose a tab session. Chrome shows a debugging banner; stopping the session clears temporary controls.'
-            : 'Interception starts only when you choose a tab session. Firefox response replacement still contacts the server and keeps its status.')}</p>
+            ? 'Chrome may show its debugging indicator on matching pages. You can disable this rule in Wireflip at any time.'
+            : 'You can disable this rule in Wireflip at any time. Firefox still contacts the server and keeps its status.')}</p>
           <p>{t('No account or cloud sync. Your existing cors-unlocker SDK integration can keep using the original bridge.')}</p>
           <a href="https://wireflip.forth.ink/migration/" target="_blank" rel="noopener noreferrer" className="underline">{t('Read the migration guide')}</a>
         </div>

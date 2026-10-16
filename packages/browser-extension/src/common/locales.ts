@@ -1,4 +1,5 @@
 // English source keys are the fallback. Technical values and user content are never translated.
+import { runtimeMessages } from "./runtime-messages";
 import { groupMessages } from "./group-messages";
 import { toolbarMessages } from "./toolbar-messages";
 import { upgradeMessages } from "./upgrade-messages";
@@ -6,6 +7,7 @@ import { upgradeMessages } from "./upgrade-messages";
 export const messages: Record<string, Record<string, string>> = {
   "Filters": { "en": "Filters", "zh-CN": "筛选", "ko": "필터", "ja": "フィルター", "fr": "Filtres", "es": "Filtros" },
   ...toolbarMessages,
+  ...runtimeMessages,
   ...groupMessages,
   ...upgradeMessages,
   "Plain text": {

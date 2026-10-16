@@ -19,15 +19,15 @@ describe('upgrade explanation', () => {
   it('uses Firefox-specific limits rather than a Chrome debugger disclosure', async () => {
     vi.stubGlobal('__TARGET__', 'firefox');
     render(<UpgradeNotice {...props} expanded />);
-    expect(await screen.findByText(/Firefox response replacement still contacts the server/)).toBeVisible();
-    expect(screen.queryByText(/Chrome shows a debugging banner/)).not.toBeInTheDocument();
+    expect(await screen.findByText(/Firefox still contacts the server/)).toBeVisible();
+    expect(screen.queryByText(/Chrome may show its debugging indicator/)).not.toBeInTheDocument();
   });
   it('shows the old/new logos, browser disclosure and saved-rule entry point without changing rules or starting a session', async () => {
     const before = structuredClone(stored.proxyAppState);
     render(<UpgradeNotice {...props} expanded />);
     expect(await screen.findByRole('region', { name: 'About your Wireflip upgrade' })).toBeVisible();
     expect(screen.getByRole('img', { name: 'CORS Unlocker' })).toHaveAttribute('src', '/icon/legacy-128.png');
-    expect(screen.getByText(/Chrome shows a debugging banner/)).toBeVisible();
+    expect(screen.getByText(/Chrome may show its debugging indicator/)).toBeVisible();
     await userEvent.click(screen.getByRole('button', { name: 'View saved rules' }));
     expect(props.onViewRules).toHaveBeenCalledOnce();
     expect(browser.runtime.sendMessage).not.toHaveBeenCalled();

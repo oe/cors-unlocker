@@ -54,6 +54,8 @@ jobs:
         run: pnpm --filter website build
 
       - name: Run Chrome extension end-to-end tests
+        id: chrome_e2e
+        continue-on-error: true
         env:
           WIREFLIP_INLINE_EVIDENCE: '1'
         run: |
@@ -75,7 +77,17 @@ jobs:
       - name: Install native Firefox test browser
         run: bash packages/browser-extension/scripts/install-firefox-test-browser.sh "$RUNNER_TEMP/wireflip-firefox"
 
+      - name: Verify one-approval Playground in candidate Firefox
+        id: firefox_activation
+        continue-on-error: true
+        env:
+          FIREFOX_BINARY: ${{ runner.temp }}/wireflip-firefox/firefox/firefox
+          GECKODRIVER: ${{ runner.temp }}/wireflip-firefox/geckodriver
+        run: python3 packages/browser-extension/tests/firefox/automatic_playground_test.py
+
       - name: Run Firefox extension end-to-end tests
+        id: firefox_e2e
+        continue-on-error: true
         env:
           FIREFOX_BINARY: ${{ runner.temp }}/wireflip-firefox/firefox/firefox
           GECKODRIVER: ${{ runner.temp }}/wireflip-firefox/geckodriver
@@ -83,6 +95,8 @@ jobs:
         run: pnpm --filter browser-wireflip test:e2e:firefox
 
       - name: Verify packaged SDKs in native Firefox
+        id: firefox_sdk
+        continue-on-error: true
         env:
           FIREFOX_BINARY: ${{ runner.temp }}/wireflip-firefox/firefox/firefox
           GECKODRIVER: ${{ runner.temp }}/wireflip-firefox/geckodriver
@@ -96,6 +110,20 @@ jobs:
           path: packages/browser-extension/test-results/firefox
           if-no-files-found: ignore
           retention-days: 7
+
+      # Collect independent browser failures in one run without allowing a green gate.
+      - name: Require all native browser acceptance checks
+        if: always()
+        env:
+          CHROME_RESULT: ${{ steps.chrome_e2e.outcome }}
+          FIREFOX_ACTIVATION_RESULT: ${{ steps.firefox_activation.outcome }}
+          FIREFOX_RESULT: ${{ steps.firefox_e2e.outcome }}
+          SDK_RESULT: ${{ steps.firefox_sdk.outcome }}
+        run: |
+          test "$CHROME_RESULT" = success
+          test "$FIREFOX_ACTIVATION_RESULT" = success
+          test "$FIREFOX_RESULT" = success
+          test "$SDK_RESULT" = success
 
       - name: Upload SDK acceptance archives and checksums
         uses: actions/upload-artifact@v4

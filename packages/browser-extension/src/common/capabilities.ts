@@ -10,6 +10,8 @@ export function capabilitiesFor(target: BrowserTarget) {
     browser: target,
     cors: true as const,
     draftRules: true as const,
+    ruleActivation: true as const,
+    ruleExecution: 'automatic' as const,
     workspace: true as const,
     advancedMode: 'user-initiated' as const,
     interception: {
