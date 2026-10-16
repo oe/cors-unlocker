@@ -15,15 +15,15 @@ describe('toolbar and popup group summary', () => {
     const state = migrateLegacyState([], {}, 1);
     state.rules = [rule('paused'), rule('waiting'), rule('off', { enabled: false }), rule('other', { match: { initiatorOrigins: ['https://other.example'], urlPattern: '*' } })];
     state.profiles = [{ id: 'staging', name: 'Staging', enabled: false, ruleIds: ['paused', 'off'] }, { id: 'other', name: 'Other', enabled: false, ruleIds: ['other'] }];
-    expect(summarizeTabRules(state, origin)).toEqual({ pausedGroups: ['Staging'], pausedRules: 1, sessionRules: 1 });
-    expect(summarizeTabRules(state, '')).toEqual({ pausedGroups: [], pausedRules: 0, sessionRules: 0 });
+    expect(summarizeTabRules(state, origin)).toEqual({ enabledRules: 1, pausedGroups: ['Staging'], pausedRules: 1, sessionRules: 1 });
+    expect(summarizeTabRules(state, '')).toEqual({ enabledRules: 0, pausedGroups: [], pausedRules: 0, sessionRules: 0 });
     expect(state.rules[0].enabled).toBe(true);
   });
   it('gates wildcard groups but does not count persistent-only rules as waiting', () => {
     const state = migrateLegacyState([], {}, 1);
     state.rules = [rule('global', { match: { initiatorOrigins: ['*'], urlPattern: '*' } }), rule('header', { actions: [{ type: 'setRequestHeaders', headers: { 'X-Debug': 'yes' } }] })];
     state.profiles = [{ id: 'all', name: 'Global', enabled: false, ruleIds: ['global'] }];
-    expect(summarizeTabRules(state, 'https://any.example')).toEqual({ pausedGroups: ['Global'], pausedRules: 1, sessionRules: 0 });
+    expect(summarizeTabRules(state, 'https://any.example')).toEqual({ enabledRules: 0, pausedGroups: ['Global'], pausedRules: 1, sessionRules: 0 });
     expect(summarizeTabRules({ ...state, profiles: [] }, origin).sessionRules).toBe(1);
   });
   it('shows OFF only when the paused group explains why no saved changes are active', () => {
@@ -43,10 +43,10 @@ describe('toolbar and popup group summary', () => {
   it('offers useful waiting and error hints without letting names inject tooltip lines', () => {
     const result = toolbarPresentation(origin, { tabId: 1, phase: 'error', error: 'Debugger unavailable' }, 0, 'en', { pausedGroups: ['Staging\nFake status'], pausedRules: 1, sessionRules: 2 });
     expect(result).toMatchObject({ state: 'error', badge: '!' });
-    expect(result.title).toContain('Rules waiting for a tab session: 2');
+    expect(result.title).toContain('Preparing enabled rules');
     expect(result.title).toContain('• Staging Fake status');
     expect(result.title).toContain('Debugger unavailable');
-    expect(result.title).toContain('Click for session controls and group switches');
+    expect(result.title).toContain('Click for rules and temporary changes');
     expect(toolbarPresentation('chrome://extensions', { tabId: 1, phase: 'error' }, 0, 'en', { pausedGroups: ['Staging'], pausedRules: 1, sessionRules: 2 }).title).not.toContain('Staging');
   });
 });

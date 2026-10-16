@@ -126,5 +126,13 @@ export const runtimeMessages: Record<string, Record<string, string>> = {
     "ja": "記録を開始すると、このタブのすべてのリクエストを表示します。",
     "fr": "Démarrez l’enregistrement pour inclure toutes les requêtes de cet onglet.",
     "es": "Inicia la grabación para incluir todas las solicitudes de esta pestaña."
+  },
+  "Temporary changes active": {
+    "en": "Temporary changes active",
+    "zh-CN": "临时修改正在生效",
+    "ko": "임시 변경 적용 중",
+    "ja": "一時変更適用中",
+    "fr": "Modifications temporaires actives",
+    "es": "Cambios temporales activos"
   }
 };

@@ -226,7 +226,7 @@ export function Inspector() {
       </header>
 
       <div className="rounded-lg border bg-muted/20 p-2.5 text-xs">
-        <p className="font-medium"><span>{t(status?.phase === 'connected' ? (status.recording ? 'Recording requests' : 'Saved rules active') : 'Not recording requests')}</span> · <span>{t(status?.phase === 'connected' && status.recording === true ? 'Recording requests' : 'Not recording')}</span></p>
+        <p className="font-medium"><span>{t(status?.phase === 'connected' ? (status.recording ? 'Recording requests' : 'Saved rules active') : 'Not recording requests')}</span></p>
         <p className="mt-1 text-muted-foreground">{t('{count} persistent rules enabled', { count: siteRules.filter((rule) => isRuleEnabled(rule, profiles) && hasPersistentActions(rule)).length })}</p>
         <p className="mt-1 text-muted-foreground">{t('Stopping recording clears temporary changes. Saved rules keep running.')}</p>
       </div>

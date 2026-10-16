@@ -1,3 +1,4 @@
+import { reconcileSavedRuleRuntime } from './saved-rule-runtime';
 import { needsProxy } from '@/common/quick-controls';
 import { requestRuleApproval, approvalInfo, resolveRuleApproval } from './rule-approval';
 import browser from 'webextension-polyfill';
@@ -357,7 +358,7 @@ export async function onRuntimeMessage(
 
       case 'proxyStateOperation':
         if (!isValidExtensionSender(sender)) throw new Error('State changes require an extension page.');
-        return { state: await performProxyStateOperation(message.payload) };
+        { const state = await performProxyStateOperation(message.payload); await reconcileSavedRuleRuntime(state); return { state }; }
 
       case 'updateQuickControls': {
         if (!isValidExtensionSender(sender)) throw new Error('Quick controls require an extension page.');
@@ -407,6 +408,7 @@ export async function onRuntimeMessage(
         const saved = rule.id
           ? await updateProxyRule(rule.id, rule, message.payload?.groupId)
           : await addProxyRule({ ...rule, source: 'user' }, message.payload?.groupId);
+        await reconcileSavedRuleRuntime(await ensureProxyAppState());
         return { success: true, rule: saved };
       }
 
@@ -414,6 +416,7 @@ export async function onRuntimeMessage(
         const id = message.payload?.id;
         if (typeof id !== 'string') return { success: false, error: 'Missing proxy rule ID.' };
         await removeProxyRule(id);
+        await reconcileSavedRuleRuntime(await ensureProxyAppState());
         return { success: true };
       }
 

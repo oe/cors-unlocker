@@ -23,19 +23,19 @@ export function toolbarPresentation(url: string | undefined, status: IAdvancedPr
   // A navigation can precede the engine's asynchronous detach notification.
   const phase = status.origin && status.origin !== origin ? 'disabled' : status.phase;
   const automatic = phase === 'connected' && status.recording === false && !(status.quickControls && hasActiveQuickControls(status.quickControls));
-  persistentCount = summary?.enabledRules ?? persistentCount;
+  persistentCount = Math.max(persistentCount, summary?.enabledRules ?? 0);
   const state: ToolbarState = phase === 'error' ? 'error' : phase === 'connecting' ? 'connecting'
     : automatic ? 'rules' : phase === 'connected' ? 'connected' : persistentCount > 0 ? 'rules' : 'idle';
   const allPaused = state === 'idle' && !!summary?.pausedRules && !summary.sessionRules;
   const heading = text(state === 'error' ? 'Rule execution needs attention' : state === 'connecting' ? 'Connecting…' : allPaused ? 'Saved rules paused'
-    : state === 'rules' ? 'Saved rules active' : state === 'connected' ? 'Recording requests' : 'Not recording requests');
+    : state === 'rules' ? 'Saved rules active' : state === 'connected' ? (status.recording === false ? 'Temporary changes active' : 'Recording requests') : 'Not recording requests');
   const count = text('{count} persistent rules enabled').replace('{count}', String(persistentCount));
   const badge = state === 'rules' ? (persistentCount > 99 ? '99+' : String(persistentCount))
     : state === 'connected' ? 'ON' : state === 'connecting' ? '…' : state === 'error' ? '!' : allPaused ? 'OFF' : '';
   const details: string[] = [];
   // Report applied controls only; pending, failed and previous-origin sessions are inactive.
   if (phase === 'connected') {
-    if (status.captureEnabled !== undefined) details.push(text((status.recording ?? status.captureEnabled) ? 'Recording requests' : 'Not recording requests'));
+    if (status.captureEnabled !== undefined && !(status.recording ?? status.captureEnabled)) details.push(text('Not recording requests'));
     const controls = status.quickControls;
     const active: string[] = [];
     if (controls?.cors) active.push(text('CORS repair') + (controls.credentials ? ` · ${text('Allow credentials')}` : ''));
@@ -56,7 +56,7 @@ export function toolbarPresentation(url: string | undefined, status: IAdvancedPr
     }
     if (phase === 'error' && status.error) details.push(status.error.replace(/[\r\n\t]/g, ' ').slice(0, 180));
   }
-  return { state, badge, title: ['Wireflip', heading, ...details, count, ...(summary ? [text('Click for session controls and group switches')] : [])].join('\n') };
+  return { state, badge, title: ['Wireflip', heading, ...details, count, ...(summary ? [text('Click for rules and temporary changes')] : [])].join('\n') };
 }
 
 export function countTabBrowserRules(rules: browser.DeclarativeNetRequest.Rule[], tabId: number): number {

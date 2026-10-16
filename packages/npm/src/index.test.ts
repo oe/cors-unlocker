@@ -98,3 +98,16 @@ describe('Wireflip SDK', () => {
     });
   });
 });
+
+it('requires activation support and preserves typed approval cancellation', async () => {
+  const bridge = mockBridge(request => request.method === 'connect' ? { data: { origin: 'https://app.example', capabilities: { ruleActivation: true } } } : { error: { type: 'user-cancel', message: 'Declined' } });
+  const session = await intercept.connect();
+  await expect(session.requestRule({ name: 'Mock', urlPattern: '*', actions: [{ type: 'block' }] })).rejects.toMatchObject({ type: 'user-cancel' });
+  expect(bridge.mock.calls.some(([request]) => (request as any).method === 'requestRule')).toBe(true);
+});
+it('does not ask an older extension to activate a rule', async () => {
+  const bridge = mockBridge(() => ({ data: { origin: 'https://app.example', capabilities: { protocolVersion: 2 } } }));
+  const session = await intercept.connect();
+  await expect(session.requestRule({ name: 'Block', urlPattern: '*', actions: [{ type: 'block' }] })).rejects.toThrow('Update Wireflip');
+  expect(bridge.mock.calls).toHaveLength(1);
+});

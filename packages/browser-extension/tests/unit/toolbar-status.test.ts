@@ -31,13 +31,13 @@ describe('event-driven toolbar updates', () => {
   it('updates the tooltip when controls change while the green ON state stays the same', async () => {
     const status: IAdvancedProxyStatus = { tabId: 1, phase: 'connected', captureEnabled: false, quickControls: { ...EMPTY_QUICK_CONTROLS, disableCache: true } };
     statuses.set(1, status); await toolbar.refreshToolbarTab(1);
-    expect(action.setTitle).toHaveBeenLastCalledWith({ tabId: 1, title: 'Wireflip\nTab session active\nNot recording requests\nThis tab · temporary\n• Disable cache\n0 persistent rules enabled' });
+    expect(action.setTitle).toHaveBeenLastCalledWith({ tabId: 1, title: 'Wireflip\nRecording requests\nNot recording requests\nThis tab · temporary\n• Disable cache\n0 persistent rules enabled' });
     statuses.set(1, { ...status, captureEnabled: true, quickControls: { ...EMPTY_QUICK_CONTROLS, delayMs: 3000 } });
     await toolbar.refreshToolbarTab(1);
-    expect(action.setTitle).toHaveBeenLastCalledWith({ tabId: 1, title: 'Wireflip\nTab session active\nRecording requests\nThis tab · temporary\n• Request delay: 3 s\n0 persistent rules enabled' });
+    expect(action.setTitle).toHaveBeenLastCalledWith({ tabId: 1, title: 'Wireflip\nRecording requests\nThis tab · temporary\n• Request delay: 3 s\n0 persistent rules enabled' });
     statuses.set(1, { ...status, captureEnabled: true, quickControls: { ...EMPTY_QUICK_CONTROLS } });
     await toolbar.refreshToolbarTab(1);
-    expect(action.setTitle).toHaveBeenLastCalledWith({ tabId: 1, title: 'Wireflip\nTab session active\nRecording requests\n0 persistent rules enabled' });
+    expect(action.setTitle).toHaveBeenLastCalledWith({ tabId: 1, title: 'Wireflip\nRecording requests\n0 persistent rules enabled' });
     expect(action.setBadgeText.mock.calls.map(([details]) => details.text)).toEqual(['ON', 'ON', 'ON']);
   });
   it('returns to blue after stopping a connected tab while a persistent rule remains', async () => {
@@ -62,7 +62,7 @@ describe('event-driven toolbar updates', () => {
     await toolbar.refreshToolbarTab(1); expect(action.setIcon).not.toHaveBeenCalled();
     vi.mocked(browser.storage.local.get).mockResolvedValue({ uiLanguage: 'zh-CN' });
     await toolbar.refreshAllToolbar();
-    expect(action.setTitle).toHaveBeenLastCalledWith({ tabId: 1, title: 'Wireflip\n本页调试已停止\n0 条持久规则已启用' });
+    expect(action.setTitle).toHaveBeenLastCalledWith({ tabId: 1, title: 'Wireflip\n未开启请求记录\n0 条持久规则已启用' });
   });
   it('does not paint a tab closed while asynchronous lookups are pending', async () => {
     let finish!: (tab: browser.Tabs.Tab) => void;
@@ -83,7 +83,7 @@ describe('event-driven toolbar updates', () => {
     const connected = toolbar.refreshToolbarTab(1);
     finish(); await connecting; await connected;
     expect(action.setBadgeText.mock.calls.map(([details]) => details.text)).toEqual(['…', 'ON']);
-    expect(action.setTitle).toHaveBeenLastCalledWith({ tabId: 1, title: 'Wireflip\nTab session active\n0 persistent rules enabled' });
+    expect(action.setTitle).toHaveBeenLastCalledWith({ tabId: 1, title: 'Wireflip\nRecording requests\n0 persistent rules enabled' });
   });
   it('recovers from native icon API failures without rejecting the proxy operation', async () => {
     statuses.set(1, { tabId: 1, phase: 'error' });

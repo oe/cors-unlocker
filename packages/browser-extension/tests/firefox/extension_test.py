@@ -260,7 +260,7 @@ class FirefoxTests(unittest.TestCase):
         mock = self.save([{'type': 'mockResponse', 'status': 200, 'headers': {}, 'body': 'local'}], '/mock')
         for rule in [header, mock]:
             self.message('saveProxyRule', rule={'id': rule['id']}, groupId=group['id'])
-        self.wait(self.toolbar, lambda value: value['badge'] == '1' and 'Rules waiting for a tab session: 1' in value['title'])
+        self.wait(self.toolbar, lambda value: value['badge'] == '2' and 'Saved rules active' in value['title'])
         self.message('proxyStateOperation', kind='updateGroup', id=group['id'], enabled=False)
         state = self.wait(self.toolbar, lambda value: value['badge'] == 'OFF')
         self.assertEqual(state['color'], [100, 116, 139, 255])
@@ -269,20 +269,20 @@ class FirefoxTests(unittest.TestCase):
         try:
             self.wait(lambda: self.js('return document.body.textContent.includes("Saved rules paused");'))
             self.js('document.querySelector(\'[role="switch"][aria-label="Enable group Toolbar staging"]\').click();')
-            self.wait(self.toolbar, lambda value: value['badge'] == '1')
+            self.wait(self.toolbar, lambda value: value['badge'] == '2')
             self.switch(popup)
-            self.wait(lambda: self.js('return document.body.textContent.includes("1 persistent rules stay on after stopping");'))
-            self.assertIn('Rules waiting for a tab session: 1', self.js('return document.body.textContent;'))
-            self.js('Array.from(document.querySelectorAll("button")).find(button=>button.textContent.trim()==="Start tab session").click();')
+            self.wait(lambda: self.js('return document.body.textContent.includes("Enabled rules run automatically on matching pages.");'))
+            self.assertIn('Saved rules active', self.js('return document.body.textContent;'))
+            self.js('Array.from(document.querySelectorAll("button")).find(button=>button.textContent.trim()==="Start recording").click();')
             self.wait(self.toolbar, lambda value: value['badge'] == 'ON')
             self.message('proxyStateOperation', kind='updateGroup', id=group['id'], enabled=False)
             self.wait(self.toolbar, lambda value: value['badge'] == 'ON' and 'Paused groups: 1' in value['title'])
             self.switch(popup)
-            self.js('Array.from(document.querySelectorAll("button")).find(button=>button.textContent.trim()==="Stop tab session").click();')
+            self.js('Array.from(document.querySelectorAll("button")).find(button=>button.textContent.trim()==="Stop recording").click();')
             self.wait(self.toolbar, lambda value: value['badge'] == 'OFF')
             self.switch(popup)
             self.wait(lambda: self.js('return document.body.textContent.includes("Saved rules paused");'))
-            self.wait(lambda: self.js('return !Array.from(document.querySelectorAll("button")).find(button=>button.textContent.trim()==="Start tab session").disabled;'))
+            self.wait(lambda: self.js('return !Array.from(document.querySelectorAll("button")).find(button=>button.textContent.trim()==="Start recording").disabled;'))
             (ARTIFACTS / 'toolbar-groups-popup.png').write_bytes(base64.b64decode(self.command('GET', '/screenshot')))
         finally:
             self.switch(popup)
@@ -472,7 +472,7 @@ class FirefoxTests(unittest.TestCase):
             self.assertTrue(self.message('saveProxyRule', rule={'id': rule['id']}, groupId=group['id'])['success'])
         disabled = self.save([{'type': 'setRequestHeaders', 'headers': {'X-Group-Off': 'unexpected'}}], '/echo')
         self.assertTrue(self.message('saveProxyRule', rule={'id': disabled['id'], 'enabled': False}, groupId=group['id'])['success'])
-        self.assertEqual(self.message('getAdvancedProxyStatus', tabId=self.tab_id)['phase'], 'disabled')
+        self.assertEqual(self.message('getAdvancedProxyStatus', tabId=self.tab_id)['phase'], 'connected')
         self.assertEqual(json.loads(self.fetch('/echo')['body'])['headers'].get('X-Group'), 'on')
         self.start()
         self.assertEqual(self.fetch('/mock')['body'], 'group-body')
@@ -509,7 +509,7 @@ class FirefoxTests(unittest.TestCase):
 
     def test_body_mock_contacts_server_preserves_status_and_stops(self):
         body = '{"source":"本地 Firefox mock"}'
-        self.save([{'type': 'mockResponse', 'status': 202, 'headers': {'Content-Type': 'application/json'}, 'body': body}], '/mock', resourceTypes=['Fetch'])
+        rule = self.save([{'type': 'mockResponse', 'status': 202, 'headers': {'Content-Type': 'application/json'}, 'body': body}], '/mock', resourceTypes=['Fetch'])
         self.start()
         before = Fixture.hits.get('/mock', 0)
         result = self.fetch('/mock')
@@ -519,6 +519,8 @@ class FirefoxTests(unittest.TestCase):
         logs = self.wait(lambda: self.message('getAdvancedProxyLog', tabId=self.tab_id), lambda entries: any(e['outcome'] == 'mocked' for e in entries))
         self.assertTrue(any(e['status'] == 418 and e['matchedRuleIds'] for e in logs))
         self.message('disableAdvancedProxy', tabId=self.tab_id)
+        self.assertEqual(self.fetch('/mock')['body'], body)
+        self.message('saveProxyRule', rule={'id': rule['id'], 'enabled': False})
         self.assertEqual(json.loads(self.fetch('/mock')['body'])['source'], 'server')
 
     def test_cors_header_repair_credentials_and_preflight_limit(self):
@@ -541,7 +543,7 @@ class FirefoxTests(unittest.TestCase):
             {'type': 'setRequestHeaders', 'headers': {'X-Wireflip-Combo': 'staging'}},
             {'type': 'setResponseHeaders', 'headers': {'X-Wireflip-Result': 'patched'}},
         ], '/combo-source')
-        self.assertEqual(json.loads(self.fetch('/combo-source')['body'])['path'], '/combo-source')
+        self.assertEqual(json.loads(self.fetch('/combo-source')['body'])['path'], '/combo-target')
         self.start()
         result = self.fetch('/combo-source')
         body = json.loads(result['body'])
@@ -583,13 +585,13 @@ class FirefoxTests(unittest.TestCase):
         self.wait(self.toolbar, lambda t: t['badge'] == '1')
         self.assertEqual(self.fetch('/echo')['headers'].get('x-persist'), 'yes')
 
-    def test_saved_cors_edits_apply_only_while_the_session_is_connected(self):
+    def test_saved_cors_runs_automatically_and_survives_stopping_recording(self):
         rule = self.save([{'type': 'cors', 'allowOrigin': '*', 'allowCredentials': False,
                           'allowMethods': ['GET'], 'allowHeaders': []}], '*', resourceTypes=['Fetch'])
-        self.assertTrue(self.fetch(self.other_origin + '/cors').get('failed'))
+        self.assertEqual(self.fetch(self.other_origin + '/cors')['status'], 200)
         self.start()
         self.assertEqual(self.fetch(self.other_origin + '/cors')['status'], 200)
-        self.wait(self.toolbar, lambda t: t['badge'] == 'ON' and '0 persistent rules' in t['title'])
+        self.wait(self.toolbar, lambda t: t['badge'] == 'ON' and '1 persistent rules' in t['title'])
         rule['enabled'] = False
         self.assertTrue(self.message('saveProxyRule', rule=rule)['success'])
         self.assertTrue(self.fetch(self.other_origin + '/cors').get('failed'))
@@ -597,8 +599,8 @@ class FirefoxTests(unittest.TestCase):
         self.assertTrue(self.message('saveProxyRule', rule=rule)['success'])
         self.assertEqual(self.fetch(self.other_origin + '/cors')['status'], 200)
         self.message('disableAdvancedProxy', tabId=self.tab_id)
-        self.assertTrue(self.fetch(self.other_origin + '/cors').get('failed'))
-        self.wait(self.toolbar, lambda t: t['badge'] == '')
+        self.assertEqual(self.fetch(self.other_origin + '/cors')['status'], 200)
+        self.wait(self.toolbar, lambda t: t['badge'] == '1')
 
     def test_quick_cors_does_not_leak_to_another_tab_on_the_same_origin(self):
         peer = self.new_page(self.origin + '/#peer')
@@ -654,7 +656,7 @@ class FirefoxTests(unittest.TestCase):
             self.wait(self.toolbar, lambda t: t['badge'] == 'ON' and 'CORS repair' in t['title'])
             self.assertEqual(self.fetch(self.other_origin + '/cors')['status'], 200)
             self.switch(popup)
-            stop = self.command('POST', '/element', {'using': 'xpath', 'value': '//button[normalize-space(.)="Stop tab session"]'})
+            stop = self.command('POST', '/element', {'using': 'xpath', 'value': '//button[normalize-space(.)="Reset temporary changes"]'})
             self.command('POST', '/element/' + stop['element-6066-11e4-a52e-4f735466cecf'] + '/click', {})
             self.wait(self.toolbar, lambda t: t['badge'] == '')
             self.switch(popup)
@@ -673,7 +675,7 @@ class FirefoxTests(unittest.TestCase):
             self.extension_js('await browser.storage.local.set({uiLanguage:"en"});')
             self.switch(popup)
             self.navigate(EXTENSION + f'/src/sidepanel/index.html?tabId={self.tab_id}')
-            self.wait(lambda: self.js('return document.body.innerText;'), lambda text: 'Tab session stopped' in text)
+            self.wait(lambda: self.js('return document.body.innerText;'), lambda text: 'Not recording requests' in text)
             self.assertTrue(self.js('return document.documentElement.scrollWidth <= innerWidth;'))
             (ARTIFACTS / 'inspector.png').write_bytes(base64.b64decode(self.command('GET', '/screenshot')))
         finally:
