@@ -68,3 +68,9 @@ export function hasPersistentActions(rule: Pick<IProxyRule, 'source' | 'actions'
 export function hasActiveQuickControls(controls: QuickControls): boolean {
   return controls.cors || controls.disableCache || controls.delayMs > 0 || controls.failure;
 }
+
+/** Only effectively enabled saved rules may prepare an interception runtime. */
+export function hasRuntimeRules(rules: readonly IProxyRule[], origin: string): boolean {
+  return rules.some(rule => rule.enabled && needsProxy(rule)
+    && rule.match.initiatorOrigins.some(value => value === '*' || value === origin));
+}

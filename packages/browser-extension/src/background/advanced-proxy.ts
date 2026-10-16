@@ -15,7 +15,7 @@ import {
   type ProxyHeaderMap,
 } from '@/common/proxy-state';
 import { globMatches, normalizeResourceType } from '@/common/request-match';
-import { EMPTY_QUICK_CONTROLS, needsProxy, hasActiveQuickControls, hasRedirectHeaders, parseQuickControls, quickControlRules, type QuickControls } from '@/common/quick-controls';
+import { EMPTY_QUICK_CONTROLS, hasRuntimeRules, hasActiveQuickControls, hasRedirectHeaders, parseQuickControls, quickControlRules, type QuickControls } from '@/common/quick-controls';
 
 const PROTOCOL_VERSION = '1.3';
 
@@ -659,7 +659,7 @@ export async function updateQuickControls(tabId: number, value: unknown): Promis
   const quickControls = parseQuickControls(value);
   const session = sessions.get(tabId);
   if (!session) throw new Error('Start a proxy session first.');
-  if (session.startedByQuickControls && !hasActiveQuickControls(quickControls) && !cachedRules.some(rule => needsProxy(rule) && rule.match.initiatorOrigins.some(origin => origin === '*' || origin === session.origin))) {
+  if (session.startedByQuickControls && !hasActiveQuickControls(quickControls) && !hasRuntimeRules(cachedRules, session.origin)) {
     return disableAdvancedProxyTransport(tabId);
   }
   if (session.quickControls.disableCache !== quickControls.disableCache) {
@@ -706,7 +706,7 @@ export function disableAdvancedProxyTransport(tabId: number): Promise<IAdvancedP
 /** Stop recording and temporary changes; saved rules keep running. */
 export async function disableAdvancedProxy(tabId: number): Promise<IAdvancedProxyStatus> {
   const active = sessions.get(tabId);
-  const saved = active && cachedRules.some(rule => needsProxy(rule) && rule.match.initiatorOrigins.some(origin => origin === '*' || origin === active.origin));
+  const saved = active && hasRuntimeRules(cachedRules, active.origin);
   if (active && saved && !hasActiveQuickControls(active.quickControls)) {
     active.recording = false;
     active.startedByQuickControls = false;

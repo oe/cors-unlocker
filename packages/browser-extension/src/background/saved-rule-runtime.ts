@@ -1,6 +1,6 @@
 import browser from 'webextension-polyfill';
 import { effectiveRules, type IProxyAppState } from '@/common/proxy-state';
-import { hasActiveQuickControls, needsProxy } from '@/common/quick-controls';
+import { hasActiveQuickControls, hasRuntimeRules } from '@/common/quick-controls';
 import { disableAdvancedProxyTransport, enableAdvancedProxy, getAdvancedProxyStatus } from '@/background/advanced-proxy';
 import { setRuleRuntimeHooks } from './rule-runtime-bridge';
 import { logger } from '@/common/logger';
@@ -38,8 +38,7 @@ export function reconcileSavedRuleTab(tabId: number): Promise<unknown> {
     if (paused.has(tabId) && paused.get(tabId) !== origin) {
       paused.delete(tabId); persistPauses();
     }
-    const needed = !!origin && rules.some(rule => needsProxy(rule)
-      && rule.match.initiatorOrigins.some(value => value === '*' || value === origin));
+    const needed = !!origin && hasRuntimeRules(rules, origin);
     if (!needed) {
       if (paused.delete(tabId)) persistPauses();
       if (status.phase === 'connected' && !status.recording
