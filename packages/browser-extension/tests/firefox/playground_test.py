@@ -55,6 +55,7 @@ class PlaygroundTests(native.FirefoxTests):
         self.js("""const el=document.querySelector(arguments[0]);Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value").set.call(el,arguments[1]);el.dispatchEvent(new Event("input",{bubbles:true}));""", selector, value)
 
     def capture(self, name):
+        self.js("""document.querySelector('button[aria-label="Test mock"]').scrollIntoView({block:"center"});""")
         data = self.command('GET', '/screenshot')
         (native.ARTIFACTS / (name + '.png')).write_bytes(base64.b64decode(data))
         if name == 'playground-public-recipe-verified':
