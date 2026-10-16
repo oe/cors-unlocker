@@ -173,13 +173,22 @@ function ProxyRules({ state, reload, navigate, onDirtyChange }: {
       <div className="flex shrink-0 flex-col gap-2 border-b p-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
             <Button size="xs" variant="ghost" disabled={busy} onClick={() => openGroup('create')}><Folder data-icon="inline-start" />{t('New group')}</Button>
-            <Button size="sm" disabled={busy} onClick={() => leave(() => setDraft({ ...EMPTY_DRAFT }))}><Plus data-icon="inline-start" />{t('New rule')}</Button>
+            <Button size="sm" variant={draft ? "outline" : "default"} disabled={busy} onClick={() => leave(() => setDraft({ ...EMPTY_DRAFT }))}><Plus data-icon="inline-start" />{t('New rule')}</Button>
         </div>
         <Input ref={search} aria-label={t("Search rules")} placeholder={t("Search rules · ⌘/Ctrl K")} value={query} onChange={(e) => setQuery(e.target.value)} />
+        <details className="text-xs">
+          <summary className="w-fit cursor-pointer rounded text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            {t('Filters')}{actionFilter !== 'all' || resourceFilter !== 'all' ? ` (${Number(actionFilter !== 'all') + Number(resourceFilter !== 'all')})` : ''}
+          </summary>
+          <div className="mt-2">
         <div className="grid grid-cols-2 gap-2">
           <Select value={actionFilter} onValueChange={(value) => value && setActionFilter(value)}><SelectTrigger className="w-full min-w-0" aria-label={t("Filter actions")}><SelectValue>{actionFilter === 'all' ? t("All actions") : t(ACTION_LABELS[actionFilter as keyof typeof ACTION_LABELS])}</SelectValue></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">{t("All actions")}</SelectItem>{Object.entries(ACTION_LABELS).map(([key, label]) => <SelectItem key={key} value={key}>{t(label)}</SelectItem>)}</SelectGroup></SelectContent></Select>
           <Select value={resourceFilter} onValueChange={(value) => value && setResourceFilter(value)}><SelectTrigger className="w-full min-w-0" aria-label={t("Filter resource types")}><SelectValue>{resourceFilter === 'all' ? t("All types") : resourceFilter}</SelectValue></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">{t("All resource types")}</SelectItem>{RESOURCE_TYPES.map((type) => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectGroup></SelectContent></Select>
         </div>
+
+          </div>
+        </details>
+        {actionFilter !== 'all' || resourceFilter !== 'all' ? <Button variant="ghost" size="xs" className="w-fit" onClick={() => { setActionFilter('all'); setResourceFilter('all'); }}>{t('Clear filter')}</Button> : null}
         <div className="flex justify-between text-xs text-muted-foreground"><span>{t('{shown} of {total} rules', { shown: filtered.length, total: state.rules.length })}</span><span>{t("↑ ↓ to navigate")}</span></div>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto" aria-label={t("Rules")}>

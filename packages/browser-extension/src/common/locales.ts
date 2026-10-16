@@ -4,6 +4,7 @@ import { toolbarMessages } from "./toolbar-messages";
 import { upgradeMessages } from "./upgrade-messages";
 
 export const messages: Record<string, Record<string, string>> = {
+  "Filters": { "en": "Filters", "zh-CN": "筛选", "ko": "필터", "ja": "フィルター", "fr": "Filtres", "es": "Filtros" },
   ...toolbarMessages,
   ...groupMessages,
   ...upgradeMessages,

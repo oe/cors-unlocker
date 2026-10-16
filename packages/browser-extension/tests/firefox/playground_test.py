@@ -103,6 +103,7 @@ class PlaygroundTests(native.FirefoxTests):
         self.assertIn('First add and enable', self.text())
         # Keep the exact recipe body; use a deterministic real upstream that returns 418.
         upstream = self.site_origin + '/probe/mock'
+        self.js("""Array.from(document.querySelectorAll('summary')).find(s=>s.textContent.trim()==='Advanced options').click();""")
         self.fill('input[value="https://jsonplaceholder.typicode.com/todos/2"]:not([aria-label])', upstream)
         self.fill('input[aria-label="Probe URL"]', upstream)
         self.click('Add rule in Wireflip')
@@ -117,7 +118,7 @@ class PlaygroundTests(native.FirefoxTests):
         self.js("""document.querySelector('[role="switch"][aria-label="Toggle Playground · Mock response"]').click();""")
         self.wait(lambda: self.message('getProxyState')['rules'][0]['enabled'])
         self.switch(self.target)
-        self.wait(lambda: self.text(), lambda text: 'Start a session for this Playground tab' in text)
+        self.wait(lambda: self.text(), lambda text: 'Start this tab’s session' in text)
         self.assertTrue(self.js("""return document.querySelector('button[aria-label="Test mock"]').disabled;"""))
         # Reproduce the reported failure: an enabled rule with no tab session
         # still returns the actual server body. This is not a broken mock filter.

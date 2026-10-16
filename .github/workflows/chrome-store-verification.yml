@@ -54,6 +54,7 @@ jobs:
           JSON
       - name: Verify signed public runtime and Playground
         env:
+          WIREFLIP_UX_AUDIT: '1'
           WIREFLIP_BUILT_SITE: ${{ github.event_name == 'pull_request' && '1' || '0' }}
         run: |
           if test -d artifacts/submitted-release; then

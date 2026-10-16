@@ -1,10 +1,11 @@
 ---
 import InstallLinks from './install-links.astro';
 import { NAVIGATION } from '../site-config';
+const isPlayground = Astro.url.pathname === '/playground/';
 const current = (href: string) => href.startsWith('/docs/') ? Astro.url.pathname.startsWith('/docs/') : href === Astro.url.pathname;
 ---
 <header class="sticky top-0 z-50 border-b hairline bg-white/95 backdrop-blur-xl">
-  <div class="site-shell flex h-16 items-center justify-between gap-3">
+  <div class:list={["site-shell flex items-center justify-between gap-3", isPlayground ? "h-14" : "h-16"]}>
     <a href="/" class="focus-ring flex shrink-0 items-center gap-2 rounded-lg font-semibold tracking-tight" aria-label="Wireflip home">
       <img class="size-7 object-contain" width="28" height="28" src="/brand-mark.svg" alt="" />
       <span class="hidden min-[400px]:inline">Wireflip</span>
@@ -13,7 +14,7 @@ const current = (href: string) => href.startsWith('/docs/') ? Astro.url.pathname
       {NAVIGATION.map(({ href, label }) => <a class="focus-ring rounded hover:text-black aria-[current=page]:font-semibold aria-[current=page]:text-black" href={href} aria-current={current(href) ? 'page' : undefined} {...(href.startsWith('https:') ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>{label}</a>)}
     </nav>
     <div class="flex items-center gap-3">
-      <InstallLinks compact />
+      {!isPlayground && <InstallLinks compact />}
       <details data-mobile-navigation class="relative md:hidden">
         <summary class="focus-ring cursor-pointer list-none rounded-lg border hairline px-2.5 py-2 text-sm font-medium">Menu</summary>
         <nav class="absolute right-0 top-12 flex min-w-48 flex-col gap-1 rounded-xl border hairline bg-white p-2 text-sm shadow-lg" aria-label="Mobile navigation">

@@ -1,7 +1,8 @@
 import { t } from '@/common/i18n';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowLeft, ChevronRight, Copy, Trash2 } from 'lucide-react';
+import { Menu } from '@base-ui/react/menu';
+import { ArrowLeft, ChevronRight, Copy, Trash2, MoreHorizontal } from 'lucide-react';
 import { RuleEditorForm, type RuleEditorParts } from '@/components/rule-dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -39,8 +40,15 @@ function EditorShell({ parts, onCopy, onDelete, headerTarget }: {
       <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
         <Switch aria-label={t("Rule enabled")} checked={parts.enabled} disabled={parts.pending} onCheckedChange={parts.setEnabled} />
         <span className="text-xs text-muted-foreground">{parts.enabled ? t("Enabled") : t("Disabled")}</span>
-        {onCopy ? <Button variant="ghost" size="icon-sm" aria-label={t("Duplicate rule")} title={t("Duplicate rule")} disabled={parts.pending} onClick={onCopy}><Copy /></Button> : null}
-        {onDelete ? <Button variant="ghost" size="icon-sm" aria-label={t("Delete selected rule")} title={t("Delete selected rule")} disabled={parts.pending} onClick={onDelete}><Trash2 /></Button> : null}
+        {onCopy || onDelete ? <Menu.Root>
+          <Menu.Trigger render={<Button variant="ghost" size="icon-sm" aria-label={t('More actions')} title={t('More actions')} disabled={parts.pending} />}><MoreHorizontal /></Menu.Trigger>
+          <Menu.Portal><Menu.Positioner sideOffset={6} align="end" className="z-50">
+            <Menu.Popup className="min-w-44 rounded-lg border bg-popover p-1 text-sm text-popover-foreground shadow-md outline-none">
+              {onCopy ? <Menu.Item disabled={parts.pending} className="flex cursor-default items-center gap-2 rounded px-3 py-2 outline-none data-disabled:opacity-50 data-highlighted:bg-accent" onClick={onCopy}><Copy className="size-4" />{t('Duplicate rule')}</Menu.Item> : null}
+              {onDelete ? <Menu.Item disabled={parts.pending} className="flex cursor-default items-center gap-2 rounded px-3 py-2 text-destructive outline-none data-disabled:opacity-50 data-highlighted:bg-accent" onClick={onDelete}><Trash2 className="size-4" />{t('Delete selected rule')}</Menu.Item> : null}
+            </Menu.Popup>
+          </Menu.Positioner></Menu.Portal>
+        </Menu.Root> : null}
         <Button size="sm" disabled={parts.pending} onClick={parts.save} title={t("Save rule (⌘/Ctrl+S)")}>{parts.pending ? t("Saving…") : t("Save rule")}</Button>
       </div>
     </>;
