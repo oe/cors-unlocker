@@ -44,6 +44,12 @@ class PlaygroundTests(native.FirefoxTests):
         cls.addClassCleanup(cls.site.shutdown)
         cls.site_origin = f'http://127.0.0.1:{cls.site.server_port}'
 
+    def setUp(self):
+        super().setUp()
+        self.switch(self.target)
+        self.navigate(self.site_origin + '/')
+        self.js('sessionStorage.clear();')
+
     def text(self):
         return self.js("""return document.querySelector("main").textContent;""")
 
@@ -129,8 +135,11 @@ class PlaygroundTests(native.FirefoxTests):
         self.capture('playground-mock-verified')
         logs = self.message('getAdvancedProxyLog', tabId=tab_id)
         self.assertTrue(any(rule['id'] in entry['matchedRuleIds'] and entry['outcome'] == 'mocked' for entry in logs), logs)
-        # Reopening the workspace must not create duplicate drafts.
+        # Refresh restores this custom recipe and reopens rather than duplicating it.
         self.switch(self.target)
+        self.navigate(self.site_origin + '/playground/')
+        self.wait(lambda: self.text(), lambda text: 'Extension connected · firefox' in text)
+        self.assertEqual(self.js("""return document.querySelector('input[aria-label="Probe URL"]').value;"""), upstream)
         self.click('Open rule in Wireflip')
         self.assertEqual(len(self.message('getProxyState')['rules']), 1)
         self.switch(self.control)

@@ -182,7 +182,14 @@ export default function Playground() {
   };
 
   useEffect(() => {
-    try { setDraftFingerprint(sessionStorage.getItem('wireflip:playground-draft')); } catch { /* Storage may be unavailable. */ }
+    try {
+      const saved = JSON.parse(sessionStorage.getItem('wireflip:playground-draft') || 'null');
+      if (saved && SCENARIOS.some(scenario => scenario.id === saved.selectedId)
+        && ['name', 'urlPattern', 'testUrl', 'actionJson', 'fingerprint'].every(key => typeof saved[key] === 'string')) {
+        setSelectedId(saved.selectedId); setName(saved.name); setUrlPattern(saved.urlPattern);
+        setTestUrl(saved.testUrl); setActionJson(saved.actionJson); setDraftFingerprint(saved.fingerprint);
+      }
+    } catch { /* Storage may be unavailable. */ }
     void connect();
   }, []);
 
@@ -231,7 +238,7 @@ export default function Playground() {
         actions: parsed as DraftAction[],
       });
       setDraftFingerprint(fingerprint);
-      try { sessionStorage.setItem('wireflip:playground-draft', fingerprint); } catch { /* Testing still works without storage. */ }
+      try { sessionStorage.setItem('wireflip:playground-draft', JSON.stringify({ selectedId, name, urlPattern, testUrl, actionJson, fingerprint })); } catch { /* Testing still works without storage. */ }
       setMessage('Rule added disabled. Turn on its switch in Wireflip, then return to the Playground tab' + (requiresSession ? ' and open the toolbar icon → Start tab session.' : ' to test it.'));
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Unable to create the draft.');
