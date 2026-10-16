@@ -5,7 +5,6 @@
  */
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
@@ -45,7 +44,9 @@ execFileSync('unzip', ['-q', path.join(output, 'public.zip'), '-d', publicDir]);
 execFileSync('unzip', ['-q', candidate, '-d', candidateDir]);
 const publicManifest = JSON.parse(readFileSync(path.join(publicDir, 'manifest.json')));
 assert.equal(publicManifest.version, expectedVersion);
-assert.equal(publicManifest.name, 'Wireflip');
+const nameKey = /^__MSG_(.+)__$/.exec(publicManifest.name)?.[1];
+const publicName = nameKey ? JSON.parse(readFileSync(path.join(publicDir, '_locales', publicManifest.default_locale, 'messages.json')))[nameKey].message : publicManifest.name;
+assert.equal(publicName, 'Wireflip');
 const files = (directory, prefix = '') => readdirSync(path.join(directory, prefix)).flatMap(name => {
   const relative = path.join(prefix, name);
   return statSync(path.join(directory, relative)).isDirectory() ? files(directory, relative) : [relative];
@@ -75,7 +76,7 @@ const results = {
 };
 console.log('PUBLIC_CHROME_PACKAGE ' + JSON.stringify(results));
 const profile = mkdtempSync(path.join(tmpdir(), 'wireflip-public-chrome-'));
-let context, server, activePage;
+let context, activePage;
 async function screenshot(page, name) {
   const bytes = await page.screenshot({ path: path.join(output, name + '.png'), fullPage: false, animations: 'disabled' });
   if (name === 'playground-verified') {
@@ -181,6 +182,5 @@ try {
   throw error;
 } finally {
   await context?.close();
-  server?.close();
   rmSync(profile, { recursive: true, force: true });
 }
