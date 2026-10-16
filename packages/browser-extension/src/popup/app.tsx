@@ -26,7 +26,7 @@ function App() {
   const presentation = toolbarPresentation(vm.origin, vm.status || { tabId: -1, phase: 'disabled' }, persistent, locale, vm.summary);
   const sessionError = presentation.state === 'error';
   const error = vm.error || (sessionError ? vm.status?.error || t('Rule execution needs attention') : null);
-  const heading = sessionError ? 'Rule execution needs attention' : vm.phase === 'connecting' ? 'Connecting…' : recording ? 'Recording requests' : vm.connected ? (hasActiveQuickControls(vm.quickControls) ? 'Temporary changes active' : 'Saved rules active') : presentation.badge === 'OFF' ? 'Saved rules paused' : 'Not recording requests';
+  const heading = sessionError ? 'Rule execution needs attention' : presentation.state === 'connecting' ? 'Preparing enabled rules' : recording ? 'Recording requests' : vm.connected ? (hasActiveQuickControls(vm.quickControls) ? 'Temporary changes active' : 'Saved rules active') : presentation.badge === 'OFF' ? 'Saved rules paused' : presentation.state === 'rules' ? 'Saved rules active' : 'Not recording requests';
   const sessionAction = vm.phase === 'connecting' ? 'Cancel connection' : sessionError ? (vm.summary.sessionRules ? 'Retry rules' : 'Retry connection') : recording ? 'Stop recording' : 'Start recording';
   const temporary = hasActiveQuickControls(vm.quickControls);
   const scope = (rule: IProxyRule) => ruleGroup(rule.id, vm.profiles)?.enabled === false ? t('Group paused') : !rule.enabled ? t('Disabled') : t('Enabled · matching pages');

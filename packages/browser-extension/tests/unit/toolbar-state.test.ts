@@ -68,3 +68,13 @@ describe('toolbar state semantics', () => {
     expect(countTabBrowserRules([...rules, { id: TEMPORARY_CORS_RULE_ID_BASE, condition: { tabIds: [1] } } as browser.DeclarativeNetRequest.Rule], 1)).toBe(2);
   });
 });
+
+it('reports saved runtime rules as preparing until execution is actually ready', () => {
+  const summary = { enabledRules: 1, sessionRules: 1, pausedRules: 0, pausedGroups: [] };
+  expect(toolbarPresentation(url, { tabId: 1, phase: 'disabled' }, 0, 'en', summary)).toMatchObject({
+    state: 'connecting', badge: '…',
+  });
+  expect(toolbarPresentation(url, { tabId: 1, phase: 'connected', recording: false }, 0, 'en', summary)).toMatchObject({
+    state: 'rules', badge: '1',
+  });
+});

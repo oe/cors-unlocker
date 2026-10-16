@@ -24,7 +24,8 @@ export function toolbarPresentation(url: string | undefined, status: IAdvancedPr
   const phase = status.origin && status.origin !== origin ? 'disabled' : status.phase;
   const automatic = phase === 'connected' && status.recording === false && !(status.quickControls && hasActiveQuickControls(status.quickControls));
   persistentCount = Math.max(persistentCount, summary?.enabledRules ?? 0);
-  const state: ToolbarState = phase === 'error' ? 'error' : phase === 'connecting' ? 'connecting'
+  const preparing = phase === 'connecting' || phase === 'disabled' && !!summary?.sessionRules;
+  const state: ToolbarState = phase === 'error' ? 'error' : preparing ? 'connecting'
     : automatic ? 'rules' : phase === 'connected' ? 'connected' : persistentCount > 0 ? 'rules' : 'idle';
   const allPaused = state === 'idle' && !!summary?.pausedRules && !summary.sessionRules;
   const heading = text(state === 'error' ? 'Rule execution needs attention' : state === 'connecting' ? 'Connecting…' : allPaused ? 'Saved rules paused'
