@@ -1168,16 +1168,11 @@ test('applies fast-path request headers and blocking through DNR', async () => {
   await target.close();
 });
 
-test('cancels a pending attachment when its tab navigates to another origin', async () => {
+test('cancels automatic rule preparation when its tab navigates to another origin', async () => {
   const target = await context.newPage();
   await target.goto('http://attach-race.localhost:3000/');
   const tabId = await getTabId('http://attach-race.localhost:3000/');
   const worker = await currentWorker();
-  const saved = await control.evaluate(async () => chrome.runtime.sendMessage({ type: 'saveProxyRule', payload: { rule: {
-    name: 'Pending origin regression', enabled: true,
-    match: { initiatorOrigins: ['http://attach-race.localhost:3000'], urlPattern: '*' },
-    actions: [{ type: 'mockResponse', status: 200, headers: {}, body: '{"wrongOrigin":true}' }],
-  } } }));
   await worker.evaluate(() => {
     const native = chrome.debugger.attach.bind(chrome.debugger);
     (self as any).__restoreRaceAttach = () => { chrome.debugger.attach = native; };
@@ -1187,12 +1182,16 @@ test('cancels a pending attachment when its tab navigates to another origin', as
       return (native as any)(...args);
     }) as typeof chrome.debugger.attach;
   });
-  const starting = control.evaluate(async (id) => chrome.runtime.sendMessage({ type: 'enableAdvancedProxy', payload: { tabId: id } }), tabId);
+  const saving = control.evaluate(async () => chrome.runtime.sendMessage({ type: 'saveProxyRule', payload: { rule: {
+    name: 'Pending origin regression', enabled: true,
+    match: { initiatorOrigins: ['http://attach-race.localhost:3000'], urlPattern: '*' },
+    actions: [{ type: 'mockResponse', status: 200, headers: {}, body: '{"wrongOrigin":true}' }],
+  } } }));
   try {
     await expect.poll(() => worker.evaluate(() => typeof (self as any).__releaseRaceAttach)).toBe('function');
     await target.goto('http://other-attach.localhost:3000/');
     await worker.evaluate(() => (self as any).__releaseRaceAttach());
-    expect((await starting).phase).toBe('disabled');
+    expect((await saving).success).toBe(true);
     await expect.poll(() => control.evaluate(async (id) => chrome.runtime.sendMessage({ type: 'getAdvancedProxyStatus', payload: { tabId: id } }), tabId))
       .toMatchObject({ phase: 'disabled' });
     expect(await target.evaluate(async () => (await fetch('/api/headers-echo')).json())).not.toHaveProperty('wrongOrigin');
@@ -1201,8 +1200,8 @@ test('cancels a pending attachment when its tab navigates to another origin', as
       (self as any).__restoreRaceAttach?.(); (self as any).__releaseRaceAttach?.();
       delete (self as any).__restoreRaceAttach; delete (self as any).__releaseRaceAttach;
     });
-    await starting.catch(() => undefined);
-    await control.evaluate(async (id) => chrome.runtime.sendMessage({ type: 'deleteProxyRule', payload: { id } }), saved.rule.id);
+    const saved = await saving.catch(() => undefined);
+    if (saved?.rule?.id) await control.evaluate(async (id) => chrome.runtime.sendMessage({ type: 'deleteProxyRule', payload: { id } }), saved.rule.id);
     await target.close();
   }
 });

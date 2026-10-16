@@ -138,17 +138,17 @@ describe('request-first inspector', () => {
     expect(screen.getByText('Rule disabled. Requests use their original behavior unless other rules apply.')).toBeInTheDocument();
   });
 
-  it('shows persistent rules while stopped and preserves request selection between tabs', async () => {
+  it('counts enabled saved mocks while preparing and preserves request selection between tabs', async () => {
     const user = userEvent.setup();
     connected = false;
-    rules = [{ id: 'header', name: 'Staging header', enabled: true, source: 'user', match: { initiatorOrigins: ['https://app.example.test'], urlPattern: '*' }, actions: [{ type: 'setResponseHeaders', headers: { 'X-Debug': 'true' } }, { type: 'delay', milliseconds: 1000 }], createdAt: 1, updatedAt: 1 }];
+    rules = [{ id: 'header', name: 'Staging header', enabled: true, source: 'user', match: { initiatorOrigins: ['https://app.example.test'], urlPattern: '*' }, actions: [{ type: 'mockResponse', status: 200, headers: {}, body: '{}' }], createdAt: 1, updatedAt: 1 }];
     render(<Inspector />);
     await user.click(await screen.findByRole('button', { name: /GET.*orders/ }));
     expect(screen.getByText('Not recording requests')).toBeInTheDocument();
     expect(screen.getByText('1 persistent rules enabled')).toBeInTheDocument();
     await user.click(screen.getByRole('tab', { name: 'Rules (1)' }));
     expect(screen.getByRole('switch', { name: 'Enable Staging header' })).toBeChecked();
-    expect(screen.getByText('Persistent · across tabs')).toBeInTheDocument();
+    expect(screen.queryByText('Persistent · across tabs')).not.toBeInTheDocument();
     expect(screen.getByText('Preparing enabled rules')).toBeInTheDocument();
     await user.click(screen.getByRole('tab', { name: 'Requests (1)' }));
     expect(screen.getByRole('button', { name: 'Mock', exact: true })).toBeInTheDocument();
