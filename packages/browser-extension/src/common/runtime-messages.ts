@@ -158,5 +158,13 @@ export const runtimeMessages: Record<string, Record<string, string>> = {
     "ja": "ルールに一致するリクエストは自動表示されます。他の通信には記録を開始してください。ブラウザー全体のログではありません。",
     "fr": "Les requêtes correspondantes s’affichent automatiquement. Enregistrez les autres échanges. Ce journal n’est pas exhaustif.",
     "es": "Las solicitudes coincidentes aparecen automáticamente. Graba para ver otro tráfico. No es un registro completo del navegador."
+  },
+  "Retry rules": {
+    "en": "Retry rules",
+    "zh-CN": "重试规则",
+    "ko": "규칙 다시 시도",
+    "ja": "ルールを再試行",
+    "fr": "Réessayer les règles",
+    "es": "Reintentar reglas"
   }
 };

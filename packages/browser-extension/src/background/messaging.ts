@@ -1,4 +1,4 @@
-import { reconcileSavedRuleRuntime } from './saved-rule-runtime';
+import { reconcileSavedRuleRuntime, retrySavedRuleTab } from './saved-rule-runtime';
 import { needsProxy } from '@/common/quick-controls';
 import { requestRuleApproval, approvalInfo, resolveRuleApproval } from './rule-approval';
 import browser from 'webextension-polyfill';
@@ -365,6 +365,13 @@ export async function onRuntimeMessage(
         const tabId = message.payload?.tabId;
         if (!Number.isInteger(tabId) || tabId < 0) throw new Error('Missing tab ID.');
         return updateQuickControls(tabId, message.payload?.quickControls);
+      }
+
+      case 'retryRuleExecution': {
+        const tabId = message.payload?.tabId;
+        if (!Number.isInteger(tabId) || tabId < 0) throw new Error('Missing tab ID.');
+        await retrySavedRuleTab(tabId);
+        return getAdvancedProxyStatus(tabId);
       }
 
       case 'getAdvancedProxyStatus': {

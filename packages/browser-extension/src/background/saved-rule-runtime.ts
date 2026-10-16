@@ -57,6 +57,13 @@ export function reconcileSavedRuleTab(tabId: number): Promise<unknown> {
   return next;
 }
 
+/** An explicit retry resumes saved execution without opting into recording. */
+export async function retrySavedRuleTab(tabId: number): Promise<unknown> {
+  if (paused.delete(tabId)) persistPauses();
+  if (getAdvancedProxyStatus(tabId).phase === 'error') await disableAdvancedProxyTransport(tabId);
+  return reconcileSavedRuleTab(tabId);
+}
+
 export function clearSavedRuleRuntime() { rules = []; }
 
 export async function reconcileSavedRuleRuntime(state: IProxyAppState): Promise<void> {

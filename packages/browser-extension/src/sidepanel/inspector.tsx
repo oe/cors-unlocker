@@ -188,6 +188,17 @@ export function Inspector() {
     finally { setBusy(false); }
   };
 
+  const retryRules = async () => {
+    if (tabId === null) return;
+    setBusy(true); setMessage(null);
+    try {
+      const next = await browser.runtime.sendMessage({ type: 'retryRuleExecution', payload: { tabId } });
+      setStatus(next);
+      if (next?.error) setMessage(next.error);
+    } catch (error) { setMessage(String(error)); }
+    finally { setBusy(false); }
+  };
+
   const clear = async () => {
     if (tabId === null) return;
     await browser.runtime.sendMessage({ type: 'clearAdvancedProxyLog', payload: { tabId } });
@@ -238,6 +249,7 @@ export function Inspector() {
           <AlertDescription>
             {targetError || status?.error ? translateError(targetError || status?.error || '') : t("Enabled rules run automatically on matching pages.")}
           </AlertDescription>
+          {!targetError && siteRules.some(rule => isRuleEnabled(rule, profiles) && needsProxy(rule)) ? <Button size="sm" variant="outline" disabled={busy} onClick={() => void retryRules()}>{t('Retry rules')}</Button> : null}
         </Alert>
       ) : null}
       {savedRule ? <Alert role="status"><AlertTitle>{savedRule.name}</AlertTitle><AlertDescription className="text-wrap [&_p:not(:last-child)]:mb-2">

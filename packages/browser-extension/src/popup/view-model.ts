@@ -117,6 +117,9 @@ export function useViewModel() {
         if (mounted.current) setError(cause instanceof Error ? cause.message : String(cause));
       });
     }
+    if (phase === 'error' && summarizeTabRules({ rules, profiles }, origin).sessionRules) {
+      return run(() => sendSession('retryRuleExecution'));
+    }
     return run(() => sendSession(connected && status?.recording !== false ? 'disableAdvancedProxy' : 'enableAdvancedProxy'));
   };
   const toggleRule = (rule: IProxyRule, enabled: boolean) => run(async () => {

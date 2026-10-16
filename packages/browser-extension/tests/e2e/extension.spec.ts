@@ -1870,10 +1870,13 @@ test('keeps toolbar group hints and popup recovery actions in sync', async () =>
     await expect.poll(badge).toBe('!');
     await popup.reload();
     await expect(popup.getByRole('alert')).toContainText('Connection fixture failure');
-    await expect(popup.getByRole('button', { name: 'Retry connection', exact: true })).toBeVisible();
-    await popup.getByRole('button', { name: 'Retry connection', exact: true }).click();
-    await expect.poll(badge).toBe('ON');
+    await expect(popup.getByRole('button', { name: 'Retry rules', exact: true })).toBeVisible();
+    await popup.getByRole('button', { name: 'Retry rules', exact: true }).click();
+    await expect.poll(badge).toBe('2');
+    expect(await send('getAdvancedProxyStatus', { tabId })).toMatchObject({ phase: 'connected', recording: false });
     await expect(popup.getByRole('alert')).toHaveCount(0);
+    await popup.getByRole('button', { name: 'Start recording', exact: true }).click();
+    await expect.poll(badge).toBe('ON');
     await popup.getByRole('switch', { name: 'Enable group Toolbar staging', exact: true }).click();
     await expect.poll(badge).toBe('ON');
     await expect.poll(title).toContain('Paused groups: 1');
