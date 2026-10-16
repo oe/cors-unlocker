@@ -41,6 +41,15 @@
 - [x] 新 SDK 在实际 HTTPS 网页验证连接、用户取消、扩展缺失、禁用、规则草稿及 Chrome/Firefox 能力差异。SDK 不静默启动拦截，不影响其他 origin。
 - [x] 包内无密钥、真实 Cookie/Authorization、个人请求数据、开发-only 地址或临时测试代码。
 
+### Playground 必测流程（2026-10-16 补充）
+
+之前 SDK 协议测试和官网无插件 UI 测试分开运行，不能据此勾选 Playground 完整链路。后续发布必须附上 [Playground against public Firefox](https://github.com/oe/cors-unlocker/actions/workflows/playground-firefox.yml) 的成功记录；该任务安装哈希校验后的 AMO 签名包，运行构建后的网页和真实扩展 UI。
+
+- [ ] 在目标商店版本上，从默认 Mock 示例完成添加规则、工作区启用、返回 Playground 标签页、Popup 启动会话、测试并核对实际响应内容。不能用 fetch stub、网络路由模拟或 SDK 连接成功替代。
+- [ ] 验证无插件、只启用规则但未启动会话、停止会话时不会误导用户发送 Mock 测试；规则关闭而会话仍在运行时必须显示响应不匹配。
+- [ ] 先收到可缓存的原始响应，再运行 Mock，仍能得到配置内容。Firefox 保留上游状态码，不把状态差异判为 body replacement 失败。
+- [ ] 重复打开规则、刷新网页不重复创建同一草稿；更换配方或编辑规则后重新核对实际配置。公网默认端点与确定性真实 HTTP 端点均需验收。
+
 ## 3. 域名和网站迁移（先保兼容，再切绑定）
 
 - [x] 验证当前 `https://cors.forth.ink/message/` 返回 200，包含桥接代码；查询参数保留，iframe 未跳到新域名，浏览器无加载或通信错误。

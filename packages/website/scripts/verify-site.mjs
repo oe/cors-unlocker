@@ -51,8 +51,6 @@ async function evidence(page, name) {
 try {
   browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
-  // This deterministic network response tests the probe UI, not interception.
-  await context.route('https://jsonplaceholder.typicode.com/**', route => route.fulfill({ contentType: 'application/json', body: '{"source":"website UI fixture","id":1}' }));
   const page = await context.newPage(), errors = [], internalLinks = new Set();
   evidencePage = page;
   page.on('pageerror', error => errors.push(error.message));
@@ -118,7 +116,7 @@ try {
   await mobileNav.getByRole('link', { name: 'Playground', exact: true }).click();
   await page.getByRole('heading', { name: 'Playground', exact: true }).waitFor();
   await page.getByRole('heading', { name: 'Extension not connected', exact: true }).waitFor();
-  assert(await page.getByRole('button', { name: 'Review in Wireflip', exact: true }).isDisabled());
+  assert(await page.getByRole('button', { name: 'Add rule in Wireflip', exact: true }).isDisabled());
   await page.setViewportSize({ width: 1280, height: 800 });
   await evidence(page, 'playground-desktop');
   await page.setViewportSize({ width: 390, height: 844 });
@@ -127,9 +125,8 @@ try {
   await editor.fill('[{"type":"delay","milliseconds":800}]');
   await page.getByRole('button', { name: 'Format JSON', exact: true }).click();
   assert((await editor.inputValue()).includes('\n'));
-  await page.getByRole('button', { name: 'Send request', exact: true }).click();
-  await page.getByText(/200 .*ms/).waitFor();
-  assert((await page.locator('main').innerText()).includes('website UI fixture'));
+  assert(await page.getByRole('button', { name: 'Test recipe', exact: true }).isDisabled());
+  assert((await page.locator('main').innerText()).includes('Install the extension and reconnect first'));
   await page.getByRole('button', { name: 'Reconnect', exact: true }).click();
   await page.getByRole('heading', { name: 'Extension not connected', exact: true }).waitFor();
   assert.equal(await page.getByRole('heading', { name: 'Tab session', exact: true }).count(), 1);
@@ -140,7 +137,7 @@ try {
   }
   await page.goto(base + '/docs/');
   await evidence(page, 'docs-mobile');
-  results.interactions.push('390px navigation, Escape/outside dismissal; missing extension, optional JSON formatting and probe');
+  results.interactions.push('390px navigation, Escape/outside dismissal; missing extension, optional JSON formatting; recipe testing blocked until extension and setup are ready');
   for (const [name, userAgent, label, href] of [
     ['Firefox', 'Mozilla/5.0 (X11; Linux x86_64; rv:142.0) Gecko/20100101 Firefox/142.0', 'Add to Firefox', firefoxStore],
     ['Unknown', 'WireflipTestBrowser/1.0', 'Choose your browser', '/docs/#install'],
