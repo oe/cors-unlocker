@@ -41,7 +41,7 @@ export function reconcileSavedRuleTab(tabId: number): Promise<unknown> {
     const needed = !!origin && hasRuntimeRules(rules, origin);
     if (!needed) {
       if (paused.delete(tabId)) persistPauses();
-      if (status.phase === 'connected' && !status.recording
+      if (['connected', 'connecting', 'error'].includes(status.phase) && status.recording === false
         && !(status.quickControls && hasActiveQuickControls(status.quickControls))) {
         return disableAdvancedProxyTransport(tabId);
       }

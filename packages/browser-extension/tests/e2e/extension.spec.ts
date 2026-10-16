@@ -115,7 +115,19 @@ test('enables a Playground example with one native approval and runs saved rules
       const approval = await opening;
       await expect(approval.getByRole('heading', { name: 'Enable this rule?', exact: true })).toBeVisible();
       await expect(approval.getByText(origin, { exact: true })).toBeVisible();
-      if (accepted) { await approval.setViewportSize({ width: 520, height: 600 }); await captureUX(approval, 'rule-native-approval'); }
+      if (accepted) {
+        await approval.setViewportSize({ width: 360, height: 640 });
+        for (const locale of ['en', 'zh-CN', 'ko', 'ja', 'fr', 'es']) {
+          await control.evaluate(uiLanguage => chrome.storage.local.set({ uiLanguage }), locale);
+          await expect(approval.locator('html')).toHaveAttribute('lang', locale);
+          await expect(approval.getByRole('heading', { name: messages['Enable this rule?'][locale], exact: true })).toBeVisible();
+          expect(await approval.evaluate(() => document.documentElement.scrollWidth <= innerWidth), locale).toBe(true);
+        }
+        await control.evaluate(() => chrome.storage.local.set({ uiLanguage: 'en' }));
+        await expect(approval.getByRole('heading', { name: 'Enable this rule?', exact: true })).toBeVisible();
+        await approval.setViewportSize({ width: 520, height: 600 });
+        await captureUX(approval, 'rule-native-approval');
+      }
       await approval.getByRole('button', { name: accepted ? 'Enable rule' : 'Cancel', exact: true }).click({ noWaitAfter: true }).catch(error => {
         if (!approval.isClosed() || !/has been closed/.test(String(error))) throw error;
       });
@@ -1878,6 +1890,20 @@ test('keeps toolbar group hints and popup recovery actions in sync', async () =>
     await expect.poll(badge).toBe('2');
     expect(await send('getAdvancedProxyStatus', { tabId })).toMatchObject({ phase: 'connected', recording: false });
     await expect(popup.getByRole('alert')).toHaveCount(0);
+    // Disabling the failed saved rule group must also clear its stale red state.
+    await popup.getByRole('switch', { name: 'Enable group Toolbar staging', exact: true }).click();
+    await expect.poll(badge).toBe('OFF');
+    await worker.evaluate(() => {
+      const native = chrome.debugger.attach.bind(chrome.debugger);
+      chrome.debugger.attach = (async () => { chrome.debugger.attach = native; throw new Error('Second connection failure'); }) as typeof chrome.debugger.attach;
+    });
+    await popup.getByRole('switch', { name: 'Enable group Toolbar staging', exact: true }).click();
+    await expect.poll(badge).toBe('!');
+    await popup.getByRole('switch', { name: 'Enable group Toolbar staging', exact: true }).click();
+    await expect.poll(badge).toBe('OFF');
+    await expect(popup.getByRole('alert')).toHaveCount(0);
+    await popup.getByRole('switch', { name: 'Enable group Toolbar staging', exact: true }).click();
+    await expect.poll(badge).toBe('2');
     await popup.getByRole('button', { name: 'Start recording', exact: true }).click();
     await expect.poll(badge).toBe('ON');
     await popup.getByRole('switch', { name: 'Enable group Toolbar staging', exact: true }).click();

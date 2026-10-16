@@ -480,7 +480,7 @@ async function startFirefoxSession(tabId: number, options: { quickControls?: Qui
     if (options.quickControls) return updateQuickControls(tabId, quickControls);
     return getAdvancedProxyStatus(tabId);
   }
-  await notifyStatus({ tabId, phase: 'connecting', origin: url.origin });
+  await notifyStatus({ tabId, phase: 'connecting', origin: url.origin, recording: !options.automatic && !options.quickControls, quickControls });
   try {
     const state = await ensureProxyAppState();
     await checkSessionScope(tabId, connection);
@@ -511,6 +511,8 @@ async function startFirefoxSession(tabId: number, options: { quickControls?: Qui
     const status = {
       tabId,
       phase: 'error',
+      recording: !options.automatic && !options.quickControls,
+      quickControls,
       origin: url.origin,
       error: error instanceof Error ? error.message : 'Unable to start Firefox interception.',
     } satisfies IAdvancedProxyStatus;

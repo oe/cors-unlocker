@@ -448,6 +448,7 @@ function onDebuggerDetach(source: chrome.debugger.Debuggee, reason: string) {
   for (const key of redirectedRequests.keys()) if (key.startsWith(`${source.tabId}:`)) redirectedRequests.delete(key);
   void notifyStatus({
     tabId: source.tabId,
+    recording: false,
     phase: reason === 'canceled_by_user' && !!(stoppedSession || pending) && !pending?.cleaningUp ? 'error' : 'disabled',
     origin: stoppedSession?.origin,
     error: reason === 'canceled_by_user' ? 'Chrome debugging was stopped by the user.' : undefined,
@@ -609,7 +610,7 @@ async function connectAdvancedProxy(tabId: number, options: { quickControls?: Qu
     return getAdvancedProxyStatus(tabId);
   }
 
-  await notifyStatus({ tabId, phase: 'connecting', origin: url.origin });
+  await notifyStatus({ tabId, phase: 'connecting', origin: url.origin, recording: !options.automatic && !options.quickControls, quickControls });
   try {
     await refreshRuleCache();
     await checkConnectionScope(tabId, connection);
@@ -652,6 +653,8 @@ async function connectAdvancedProxy(tabId: number, options: { quickControls?: Qu
     const status = {
       tabId,
       phase: 'error',
+      recording: !options.automatic && !options.quickControls,
+      quickControls,
       origin: url.origin,
       error: error instanceof Error ? error.message : 'Unable to attach Chrome debugger.',
     } satisfies IAdvancedProxyStatus;
