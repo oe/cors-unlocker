@@ -1900,3 +1900,85 @@ test('runs exact new and legacy SDK archives through production HTTPS bridges', 
     await context.unroute(/^https:\/\/(cors\.forth\.ink|app\.wireflip\.test|other\.wireflip\.test)\//, fixtureRoute);
   }
 });
+
+test('enables a Playground example with one native approval and runs saved rules across matching tabs', async () => {
+  test.setTimeout(120_000);
+  const site = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../website/dist');
+  const server = createServer((request, response) => {
+    const pathname = new URL(request.url || '/', 'http://fixture').pathname;
+    if (pathname === '/probe') {
+      response.writeHead(418, { 'Content-Type': 'application/json', 'Cache-Control': 'public,max-age=3600' });
+      response.end('{"source":"server"}'); return;
+    }
+    if (pathname === '/peer') {
+      response.writeHead(200, { 'Content-Type': 'text/html' }); response.end('<title>Peer request page</title>Peer'); return;
+    }
+    try {
+      const relative = pathname === '/playground/' ? 'playground/index.html' : pathname === '/' ? 'index.html' : pathname.slice(1);
+      const file = path.resolve(site, relative);
+      if (!file.startsWith(site + path.sep)) throw Error('Invalid path');
+      response.writeHead(200, { 'Content-Type': file.endsWith('.js') ? 'text/javascript' : file.endsWith('.css') ? 'text/css' : file.endsWith('.svg') ? 'image/svg+xml' : 'text/html' });
+      response.end(readFileSync(file));
+    } catch { response.writeHead(404); response.end('Not found'); }
+  });
+  await new Promise<void>(resolve => server.listen(0, '0.0.0.0', resolve));
+  const address = server.address();
+  if (!address || typeof address === 'string') throw Error('Fixture failed');
+  const origin = 'http://127.0.0.1:' + address.port;
+  const target = await context.newPage(), peer = await context.newPage(), unrelated = await context.newPage(), popup = await context.newPage();
+  let ruleId: string | undefined;
+  const request = (page: Page) => page.evaluate(async url => (await fetch(url, { cache: 'no-store' })).text(), origin + '/probe');
+  try {
+    await target.goto(origin + '/playground/');
+    await expect(target.getByRole('button', { name: 'Enable example', exact: true })).toBeEnabled();
+    await target.getByText('Advanced options', { exact: true }).click();
+    await target.getByLabel('Request URL pattern', { exact: true }).fill(origin + '/probe');
+    await target.getByLabel('Probe URL', { exact: true }).fill(origin + '/probe');
+    expect(await request(target)).toBe('{"source":"server"}');
+    const approve = async (accepted: boolean) => {
+      const opening = context.waitForEvent('page', page => page.url().includes('/src/approve/') || page.url() === '');
+      await target.getByRole('button', { name: 'Enable example', exact: true }).click();
+      const approval = await opening;
+      await expect(approval.getByRole('heading', { name: 'Enable this rule?', exact: true })).toBeVisible();
+      await expect(approval.getByText(origin, { exact: true })).toBeVisible();
+      if (accepted) await captureUX(approval, 'rule-native-approval');
+      await approval.getByRole('button', { name: accepted ? 'Enable rule' : 'Cancel', exact: true }).click();
+    };
+    await approve(false);
+    await expect(target.getByRole('alert')).toContainText('declined');
+    await approve(true);
+    await expect(target.getByRole('button', { name: 'Test mock', exact: true })).toBeEnabled();
+    const state = await control.evaluate(() => chrome.runtime.sendMessage({ type: 'getProxyState' }));
+    const saved = state.rules.filter((rule: any) => rule.match.initiatorOrigins.includes(origin));
+    expect(saved).toHaveLength(1);
+    ruleId = saved[0].id;
+    expect(saved[0].enabled).toBe(true);
+    await target.getByRole('button', { name: 'Test mock', exact: true }).click();
+    await expect(target.getByText(/Mock verified · 200/)).toBeVisible();
+    await target.getByText('Advanced options', { exact: true }).click();
+    await captureUX(target, 'playground-one-confirmation-verified');
+    await peer.goto(origin + '/peer');
+    expect(JSON.parse(await request(peer))).toEqual({ source: 'Wireflip', mocked: true });
+    await unrelated.goto('http://127.0.0.2:' + address.port + '/peer');
+    expect(await unrelated.evaluate(async () => (await fetch('/probe')).text())).toBe('{"source":"server"}');
+    const tabId = await getTabId(origin + '/playground/');
+    await popup.goto('chrome-extension://' + extensionId + '/src/popup/index.html?tabId=' + tabId);
+    await expect(popup.getByText('Saved rules active', { exact: true })).toBeVisible();
+    await popup.getByRole('button', { name: 'Start recording', exact: true }).click();
+    await popup.getByRole('button', { name: 'Stop recording', exact: true }).click();
+    expect(JSON.parse(await request(target))).toEqual({ source: 'Wireflip', mocked: true });
+    await captureUX(popup, 'popup-rules-without-recording');
+    await target.reload();
+    await expect(target.getByRole('button', { name: 'Test mock', exact: true })).toBeEnabled();
+    expect((await control.evaluate(() => chrome.runtime.sendMessage({ type: 'getProxyState' }))).rules.filter((rule: any) => rule.id === ruleId)).toHaveLength(1);
+    const disabled = await control.evaluate(id => chrome.runtime.sendMessage({ type: 'saveProxyRule', payload: { rule: { id, enabled: false } } }), ruleId);
+    expect(disabled.success).toBe(true);
+    await expect(target.getByRole('button', { name: 'Test mock', exact: true })).toBeDisabled();
+    expect(await request(peer)).toBe('{"source":"server"}');
+  } finally {
+    if (ruleId) await control.evaluate(id => chrome.runtime.sendMessage({ type: 'deleteProxyRule', payload: { id } }), ruleId);
+    for (const page of [target, peer, unrelated, popup]) await page.close();
+    server.closeAllConnections();
+    await new Promise<void>(resolve => server.close(() => resolve()));
+  }
+});
