@@ -752,7 +752,8 @@ test('keeps editing continuous across toggles, shortcuts, duplication and narrow
   await control.getByRole('menuitem', { name: 'Delete selected rule', exact: true }).click();
   await expect(control.getByRole('dialog', { name: 'Delete proxy rule?', exact: true })).toBeVisible();
   await control.getByRole('button', { name: 'Cancel', exact: true }).click();
-  await expect(control.getByLabel('Name', { exact: true })).toHaveValue('Workspace QA edited');
+  await expect(control.locator('[data-workspace-header]').getByRole('heading', { name: 'Workspace QA edited', exact: true })).toBeVisible();
+  await expect(control.getByLabel('Delay in milliseconds')).toHaveValue('125');
   await actions.click();
   await control.getByRole('menuitem', { name: 'Duplicate rule', exact: true }).click();
   await expect(control.getByLabel('Name', { exact: true })).toHaveValue('Workspace QA edited copy');
