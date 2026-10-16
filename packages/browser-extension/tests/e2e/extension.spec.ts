@@ -115,7 +115,7 @@ test('enables a Playground example with one native approval and runs saved rules
       const approval = await opening;
       await expect(approval.getByRole('heading', { name: 'Enable this rule?', exact: true })).toBeVisible();
       await expect(approval.getByText(origin, { exact: true })).toBeVisible();
-      if (accepted) await captureUX(approval, 'rule-native-approval');
+      if (accepted) { await approval.setViewportSize({ width: 520, height: 600 }); await captureUX(approval, 'rule-native-approval'); }
       await approval.getByRole('button', { name: accepted ? 'Enable rule' : 'Cancel', exact: true }).click({ noWaitAfter: true }).catch(error => {
         if (!approval.isClosed() || !/has been closed/.test(String(error))) throw error;
       });
@@ -150,6 +150,7 @@ test('enables a Playground example with one native approval and runs saved rules
     await popup.getByRole('button', { name: 'Start recording', exact: true }).click();
     await popup.getByRole('button', { name: 'Stop recording', exact: true }).click();
     expect(JSON.parse(await request(target))).toEqual({ source: 'Wireflip', mocked: true });
+    await popup.setViewportSize({ width: 360, height: 640 });
     await captureUX(popup, 'popup-rules-without-recording');
     await target.reload();
     await expect(target.getByRole('button', { name: 'Test mock', exact: true })).toBeEnabled();

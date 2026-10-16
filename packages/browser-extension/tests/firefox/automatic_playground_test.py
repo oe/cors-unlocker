@@ -28,7 +28,7 @@ class AutomaticPlaygroundTests(playground.PlaygroundTests):
         self.click('Enable example')
         approval = self.wait(lambda: set(self.command('GET', '/window/handles')) - before)
         self.switch(next(iter(approval)))
-        self.wait(lambda: self.js('return document.body.innerText;'), lambda text: 'Enable this rule?' in text)
+        self.wait(lambda: self.js('return document.body.innerText;'), lambda text: 'Enable this rule?' in (text or ''))
         self.assertIn(self.site_origin, self.js('return document.body.innerText;'))
         self.click('Enable rule')
         self.switch(self.target)

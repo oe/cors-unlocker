@@ -1,4 +1,4 @@
-import { hasPersistentActions, needsProxy } from '@/common/quick-controls';
+import { needsProxy } from '@/common/quick-controls';
 import { t, translateError, useLocale } from '@/common/i18n';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import browser from 'webextension-polyfill';
@@ -227,7 +227,7 @@ export function Inspector() {
 
       <div className="rounded-lg border bg-muted/20 p-2.5 text-xs">
         <p className="font-medium"><span>{t(status?.phase === 'connected' ? (status.recording ? 'Recording requests' : 'Saved rules active') : 'Not recording requests')}</span></p>
-        <p className="mt-1 text-muted-foreground">{t('{count} persistent rules enabled', { count: siteRules.filter((rule) => isRuleEnabled(rule, profiles) && hasPersistentActions(rule)).length })}</p>
+        <p className="mt-1 text-muted-foreground">{t('{count} persistent rules enabled', { count: siteRules.filter((rule) => isRuleEnabled(rule, profiles)).length })}</p>
         <p className="mt-1 text-muted-foreground">{t('Stopping recording clears temporary changes. Saved rules keep running.')}</p>
       </div>
 
@@ -373,10 +373,7 @@ export function Inspector() {
             </div>
             <p className="break-all text-xs text-muted-foreground">{rule.match.methods?.join(', ') || t("All methods")} · {rule.match.urlPattern}</p>
             <div className="flex flex-wrap gap-1">
-              {ruleGroup(rule.id, profiles)?.enabled === false ? <Badge variant="outline">{t('Group paused')}</Badge> : !rule.enabled ? <Badge variant="outline">{t('Disabled')}</Badge> : <>
-                {hasPersistentActions(rule) ? <Badge variant="outline">{t('Persistent · across tabs')}</Badge> : null}
-                {isRuleEnabled(rule, profiles) && needsProxy(rule) ? <Badge variant="outline">{t(status?.phase !== 'connected' ? 'Preparing enabled rules' : 'Enabled · matching pages')}</Badge> : null}
-              </>}
+              <Badge variant="outline">{t(ruleGroup(rule.id, profiles)?.enabled === false ? 'Group paused' : !rule.enabled ? 'Disabled' : needsProxy(rule) && status?.phase !== 'connected' ? 'Preparing enabled rules' : 'Enabled · matching pages')}</Badge>
               <Badge variant="secondary">{t('{count} recorded matches', { count: entries.filter((entry) => entry.matchedRuleIds.includes(rule.id)).length })}</Badge>
             </div>
           </section>)}
