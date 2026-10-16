@@ -19,6 +19,18 @@ class SiteHandler(SimpleHTTPRequestHandler):
     def log_message(self, *args):
         pass
 
+    def do_GET(self):
+        if self.path.split('?')[0] == '/probe/mock':
+            body = b'{"source":"server"}'
+            self.send_response(418)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Cache-Control', 'public, max-age=3600')
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        else:
+            super().do_GET()
+
 
 class PlaygroundTests(native.FirefoxTests):
     @classmethod
@@ -52,7 +64,7 @@ class PlaygroundTests(native.FirefoxTests):
         self.assertTrue(self.js("""return document.querySelector('button[aria-label="Test mock"]').disabled;"""))
         self.assertIn('First add and enable', self.text())
         # Keep the exact recipe body; use a deterministic real upstream that returns 418.
-        upstream = self.origin + '/mock'
+        upstream = self.site_origin + '/probe/mock'
         self.fill('input[value="https://jsonplaceholder.typicode.com/todos/1"]:not([aria-label])', upstream)
         self.fill('input[aria-label="Probe URL"]', upstream)
         self.click('Add rule in Wireflip')
