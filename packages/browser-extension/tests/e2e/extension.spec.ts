@@ -1939,6 +1939,26 @@ test('keeps toolbar group hints and popup recovery actions in sync', async () =>
     await expect(popup.getByRole('button', { name: 'Start recording', exact: true })).toBeEnabled();
     expect((await send('getAdvancedProxyStatus', { tabId })).phase).toBe('disabled');
     await expect(popup.getByRole('alert')).toHaveCount(0);
+    // Cancel automatic preparation as well; saved rules stay enabled but this tab waits for Retry.
+    await worker.evaluate(() => {
+      const native = chrome.debugger.attach.bind(chrome.debugger);
+      chrome.debugger.attach = (async (...args: any[]) => {
+        chrome.debugger.attach = native;
+        await new Promise<void>(resolve => { (self as any).__toolbarCancelGate.release = resolve; });
+        return (native as any)(...args);
+      }) as typeof chrome.debugger.attach;
+      delete (self as any).__toolbarCancelGate.release;
+    });
+    await popup.getByRole('switch', { name: 'Enable group Toolbar staging', exact: true }).click();
+    await expect.poll(() => worker.evaluate(() => typeof (self as any).__toolbarCancelGate.release)).toBe('function');
+    await popup.getByRole('button', { name: 'Cancel connection', exact: true }).click();
+    await worker.evaluate(() => { (self as any).__toolbarCancelGate.release(); });
+    await expect.poll(badge).toBe('!');
+    expect(await send('getAdvancedProxyStatus', { tabId })).toMatchObject({ phase: 'error', recording: false });
+    expect((await send('getProxyState', {})).profiles.find((profile: any) => profile.id === groupId).enabled).toBe(true);
+    await popup.getByRole('button', { name: 'Retry rules', exact: true }).click();
+    await expect.poll(badge).toBe('2');
+    expect(await send('getAdvancedProxyStatus', { tabId })).toMatchObject({ phase: 'connected', recording: false });
   } finally {
     await worker.evaluate(() => { (self as any).__toolbarCancelGate?.release?.(); });
     await send('disableAdvancedProxy', { tabId });

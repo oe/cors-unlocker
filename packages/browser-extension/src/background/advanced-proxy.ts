@@ -714,6 +714,14 @@ export function disableAdvancedProxyTransport(tabId: number): Promise<IAdvancedP
 
 /** Stop recording and temporary changes; saved rules keep running. */
 export async function disableAdvancedProxy(tabId: number): Promise<IAdvancedProxyStatus> {
+  const starting = getAdvancedProxyStatus(tabId);
+  if (starting.phase === 'connecting' && starting.recording === false
+    && !(starting.quickControls && hasActiveQuickControls(starting.quickControls))) {
+    // Cancel automatic preparation for this tab instead of immediately starting it again.
+    pauseSavedRuleRuntime(tabId, starting.origin);
+    await disableAdvancedProxyTransport(tabId);
+    return getAdvancedProxyStatus(tabId);
+  }
   const active = sessions.get(tabId);
   const saved = active && hasRuntimeRules(cachedRules, active.origin);
   if (active && saved && !hasActiveQuickControls(active.quickControls)) {
