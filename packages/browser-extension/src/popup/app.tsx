@@ -26,7 +26,7 @@ function App() {
   const presentation = toolbarPresentation(vm.origin, vm.status || { tabId: -1, phase: 'disabled' }, persistent, locale, vm.summary);
   const sessionError = presentation.state === 'error';
   const error = vm.error || (sessionError ? vm.status?.error || t('Rule execution needs attention') : null);
-  const heading = sessionError ? 'Rule execution needs attention' : presentation.state === 'connecting' ? 'Preparing enabled rules' : recording ? 'Recording requests' : vm.connected ? (hasActiveQuickControls(vm.quickControls) ? 'Temporary changes active' : 'Saved rules active') : presentation.badge === 'OFF' ? 'Saved rules paused' : presentation.state === 'rules' ? 'Saved rules active' : 'Not recording requests';
+  const heading = sessionError ? 'Rule execution needs attention' : presentation.state === 'connecting' ? (vm.summary.sessionRules && !vm.status?.recording && !hasActiveQuickControls(vm.status?.quickControls || EMPTY_QUICK_CONTROLS) ? 'Preparing enabled rules' : 'Connecting…') : recording ? 'Recording requests' : vm.connected ? (hasActiveQuickControls(vm.quickControls) ? 'Temporary changes active' : 'Saved rules active') : presentation.badge === 'OFF' ? 'Saved rules paused' : presentation.state === 'rules' ? 'Saved rules active' : 'Not recording requests';
   const sessionAction = vm.phase === 'connecting' ? 'Cancel connection' : sessionError ? (vm.summary.sessionRules ? 'Retry rules' : 'Retry connection') : recording ? 'Stop recording' : 'Start recording';
   const temporary = hasActiveQuickControls(vm.quickControls);
   const scope = (rule: IProxyRule) => ruleGroup(rule.id, vm.profiles)?.enabled === false ? t('Group paused') : !rule.enabled ? t('Disabled') : t('Enabled · matching pages');
@@ -61,7 +61,6 @@ function App() {
           <Button className="ml-auto" size="xs" variant="ghost" disabled={!vm.isSupported || (vm.busy && vm.phase !== 'connecting')} onClick={vm.toggleSession}>{t(sessionAction)}</Button>
         </div>
         <p className="mt-1 text-xs text-muted-foreground">{t('Enabled rules run automatically on matching pages.')}</p>
-        {!vm.connected && vm.summary.sessionRules ? <p className="mt-1 text-xs text-muted-foreground">{t('Preparing enabled rules')}</p> : null}
         {vm.summary.pausedGroups.length ? <p className="mt-1 text-xs text-muted-foreground">{t('Paused groups: {count}', { count: vm.summary.pausedGroups.length })} · {t('Individual switches are preserved')}</p> : null}
         {vm.connected && !recording ? <p className="mt-1 text-xs text-muted-foreground">{t('Not recording requests')}</p> : null}
         <Button className="mt-1 w-full" size="sm" disabled={disabled} aria-label={t('Open Inspector')} onClick={vm.openInspector}><Activity />{t('Inspect and modify requests')}<ArrowUpRight /></Button>
