@@ -1222,7 +1222,8 @@ test('executes redirect and headers together without changing direct destination
     return { body: await response.json(), header: response.headers.get('X-Wireflip-Result') };
   }, url);
   try {
-    expect((await fetchResult('/api/users/1')).body.data).not.toHaveProperty('headers');
+    expect((await fetchResult('/api/users/1')).body.data.headers['x-wireflip-combo']).toBe('staging');
+    expect(await control.evaluate(id => chrome.runtime.sendMessage({ type: 'getAdvancedProxyStatus', payload: { tabId: id } }), tabId)).toMatchObject({ phase: 'connected', recording: false });
     expect((await control.evaluate(async (id) => chrome.runtime.sendMessage({ type: 'enableAdvancedProxy', payload: { tabId: id } }), tabId)).phase).toBe('connected');
     const redirected = await fetchResult('/api/users/1');
     expect(redirected.body.data.headers['x-wireflip-combo']).toBe('staging');
@@ -1231,6 +1232,8 @@ test('executes redirect and headers together without changing direct destination
     expect(direct.body.data.headers['x-wireflip-combo']).toBeUndefined();
     expect(direct.header).toBeNull();
     await control.evaluate(async (id) => chrome.runtime.sendMessage({ type: 'disableAdvancedProxy', payload: { tabId: id } }), tabId);
+    expect((await fetchResult('/api/users/1')).body.data.headers['x-wireflip-combo']).toBe('staging');
+    await control.evaluate(id => chrome.runtime.sendMessage({ type: 'saveProxyRule', payload: { rule: { id, enabled: false } } }), saved.rule.id);
     expect((await fetchResult('/api/users/1')).body.data).not.toHaveProperty('headers');
   } finally {
     await control.evaluate(async (id) => chrome.runtime.sendMessage({ type: 'deleteProxyRule', payload: { id } }), saved.rule.id);
@@ -1557,10 +1560,10 @@ test('reloading from the extensions manager releases active proxy sessions', asy
   }
   for (const mode of ['observe', 'cache', 'pending', 'cors']) {
     const status = await control.evaluate(async ({ tabId, mode }) => chrome.runtime.sendMessage({
-      type: 'enableAdvancedProxy', payload: { tabId, quickControls: {
+      type: 'enableAdvancedProxy', payload: { tabId, ...(mode === 'observe' ? {} : { quickControls: {
         cors: mode === 'cors', credentials: false, delayMs: mode === 'pending' ? 3000 : 0,
         failure: false, disableCache: mode === 'cache',
-      } },
+      } }) },
     }), { tabId, mode });
     expect(status.phase).toBe('connected');
     const popup = await context.newPage();
