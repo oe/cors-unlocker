@@ -1,13 +1,16 @@
 # Wireflip browser extension
 
-Wireflip 2.0 is a browser-native request lab for Chrome and Firefox, built on Manifest V3.
+Wireflip is a browser-native request lab for Chrome and Firefox, built on Manifest V3.
 
-## Execution paths
+The source prepares extension 2.1.0 and SDK 0.3.0; stores remain 2.0.0 until a separately requested release. See [the execution model](../../docs/rule-execution.md) and [candidate checklist](../../docs/release-2.1.md).
 
-- Rules mode uses `declarativeNetRequest` for CORS, request/response headers, redirects, and blocking without a debugging banner.
-- Advanced mode uses the tab-scoped Chrome DevTools Protocol `Fetch` domain for inspection, preflight/response repair, static mocks, delays, and network failures. Chrome shows its standard debugging disclosure while attached.
-- Firefox Intercept mode uses blocking `webRequest` listeners for inspection, headers, redirect, block, delay, failure simulation, and response-body replacement. Tab-scoped DNR applies CORS headers because Firefox MV3 restricts those changes in WebRequest. Body mocks preserve the server HTTP status and require an actual response.
-- The page bridge exposes the origin-scoped `wireflip` npm SDK. It derives scope from the browser sender tab, confirms CORS changes, creates only disabled rule drafts, and never exposes silent debugger attachment.
+## Execution model
+
+- Enabled saved rules run automatically on every matching supported page. Recording is optional; temporary controls affect only their selected tab. Rule and group switches control saved execution.
+- The browser fast path uses `declarativeNetRequest` for CORS, request/response headers, redirects, and blocking without a debugging banner.
+- Chrome automatically prepares the tab-scoped Chrome DevTools Protocol `Fetch` domain for inspection, preflight/response repair, static mocks, delays, and network failures. Chrome shows its standard debugging disclosure while attached.
+- Firefox automatically prepares blocking `webRequest` listeners for inspection, headers, redirect, block, delay, failure simulation, and response-body replacement. Tab-scoped DNR applies CORS headers because Firefox MV3 restricts those changes in WebRequest. Body mocks preserve the server HTTP status and require an actual response.
+- The page bridge exposes the origin-scoped `wireflip` npm SDK. It derives scope from the browser sender tab, confirms CORS changes, retains disabled drafts, and supports one extension-owned confirmation to enable an origin-scoped rule and prepare its execution. Page code never receives captured traffic.
 
 ## Upgrade
 
@@ -25,7 +28,7 @@ FIREFOX_BINARY=/path/to/firefox GECKODRIVER=/path/to/geckodriver pnpm --filter b
 
 When Playwright's bundled browser is unavailable, provide a Chrome for Testing binary through `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`.
 
-Production archives are written to `dist/wireflip-chrome-v2.0.0.zip` and `dist/wireflip-firefox-v2.0.0.zip`.
+Production archives are written to `dist/wireflip-chrome-v2.1.0.zip` and `dist/wireflip-firefox-v2.1.0.zip`.
 
 The Firefox E2E suite installs the production build as a temporary add-on in a fresh, headless
 Firefox profile. It uses native WebDriver and local HTTP fixtures, including real CORS failures,
@@ -36,7 +39,7 @@ Browser metadata, screenshots and diagnostics are written to `test-results/firef
 
 ## Privacy boundary
 
-Rules are stored locally. Traffic logs are in-memory. Sensitive headers are redacted by default. Interception stops on disable, tab close, and top-level cross-origin navigation; Chrome also detaches when another debugger takes over.
+Rules are stored locally. Traffic logs are in-memory. Sensitive headers are redacted by default. Saved interception ends when no enabled rule needs it, while recording and temporary controls have separate lifetimes. Tab close releases execution; cross-origin navigation clears temporary controls and reconciles rules for the new origin. Chrome respects its native Stop control and debugger conflicts.
 
 
 State mutations run through `performProxyStateOperation` in the background. Extension pages

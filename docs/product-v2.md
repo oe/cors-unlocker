@@ -91,8 +91,8 @@ prompt if needed); Ctrl/Cmd+S saves the selected rule. Changing language preserv
 
 ## Website information architecture
 
-- Home: positioning, real product surface, two execution paths, SDK wedge, privacy, v1 migration.
-- Docs: install, modes, rules, inspector, SDK API, migration, limitations.
+- Home: positioning, real product surface, saved rules, optional recording, SDK bridge, privacy, v1 migration.
+- Docs: install, rules, recording, inspector, SDK API, migration, limitations.
 - Playground: choose an example, approve once in the extension, then compare the response; retain a capability-checked fallback for published 2.0.0 extensions.
 - FAQ: product category, CDP disclosure, script limits, Firefox status.
 - Privacy: local data boundary, permissions, detach behavior, SDK sender-origin trust boundary.
@@ -115,16 +115,19 @@ RequestOrbit serves ordinary users who want to DIY link redirects: source URL, d
 examples, and a safe way to test the result. Wireflip serves developers reproducing API
 behavior inside a browser tab. Wireflip is a browser request proxy, not an IP proxy or a system VPN.
 
-Its popup prioritizes the current tab, Inspector, and session-only quick controls. CORS is one
-capability alongside API delay and failure simulation. Configurable mocks, headers, and redirects
-become shortcuts by pinning named saved rules, not by adding ambiguous category-wide toggles.
-Persistent site rules are labeled separately and remain unchanged when a debugging session stops.
-Chrome offers a session-only Disable cache switch using CDP HTTP-cache control. Firefox hides this unsupported control. It does not clear browser data or bypass service workers.
+Its popup prioritizes the current tab, Inspector, relevant rule groups and temporary controls.
+CORS is one capability alongside API delay and failure simulation. Configurable mocks, headers,
+and redirects become shortcuts by pinning named saved rules. Enabled saved rules apply to all
+matching supported pages independently of recording. Chrome offers a temporary Disable cache
+switch; Firefox hides this unsupported control. It does not clear browser data or bypass service workers.
 
-The toolbar reflects each tab: gray when inactive, blue with a count for installed persistent rules,
-green `ON` for a connected session, amber while connecting, and red on a session error. Its tooltip
-lists applied temporary controls, including the delay duration and CORS credentials option, and
-keeps the persistent rule count separate. Chrome also reports whether requests are being recorded:
-a cache-only session can be connected without recording. Turning off the last quick control stops
-an automatically started Chrome session; a manually started session keeps recording until stopped.
-Control details disappear on stop or navigation to another origin.
+The toolbar reflects each tab: gray when inactive or all relevant groups are paused, blue with
+the enabled saved-rule count, green ON while recording or applying temporary changes, amber
+while preparing and red when execution needs attention. Its tooltip lists applied temporary controls,
+paused groups and errors. A count describes configuration, not proof of a changed request.
+
+Stop recording clears temporary changes while saved rules keep running. Retry rules resumes
+execution without recording. Chrome may show its native debugging indicator for saved rules that
+need interception; stopping it through the browser pauses that tab until an explicit retry.
+No required saved rule, recording or temporary control means the execution connection is released.
+Cross-origin navigation clears temporary controls and reconciles saved rules for the new page.

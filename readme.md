@@ -2,9 +2,11 @@
 
 # Wireflip
 
-Wireflip 2.0 is a browser-native request lab for Chrome and Firefox. It keeps the fast, warning-free CORS path from CORS Unlocker and adds opt-in, tab-scoped traffic inspection, response mocking, latency and failure simulation, redirects, blocking, and header rewriting.
+Wireflip is a browser-native request lab for Chrome and Firefox: CORS repair, response mocking, latency and failure simulation, redirects, blocking, header rewriting, and optional request recording.
 
-No native client is required. Chrome Advanced mode uses Chrome DevTools Protocol through `chrome.debugger`, so Chrome displays its standard debugging disclosure while a tab is attached. Firefox Intercept mode uses blocking WebRequest APIs and does not show a debugger banner.
+The current source prepares **extension 2.1.0 and SDK 0.3.0**. Enabled saved rules run automatically on all matching supported pages; recording and temporary tab controls are separate. Stores remain 2.0.0 and npm remains 0.2.0 until a separate release. See the [execution model](docs/rule-execution.md) and [candidate checklist](docs/release-2.1.md).
+
+No native client is required. Chrome uses Chrome DevTools Protocol through `chrome.debugger`, so Chrome displays its standard debugging disclosure while a tab is attached. Firefox uses blocking WebRequest APIs and does not show a debugger banner.
 
 ## Migrating from CORS Unlocker
 
@@ -12,10 +14,10 @@ Existing `cors-unlocker@0.1.0` integrations remain supported. The old `cors.fort
 
 See the [migration guide](packages/website/src/pages/migration.mdx) for the API mapping, user-confirmation changes and upgrade steps. DNS and old-origin bridge deployment remain separate operational prerequisites.
 
-## What 2.0 includes
+## What Wireflip includes
 
 - **CORS compatibility mode** — one-click, per-origin CORS rules compiled to `declarativeNetRequest`.
-- **Advanced proxy mode** — explicit per-tab attach/detach with request and response observation.
+- **Automatic saved rules** — enabling a rule applies it on every matching supported page. Recording additional traffic is optional.
 - **Rules workspace** — full-window navigation, compact searchable rule list, and a dedicated editor with Match / Actions / Test sections. Configure actions with structured forms, with JSON available as an advanced option.
 - **Rule engine** — match page origins, request URL globs, methods, and resource types; test unsaved conditions without sending requests. Actions are validated data, not arbitrary JavaScript.
 - **Actions** — CORS repair, request/response headers, redirects, blocking, static mocks, delays, and simulated network failures.
@@ -27,67 +29,41 @@ See the [migration guide](packages/website/src/pages/migration.mdx) for the API 
 
 Organize rules by scenario, such as Local development or Staging. In the workspace, choose **New group**, add rules with the group's **+** button, or change a rule's **Group** in the editor. Groups can be renamed and collapsed; searching reveals matching rules even inside collapsed groups.
 
-Turning a group off pauses all its saved rules while remembering each individual switch. Turning it back on restores only the rules that were already on. Popup and Inspector show groups relevant to the current site, with **Group paused** beside paused rules. Group switches affect matching saved rules across tabs; they never start a proxy session. Mocks, delays and other session actions still require an explicitly connected tab.
+Turning a group off pauses all its saved rules while remembering each individual switch. Turning it back on restores only the rules that were already on. Popup and Inspector show groups relevant to the current site, with **Group paused** beside paused rules. Group switches affect all matching supported tabs. Restoring a group automatically prepares its enabled rules, including mocks and delays.
 
 Deleting a group moves its rules to **Ungrouped**, retaining individual switches. Enabled rules in a paused group resume, as the deletion dialog explains. No rules are deleted. Grouping does not change execution priority or request matching. Export/import includes group membership and paused states; merge retains current settings and merges groups by ID, including imported group switches.
 
 ## Popup debugging controls
 
-The popup is a developer control surface for the current tab, with an Inspector entry point,
-CORS repair with visible credential controls, Chrome HTTP-cache bypass, Fetch/XHR delay
-(500 ms, 1 s, or 3 s), and simulated Fetch/XHR failures.
-Enabling a quick control starts a proxy session explicitly; Chrome displays its debugging banner.
-Connecting the proxy alone observes traffic and applies enabled saved rules, without automatically
-repairing CORS. Cross-origin mocks need a matching CORS rule/control or appropriate mock headers.
+The popup controls the current tab: open Inspector, start or stop recording, pause relevant rule groups, and apply temporary CORS repair, HTTP-cache bypass (Chrome), Fetch/XHR delay or simulated failure.
 
-Disable cache bypasses HTTP cache in the attached Chrome tab without clearing stored cache or
-bypassing service workers. Turning it off or stopping the session restores normal cache use. Firefox hides this unsupported control.
+Temporary controls start their required execution automatically. They affect only this tab and reset when cleared, when recording stops, when the tab closes, or on navigation to another origin. They never create saved rules. Disabling temporary CORS does not disable an independently enabled saved CORS rule.
 
-On Chrome, a session started by a quick control disconnects when its last active control is turned off,
-removing the debugging banner. A manually started proxy session stays connected until explicitly stopped.
-Other active quick controls also keep the connection alive.
+Saved rules can be pinned as shortcuts. Pinning changes the shortcut list; their switches change saved configuration across matching pages. Stop recording clears temporary controls while saved rules keep running. Cross-origin mocks still need appropriate CORS rules or mock response headers.
 
-Quick controls live only in the background session and reset on stop, tab close, or cross-origin
-navigation. They never create persistent rules. Existing CORS site rules remain available separately;
-turning off session CORS does not disable an independently enabled site rule.
-
-Saved rules can be pinned to the popup. Pinning only changes the shortcut list; toggling a pinned
-rule changes its saved enabled state. Header/redirect/block rules can continue across tabs through
-DNR. Mocks, delays, failures, and advanced CORS need an active proxy session. Stopping a session
-clears temporary controls without disabling saved rules. Browser-specific interception limits still apply.
+Disable cache bypasses HTTP cache without clearing stored data or bypassing service workers. Resetting it restores ordinary cache behavior. Chrome releases its connection when no saved rule, recording or temporary control needs it; Firefox hides the unsupported cache control.
 
 ## Toolbar status
 
-The browser toolbar follows the selected tab. Gray means no active tab session or browser
-rule; blue shows the number of installed persistent browser rules; green with **ON** means
-a tab session is connected. Amber **…** means connecting, and red **!** means a session
-error. Hover for the localized session state and persistent rule count. A connected session
-does not by itself prove that a request was modified.
+The toolbar follows each tab: gray when inactive, blue with the enabled saved-rule count, green **ON** while recording or applying temporary changes, amber **…** while preparing, and red **!** when execution needs attention. Gray **OFF** means relevant saved rules are paused by groups.
 
-When all saved changes for this site are paused by groups, gray **OFF** makes that pause visible. Other active persistent rules keep the icon blue, and an attached session stays green even when groups are paused. Hover lists paused group names, enabled rules waiting for a tab session, temporary controls and connection errors. These describe configuration and connection state, not proof that a request changed.
+Hover for enabled counts, paused groups, applied temporary controls and errors. These describe configuration and execution state, not proof that a request changed. Click for group switches and temporary controls. **Retry rules** resumes saved execution without starting a recording; **Start recording** and **Stop recording** control optional recording.
 
-Click the icon to open the popup. Relevant group switches are directly below the tab status; restore only the group you need. The session button offers Start, Stop, Cancel while connecting, or Retry after an error. A reopened popup still shows the session error. Its persistent count follows installed browser rules and refreshes after rule application finishes, so it matches the toolbar. Restoring a group never connects automatically.
-
-Stopping a session returns the icon to blue if browser rules remain, or gray otherwise.
-Enabled mocks and delays waiting for a connection do not turn it blue. Switching tabs,
-navigation, rule changes, language changes and background initialization refresh the status
-without polling. Cross-origin navigation also clears an old connection error.
+Chrome may display its native debugging indicator on matching pages. Stopping it through the browser is respected for that tab, with an explicit retry rather than an automatic reconnect loop. Navigation to another origin reconciles the new page's rules and clears temporary controls.
 
 ## First request: mock an API response
 
 1. Open your application tab, then choose **Inspect and modify requests** from the popup.
-2. Choose **Start tab session** and trigger the API request in your application.
+2. Choose **Start recording** and trigger the API request in your application.
 3. Select the request in the **Requests** tab, then choose **Mock** (Chrome) or **Replace body** (Firefox).
 4. Enter the response body and save. The captured page origin, URL, method, and resource type are already filled in.
    Expand **Request matching** to rename the rule or change its scope; the default URL includes query parameters.
 5. Trigger the request again. **View request** opens a new recorded match so you can inspect the applied changes.
    A recorded match alone does not prove that every action ran. Old records are not used to verify a new save.
 
-Saved site rules appear in the **Rules** tab, with separate labels for persistent and session actions.
+Saved site rules appear in the **Rules** tab with their enabled or paused state.
 Use **Disable this rule** after verification to restore the original behavior, unless other rules apply.
-**Reset temporary changes** clears popup controls while keeping a manually started session connected.
-**Stop tab session** clears temporary controls and pauses session actions;
-header, redirect, and block rules may continue until their saved switches are disabled.
+**Reset temporary changes** clears popup controls. **Stop recording** stops additional traffic recording and clears temporary controls; enabled saved rules keep running. Turn a rule or group off to stop its saved changes.
 Firefox response replacement still contacts the server and preserves its status.
 
 Response bodies and **Advanced JSON** have a lightweight JSON editor. Choose **Format JSON**
@@ -112,11 +88,9 @@ The extension UI supports English, Simplified Chinese, Korean, Japanese, French 
 | Chrome Advanced | `chrome.debugger` + CDP `Fetch` | inspection, mock, delay, failure, complete CORS repair | Chrome debugging banner |
 | Firefox Intercept | blocking `webRequest` + `filterResponseData` | inspection, headers, redirect, block, delay, failure, body replacement | Install-time permissions |
 
-Interception is deliberately tab-scoped. It stops when disabled, when the tab closes, or when the tab navigates to a different top-level origin. Chrome Advanced mode also detaches when another debugger takes over.
+Execution is managed per tab internally, while saved rules apply automatically across matching pages. A new origin clears temporary controls and gets its own matching rules. Chrome detaches when another debugger takes over and reports the conflict.
 
-Redirects combined with request or response header changes require a connected
-tab session. The complete combination stops with the session; redirect-only
-rules continue to use the browser's fast path.
+Redirect and header combinations are prepared automatically as a complete action. Chrome preparation on navigation is asynchronous: requests sent before readiness may pass through. Playground waits for its exact rule to be ready before enabling a test.
 
 ## Rule reliability and recovery
 
@@ -185,22 +159,22 @@ pnpm install
 pnpm --filter browser-wireflip dev
 ```
 
-Build Chrome 2.0:
+Build the Chrome candidate:
 
 ```bash
 pnpm --filter browser-wireflip build:chrome
 pnpm --filter browser-wireflip package:chrome
 ```
 
-The unpacked extension is written to `packages/browser-extension/dist/chrome`; the release archive is `packages/browser-extension/dist/wireflip-chrome-v2.0.0.zip`.
+The unpacked extension is written to `packages/browser-extension/dist/chrome`; the release archive is `packages/browser-extension/dist/wireflip-chrome-v2.1.0.zip`.
 
-Build and validate Firefox 2.0:
+Build and validate the Firefox candidate:
 
 ```bash
 pnpm --filter browser-wireflip check:firefox
 ```
 
-The Firefox archive is written to `packages/browser-extension/dist/wireflip-firefox-v2.0.0.zip`.
+The Firefox archive is written to `packages/browser-extension/dist/wireflip-firefox-v2.1.0.zip`.
 
 ## Verification
 
@@ -217,7 +191,8 @@ The check runs TypeScript, ESLint, unit tests, the production Chrome build, and 
 - resource types support consecutive selections and persist after saving;
 - structured multi-action forms, condition testing, draft protection and import preview/recovery work;
 - editing a mock in Site controls changes the next real response, and disabling it restores the server response;
-- a genuinely failing CORS preflight succeeds only after advanced mode attaches;
+- enabled saved CORS repairs a failing preflight automatically on supported Chrome pages;
+- one native approval activates a Playground rule, another matching tab uses it, stopping recording preserves it, and disabling the rule restores the server response;
 - preflight and response activity appears in the request log;
 - static mocks, DNR request headers, blocking, delay, and network failure work in-browser.
 
@@ -227,7 +202,7 @@ If Playwright's bundled Chromium is not installed, set `PLAYWRIGHT_CHROMIUM_EXEC
 
 - `<all_urls>` is required because rules can target arbitrary developer endpoints.
 - `declarativeNetRequest` powers the non-debugging fast path.
-- `debugger` powers advanced mode and is used only after an explicit user action for the active tab.
+- `debugger` powers Chrome interception for enabled matching saved rules, optional recording and temporary controls. Chrome displays its native debugging indicator.
 - `tabs`, `storage`, and `sidePanel` support tab scope, local persistence, and the inspector.
 - Sensitive request and response headers are redacted by default. The extension does not upload traffic, rules, or logs.
 
@@ -238,9 +213,9 @@ Wireflip is a development tool, not a system VPN: it affects matching browser re
 The approved logo, vector source, icon exports, and regeneration instructions are
 in [`marketing/brand`](marketing/brand/README.md).
 
-- `packages/npm` publishes the `wireflip` 0.2 SDK. Install and import `wireflip`; no renamed-package wrapper is shipped.
+- `packages/npm` publishes the `wireflip` SDK; 0.3 is the source candidate and 0.2 remains published. Install and import `wireflip`; no renamed-package wrapper is shipped.
 - `packages/website` is the Wireflip product site, documentation, privacy explanation, FAQ, and live SDK playground.
-- `packages/browser-extension` builds the Chrome and Firefox 2.0 products.
+- `packages/browser-extension` builds the Chrome and Firefox products.
 
 ## License
 
@@ -249,10 +224,10 @@ MIT
 ## Runtime resource use
 
 A Chrome session started with only Disable cache uses the Network domain without pausing requests,
-provided no enabled rule applies to the site. Inspector offers **Start recording requests** to enable
+provided no enabled rule applies to the site. Inspector offers **Start recording** to enable
 capture. Enabling another request-changing control or adding an applicable rule also enables capture;
 once enabled, capture remains active until that session stops.
 
 Both engines evict internal log indexes along with visible records. Log notifications are combined in
 100 ms windows per tab; Inspector refreshes logs without rereading rule storage on every notification.
-Stopping a session cancels outstanding delay timers immediately.
+Releasing an execution connection cancels its outstanding delay timers. Stopping recording keeps the connection and saved actions when an enabled saved rule still needs them.

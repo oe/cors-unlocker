@@ -507,7 +507,7 @@ class FirefoxTests(unittest.TestCase):
         other = self.fetch('/echo', handle=self.other)
         self.assertNotIn('X-Wireflip-Test', json.loads(other['body'])['headers'])
 
-    def test_body_mock_contacts_server_preserves_status_and_stops(self):
+    def test_body_mock_preserves_status_and_survives_stopping_recording(self):
         body = '{"source":"本地 Firefox mock"}'
         rule = self.save([{'type': 'mockResponse', 'status': 202, 'headers': {'Content-Type': 'application/json'}, 'body': body}], '/mock', resourceTypes=['Fetch'])
         self.start()
@@ -537,8 +537,8 @@ class FirefoxTests(unittest.TestCase):
         self.message('disableAdvancedProxy', tabId=self.tab_id)
         self.assertTrue(self.fetch(self.other_origin + '/cors').get('failed'))
 
-    def test_redirect_and_headers_execute_together_only_in_the_connected_session(self):
-        self.save([
+    def test_redirect_and_headers_run_automatically_and_survive_stopping_recording(self):
+        rule = self.save([
             {'type': 'redirect', 'url': self.origin + '/combo-target'},
             {'type': 'setRequestHeaders', 'headers': {'X-Wireflip-Combo': 'staging'}},
             {'type': 'setResponseHeaders', 'headers': {'X-Wireflip-Result': 'patched'}},
@@ -554,6 +554,8 @@ class FirefoxTests(unittest.TestCase):
         self.assertNotIn('x-wireflip-combo', {k.lower(): v for k, v in json.loads(direct['body'])['headers'].items()})
         self.assertNotIn('x-wireflip-result', direct['headers'])
         self.message('disableAdvancedProxy', tabId=self.tab_id)
+        self.assertEqual(json.loads(self.fetch('/combo-source')['body'])['path'], '/combo-target')
+        self.message('saveProxyRule', rule={'id': rule['id'], 'enabled': False})
         self.assertEqual(json.loads(self.fetch('/combo-source')['body'])['path'], '/combo-source')
 
     def test_delay_failure_tooltip_and_recovery(self):
