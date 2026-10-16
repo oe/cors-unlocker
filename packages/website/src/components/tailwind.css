@@ -17,7 +17,6 @@
 
 html { scroll-behavior: smooth; }
 body { margin: 0; min-width: 320px; background: #fff; }
-button, input, textarea, select { font: inherit; }
 ::selection { background: #dceaff; color: #111113; }
 
 .site-shell { width: min(1180px, calc(100% - 40px)); margin-inline: auto; }

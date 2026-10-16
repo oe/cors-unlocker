@@ -713,6 +713,15 @@ test('keeps editing continuous across toggles, shortcuts, duplication and narrow
   await control.setViewportSize({ width: 1440, height: 900 });
   await control.getByRole('button', { name: 'Edit Workspace QA', exact: true }).click();
   await control.getByLabel('Name', { exact: true }).fill('Workspace QA edited');
+  const list = control.getByRole('complementary', { name: 'Rule list', exact: true });
+  await expect(list.getByRole('combobox', { name: 'Filter actions', exact: true })).toHaveCount(0);
+  await list.locator('summary').filter({ hasText: 'Filters' }).click();
+  await list.getByRole('combobox', { name: 'Filter actions', exact: true }).click();
+  await control.getByRole('option', { name: 'Delay', exact: true }).click();
+  await expect(list.locator('summary').filter({ hasText: 'Filters' })).toContainText('(1)');
+  await expect(control.getByLabel('Name', { exact: true })).toHaveValue('Workspace QA edited');
+  await list.getByRole('button', { name: 'Clear filter', exact: true }).click();
+  await list.locator('summary').filter({ hasText: 'Filters' }).click();
   const other = control.getByRole('switch', { name: 'Toggle Resource picker QA', exact: true });
   const wasEnabled = await other.isChecked();
   await other.click();
@@ -739,6 +748,11 @@ test('keeps editing continuous across toggles, shortcuts, duplication and narrow
   await captureUX(control, 'candidate-rule-actions');
   await control.keyboard.press('Escape');
   await expect(actions).toBeFocused();
+  await actions.click();
+  await control.getByRole('menuitem', { name: 'Delete selected rule', exact: true }).click();
+  await expect(control.getByRole('dialog', { name: 'Delete proxy rule?', exact: true })).toBeVisible();
+  await control.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(control.getByLabel('Name', { exact: true })).toHaveValue('Workspace QA edited');
   await actions.click();
   await control.getByRole('menuitem', { name: 'Duplicate rule', exact: true }).click();
   await expect(control.getByLabel('Name', { exact: true })).toHaveValue('Workspace QA edited copy');

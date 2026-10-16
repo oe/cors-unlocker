@@ -301,7 +301,7 @@ export default function Playground() {
 
   const capabilities = session?.capabilities.interception;
   const sessionRunning = status?.advancedMode === 'connected';
-  const stepTitle = !session ? 'Connect Wireflip to try this example' : !draftCreated ? 'Add and enable the rule' : requiresSession && !sessionRunning ? 'Start this tab’s session' : 'Ready to test';
+  const stepTitle = !session ? 'Connect Wireflip to try this example' : !draftCreated ? 'Add and enable the rule' : requiresSession && !sessionRunning ? 'Start this tab’s session' : requiresSession ? 'Session running' : 'Test the rule';
   const stepHelp = !session ? 'Install the extension and reconnect first' : !draftCreated ? 'First add and enable the recipe rule in Wireflip, then return to this tab' : requiresSession && !sessionRunning ? 'Enable the rule in Wireflip. Return here, click the Wireflip toolbar icon → Start tab session for this Playground tab' : 'The saved rule and its group must be enabled in Wireflip';
   const displayBody = (body: string) => { try { return JSON.stringify(JSON.parse(body), null, 2); } catch { return body; } };
 
