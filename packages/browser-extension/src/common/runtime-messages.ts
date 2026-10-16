@@ -174,5 +174,13 @@ export const runtimeMessages: Record<string, Record<string, string>> = {
     "ja": "記録を開始するとこのタブの通信を確認できます。保存済みルールは記録なしでも適用されます。",
     "fr": "Enregistrez pour examiner les requêtes de cet onglet. Les règles fonctionnent sans enregistrement.",
     "es": "Inicia la grabación para revisar el tráfico de esta pestaña. Las reglas funcionan sin grabar."
+  },
+  "You can disable this rule in Wireflip at any time.": {
+    "en": "You can disable this rule in Wireflip at any time.",
+    "zh-CN": "你随时可以在 Wireflip 中关闭此规则。",
+    "ko": "Wireflip에서 언제든 규칙을 끌 수 있습니다.",
+    "ja": "Wireflip でいつでもルールを無効にできます。",
+    "fr": "Vous pouvez désactiver cette règle dans Wireflip à tout moment.",
+    "es": "Puedes desactivar esta regla en Wireflip en cualquier momento."
   }
 };

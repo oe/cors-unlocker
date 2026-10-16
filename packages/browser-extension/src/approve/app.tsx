@@ -43,7 +43,7 @@ function Approval() {
           <details className="text-xs"><summary className="cursor-pointer">{t('Actions')}</summary><pre className="mt-2 max-h-36 overflow-auto whitespace-pre-wrap break-all">{JSON.stringify(request.actions, null, 2)}</pre></details>
         </CardContent>
       </Card>
-      <p className="text-xs text-muted-foreground">{t(__TARGET__ === 'chrome' ? 'Chrome may show its debugging indicator on matching pages. You can disable this rule in Wireflip at any time.' : 'You can disable this rule in Wireflip at any time. Firefox still contacts the server and keeps its status.')}</p>
+      <p className="text-xs text-muted-foreground">{t(__TARGET__ === 'chrome' ? 'Chrome may show its debugging indicator on matching pages. You can disable this rule in Wireflip at any time.' : request.actions.some(action => action.type === 'mockResponse') ? 'You can disable this rule in Wireflip at any time. Firefox still contacts the server and keeps its status.' : 'You can disable this rule in Wireflip at any time.')}</p>
     </> : null}
     <div className="flex justify-end gap-2">
       <Button variant="outline" disabled={busy} onClick={() => request ? void decide(false) : window.close()}>{t('Cancel')}</Button>

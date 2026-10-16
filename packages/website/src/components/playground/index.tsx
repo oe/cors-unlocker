@@ -258,11 +258,12 @@ export default function Playground() {
       const added = directActivation
         ? await session.requestRule(ruleInput, { id: ruleId })
         : await session.createRuleDraft(ruleInput);
+      // Retain the committed rule even if the following status read loses the connection.
       setRuleId(added.id);
-      setStatus(await session.getStatus({ ruleId: added.id }));
-      if ('ready' in added && !added.ready) setOperationError(added.error || 'The rule needs attention in Wireflip.');
       setDraftFingerprint(fingerprint);
       try { sessionStorage.setItem('wireflip:playground-draft', JSON.stringify({ selectedId, name, urlPattern, testUrl, actionJson, fingerprint, ruleId: added.id })); } catch { /* Testing still works without storage. */ }
+      setStatus(await session.getStatus({ ruleId: added.id }));
+      if ('ready' in added && !added.ready) setOperationError(added.error || 'The rule needs attention in Wireflip.');
       setMessage(directActivation ? 'Rule enabled. It runs automatically on matching pages from this site.' : 'Rule added disabled. Turn on its switch in Wireflip, then return to the Playground tab' + (requiresSession ? ' and open the toolbar icon → Start tab session.' : ' to test it.'));
     } catch (error) {
       setOperationError(error instanceof Error ? error.message : 'Unable to create the draft.');
