@@ -50,7 +50,7 @@ export function reconcileSavedRuleTab(tabId: number): Promise<unknown> {
     }
     // A browser Stop action or attach conflict must never trigger a reconnect loop.
     if (paused.has(tabId) || status.phase === 'error') return status;
-    if (status.phase === 'connected') return status;
+    if (status.phase === 'connected' && status.captureEnabled !== false) return status;
     return enableAdvancedProxy(tabId, { automatic: true });
   });
   queues.set(tabId, next);

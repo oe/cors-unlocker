@@ -269,7 +269,7 @@ async function handleSdkRequest(
         origin,
         cors: await isOriginEnabled(origin),
         advancedMode: execution.phase,
-        ...(data?.ruleId ? { rule: rule ? { id: rule.id, enabled, ready: enabled && (!needsProxy(rule) || execution.phase === 'connected'), error: execution.error } : null } : {}),
+        ...(data?.ruleId ? { rule: rule ? { id: rule.id, enabled, ready: enabled && (!needsProxy(rule) || execution.phase === 'connected' && execution.origin === origin && execution.captureEnabled !== false), error: execution.error } : null } : {}),
       };
     }
     case 'requestCors': {

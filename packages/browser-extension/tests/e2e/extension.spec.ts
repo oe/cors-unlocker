@@ -107,7 +107,9 @@ test('enables a Playground example with one native approval and runs saved rules
       await expect(approval.getByRole('heading', { name: 'Enable this rule?', exact: true })).toBeVisible();
       await expect(approval.getByText(origin, { exact: true })).toBeVisible();
       if (accepted) await captureUX(approval, 'rule-native-approval');
-      await approval.getByRole('button', { name: accepted ? 'Enable rule' : 'Cancel', exact: true }).click();
+      await approval.getByRole('button', { name: accepted ? 'Enable rule' : 'Cancel', exact: true }).click({ noWaitAfter: true }).catch(error => {
+        if (!approval.isClosed() || !/has been closed/.test(String(error))) throw error;
+      });
     };
     await approve(false);
     await expect(target.getByRole('alert')).toContainText('declined');

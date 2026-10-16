@@ -15,7 +15,7 @@ import {
   type ProxyHeaderMap,
 } from '@/common/proxy-state';
 import { globMatches, normalizeResourceType } from '@/common/request-match';
-import { EMPTY_QUICK_CONTROLS, hasActiveQuickControls, hasRedirectHeaders, parseQuickControls, quickControlRules, type QuickControls } from '@/common/quick-controls';
+import { EMPTY_QUICK_CONTROLS, needsProxy, hasActiveQuickControls, hasRedirectHeaders, parseQuickControls, quickControlRules, type QuickControls } from '@/common/quick-controls';
 
 const PROTOCOL_VERSION = '1.3';
 
@@ -589,6 +589,10 @@ async function connectAdvancedProxy(tabId: number, options: { quickControls?: Qu
   const existing = sessions.get(tabId);
   if (existing) {
     if (existing.origin !== url.origin) return disableAdvancedProxyTransport(tabId);
+    if (options.automatic && !existing.captureEnabled && requiresCapture(existing)) {
+      await startCapture(tabId, existing);
+      await notifyStatus({ ...getAdvancedProxyStatus(tabId), captureEnabled: true });
+    }
     // An explicit start takes ownership of an already-running automatic session.
     if (!options.automatic && !options.quickControls) {
       existing.recording = true;
@@ -655,7 +659,7 @@ export async function updateQuickControls(tabId: number, value: unknown): Promis
   const quickControls = parseQuickControls(value);
   const session = sessions.get(tabId);
   if (!session) throw new Error('Start a proxy session first.');
-  if (session.startedByQuickControls && !hasActiveQuickControls(quickControls)) {
+  if (session.startedByQuickControls && !hasActiveQuickControls(quickControls) && !cachedRules.some(rule => needsProxy(rule) && rule.match.initiatorOrigins.some(origin => origin === '*' || origin === session.origin))) {
     return disableAdvancedProxyTransport(tabId);
   }
   if (session.quickControls.disableCache !== quickControls.disableCache) {
@@ -701,6 +705,14 @@ export function disableAdvancedProxyTransport(tabId: number): Promise<IAdvancedP
 
 /** Stop recording and temporary changes; saved rules keep running. */
 export async function disableAdvancedProxy(tabId: number): Promise<IAdvancedProxyStatus> {
+  const active = sessions.get(tabId);
+  const saved = active && cachedRules.some(rule => needsProxy(rule) && rule.match.initiatorOrigins.some(origin => origin === '*' || origin === active.origin));
+  if (active && saved && !hasActiveQuickControls(active.quickControls)) {
+    active.recording = false;
+    active.startedByQuickControls = false;
+    await notifyStatus({ ...getAdvancedProxyStatus(tabId) });
+    return getAdvancedProxyStatus(tabId);
+  }
   await disableAdvancedProxyTransport(tabId);
   await ensureSavedRuleRuntime(tabId);
   return getAdvancedProxyStatus(tabId);

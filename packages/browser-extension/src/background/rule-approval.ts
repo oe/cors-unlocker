@@ -75,7 +75,7 @@ export async function resolveRuleApproval(id: string, accepted: boolean) {
   await reconcileSavedRuleRuntime(state);
   await reconcileSavedRuleTab(request.tabId);
   const status = getAdvancedProxyStatus(request.tabId);
-  const ready = isRuleEnabled(saved, state.profiles) && (!needsProxy(saved) || status.phase === 'connected');
+  const ready = isRuleEnabled(saved, state.profiles) && (!needsProxy(saved) || status.phase === 'connected' && status.origin === request.origin && status.captureEnabled !== false);
   finish(request, { id: saved.id, enabled: true, ready, error: ready ? undefined : status.error || 'The rule group is paused.', workspaceOpened: false });
   await browser.tabs.update(request.tabId, { active: true }).catch(() => undefined);
 }

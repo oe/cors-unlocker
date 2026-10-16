@@ -109,7 +109,7 @@ describe('Firefox WebRequest interception engine', () => {
     const direct = { ...target, requestId: 'unrelated' };
     expect(await listener(browser.webRequest.onBeforeRequest)(direct)).toEqual({});
     expect(listener(browser.webRequest.onBeforeSendHeaders)({ ...direct, requestHeaders: [] })).toEqual({});
-    await engine.disableAdvancedProxy(90);
+    await engine.disableAdvancedProxyTransport(90);
   });
   it('clears a failed connection when the tab changes origin', async () => {
     vi.mocked(browser.storage.local.get).mockRejectedValueOnce(new Error('Storage unavailable'));
@@ -285,7 +285,7 @@ describe('Firefox session controls', () => {
     expect(await listener(browser.webRequest.onBeforeRequest)(requestDetails(31, 'fail'))).toEqual({ cancel: true });
     expect(await listener(browser.webRequest.onBeforeRequest)({ ...requestDetails(31, 'image'), type: 'image' })).toEqual({});
     expect(await listener(browser.webRequest.onBeforeRequest)(requestDetails(32, 'other-tab'))).toEqual({});
-    await engine.disableAdvancedProxy(31);
+    await engine.disableAdvancedProxyTransport(31);
     await engine.enableAdvancedProxy(31);
     expect(engine.getAdvancedProxyStatus(31).quickControls?.failure).toBe(false);
     expect(await listener(browser.webRequest.onBeforeRequest)(requestDetails(31, 'restored'))).toEqual({});
@@ -295,7 +295,7 @@ describe('Firefox session controls', () => {
     vi.mocked(browser.storage.local.get).mockResolvedValue({ proxyAppState: state([]) });
     await engine.enableAdvancedProxy(33, { quickControls: { disableCache: false, cors: false, credentials: false, delayMs: 500, failure: true } });
     const pending = listener(browser.webRequest.onBeforeRequest)(requestDetails(33, 'pending'));
-    await engine.disableAdvancedProxy(33);
+    await engine.disableAdvancedProxyTransport(33);
     expect(await pending).toEqual({});
     await expect(engine.updateQuickControls(33, { cors: true, credentials: false, delayMs: 0, failure: false })).rejects.toThrow('Start a proxy session first.');
   });
@@ -330,5 +330,13 @@ it('evicts completed request indexes along with the visible Firefox log', async 
   expect(engine.getRequestLog(71)).toHaveLength(50);
   listener(browser.webRequest.onCompleted)({ ...requestDetails(71, 'evicted'), statusCode: 201 });
   expect(old.status).toBeUndefined();
-  await engine.disableAdvancedProxy(71);
+  await engine.disableAdvancedProxyTransport(71);
+});
+
+it('keeps persistent interception running when request recording stops', async () => {
+  vi.mocked(browser.storage.local.get).mockResolvedValue({ proxyAppState: state([{ type: 'networkFailure', reason: 'Failed' }]) });
+  await engine.enableAdvancedProxy(93);
+  expect(await engine.disableAdvancedProxy(93)).toMatchObject({ phase: 'connected', recording: false });
+  expect(await listener(browser.webRequest.onBeforeRequest)(requestDetails(93, 'saved-after-stop'))).toEqual({ cancel: true });
+  await engine.disableAdvancedProxyTransport(93);
 });
