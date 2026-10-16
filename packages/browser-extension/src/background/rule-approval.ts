@@ -24,6 +24,7 @@ function finish(request: Approval, result: unknown) {
 }
 export async function requestRuleApproval(data: any, tabId: number, origin: string): Promise<unknown> {
   if ([...approvals.values()].some(request => request.tabId === tabId)) throw new Error('An approval is already open for this tab.');
+  if (JSON.stringify(data ?? null).length > 65_536) throw new Error('Rule request exceeds the 64 KB limit.');
   const input = data?.rule;
   const rule: Approval['rule'] = {
     name: typeof input?.name === 'string' ? input.name.trim().slice(0, 120) : '',

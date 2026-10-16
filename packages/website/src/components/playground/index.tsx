@@ -212,7 +212,7 @@ export default function Playground() {
     let active = true;
     const refresh = () => {
       if (document.visibilityState !== 'visible') return;
-      void session.getStatus(ruleId ? { ruleId } : undefined).then((next) => { if (active) setStatus(next); }).catch(() => {
+      void session.getStatus(ruleId ? { ruleId } : undefined).then((next) => { if (active) { setStatus(next); if (next.rule === null) { setRuleId(undefined); setDraftFingerprint(null); } } }).catch(() => {
         if (active) { setStatus(null); setSession(null); setMessage('Connection lost. Check the extension and reconnect.'); }
       });
     };
@@ -263,7 +263,7 @@ export default function Playground() {
       if ('ready' in added && !added.ready) setOperationError(added.error || 'The rule needs attention in Wireflip.');
       setDraftFingerprint(fingerprint);
       try { sessionStorage.setItem('wireflip:playground-draft', JSON.stringify({ selectedId, name, urlPattern, testUrl, actionJson, fingerprint, ruleId: added.id })); } catch { /* Testing still works without storage. */ }
-      setMessage('Rule added disabled. Turn on its switch in Wireflip, then return to the Playground tab' + (requiresSession ? ' and open the toolbar icon → Start tab session.' : ' to test it.'));
+      setMessage(directActivation ? 'Rule enabled. It runs automatically on matching pages from this site.' : 'Rule added disabled. Turn on its switch in Wireflip, then return to the Playground tab' + (requiresSession ? ' and open the toolbar icon → Start tab session.' : ' to test it.'));
     } catch (error) {
       setOperationError(error instanceof Error ? error.message : 'Unable to create the draft.');
     } finally {
@@ -317,7 +317,7 @@ export default function Playground() {
   const capabilities = session?.capabilities.interception;
   const sessionRunning = status?.advancedMode === 'connected';
   const stepTitle = directActivation ? (readyToTest ? 'Example enabled' : draftCreated ? 'Enable this example' : 'Try this example') : !session ? 'Connect Wireflip to try this example' : !draftCreated ? 'Add and enable the rule' : requiresSession && !sessionRunning ? 'Start this tab’s session' : requiresSession ? 'Session running' : 'Test the rule';
-  const stepHelp = directActivation ? (readyToTest ? 'Runs automatically on matching pages · No tab session needed' : 'Confirm once in Wireflip, then test the response here') : !session ? 'Install the extension and reconnect first' : !draftCreated ? 'First add and enable the recipe rule in Wireflip, then return to this tab' : requiresSession && !sessionRunning ? 'Enable the rule in Wireflip. Return here, click the Wireflip toolbar icon → Start tab session for this Playground tab' : 'The saved rule and its group must be enabled in Wireflip';
+  const stepHelp = directActivation ? (readyToTest ? 'Runs automatically on matching pages from this site' : 'Confirm once in Wireflip, then test the response here') : !session ? 'Install the extension and reconnect first' : !draftCreated ? 'First add and enable the recipe rule in Wireflip, then return to this tab' : requiresSession && !sessionRunning ? 'Enable the rule in Wireflip. Return here, click the Wireflip toolbar icon → Start tab session for this Playground tab' : 'The saved rule and its group must be enabled in Wireflip';
   const displayBody = (body: string) => { try { return JSON.stringify(JSON.parse(body), null, 2); } catch { return body; } };
 
 
