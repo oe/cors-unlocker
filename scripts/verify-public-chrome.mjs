@@ -176,6 +176,18 @@ try {
   await screenshot(store, 'chrome-web-store');
   results.checks.push('Public store listing shows Wireflip 2.0.0');
 
+  // Poll HTML before opening the app. Reloading the live app while waiting for
+  // deployment repeatedly reconnects its SDK and can exhaust its origin quota.
+  if (process.env.WIREFLIP_BUILT_SITE !== '1') {
+    await wait(async () => {
+      try {
+        const response = await fetch(siteUrl + '/playground/?release-check=' + Date.now(), { cache: 'no-store', signal: AbortSignal.timeout(10_000) });
+        if (response.ok && (await response.text()).includes('https://jsonplaceholder.typicode.com/todos/2')) return true;
+      } catch { /* A deploying site may be temporarily unavailable. */ }
+      await new Promise(resolve => setTimeout(resolve, 2_000));
+      return false;
+    }, Boolean, 180_000);
+  }
   const page = await context.newPage();
   activePage = page;
   const errors = [];
@@ -188,14 +200,10 @@ try {
     sessionStorage.setItem('wireflip:playground-draft', JSON.stringify({ ...saved, fingerprint: JSON.stringify([saved.name, saved.urlPattern, saved.actionJson]) }));
   });
   await page.goto(siteUrl + '/playground/');
-  // The main-branch check waits for the website deployment to publish this recipe.
-  await wait(async () => {
-    if (await page.getByLabel('Probe URL', { exact: true }).inputValue().catch(() => '') === 'https://jsonplaceholder.typicode.com/todos/2') return true;
-    await page.reload(); return false;
-  }, Boolean, 180_000);
   assert.equal(new URL(page.url()).pathname, '/playground/');
   assert((await page.title()).includes('Wireflip'));
   await page.getByRole('heading', { name: 'Extension connected · chrome', exact: true }).waitFor();
+  assert.equal(await page.getByLabel('Probe URL', { exact: true }).inputValue(), 'https://jsonplaceholder.typicode.com/todos/2');
   assert(await page.getByRole('button', { name: 'Test mock', exact: true }).isDisabled());
   await page.getByRole('button', { name: 'Add rule in Wireflip', exact: true }).click();
   const state = () => control.evaluate(() => chrome.runtime.sendMessage({ type: 'getProxyState' }));
