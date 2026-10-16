@@ -31,6 +31,8 @@ export interface InterceptCapabilities {
   browser: 'chrome' | 'firefox';
   cors: true;
   draftRules: true;
+  ruleActivation?: true;
+  ruleExecution?: 'automatic';
   workspace: true;
   advancedMode: 'user-initiated';
   interception: {
@@ -74,6 +76,14 @@ export interface DraftRuleInput {
   methods?: string[];
   resourceTypes?: string[];
   actions: DraftAction[];
+}
+
+export interface ActivatedRuleResult {
+  id: string;
+  enabled: true;
+  ready: boolean;
+  error?: string;
+  workspaceOpened: false;
 }
 
 export interface DraftRuleResult {
@@ -186,6 +196,14 @@ export class InterceptSession {
       rule,
       openWorkspace: options.openWorkspace ?? true,
     });
+  }
+
+  /** User approves once in Wireflip; execution is automatic on matching pages. */
+  requestRule(rule: DraftRuleInput, options: { id?: string } = {}): Promise<ActivatedRuleResult> {
+    if (!this.capabilities.ruleActivation) return Promise.reject(new InterceptError({
+      type: 'invalid-request', message: 'Update Wireflip to enable a rule directly from this page.',
+    }));
+    return this.bridge.request('requestRule', { rule, id: options.id }, 125_000);
   }
 
   openWorkspace(): Promise<void> {

@@ -1,3 +1,4 @@
+import { requestRuleApproval, approvalInfo, resolveRuleApproval } from './rule-approval';
 import browser from 'webextension-polyfill';
 import type { IRuleItem } from '@/types';
 import {
@@ -281,6 +282,8 @@ async function handleSdkRequest(
         cors: await isOriginEnabled(origin),
         advancedMode: getAdvancedProxyStatus(sender.tab.id).phase,
       };
+    case 'requestRule':
+      return requestRuleApproval(data, sender.tab.id, origin);
     case 'createRuleDraft': {
       const draft = data?.rule;
       if (!draft || typeof draft !== 'object') throw new Error('Missing rule draft.');
@@ -337,6 +340,12 @@ export async function onRuntimeMessage(
     switch (message.type) {
       case 'sdkRequest':
         return handleSdkRequest(message, sender);
+
+      case 'getRuleApproval':
+        return approvalInfo(message.payload?.id);
+      case 'resolveRuleApproval':
+        await resolveRuleApproval(message.payload?.id, message.payload?.accepted === true);
+        return { success: true };
 
       case 'proxyStateOperation':
         if (!isValidExtensionSender(sender)) throw new Error('State changes require an extension page.');

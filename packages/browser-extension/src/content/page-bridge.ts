@@ -8,6 +8,7 @@ const ALLOWED_METHODS = new Set([
   'requestCors',
   'disableCors',
   'createRuleDraft',
+  'requestRule',
   'openWorkspace',
 ]);
 
@@ -32,8 +33,8 @@ function isPageRequest(value: unknown): value is PageRequest {
 }
 
 function sendResponse(request: PageRequest, response: unknown) {
-  const result = response && typeof response === 'object' && 'error' in response
-    ? { error: { type: 'invalid-request', message: String((response as { error?: unknown }).error || 'Request failed.') } }
+  const result = response && typeof response === 'object' && 'error' in response && !('id' in response)
+    ? { error: typeof (response as { error?: unknown }).error === 'object' ? (response as { error: object }).error : { type: 'invalid-request', message: String((response as { error?: unknown }).error || 'Request failed.') } }
     : { data: response };
   window.postMessage({
     type: RESPONSE_TYPE,
