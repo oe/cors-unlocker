@@ -143,14 +143,6 @@ export const runtimeMessages: Record<string, Record<string, string>> = {
     "fr": "Vous pouvez désactiver la règle à tout moment. Firefox contacte toujours le serveur et conserve son statut.",
     "es": "Puedes desactivar la regla en cualquier momento. Firefox sigue contactando al servidor y conserva su estado."
   },
-  "Only this tab. Reset here or stop recording to clear.": {
-    "en": "Only this tab. Reset here or stop recording to clear.",
-    "zh-CN": "仅当前标签页，可在此重置或停止记录以清除。",
-    "ko": "이 탭에만 적용됩니다. 여기서 초기화하거나 기록을 중지해 지우세요.",
-    "ja": "このタブのみ適用されます。ここでリセットするか記録を停止すると解除されます。",
-    "fr": "Cet onglet uniquement. Réinitialisez ici ou arrêtez l’enregistrement pour effacer.",
-    "es": "Solo esta pestaña. Restablece aquí o detén la grabación para borrar."
-  },
   "Matched rule requests appear automatically. Start recording for other traffic. This is not a complete browser network log.": {
     "en": "Matched rule requests appear automatically. Start recording for other traffic. This is not a complete browser network log.",
     "zh-CN": "匹配规则的请求会自动显示。开始记录可查看其他流量，此处不是完整的浏览器网络日志。",
@@ -166,5 +158,13 @@ export const runtimeMessages: Record<string, Record<string, string>> = {
     "ja": "ルールを再試行",
     "fr": "Réessayer les règles",
     "es": "Reintentar reglas"
+  },
+  "Only this tab. Reset anytime.": {
+    "en": "Only this tab. Reset anytime.",
+    "zh-CN": "仅当前标签页，可随时重置",
+    "ko": "이 탭에만 적용 · 언제든 초기화",
+    "ja": "このタブのみ適用、いつでもリセットできます",
+    "fr": "Cet onglet uniquement. Réinitialisez à tout moment.",
+    "es": "Solo esta pestaña. Restablece cuando quieras."
   }
 };

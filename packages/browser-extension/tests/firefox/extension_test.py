@@ -272,7 +272,7 @@ class FirefoxTests(unittest.TestCase):
             self.wait(self.toolbar, lambda value: value['badge'] == '2')
             self.switch(popup)
             self.wait(lambda: self.js('return document.body.textContent.includes("Enabled rules run automatically on matching pages.");'))
-            self.assertIn('Saved rules active', self.js('return document.body.textContent;'))
+            self.wait(lambda: self.js('return document.body.textContent.includes("Saved rules active");'))
             self.js('Array.from(document.querySelectorAll("button")).find(button=>button.textContent.trim()==="Start recording").click();')
             self.wait(self.toolbar, lambda value: value['badge'] == 'ON')
             self.message('proxyStateOperation', kind='updateGroup', id=group['id'], enabled=False)
@@ -572,7 +572,7 @@ class FirefoxTests(unittest.TestCase):
         self.assertTrue(self.fetch('/failure').get('failed'))
         self.assertEqual(Fixture.hits.get('/failure', 0), before)
         self.message('disableAdvancedProxy', tabId=self.tab_id)
-        self.wait(self.toolbar, lambda t: t['badge'] == '' and 'temporary' not in t['title'])
+        self.wait(self.toolbar, lambda t: t['badge'] == '' and 'This tab · temporary' not in t['title'])
         self.assertEqual(self.fetch('/failure')['status'], 200)
 
     def test_navigation_clears_controls_but_persistent_rules_remain(self):

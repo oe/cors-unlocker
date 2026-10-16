@@ -113,7 +113,7 @@ function App() {
             </div>
           </div>
         </div>
-        <p className="mt-1 text-xs text-muted-foreground">{t('Only this tab. Reset here or stop recording to clear.')}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{t('Only this tab. Reset anytime.')}</p>
         <p className="mt-1 text-xs text-muted-foreground">{t(__TARGET__ === 'chrome' ? 'Enabling starts Chrome debugging.' : 'Firefox CORS: response headers only.')}</p>
       </section>
 

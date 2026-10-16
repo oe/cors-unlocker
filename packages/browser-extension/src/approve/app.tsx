@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import browser from 'webextension-polyfill';
-import { t, initializeLocale, translateError } from '@/common/i18n';
+import { t, initializeLocale, translateError, useLocale } from '@/common/i18n';
 import { initializeTheme } from '@/common/theme';
 import { BrandMark } from '@/components/brand-mark';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import '@/common/tailwind.css';
 
 type Request = { origin: string; name: string; pattern: string; actions: IProxyAction[] };
 function Approval() {
+  useLocale();
   const id = new URLSearchParams(location.search).get('id');
   const [request, setRequest] = useState<Request | null>(null);
   const [error, setError] = useState('');
