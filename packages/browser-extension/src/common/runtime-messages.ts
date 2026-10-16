@@ -166,5 +166,13 @@ export const runtimeMessages: Record<string, Record<string, string>> = {
     "ja": "このタブのみ適用、いつでもリセットできます",
     "fr": "Cet onglet uniquement. Réinitialisez à tout moment.",
     "es": "Solo esta pestaña. Restablece cuando quieras."
+  },
+  "Tests these conditions without sending a request.": {
+    "en": "Tests these conditions without sending a request.",
+    "zh-CN": "仅测试匹配条件，不发送请求",
+    "ko": "요청을 보내지 않고 조건을 테스트합니다.",
+    "ja": "リクエストを送信せずに条件をテストします。",
+    "fr": "Teste ces conditions sans envoyer de requête.",
+    "es": "Prueba estas condiciones sin enviar una solicitud."
   }
 };

@@ -36,7 +36,7 @@ function Approval() {
     <div><h1 className="text-xl font-semibold">{t('Enable this rule?')}</h1><p className="mt-2 break-all text-sm text-muted-foreground">{request?.origin || t('Loading…')}</p></div>
     {error ? <Alert variant="destructive"><AlertDescription role="alert">{translateError(error)}</AlertDescription></Alert> : null}
     {request ? <>
-      <Card><CardHeader><CardTitle>{request.name}</CardTitle><CardDescription>{t('Runs automatically on matching pages from this site')}</CardDescription></CardHeader>
+      <Card><CardHeader><CardTitle className="break-words">{request.name}</CardTitle><CardDescription>{t('Runs automatically on matching pages from this site')}</CardDescription></CardHeader>
         <CardContent className="flex flex-col gap-3">
           <code className="break-all text-xs">{request.pattern}</code>
           <p className="text-sm">{request.actions.map(action => t(ACTION_LABELS[action.type])).join(' · ')}</p>
