@@ -1,0 +1,55 @@
+name: Verify public Chrome Web Store release
+
+on:
+  pull_request:
+    paths:
+      - scripts/verify-public-chrome.mjs
+      - .github/workflows/chrome-store-verification.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  public-chrome:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.6.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Download the exact submitted release ZIP
+        uses: actions/download-artifact@v4
+        with:
+          name: extension-release-archives
+          path: artifacts/submitted-release
+          run-id: 38620854912
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install from public Web Store using native Chrome policy
+        run: |
+          google-chrome --version
+          sudo mkdir -p /etc/opt/chrome/policies/managed
+          sudo tee /etc/opt/chrome/policies/managed/wireflip-verification.json >/dev/null <<'JSON'
+          {"ExtensionInstallForcelist":["knhlkjdfmgkmelcjfnbbhpphkmjjacng;https://clients2.google.com/service/update2/crx"]}
+          JSON
+      - name: Verify signed public runtime and live Playground
+        run: |
+          CHROME_RELEASE_ARCHIVE="$(find artifacts/submitted-release -name 'wireflip-chrome-v2.0.0.zip' -print -quit)" \
+          xvfb-run -a node scripts/verify-public-chrome.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: public-chrome-verification-${{ github.sha }}
+          path: artifacts/public-chrome
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Remove test-only machine policy
+        if: always()
+        run: sudo rm -f /etc/opt/chrome/policies/managed/wireflip-verification.json
