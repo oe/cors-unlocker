@@ -131,4 +131,4 @@ Website developers should update to `wireflip@0.3.0` once it is published. Publi
 
 If an existing CORS rule has no website ownership, open **Wireflip → Rules** to manage it. To let the website create a new owned rule, delete the old CORS rule there, return to the website, and retry. This deliberately does not grant websites control of manual or older unowned rules.
 
-Release order: publish the extension update to both stores, confirm availability, then publish SDK 0.3.0 and update the website's public version instructions. Until then, these features are a source candidate; the published SDK remains 0.2.0 and store extensions remain 2.0.0.
+Release order: first verify SDK 0.3.0 against the public 2.0 extension and publish the SDK, so websites can upgrade before extension rollout. Basic CORS/draft APIs remain compatible with 2.0; gate newer APIs on capabilities. Then publish extension 2.1 to both stores and announce the new features once both store versions are available. Until then, these features are a source candidate; the published SDK remains 0.2.0 and store extensions remain 2.0.0.

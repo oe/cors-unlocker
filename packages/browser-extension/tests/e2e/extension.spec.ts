@@ -2142,7 +2142,7 @@ test('authorizes SDK changes through native approval and explicit popup site tru
     await popup.bringToFront();
     await trust.click();
     await expect(trust).toBeChecked();
-    await expect(popup.getByText(/Trusted: this site can manage its SDK rules/)).toBeVisible();
+    await expect(popup.getByText(/Trusted: this site can manage the rules it created/)).toBeVisible();
     expect((await command('disableRule', [created.id])).data.enabled).toBe(false);
     expect(await probe()).toBeNull();
     await expect(popup.getByRole('status')).toContainText('Rule disabled');
