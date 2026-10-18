@@ -679,7 +679,7 @@ class FirefoxTests(unittest.TestCase):
                 self.switch(popup)
                 self.wait(lambda: self.js('return document.documentElement.lang;'), lambda lang: lang == locale)
                 self.assertTrue(self.js('return document.documentElement.scrollWidth <= innerWidth;'), self.js('return {url:location.href,inner:innerWidth,scroll:document.documentElement.scrollWidth,body:document.body.innerText,overflow:[...document.querySelectorAll("*")].filter(e=>e.getBoundingClientRect().right>innerWidth).slice(0,8).map(e=>({tag:e.tagName,cls:e.className,width:e.getBoundingClientRect().width}))};'))
-                self.assertEqual(self.js('return document.querySelectorAll("[role=switch]").length;'), 4)
+                self.assertEqual(self.js('return document.querySelectorAll("[role=switch]").length;'), 5)
                 if locale in ['zh-CN', 'ja', 'ko']:
                     self.assertIn('Noto Sans CJK', self.js('return getComputedStyle(document.body).fontFamily;'))
                 self.assertNotIn('Disable cache', self.js('return document.body.innerText;'))

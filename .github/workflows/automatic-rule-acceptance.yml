@@ -46,15 +46,22 @@ jobs:
         env:
           WIREFLIP_INLINE_EVIDENCE: '1'
         run: xvfb-run -a pnpm --filter browser-wireflip exec playwright test --grep 'enables a Playground example with one native approval|authorizes SDK changes' --retries=0
+      - name: Prepare SDK archive fixtures
+        if: matrix.browser == 'firefox'
+        run: node scripts/verify-sdk-packages.mjs
       - name: Install native Firefox browser
         if: matrix.browser == 'firefox'
         run: bash packages/browser-extension/scripts/install-firefox-test-browser.sh "$RUNNER_TEMP/activation-firefox"
-      - name: Verify one-approval activation in Firefox
+      - name: Verify Firefox activation, extension and SDK consent
         if: matrix.browser == 'firefox'
         env:
           FIREFOX_BINARY: ${{ runner.temp }}/activation-firefox/firefox/firefox
           GECKODRIVER: ${{ runner.temp }}/activation-firefox/geckodriver
-        run: python3 packages/browser-extension/tests/firefox/automatic_playground_test.py
+          FIREFOX_LEGACY_XPI: ${{ runner.temp }}/activation-firefox/legacy-v1.xpi
+        run: |
+          python3 packages/browser-extension/tests/firefox/automatic_playground_test.py
+          python3 packages/browser-extension/tests/firefox/extension_test.py
+          python3 packages/browser-extension/tests/firefox/sdk_package_test.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:

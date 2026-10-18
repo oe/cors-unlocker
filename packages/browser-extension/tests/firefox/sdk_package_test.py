@@ -113,11 +113,29 @@ class SdkPackageTests(native.FirefoxTests):
     def load(self, label, entry):
         result = self.async_js('window.sdk=await import(arguments[0]);return Object.keys(window.sdk);', f'/sdk/{label}/package/dist/{entry}')
         self.assertIn('default', result, result)
+        # Public 2.0 uses page confirmation; candidates advertise native site-trust consent.
+        self.native_consent = self.async_js("""return new Promise(resolve=>{
+          const id=crypto.randomUUID();const timer=setTimeout(()=>{window.removeEventListener('message',receive);resolve(false);},2000);
+          function receive(event){if(event.source===window && event.data?.type==='wireflip:sdk-response' && event.data.id===id){clearTimeout(timer);window.removeEventListener('message',receive);resolve(event.data.data?.capabilities?.siteTrust===true);}}
+          window.addEventListener('message',receive);window.postMessage({type:'wireflip:sdk-request',id,clientId:'firefox-consent-capabilities',method:'connect'},location.origin);
+        });""")
 
     def call(self, expression):
         return self.async_js('return ' + expression + ';')
 
     def consent(self, expression, accept):
+        if not self.native_consent:
+            if any(method in expression for method in ['.disable(', '.disableCors(', '.createRuleDraft(']):
+                return {'data': self.call(expression)}
+            self.js('window.sdkResult=null;(' + expression + ').then(data=>window.sdkResult={data:data??null},error=>window.sdkResult={error:{type:error.type,message:error.message}});')
+            def alert():
+                try:
+                    return self.command('GET', '/alert/text')
+                except AssertionError:
+                    return None
+            self.wait(alert)
+            self.command('POST', '/alert/accept' if accept else '/alert/dismiss', {})
+            return self.wait(lambda: self.js('return window.sdkResult;'))
         # A genuine user click is required for untrusted SDK mutations.
         before = set(self.command('GET', '/window/handles'))
         self.js("""window.sdkResult=null;const b=document.createElement('button');b.id='sdk-consent';
@@ -126,7 +144,7 @@ class SdkPackageTests(native.FirefoxTests):
         self.command('POST', '/element/' + element['element-6066-11e4-a52e-4f735466cecf'] + '/click', {})
         approval = self.wait(lambda: set(self.command('GET', '/window/handles')) - before)
         self.switch(next(iter(approval)))
-        self.wait(lambda: self.js('return !!document.querySelector("main button:not([disabled])");'))
+        self.wait(lambda: self.js('return [...document.querySelectorAll("main button")].at(-1)?.disabled === false;'))
         selector = '(//button)[last()]' if accept else '//button[normalize-space(.)="Cancel"]'
         button = self.command('POST', '/element', {'using': 'xpath', 'value': selector})
         try:
