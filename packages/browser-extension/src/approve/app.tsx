@@ -11,7 +11,7 @@ import { ACTION_LABELS } from '@/components/action-fields';
 import type { IProxyAction } from '@/common/proxy-state';
 import '@/common/tailwind.css';
 
-type Request = { origin: string; title: string; button: string; name: string; pattern?: string; actions: IProxyAction[]; reason?: string };
+type Request = { origin: string; title: string; button: string; name: string; pattern?: string; actions: IProxyAction[]; reason?: string; credentials?: boolean };
 function Approval() {
   useLocale();
   const id = new URLSearchParams(location.search).get('id');
@@ -39,6 +39,7 @@ function Approval() {
       <Card><CardHeader><CardTitle className="break-words">{request.name}</CardTitle><CardDescription>{t('Website request for this site only')}</CardDescription></CardHeader>
         <CardContent className="flex flex-col gap-3">
           {request.pattern ? <code className="break-all text-xs">{request.pattern}</code> : null}
+          {typeof request.credentials === 'boolean' ? <p className="text-sm">{t(request.credentials ? 'Credentialed requests will be allowed.' : 'Credentials will not be enabled.')}</p> : null}
           {request.reason ? <p className="break-words text-sm">{request.reason}</p> : null}
           <p className="text-sm">{request.actions.map(action => t(ACTION_LABELS[action.type])).join(' · ')}</p>
           <details className="text-xs"><summary className="cursor-pointer">{t('Actions')}</summary><pre className="mt-2 max-h-36 overflow-auto whitespace-pre-wrap break-all">{JSON.stringify(request.actions, null, 2)}</pre></details>

@@ -637,7 +637,7 @@ class FirefoxTests(unittest.TestCase):
     def test_sdk_connect_and_disabled_origin_scoped_draft(self):
         self.switch(self.target)
         def sdk(method, payload=None):
-            return self.async_js('''return new Promise((resolve,reject)=>{const id=crypto.randomUUID();const clientId="firefox-native-test";const timer=setTimeout(()=>{window.removeEventListener("message",receive);reject(Error("SDK timeout"));},5000);function receive(event){if(event.source===window && event.data?.type==="wireflip:sdk-response" && event.data.id===id){clearTimeout(timer);window.removeEventListener("message",receive);resolve(event.data);}}window.addEventListener("message",receive);window.postMessage({type:"wireflip:sdk-request",clientId,id,method:arguments[0],payload:arguments[1]},location.origin);});''', method, payload)
+            return self.async_js('''return new Promise((resolve,reject)=>{const id=crypto.randomUUID();const clientId="firefox-native-test";const timer=setTimeout(()=>{window.removeEventListener("message",receive);reject(Error("SDK timeout"));},125000);function receive(event){if(event.source===window && event.data?.type==="wireflip:sdk-response" && event.data.id===id){clearTimeout(timer);window.removeEventListener("message",receive);resolve(event.data);}}window.addEventListener("message",receive);window.postMessage({type:"wireflip:sdk-request",approvalProtocol:1,clientId,id,method:arguments[0],payload:arguments[1]},location.origin);});''', method, payload)
         connected = sdk('connect')
         self.assertIn('data', connected, connected)
         self.assertIn('capabilities', connected['data'])

@@ -28,6 +28,7 @@ interface PageRequest {
   id: string;
   method: string;
   payload?: unknown;
+  approvalProtocol?: number;
 }
 
 function isPageRequest(value: unknown): value is PageRequest {
@@ -66,7 +67,7 @@ window.addEventListener('message', async (event) => {
     if (mutation) activationDeadline = 0;
     const response = await browser.runtime.sendMessage({
       type: 'sdkRequest',
-      payload: { method: request.method, data: request.payload, userActivated },
+      payload: { method: request.method, data: request.payload, userActivated, supportsApproval: request.approvalProtocol === 1 },
     });
     sendResponse(request, response);
   } catch (cause) {

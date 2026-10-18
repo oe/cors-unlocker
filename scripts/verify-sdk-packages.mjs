@@ -26,7 +26,15 @@ const archives = [
   ['legacy-0.1.0', 'cors-unlocker-0.1.0.tgz'],
   ['legacy-0.1.1', 'cors-unlocker-0.1.1.tgz'],
 ];
-const records = [];
+// Pin the already-published Wireflip client as a separate browser fixture.
+const publishedArchive = path.join(output, 'wireflip-0.2.0.tgz');
+run('python3', ['-c', 'import pathlib,sys,urllib.request; pathlib.Path(sys.argv[2]).write_bytes(urllib.request.urlopen(sys.argv[1],timeout=30).read())', 'https://registry.npmjs.org/wireflip/-/wireflip-0.2.0.tgz', publishedArchive]);
+assert.equal(`sha512-${createHash('sha512').update(readFileSync(publishedArchive)).digest('base64')}`, 'sha512-CH6XtPV8xtAwIloEqnPaycrcDKmxkJAJvjThu2F6D4SiLAe2M5H0tdcHoZtuaZBAzjYYYV8mzsYnoSxHbt45lg==');
+const publishedDestination = path.join(output, 'published-0.2.0');
+rmSync(publishedDestination, { recursive: true, force: true });
+mkdirSync(publishedDestination);
+run('tar', ['-xzf', publishedArchive, '-C', publishedDestination]);
+const records = [{ label: 'published-0.2.0', name: 'wireflip', version: '0.2.0', archive: 'wireflip-0.2.0.tgz', sha256: createHash('sha256').update(readFileSync(publishedArchive)).digest('hex') }];
 for (const [label, file] of archives) {
   const archive = path.join(output, file);
   const destination = path.join(output, label);
@@ -37,7 +45,7 @@ for (const [label, file] of archives) {
   assert.equal(packed.name, label === 'new' ? 'wireflip' : 'cors-unlocker');
   assert.equal(packed.version, label === 'new' ? pkg.version : label.replace('legacy-', ''));
   for (const entry of [packed.main, packed.module, packed.types]) assert(readFileSync(path.join(destination, 'package', entry)).length);
-  const outputJson = JSON.parse(run('npm', [label === 'legacy-0.1.0' ? 'pack' : 'publish', archive, '--dry-run', '--ignore-scripts', '--json']));
+  const outputJson = JSON.parse(run('npm', [label.startsWith('legacy-') ? 'pack' : 'publish', archive, '--dry-run', '--ignore-scripts', '--json']));
   const listing = Array.isArray(outputJson) ? outputJson[0] : outputJson.name ? outputJson : outputJson[packed.name];
   assert(listing, 'npm dry-run must return package metadata');
   assert.equal(listing.name, packed.name);
@@ -62,5 +70,5 @@ try {
   run(process.execPath, [require.resolve('typescript/bin/tsc'), '--strict', '--noEmit', '--module', 'nodenext', '--moduleResolution', 'nodenext', '--target', 'ES2022', '--lib', 'ES2022,DOM', 'consumer.mts', 'consumer.cts'], consumer);
 } finally { rmSync(consumer, { recursive: true, force: true }); }
 writeFileSync(path.join(output, 'packages.json'), JSON.stringify({ commit: run('git', ['rev-parse', 'HEAD']).trim(), worktreeDirty: Boolean(run('git', ['status', '--porcelain']).trim()), archives: records, consumer: { esm: 'passed', commonjs: 'passed', types: 'passed', dryRun: 'passed' } }, null, 2) + '\n');
-console.log('SDK archives verified: SHA-512 pinned legacy source, unchanged legacy runtime, new/patch publish dry-runs and original archive inspection, clean ESM/CommonJS/types consumer.');
+console.log('SDK archives verified: SHA-512 pinned legacy source, unchanged legacy runtime, candidate publish dry-run and legacy archive inspection, clean ESM/CommonJS/types consumer.');
 console.log(`Browser fixtures and archive hashes: ${output}`);

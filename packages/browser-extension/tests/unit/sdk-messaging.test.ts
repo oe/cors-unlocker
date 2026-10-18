@@ -19,7 +19,7 @@ import { addProxyRule, removeProxyRule, updateProxyRule, performProxyStateOperat
 const origin = 'https://app.example';
 const sender = { url: origin + '/page', frameId: 0, tab: { id: 1 } };
 const rule = { id: 'owned', name: 'Rule', urlPattern: '*', enabled: true, source: 'user', sdkOrigin: origin, createdAt: 1, updatedAt: 1, match: { initiatorOrigins: [origin], urlPattern: '*' }, actions: [{ type: 'block' }] };
-const sdk = (method: string, data?: unknown, from = sender) => onRuntimeMessage({ type: 'sdkRequest', payload: { method, data, userActivated: true } }, from);
+const sdk = (method: string, data?: unknown, from = sender) => onRuntimeMessage({ type: 'sdkRequest', payload: { method, data, userActivated: true, supportsApproval: true } }, from);
 beforeEach(() => {
   vi.clearAllMocks(); state.rules = [structuredClone(rule)]; state.profiles = [];
   approve.mockResolvedValue({ error: { type: 'user-cancel', message: 'Declined' } });
@@ -74,4 +74,15 @@ it('persists trust only after an explicit matching popup request', async () => {
 it('does not resume unrelated paused execution when creating a draft or disabling a rule', async () => {
   await sdkRuleResult({ ...rule, enabled: false } as IProxyRule, 1, origin);
   expect(resumeSavedRuleRuntime).not.toHaveBeenCalled();
+});
+
+it('forwards the approval contract without assuming old clients can wait', async () => {
+  await onRuntimeMessage({ type: 'sdkRequest', payload: { method: 'requestCors', userActivated: true } }, sender);
+  expect(approve.mock.calls.at(-1)?.[0].supportsApproval).toBe(false);
+  await sdk('requestCors');
+  expect(approve.mock.calls.at(-1)?.[0].supportsApproval).toBe(true);
+});
+it('labels replacement of an existing rule as an update', async () => {
+  await sdk('requestRule', { id: 'owned', rule });
+  expect(approve.mock.calls.at(-1)?.[0].info).toMatchObject({ title: 'Update this rule?', button: 'Update rule' });
 });

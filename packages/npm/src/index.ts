@@ -170,6 +170,7 @@ class LocalBridge {
       window.addEventListener('message', onMessage);
       window.postMessage({
         type: REQUEST_TYPE,
+        approvalProtocol: 1,
         clientId: this.clientId,
         id,
         method,

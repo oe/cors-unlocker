@@ -10,6 +10,7 @@ export interface SdkApprovalInfo {
   pattern?: string;
   actions: IProxyAction[];
   reason?: string;
+  credentials?: boolean;
 }
 type Pending = {
   id: string; tabId: number; requesterOrigin: string; info: SdkApprovalInfo;
@@ -20,7 +21,7 @@ const pending = new Map<string, Pending>();
 const completedLabels: Record<string, string> = {
   'Enable CORS?': 'CORS enabled', 'Disable CORS?': 'CORS disabled',
   'Create this rule draft?': 'Rule draft created', 'Enable this rule?': 'Rule enabled',
-  'Disable this rule?': 'Rule disabled', 'Delete this rule?': 'Rule deleted',
+  'Update this rule?': 'Rule updated', 'Disable this rule?': 'Rule disabled', 'Delete this rule?': 'Rule deleted',
 };
 export function sdkApprovalInfo(id: string) {
   const request = pending.get(id);
@@ -39,7 +40,7 @@ async function checkPage(tabId: number, origin: string) {
 }
 export async function approveSdkOperation(options: {
   tabId: number; requesterOrigin: string; info: SdkApprovalInfo;
-  userActivated: boolean; sensitive?: boolean; forceConfirmation?: boolean;
+  userActivated: boolean; supportsApproval?: boolean; sensitive?: boolean; forceConfirmation?: boolean;
 }, execute: () => Promise<unknown>): Promise<unknown> {
   const { tabId, requesterOrigin, info } = options;
   const run = async () => {
@@ -51,6 +52,9 @@ export async function approveSdkOperation(options: {
   };
   const access = await getSiteAccess(info.origin);
   if (access.trusted && !options.sensitive && !options.forceConfirmation) return run();
+  // Older wireflip SDKs stop listening after 5s (CORS: 60s). Never leave
+  // an approval executable after that client has already reported a timeout.
+  if (options.supportsApproval === false) return { error: { type: 'invalid-request', message: 'This website needs wireflip SDK 0.3.0 or newer to request approval. Ask the website developer to update it, or manage rules in Wireflip.' } };
   if (!options.userActivated) return { error: { type: 'invalid-request', message: 'Request a change from a click or keyboard action on this page.' } };
   if ([...pending.values()].some(request => request.tabId === tabId)) throw new Error('An approval is already open for this tab.');
   const id = crypto.randomUUID();

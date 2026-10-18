@@ -36,7 +36,7 @@ async function captureUX(page: Page, name: string) {
   for (let index = 0; index < total; index++) console.log('WIREFLIP_IMAGE ' + JSON.stringify({ name, index, total, data: data.slice(index * 8192, (index + 1) * 8192) }));
 }
 
-async function withSdkApproval<T>(page: Page, request: () => Promise<T>, accepted = true): Promise<T> {
+async function withSdkApproval<T>(page: Page, request: () => Promise<T>, accepted = true, delayMs = 0): Promise<T> {
   // Use a native pointer event even when Chrome renders a JSON viewer over the document.
   await page.bringToFront();
   await page.mouse.click(20, 20);
@@ -45,6 +45,7 @@ async function withSdkApproval<T>(page: Page, request: () => Promise<T>, accepte
   const approval = await Promise.race([opening, result.then(() => { throw new Error('SDK request completed without the expected approval window.'); })]);
   const button = accepted ? approval.getByRole('button').last() : approval.getByRole('button', { name: 'Cancel', exact: true });
   await expect(button).toBeEnabled();
+  if (delayMs) await new Promise(resolve => setTimeout(resolve, delayMs));
   await button.click({ noWaitAfter: true }).catch(error => { if (!approval.isClosed()) throw error; });
   return result;
 }
@@ -996,7 +997,7 @@ test('exposes an origin-scoped SDK bridge with consent and disabled drafts', asy
   const sdkRequest = async (method: string, payload?: unknown) => target.evaluate(({ method: sdkMethod, payload: sdkPayload }) => new Promise<any>((resolve, reject) => {
     const clientId = crypto.randomUUID();
     const id = crypto.randomUUID();
-    const timer = setTimeout(() => reject(new Error('SDK response timeout')), 5_000);
+    const timer = setTimeout(() => reject(new Error('SDK response timeout')), 125_000);
     const listener = (event: MessageEvent) => {
       if (event.data?.type !== 'wireflip:sdk-response'
         || event.data.clientId !== clientId
@@ -1008,6 +1009,7 @@ test('exposes an origin-scoped SDK bridge with consent and disabled drafts', asy
     window.addEventListener('message', listener);
     window.postMessage({
       type: 'wireflip:sdk-request',
+      approvalProtocol: 1,
       clientId,
       id,
       method: sdkMethod,
@@ -2037,12 +2039,28 @@ test('runs exact new and legacy SDK archives through production HTTPS bridges', 
     expect(bridgeRequests).toContain('/message/index.html');
     await target.goto(app + '/');
     await control.evaluate(async () => { const state = await chrome.runtime.sendMessage({ type: 'getProxyState' }); for (const rule of state.rules.filter((rule: any) => rule.source === 'legacy-cors')) await chrome.runtime.sendMessage({ type: 'deleteProxyRule', payload: { id: rule.id } }); });
+    await load(target, 'published-0.2.0', 'index.mjs');
+    await call(target, '(async()=>{window.session=await sdk.intercept.connect();})()');
+    const pagesBeforeOldRequests = context.pages().length;
+    for (const expression of [
+      'session.disableCors()',
+      'session.createRuleDraft({name:"Old client",urlPattern:"*",actions:[{type:"block"}]},{openWorkspace:false})',
+      'session.requestCors({credentials:false})',
+    ]) {
+      const result = await call(target, '(' + expression + ').then(()=>({unexpectedSuccess:true}),e=>({type:e.type,message:e.message}))');
+      expect(result).toMatchObject({ type: 'invalid-request', message: expect.stringContaining('SDK 0.3.0') });
+    }
+    // Wait beyond the exact published client's 5s timeout: no pending operation survives.
+    await new Promise(resolve => setTimeout(resolve, 6_000));
+    expect(context.pages()).toHaveLength(pagesBeforeOldRequests);
+    expect((await call(target, 'session.getStatus()')).cors.enabled).toBe(false);
+    expect((await send('getProxyState')).rules.some((rule: any) => rule.name === 'Old client')).toBe(false);
     await load(target, 'new', 'index.mjs');
     const connected = await call(target, '(async()=>{window.session=await sdk.intercept.connect();return {origin:session.origin,capabilities:session.capabilities,status:await session.getStatus()};})()');
     expect(connected).toMatchObject({ origin: app, capabilities: { browser: 'chrome', interception: { responseMock: 'synthetic' } }, status: { advancedMode: 'disabled' } });
     expect(await withSdkApproval(target, () => call(target, 'session.requestCors().catch(e=>({error:e.type}))'), false)).toEqual({ error: 'user-cancel' });
     expect((await withSdkApproval(target, () => call(target, 'session.requestCors({credentials:false})'))).cors.enabled).toBe(true);
-    expect((await withSdkApproval(target, () => call(target, 'session.disableCors()'))).cors.enabled).toBe(false);
+    expect((await withSdkApproval(target, () => call(target, 'session.disableCors()'), true, 6_000)).cors.enabled).toBe(false);
     const draft = await withSdkApproval(target, () => call(target, 'session.createRuleDraft({name:"Exact archive",urlPattern:"https://api.example.com/*",actions:[{type:"delay",milliseconds:800}]},{openWorkspace:false})'));
     expect(draft.enabled).toBe(false);
     const stored = (await send('getProxyState')).rules.find((rule: any) => rule.id === draft.id);

@@ -105,3 +105,34 @@ describe('SDK authorization', () => {
     expect(ownsSdkRule({ ...rule, sdkOrigin: origin, match: { initiatorOrigins: [origin, '*'], urlPattern: '*' } }, origin)).toBe(false);
   });
 });
+
+it('fails fast for published SDKs instead of leaving an approval executable after their 5s timeout', async () => {
+  vi.useFakeTimers();
+  const execute = vi.fn();
+  expect(await approveSdkOperation({ ...options, supportsApproval: false }, execute)).toMatchObject({
+    error: { type: 'invalid-request', message: expect.stringContaining('SDK 0.3.0') },
+  });
+  await vi.advanceTimersByTimeAsync(10_000);
+  expect(browser.windows.create).not.toHaveBeenCalled();
+  expect(execute).not.toHaveBeenCalled();
+});
+it('allows an older client on a manually trusted site but still rejects sensitive approval', async () => {
+  await updateSiteAccess(origin, { trusted: true });
+  const execute = vi.fn().mockResolvedValue({ enabled: false });
+  expect(await approveSdkOperation({ ...options, supportsApproval: false }, execute)).toEqual({ enabled: false });
+  expect(await approveSdkOperation({ ...options, supportsApproval: false, sensitive: true }, execute)).toMatchObject({ error: { type: 'invalid-request' } });
+  expect(execute).toHaveBeenCalledTimes(1);
+  expect(browser.windows.create).not.toHaveBeenCalled();
+});
+it('keeps new SDK approval valid after the published SDK timeout', async () => {
+  vi.useFakeTimers();
+  const execute = vi.fn().mockResolvedValue({ enabled: false });
+  const result = approveSdkOperation({ ...options, supportsApproval: true }, execute);
+  await vi.advanceTimersByTimeAsync(0);
+  const id = new URL(browser.windows.create.mock.calls.at(-1)![0].url).searchParams.get('id')!;
+  await vi.advanceTimersByTimeAsync(10_000);
+  expect(execute).not.toHaveBeenCalled();
+  await resolveSdkApproval(id, true);
+  expect(await result).toEqual({ enabled: false });
+  expect(execute).toHaveBeenCalledTimes(1);
+});

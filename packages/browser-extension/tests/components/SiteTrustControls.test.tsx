@@ -17,7 +17,7 @@ it('shows trust limits and the last completed operation', () => {
   render(<SiteTrustControls origin={origin} access={{ origin, trusted: true, lastOperation: { label: 'Disable this rule?', at: 1000 } }} disabled={false} onTrustChange={vi.fn()} />);
   fireEvent.click(screen.getByText('Website control', { exact: true }).closest('summary')!);
   expect(screen.getByRole('switch')).toBeChecked();
-  expect(screen.getByText(/Credential access still requires approval/)).toBeVisible();
+  expect(screen.getByText(/Access to login credentials still requires approval/)).toBeVisible();
   expect(screen.getByText(/leaves saved rules unchanged/)).toBeVisible();
   expect(screen.getByRole('status')).toHaveTextContent('Disable this rule?');
 });

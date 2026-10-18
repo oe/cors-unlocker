@@ -97,3 +97,14 @@ Full documentation: [wireflip.forth.ink/docs](https://wireflip.forth.ink/docs/)
 Existing `cors-unlocker@0.1.0` applications can keep using the retained `cors.forth.ink/message/` bridge. The old domain is not being retired. This package uses a local bridge and requires user confirmation for CORS requests; migration is optional.
 
 Migration is optional. Confirm that Wireflip 2.0 is installed in your browser before changing dependencies. See the [migration guide](https://wireflip.forth.ink/migration/) for current browser availability, upgrade steps and the old-to-new API mapping.
+
+
+## Upgrading website control to Wireflip 2.1 (candidate)
+
+Wireflip 2.1 asks for approval in an extension window unless the user has manually trusted this exact site in **Popup → Website control**. Trust does not authorize sensitive credential access or transfer ownership of existing rules. Revoking trust restores prompts; saved rules remain in their current state.
+
+Website developers should update to `wireflip@0.3.0` once it is published. Published `wireflip@0.2.0` stops waiting after 5 seconds for some operations, so Wireflip 2.1 rejects requests that need approval immediately with an `invalid-request` upgrade message. It does not leave a pending window that could change rules after the website reports failure. Read-only methods still work; manually trusted sites can continue ordinary operations. Sensitive requests still need the updated SDK. Show the returned message in your website instead of reporting success.
+
+If an existing CORS rule has no website ownership, open **Wireflip → Rules** to manage it. To let the website create a new owned rule, delete the old CORS rule there, return to the website, and retry. This deliberately does not grant websites control of manual or older unowned rules.
+
+Release order: publish the extension update to both stores, confirm availability, then publish SDK 0.3.0 and update the website's public version instructions. Until then, these features are a source candidate; the published SDK remains 0.2.0 and store extensions remain 2.0.0.

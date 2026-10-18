@@ -132,3 +132,12 @@ it('does not send management requests to older extensions', async () => {
   await expect(session.disableRule('owned')).rejects.toThrow('Update Wireflip');
   expect(bridge.mock.calls).toHaveLength(1);
 });
+
+it('advertises the native approval waiting contract on mutation requests', async () => {
+  const bridge = mockBridge(request => request.method === 'connect'
+    ? { data: { origin: 'https://app.example', capabilities: {} } }
+    : { data: { cors: { enabled: false } } });
+  const session = await intercept.connect();
+  await session.disableCors();
+  expect(bridge.mock.calls.at(-1)?.[0]).toMatchObject({ method: 'disableCors', approvalProtocol: 1 });
+});

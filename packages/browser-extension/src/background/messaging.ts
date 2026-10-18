@@ -270,10 +270,10 @@ async function handleSdkRequest(
   if (JSON.stringify(data ?? null).length > 65_536) throw new Error('SDK request exceeds the 64 KB limit.');
   const authorize = (info: Omit<SdkApprovalInfo, 'origin'>, execute: () => Promise<unknown>, sensitive = false) =>
     approveSdkOperation({ tabId: sender.tab!.id!, requesterOrigin: origin,
-      userActivated: message.payload?.userActivated === true, info: { ...info, origin }, sensitive }, execute);
+      userActivated: message.payload?.userActivated === true, supportsApproval: message.payload?.supportsApproval === true, info: { ...info, origin }, sensitive }, execute);
   const corsRule = async () => {
     const rule = (await ensureProxyAppState()).rules.find(rule => rule.source === 'legacy-cors' && rule.match.initiatorOrigins[0] === origin);
-    if (rule && !ownsSdkRule(rule, origin)) throw new Error('This CORS rule is managed in Wireflip. Change it in the extension.');
+    if (rule && !ownsSdkRule(rule, origin)) throw new Error('This saved CORS rule predates website ownership or was created manually. Open Wireflip → Rules to change it. To let this website create a new rule, delete the old CORS rule there and retry; trusting the site does not transfer ownership.');
     return rule;
   };
   const corsStatus = async () => ({ origin, cors: await isOriginEnabled(origin), advancedMode: getAdvancedProxyStatus(sender.tab!.id!).phase });
@@ -304,8 +304,7 @@ async function handleSdkRequest(
       await corsRule();
       const credentials = data?.credentials === true;
       return authorize({ title: 'Enable CORS?', button: 'Allow change', name: 'CORS repair', actions: [],
-        reason: (credentials ? 'Credentialed requests will be allowed. ' : 'Credentials will not be enabled. ')
-          + (typeof data?.reason === 'string' ? data.reason.trim().slice(0, 160) : '') }, async () => {
+        credentials, reason: typeof data?.reason === 'string' ? data.reason.trim().slice(0, 160) : '' }, async () => {
         await corsRule();
         const state = await performProxyStateOperation({ kind: 'legacyPatch', intent: 'upsert', sdkOrigin: origin,
           rule: { origin, disabled: false, credentials } });
@@ -329,8 +328,8 @@ async function handleSdkRequest(
       if (data?.id !== undefined) await ownedSdkRule(data.id, origin);
       const draft = method === 'createRuleDraft';
       if (draft && data?.id !== undefined) throw new Error('A rule draft cannot update an existing rule.');
-      return authorize({ title: draft ? 'Create this rule draft?' : 'Enable this rule?',
-        button: draft ? 'Create draft' : 'Enable rule', name: rule.name, pattern: rule.match.urlPattern, actions: rule.actions }, async () => {
+      return authorize({ title: draft ? 'Create this rule draft?' : data?.id ? 'Update this rule?' : 'Enable this rule?',
+        button: draft ? 'Create draft' : data?.id ? 'Update rule' : 'Enable rule', name: rule.name, pattern: rule.match.urlPattern, actions: rule.actions }, async () => {
         const result = await applySdkRule(data, sender.tab!.id!, origin, !draft);
         if (!draft) return result;
         const workspaceOpened = data?.openWorkspace !== false;
@@ -344,7 +343,7 @@ async function handleSdkRequest(
       const rule = await ownedSdkRule(data?.id, origin);
       const enabled = method === 'enableRule';
       return authorize({ title: enabled ? 'Enable this rule?' : method === 'deleteRule' ? 'Delete this rule?' : 'Disable this rule?',
-        button: 'Allow change', name: rule.name, pattern: rule.match.urlPattern, actions: rule.actions }, async () => {
+        button: method === 'deleteRule' ? 'Delete rule' : enabled ? 'Enable rule' : 'Disable rule', name: rule.name, pattern: rule.match.urlPattern, actions: rule.actions }, async () => {
         const current = await ownedSdkRule(data?.id, origin);
         // Do not apply an approval to a rule that changed while its details were displayed.
         if (JSON.stringify(current) !== JSON.stringify(rule)) throw new Error('The rule changed. Request approval again.');

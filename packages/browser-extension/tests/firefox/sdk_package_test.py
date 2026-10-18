@@ -6,6 +6,7 @@ import ssl
 import subprocess
 import tempfile
 import threading
+import time
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlsplit
@@ -123,7 +124,7 @@ class SdkPackageTests(native.FirefoxTests):
     def call(self, expression):
         return self.async_js('return ' + expression + ';')
 
-    def consent(self, expression, accept):
+    def consent(self, expression, accept, delay=0):
         if not self.native_consent:
             if any(method in expression for method in ['.disable(', '.disableCors(', '.createRuleDraft(']):
                 return {'data': self.call(expression)}
@@ -145,6 +146,8 @@ class SdkPackageTests(native.FirefoxTests):
         approval = self.wait(lambda: set(self.command('GET', '/window/handles')) - before)
         self.switch(next(iter(approval)))
         self.wait(lambda: self.js('return [...document.querySelectorAll("main button")].at(-1)?.disabled === false;'))
+        if delay:
+            time.sleep(delay)
         selector = '(//button)[last()]' if accept else '//button[normalize-space(.)="Cancel"]'
         button = self.command('POST', '/element', {'using': 'xpath', 'value': selector})
         try:
@@ -198,6 +201,29 @@ class SdkPackageTests(native.FirefoxTests):
     def test_documentation_patch_archive(self):
         self.verify_legacy('legacy-0.1.1')
 
+    def test_published_wireflip_timeout_contract(self):
+        self.load('published-0.2.0', 'index.mjs')
+        if not self.native_consent:
+            self.skipTest('Native approval contract is introduced in Wireflip 2.1')
+        self.call('(async()=>{window.session=await sdk.intercept.connect();})()')
+        before = set(self.command('GET', '/window/handles'))
+        # These are the exact published client methods, including the original 5s timers.
+        expressions = [
+            'session.disableCors()',
+            'session.createRuleDraft({name:"Old client",urlPattern:"*",actions:[{type:"block"}]},{openWorkspace:false})',
+            'session.requestCors({credentials:false})',
+        ]
+        for expression in expressions:
+            result = self.call('(' + expression + ').then(()=>({unexpectedSuccess:true}),e=>({type:e.type,message:e.message}))')
+            self.assertEqual(result.get('type'), 'invalid-request', result)
+            self.assertIn('SDK 0.3.0', result['message'])
+        # No executable consent can survive the old client's timeout.
+        time.sleep(6)
+        self.assertEqual(set(self.command('GET', '/window/handles')), before)
+        self.assertFalse(self.call('session.getStatus()')['cors']['enabled'])
+        rules = self.message('getProxyState')['rules']
+        self.assertFalse(any(rule['name'] == 'Old client' for rule in rules))
+
     def test_new_archive(self):
         self.load('new', 'index.mjs')
         status = self.call('(async()=>{window.session=await sdk.intercept.connect();return {origin:session.origin,capabilities:session.capabilities,status:await session.getStatus()};})()')
@@ -208,7 +234,7 @@ class SdkPackageTests(native.FirefoxTests):
         self.assertEqual(self.consent('session.requestCors({reason:"Archive acceptance"})', False)['error']['type'], 'user-cancel')
         self.assertFalse(self.call('session.getStatus()')['cors']['enabled'])
         self.assertTrue(self.consent('session.requestCors({credentials:false})', True)['data']['cors']['enabled'])
-        self.assertFalse(self.consent('session.disableCors()', True)['data']['cors']['enabled'])
+        self.assertFalse(self.consent('session.disableCors()', True, delay=6 if self.native_consent else 0)['data']['cors']['enabled'])
         draft = self.consent('session.createRuleDraft({name:"Exact archive",urlPattern:"https://api.example.com/*",actions:[{type:"delay",milliseconds:800}]},{openWorkspace:false})', True)['data']
         self.assertFalse(draft['enabled'])
         state = self.message('getProxyState')
@@ -230,7 +256,7 @@ class SdkPackageTests(native.FirefoxTests):
 
 
 if __name__ == '__main__':
-    tests = ['test_published_legacy_archive', 'test_documentation_patch_archive', 'test_new_archive']
+    tests = ['test_published_legacy_archive', 'test_documentation_patch_archive', 'test_published_wireflip_timeout_contract', 'test_new_archive']
     result = unittest.TextTestRunner(verbosity=2).run(unittest.TestSuite(SdkPackageTests(name) for name in tests))
     if result.wasSuccessful():
         (PACKAGES / 'firefox-results.json').write_text(json.dumps({
