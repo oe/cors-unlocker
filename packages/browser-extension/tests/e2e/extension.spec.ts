@@ -42,7 +42,7 @@ async function withSdkApproval<T>(page: Page, request: () => Promise<T>, accepte
   await page.mouse.click(20, 20);
   const opening = context.waitForEvent('page');
   const result = request();
-  const approval = await opening;
+  const approval = await Promise.race([opening, result.then(() => { throw new Error('SDK request completed without the expected approval window.'); })]);
   const button = accepted ? approval.getByRole('button').last() : approval.getByRole('button', { name: 'Cancel', exact: true });
   await expect(button).toBeEnabled();
   await button.click({ noWaitAfter: true }).catch(error => { if (!approval.isClosed()) throw error; });
@@ -991,7 +991,7 @@ test('controls site rules inline and verifies actual request effects', async () 
 
 test('exposes an origin-scoped SDK bridge with consent and disabled drafts', async () => {
   const target = await context.newPage();
-  await target.goto('http://test.localhost:3000/');
+  await target.goto('http://sdk-bridge.localhost:3000/');
 
   const sdkRequest = async (method: string, payload?: unknown) => target.evaluate(({ method: sdkMethod, payload: sdkPayload }) => new Promise<any>((resolve, reject) => {
     const clientId = crypto.randomUUID();
@@ -1017,7 +1017,7 @@ test('exposes an origin-scoped SDK bridge with consent and disabled drafts', asy
 
   const connected = await sdkRequest('connect');
   expect(connected.data).toMatchObject({
-    origin: 'http://test.localhost:3000',
+    origin: 'http://sdk-bridge.localhost:3000',
     capabilities: {
       protocolVersion: 2,
       product: 'Wireflip',
@@ -1049,7 +1049,7 @@ test('exposes an origin-scoped SDK bridge with consent and disabled drafts', asy
   const stored = await control.evaluate(async () => chrome.runtime.sendMessage({ type: 'getProxyState' }));
   expect(stored.rules.find((rule: any) => rule.id === draft.data.id)).toMatchObject({
     enabled: false,
-    match: { initiatorOrigins: ['http://test.localhost:3000'] },
+    match: { initiatorOrigins: ['http://sdk-bridge.localhost:3000'] },
   });
   const disabled = await withSdkApproval(target, () => sdkRequest('disableCors'));
   expect(disabled.data.cors.enabled).toBe(false);
