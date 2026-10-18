@@ -37,12 +37,9 @@ async function captureUX(page: Page, name: string) {
 }
 
 async function withSdkApproval<T>(page: Page, request: () => Promise<T>, accepted = true): Promise<T> {
-  await page.evaluate(() => {
-    const button = document.createElement('button'); button.id = 'sdk-approval-gesture';
-    button.textContent = 'Request SDK change'; document.body.prepend(button);
-  });
-  await page.locator('#sdk-approval-gesture').click();
-  await page.locator('#sdk-approval-gesture').evaluate(button => button.remove());
+  // Use a native pointer event even when Chrome renders a JSON viewer over the document.
+  await page.bringToFront();
+  await page.mouse.click(20, 20);
   const opening = context.waitForEvent('page');
   const result = request();
   const approval = await opening;

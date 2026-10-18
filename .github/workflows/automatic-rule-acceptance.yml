@@ -45,7 +45,7 @@ jobs:
         if: matrix.browser == 'chrome'
         env:
           WIREFLIP_INLINE_EVIDENCE: '1'
-        run: xvfb-run -a pnpm --filter browser-wireflip exec playwright test --grep 'enables a Playground example with one native approval|authorizes SDK changes' --retries=0
+        run: xvfb-run -a pnpm --filter browser-wireflip exec playwright test --grep 'enables a Playground example with one native approval|authorizes SDK changes|exposes an origin-scoped SDK bridge' --retries=0
       - name: Prepare SDK archive fixtures
         if: matrix.browser == 'firefox'
         run: node scripts/verify-sdk-packages.mjs
