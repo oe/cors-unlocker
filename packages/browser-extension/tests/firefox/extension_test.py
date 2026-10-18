@@ -645,8 +645,9 @@ class FirefoxTests(unittest.TestCase):
         try:
             self.wait(lambda: self.js("""return !!document.querySelector('[aria-label="Trust this site to control rules"]:not([disabled])');"""))
             element = self.command('POST', '/element', {'using': 'css selector', 'value': '[aria-label="Trust this site to control rules"]'})
-            self.command('POST', '/element/' + element['element-6066-11e4-a52e-4f735466cecf'] + '/click', {})
-            self.wait(lambda: self.js("""return document.querySelector('[aria-label="Trust this site to control rules"]').getAttribute("aria-checked");"""), lambda value: value == 'true')
+            self.async_js('await document.fonts.ready;')
+            self.command('POST', '/element/' + element['element-6066-11e4-a52e-4f735466cecf'] + '/value', {'text': ' ', 'value': [' ']})
+            self.wait(lambda: self.js("""return {checked:document.querySelector('[aria-label="Trust this site to control rules"]').getAttribute("aria-checked"),text:document.body.innerText};"""), lambda value: value['checked'] == 'true')
         finally:
             self.switch(popup)
             self.command('DELETE', '/window')
