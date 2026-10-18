@@ -174,5 +174,21 @@ export const sdkMessages: Record<string, Record<string, string>> = {
     "ja": "ルールを削除しました",
     "fr": "Règle supprimée",
     "es": "Regla eliminada"
+  },
+  "Trusted site": {
+    "en": "Trusted site",
+    "zh-CN": "已信任站点",
+    "ko": "신뢰하는 사이트",
+    "ja": "信頼済みサイト",
+    "fr": "Site autorisé",
+    "es": "Sitio de confianza"
+  },
+  "Ask each time": {
+    "en": "Ask each time",
+    "zh-CN": "每次询问",
+    "ko": "매번 묻기",
+    "ja": "毎回確認",
+    "fr": "Demander à chaque fois",
+    "es": "Preguntar cada vez"
   }
 };

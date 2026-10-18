@@ -643,6 +643,9 @@ class FirefoxTests(unittest.TestCase):
         self.assertIn('capabilities', connected['data'])
         popup = self.new_page(EXTENSION + f'/src/popup/index.html?tabId={self.tab_id}')
         try:
+            self.wait(lambda: self.js('return !!document.querySelector("summary[data-sdk-access]");'))
+            summary = self.command('POST', '/element', {'using': 'css selector', 'value': 'summary[data-sdk-access]'})
+            self.command('POST', '/element/' + summary['element-6066-11e4-a52e-4f735466cecf'] + '/click', {})
             self.wait(lambda: self.js("""return !!document.querySelector('[aria-label="Trust this site to control rules"]:not([disabled])');"""))
             element = self.command('POST', '/element', {'using': 'css selector', 'value': '[aria-label="Trust this site to control rules"]'})
             self.async_js('await document.fonts.ready;')

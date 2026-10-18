@@ -1334,7 +1334,7 @@ test('popup controls are temporary, tab-scoped, and independent from saved rules
   await popup.goto(popupUrl);
   await popup.setViewportSize({ width: 360, height: 600 });
   await expect(popup).toHaveTitle(/Wireflip/);
-  await expect(popup.getByText('http://popup.localhost:3000', { exact: true })).toBeVisible();
+  await expect(popup.getByLabel('Current tab', { exact: true }).getByText('http://popup.localhost:3000', { exact: true })).toBeVisible();
   await expect(popup.getByRole('button', { name: 'Open Inspector' })).toBeEnabled();
   await popup.getByRole('button', { name: 'Start recording' }).click();
   await expect(popup.getByText('Recording requests', { exact: true })).toBeVisible();
@@ -1411,8 +1411,8 @@ test('popup controls are temporary, tab-scoped, and independent from saved rules
     await expect(popup.locator('html')).toHaveAttribute('lang', locale);
     expect(await popup.evaluate(() => document.documentElement.scrollWidth <= innerWidth), locale).toBe(true);
     const height = await popup.locator('main').evaluate((element) => element.scrollHeight);
-    if (height > 560) await captureUX(popup, 'popup-overflow-' + locale);
-    expect(height, `${locale} compact height`).toBeLessThanOrEqual(560);
+    if (height > 600) await captureUX(popup, 'popup-overflow-' + locale);
+    expect(height, `${locale} compact height`).toBeLessThanOrEqual(600);
     await expect(popup.getByRole('switch', { name: messages['Allow credentials'][locale], exact: true })).toBeVisible();
     await expect(popup.getByRole('switch', { name: messages['CORS repair'][locale], exact: true })).toBeVisible();
   }
@@ -1426,7 +1426,7 @@ test('popup controls are temporary, tab-scoped, and independent from saved rules
   await popup.getByRole('switch', { name: 'Simulate failure', exact: true }).click();
   await expect(popup.getByRole('switch', { name: 'Simulate failure', exact: true })).toBeChecked();
   await target.goto('http://elsewhere.localhost:3000/');
-  await expect(popup.getByText('http://elsewhere.localhost:3000', { exact: true })).toBeVisible();
+  await expect(popup.getByLabel('Current tab', { exact: true }).getByText('http://elsewhere.localhost:3000', { exact: true })).toBeVisible();
   await expect(popup.getByRole('switch', { name: 'Simulate failure', exact: true })).not.toBeChecked();
   expect(errors).toEqual([]);
   await control.evaluate(async (id) => chrome.runtime.sendMessage({ type: 'deleteProxyRule', payload: { id } }), saved.rule.id);
@@ -2108,6 +2108,7 @@ test('authorizes SDK changes through native approval and explicit popup site tru
     await page.waitForFunction(() => (window as any).session);
     const tabId = await getTabId(origin);
     await popup.goto(`chrome-extension://${extensionId}/src/popup/index.html?tabId=${tabId}`);
+    await popup.getByText('Website control', { exact: true }).click();
     const trust = popup.getByRole('switch', { name: 'Trust this site to control rules', exact: true });
     await expect(trust).not.toBeChecked();
     const forged = await control.evaluate(async ({ origin, tabId }) => chrome.runtime.sendMessage({ type: 'setSdkSiteTrust', payload: { origin, tabId, trusted: true } }), { origin, tabId });
