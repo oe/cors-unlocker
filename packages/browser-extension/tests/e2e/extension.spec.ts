@@ -2117,7 +2117,7 @@ test('authorizes SDK changes through native approval and explicit popup site tru
     expect(forged.error).toContain('only be changed');
     const withoutGesture = await page.evaluate(async () => (window as any).session.disableCors().catch((error: any) => ({ error: error.type })));
     expect(withoutGesture).toEqual({ error: 'invalid-request' });
-    const rule = { name: 'SDK owned header', urlPattern: origin + '/probe', actions: [{ type: 'setResponseHeaders', headers: { 'X-Wireflip-SDK': 'active' } }] };
+    const rule = { name: 'SDK owned header', urlPattern: origin + '/probe*', actions: [{ type: 'setResponseHeaders', headers: { 'X-Wireflip-SDK': 'active' } }] };
     expect((await command('requestRule', [rule], false)).error.type).toBe('user-cancel');
     const created = (await command('requestRule', [rule], true)).data;
     expect(created).toMatchObject({ enabled: true, ready: true });
