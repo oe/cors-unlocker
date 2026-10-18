@@ -36,6 +36,22 @@ async function captureUX(page: Page, name: string) {
   for (let index = 0; index < total; index++) console.log('WIREFLIP_IMAGE ' + JSON.stringify({ name, index, total, data: data.slice(index * 8192, (index + 1) * 8192) }));
 }
 
+async function withSdkApproval<T>(page: Page, request: () => Promise<T>, accepted = true): Promise<T> {
+  await page.evaluate(() => {
+    const button = document.createElement('button'); button.id = 'sdk-approval-gesture';
+    button.textContent = 'Request SDK change'; document.body.prepend(button);
+  });
+  await page.locator('#sdk-approval-gesture').click();
+  await page.locator('#sdk-approval-gesture').evaluate(button => button.remove());
+  const opening = context.waitForEvent('page');
+  const result = request();
+  const approval = await opening;
+  const button = accepted ? approval.getByRole('button').last() : approval.getByRole('button', { name: 'Cancel', exact: true });
+  await expect(button).toBeEnabled();
+  await button.click({ noWaitAfter: true }).catch(error => { if (!approval.isClosed()) throw error; });
+  return result;
+}
+
 test.beforeAll(async () => {
   const directory = path.dirname(fileURLToPath(import.meta.url));
   extensionPath = path.join(directory, '../../dist/chrome');
@@ -45,7 +61,7 @@ test.beforeAll(async () => {
 async function launchContext() {
   const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
   context = await chromium.launchPersistentContext(userDataDir, {
-    headless: false,
+    headless: process.env.WIREFLIP_HEADLESS === '1',
     ...(executablePath ? { executablePath } : {}),
     args: [
       `--disable-extensions-except=${extensionPath}`,
@@ -197,7 +213,7 @@ test('opens upgrade explanation only for a real v1 update and preserves acknowle
   writeFileSync(path.join(fixture, 'legacy.js'), 'chrome.runtime.onInstalled.addListener(()=>{});');
   writeFileSync(path.join(fixture, 'legacy.html'), '<title>Legacy upgrade fixture</title>');
   const launch = () => chromium.launchPersistentContext(profile, {
-    headless: false,
+    headless: process.env.WIREFLIP_HEADLESS === '1',
     ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH } : {}),
     args: [`--disable-extensions-except=${fixture}`, `--load-extension=${fixture}`],
   });
@@ -1018,12 +1034,11 @@ test('exposes an origin-scoped SDK bridge with consent and disabled drafts', asy
     },
   });
 
-  target.once('dialog', (dialog) => dialog.accept());
-  const enabled = await sdkRequest('requestCors', { reason: 'E2E consent check' });
+  const enabled = await withSdkApproval(target, () => sdkRequest('requestCors', { reason: 'E2E consent check' }));
   expect(enabled.error).toBeUndefined();
   expect(enabled.data.cors).toEqual({ enabled: true, credentials: false });
 
-  const draft = await sdkRequest('createRuleDraft', {
+  const draft = await withSdkApproval(target, () => sdkRequest('createRuleDraft', {
     openWorkspace: false,
     rule: {
       name: 'SDK safe draft',
@@ -1032,14 +1047,14 @@ test('exposes an origin-scoped SDK bridge with consent and disabled drafts', asy
       resourceTypes: ['Fetch'],
       actions: [{ type: 'delay', milliseconds: 400 }],
     },
-  });
+  }));
   expect(draft.data).toMatchObject({ enabled: false, workspaceOpened: false });
   const stored = await control.evaluate(async () => chrome.runtime.sendMessage({ type: 'getProxyState' }));
   expect(stored.rules.find((rule: any) => rule.id === draft.data.id)).toMatchObject({
     enabled: false,
     match: { initiatorOrigins: ['http://test.localhost:3000'] },
   });
-  const disabled = await sdkRequest('disableCors');
+  const disabled = await withSdkApproval(target, () => sdkRequest('disableCors'));
   expect(disabled.data.cors.enabled).toBe(false);
   await target.close();
 });
@@ -2009,15 +2024,13 @@ test('runs exact new and legacy SDK archives through production HTTPS bridges', 
       await load(target, label, 'index.es.js');
       expect(await call(target, 'sdk.default.isExtInstalled()')).toBe(true);
       expect(await call(target, 'sdk.default.isEnabled()')).toEqual({ enabled: false, credentials: false });
-      target.once('dialog', dialog => dialog.dismiss());
-      expect(await call(target, 'sdk.default.enable({credentials:false}).catch(e=>({error:e.type}))')).toEqual({ error: 'user-cancel' });
+      expect(await withSdkApproval(target, () => call(target, 'sdk.default.enable({credentials:false}).catch(e=>({error:e.type}))'), false)).toEqual({ error: 'user-cancel' });
       expect((await call(target, 'sdk.default.isEnabled()')).enabled).toBe(false);
-      target.once('dialog', dialog => dialog.accept());
-      expect((await call(target, 'sdk.default.enable({credentials:true})')).enabled).toBe(true);
+      expect((await withSdkApproval(target, () => call(target, 'sdk.default.enable({credentials:true})'))).enabled).toBe(true);
       expect(await call(target, 'sdk.default.isEnabled()')).toEqual({ enabled: true, credentials: true });
       await load(other, label, 'index.es.js');
       expect((await call(other, 'sdk.default.isEnabled()')).enabled).toBe(false);
-      await call(target, 'sdk.default.disable()');
+      await withSdkApproval(target, () => call(target, 'sdk.default.disable()'));
       expect((await call(target, 'sdk.default.isEnabled()')).enabled).toBe(false);
       await openWorkspace('sdk.default.openExtOptions()');
       const frame = target.frames().find(frame => frame.url().startsWith('https://cors.forth.ink/message/index.html?'));
@@ -2026,15 +2039,14 @@ test('runs exact new and legacy SDK archives through production HTTPS bridges', 
     }
     expect(bridgeRequests).toContain('/message/index.html');
     await target.goto(app + '/');
+    await control.evaluate(async () => { const state = await chrome.runtime.sendMessage({ type: 'getProxyState' }); for (const rule of state.rules.filter((rule: any) => rule.source === 'legacy-cors')) await chrome.runtime.sendMessage({ type: 'deleteProxyRule', payload: { id: rule.id } }); });
     await load(target, 'new', 'index.mjs');
     const connected = await call(target, '(async()=>{window.session=await sdk.intercept.connect();return {origin:session.origin,capabilities:session.capabilities,status:await session.getStatus()};})()');
     expect(connected).toMatchObject({ origin: app, capabilities: { browser: 'chrome', interception: { responseMock: 'synthetic' } }, status: { advancedMode: 'disabled' } });
-    target.once('dialog', dialog => dialog.dismiss());
-    expect(await call(target, 'session.requestCors().catch(e=>({error:e.type}))')).toEqual({ error: 'user-cancel' });
-    target.once('dialog', dialog => dialog.accept());
-    expect((await call(target, 'session.requestCors({credentials:false})')).cors.enabled).toBe(true);
-    expect((await call(target, 'session.disableCors()')).cors.enabled).toBe(false);
-    const draft = await call(target, 'session.createRuleDraft({name:"Exact archive",urlPattern:"https://api.example.com/*",actions:[{type:"delay",milliseconds:800}]},{openWorkspace:false})');
+    expect(await withSdkApproval(target, () => call(target, 'session.requestCors().catch(e=>({error:e.type}))'), false)).toEqual({ error: 'user-cancel' });
+    expect((await withSdkApproval(target, () => call(target, 'session.requestCors({credentials:false})'))).cors.enabled).toBe(true);
+    expect((await withSdkApproval(target, () => call(target, 'session.disableCors()'))).cors.enabled).toBe(false);
+    const draft = await withSdkApproval(target, () => call(target, 'session.createRuleDraft({name:"Exact archive",urlPattern:"https://api.example.com/*",actions:[{type:"delay",milliseconds:800}]},{openWorkspace:false})'));
     expect(draft.enabled).toBe(false);
     const stored = (await send('getProxyState')).rules.find((rule: any) => rule.id === draft.id);
     expect(stored).toMatchObject({ enabled: false, match: { initiatorOrigins: [app] } });
@@ -2060,3 +2072,86 @@ test('runs exact new and legacy SDK archives through production HTTPS bridges', 
   }
 });
 
+
+test('authorizes SDK changes through native approval and explicit popup site trust', async () => {
+  test.setTimeout(120_000);
+  await control.evaluate(async () => chrome.storage.local.set({ uiLanguage: 'en' }));
+  const origin = 'http://sdk.localhost:3000';
+  const sdk = readFileSync(path.resolve(extensionPath, '../../../npm/dist/index.mjs'), 'utf8');
+  const fixturePattern = /^http:\/\/(sdk|other-sdk)\.localhost:3000\//;
+  await context.route(fixturePattern, async route => {
+    if (route.request().url().endsWith('/sdk.mjs')) return route.fulfill({ body: sdk, contentType: 'text/javascript' });
+    if (route.request().url().includes('/probe')) return route.continue();
+    return route.fulfill({ contentType: 'text/html', body: `<button id="change">Change</button><script type="module">
+      import {intercept} from '/sdk.mjs';window.session=await intercept.connect();
+      document.querySelector('button').onclick=()=>{window.outcome=null;const {method,args}=window.command;
+      session[method](...args).then(data=>window.outcome={data},error=>window.outcome={error:{type:error.type,message:error.message}});};
+      </script>` });
+  });
+  const page = await context.newPage();
+  const peer = await context.newPage();
+  const popup = await context.newPage();
+  const command = async (method: string, args: unknown[], approval?: boolean) => {
+    await page.evaluate(value => { (window as any).command = value; }, { method, args });
+    const opening = approval === undefined ? undefined : context.waitForEvent('page');
+    await page.getByRole('button', { name: 'Change', exact: true }).click();
+    if (opening) {
+      const review = await opening;
+      await expect(review.getByText(origin, { exact: true })).toBeVisible();
+      await expect(review.getByText('This approval applies once. Only the Wireflip popup can trust a site for future requests.')).toBeVisible();
+      await captureUX(review, 'sdk-authorization-native');
+      const button = approval ? review.getByRole('button').last() : review.getByRole('button', { name: 'Cancel', exact: true });
+      await button.click({ noWaitAfter: true }).catch(error => { if (!review.isClosed()) throw error; });
+    }
+    await expect.poll(() => page.evaluate(() => (window as any).outcome)).not.toBeNull();
+    return page.evaluate(() => (window as any).outcome);
+  };
+  try {
+    await page.goto(origin + '/');
+    await page.waitForFunction(() => (window as any).session);
+    const tabId = await getTabId(origin);
+    await popup.goto(`chrome-extension://${extensionId}/src/popup/index.html?tabId=${tabId}`);
+    const trust = popup.getByRole('switch', { name: 'Trust this site to control rules', exact: true });
+    await expect(trust).not.toBeChecked();
+    const forged = await control.evaluate(async ({ origin, tabId }) => chrome.runtime.sendMessage({ type: 'setSdkSiteTrust', payload: { origin, tabId, trusted: true } }), { origin, tabId });
+    expect(forged.error).toContain('only be changed');
+    const withoutGesture = await page.evaluate(async () => (window as any).session.disableCors().catch((error: any) => ({ error: error.type })));
+    expect(withoutGesture).toEqual({ error: 'invalid-request' });
+    const rule = { name: 'SDK owned header', urlPattern: origin + '/probe', actions: [{ type: 'setResponseHeaders', headers: { 'X-Wireflip-SDK': 'active' } }] };
+    expect((await command('requestRule', [rule], false)).error.type).toBe('user-cancel');
+    const created = (await command('requestRule', [rule], true)).data;
+    expect(created).toMatchObject({ enabled: true, ready: true });
+    const probe = () => page.evaluate(async () => (await fetch('/probe?time=' + Date.now())).headers.get('X-Wireflip-SDK'));
+    expect(await probe()).toBe('active');
+    await popup.bringToFront();
+    await trust.click();
+    await expect(trust).toBeChecked();
+    await expect(popup.getByText(/Trusted: this site can manage its SDK rules/)).toBeVisible();
+    expect((await command('disableRule', [created.id])).data.enabled).toBe(false);
+    expect(await probe()).toBeNull();
+    await expect(popup.getByRole('status')).toContainText('Rule disabled');
+    expect((await command('enableRule', [created.id])).data.ready).toBe(true);
+    expect(await probe()).toBe('active');
+    expect((await command('requestCors', [{ credentials: true }], false)).error.type).toBe('user-cancel');
+    await peer.goto('http://other-sdk.localhost:3000');
+    await peer.waitForFunction(() => (window as any).session);
+    const denied = await peer.evaluate(async id => (window as any).session.disableRule(id).catch((error: any) => ({ error: error.type })), created.id);
+    expect(denied.error).toBe('invalid-request');
+    expect(await peer.evaluate(async id => (await (window as any).session.getStatus({ ruleId: id })).rule, created.id)).toBeNull();
+    const manual = await control.evaluate(async origin => chrome.runtime.sendMessage({ type: 'saveProxyRule', payload: { rule: { name: 'Manual site rule', enabled: false, match: { initiatorOrigins: [origin], urlPattern: '*' }, actions: [{ type: 'block' }] } } }), origin);
+    expect((await command('enableRule', [manual.rule.id])).error.type).toBe('invalid-request');
+    await captureUX(popup, 'sdk-authorization-trusted-popup');
+    await trust.click();
+    await expect(trust).not.toBeChecked();
+    expect(await probe()).toBe('active');
+    expect((await command('disableRule', [created.id], false)).error.type).toBe('user-cancel');
+    expect(await probe()).toBe('active');
+    expect((await command('disableRule', [created.id], true)).data.enabled).toBe(false);
+    expect(await probe()).toBeNull();
+    expect((await command('deleteRule', [created.id], true)).data.deleted).toBe(true);
+    await control.evaluate(async id => chrome.runtime.sendMessage({ type: 'deleteProxyRule', payload: { id } }), manual.rule.id);
+  } finally {
+    await page.close(); await peer.close(); await popup.close();
+    await context.unroute(fixturePattern);
+  }
+});

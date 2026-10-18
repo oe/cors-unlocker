@@ -1,6 +1,8 @@
 import { reconcileSavedRuleRuntime, retrySavedRuleTab } from './saved-rule-runtime';
 import { needsProxy } from '@/common/quick-controls';
-import { requestRuleApproval, approvalInfo, resolveRuleApproval } from './rule-approval';
+import { normalizeSdkRule, ownedSdkRule, applySdkRule, sdkRuleResult } from './rule-approval';
+import { approveSdkOperation, sdkApprovalInfo, resolveSdkApproval, type SdkApprovalInfo } from './sdk-approval';
+import { getSiteAccess, updateSiteAccess, ownsSdkRule } from '@/common/sdk-access';
 import browser from 'webextension-polyfill';
 import type { IRuleItem } from '@/types';
 import {
@@ -158,7 +160,7 @@ export async function onExternalMessage(
     switch (method) {
       case 'ping':
         // Simple ping response to detect if extension is installed and available
-        return { success: true, timestamp: Date.now() };
+        return { success: true, timestamp: Date.now(), capabilities: PRODUCT_CAPABILITIES };
       
       case 'getRule':
         return await handleGetRule(origin);
@@ -170,8 +172,20 @@ export async function onExternalMessage(
         return await handleGetExtConfig();
       
       case 'enable':
-      case 'disable':
-        return await handleToggleRule(origin, method, payload);
+      case 'disable': {
+        if (typeof sender.tab?.id !== 'number') throw new Error('Missing requesting tab.');
+        // The retained hosted bridge never inherits a target site's trusted status.
+        const requestingTab = await browser.tabs.get(sender.tab.id);
+        if (!requestingTab.url) throw new Error('Missing requesting page.');
+        if (new URL(requestingTab.url).origin !== origin) throw new Error('Legacy website requests can only change their own top-level origin.');
+        const result = await approveSdkOperation({ tabId: sender.tab.id, requesterOrigin: new URL(requestingTab.url).origin,
+          userActivated: true, forceConfirmation: true,
+          info: { origin, title: method === 'enable' ? 'Enable CORS?' : 'Disable CORS?', button: 'Allow change',
+            name: `Legacy website request via ${senderOrigin}`, actions: [], reason: 'This changes the saved CORS setting for the target site.' } },
+          () => handleToggleRule(origin, method, payload));
+        if (result && typeof result === 'object' && 'error' in result) throw new Error(JSON.stringify(result.error));
+        return result;
+      }
       
       default:
         throw new Error(JSON.stringify({
@@ -253,6 +267,20 @@ async function handleSdkRequest(
   }
   const method = message.payload?.method;
   const data = message.payload?.data;
+  if (JSON.stringify(data ?? null).length > 65_536) throw new Error('SDK request exceeds the 64 KB limit.');
+  const authorize = (info: Omit<SdkApprovalInfo, 'origin'>, execute: () => Promise<unknown>, sensitive = false) =>
+    approveSdkOperation({ tabId: sender.tab!.id!, requesterOrigin: origin,
+      userActivated: message.payload?.userActivated === true, info: { ...info, origin }, sensitive }, execute);
+  const corsRule = async () => {
+    const rule = (await ensureProxyAppState()).rules.find(rule => rule.source === 'legacy-cors' && rule.match.initiatorOrigins[0] === origin);
+    if (rule && !ownsSdkRule(rule, origin)) throw new Error('This CORS rule is managed in Wireflip. Change it in the extension.');
+    return rule;
+  };
+  const corsStatus = async () => ({ origin, cors: await isOriginEnabled(origin), advancedMode: getAdvancedProxyStatus(sender.tab!.id!).phase });
+  const sensitiveRule = (actions: ReturnType<typeof normalizeSdkRule>['actions']) => actions.some(action =>
+    action.type === 'cors' && action.allowCredentials || action.type === 'setRequestHeaders'
+      && Object.keys(action.headers).some(name => /^(authorization|cookie)$/i.test(name))
+      || action.type === 'setResponseHeaders' && Object.entries(action.headers).some(([name, value]) => /^access-control-allow-credentials$/i.test(name) && value.trim().toLowerCase() === 'true'));
 
   switch (method) {
     case 'connect':
@@ -263,7 +291,7 @@ async function handleSdkRequest(
     case 'getStatus': {
       const execution = getAdvancedProxyStatus(sender.tab.id);
       const state = data?.ruleId ? await ensureProxyAppState() : undefined;
-      const rule = state?.rules.find(rule => rule.id === data.ruleId && rule.match.initiatorOrigins.includes(origin));
+      const rule = state?.rules.find(rule => rule.id === data.ruleId && ownsSdkRule(rule, origin));
       const enabled = rule && state ? isRuleEnabled(rule, state.profiles) : false;
       return {
         origin,
@@ -273,52 +301,62 @@ async function handleSdkRequest(
       };
     }
     case 'requestCors': {
-      await toggleRuleViaOrigin({
-        origin,
-        disabled: false,
-        credentials: data?.credentials === true,
-      });
-      return {
-        origin,
-        cors: await isOriginEnabled(origin),
-        advancedMode: getAdvancedProxyStatus(sender.tab.id).phase,
-      };
+      await corsRule();
+      const credentials = data?.credentials === true;
+      return authorize({ title: 'Enable CORS?', button: 'Allow change', name: 'CORS repair', actions: [],
+        reason: (credentials ? 'Credentialed requests will be allowed. ' : 'Credentials will not be enabled. ')
+          + (typeof data?.reason === 'string' ? data.reason.trim().slice(0, 160) : '') }, async () => {
+        await corsRule();
+        const state = await performProxyStateOperation({ kind: 'legacyPatch', intent: 'upsert', sdkOrigin: origin,
+          rule: { origin, disabled: false, credentials } });
+        await reconcileSavedRuleRuntime(state);
+        return corsStatus();
+      }, credentials);
     }
-    case 'disableCors':
-      await toggleRuleViaOrigin({ origin, disabled: true });
-      return {
-        origin,
-        cors: await isOriginEnabled(origin),
-        advancedMode: getAdvancedProxyStatus(sender.tab.id).phase,
-      };
-    case 'requestRule':
-      return requestRuleApproval(data, sender.tab.id, origin);
-    case 'createRuleDraft': {
-      const draft = data?.rule;
-      if (!draft || typeof draft !== 'object') throw new Error('Missing rule draft.');
-      const serialized = JSON.stringify(draft);
-      if (serialized.length > 65_536) throw new Error('Rule draft exceeds the 64 KB limit.');
-      const rule = await addProxyRule({
-        name: typeof draft.name === 'string' ? draft.name.trim().slice(0, 120) : '',
-        enabled: false,
-        source: 'user',
-        match: {
-          initiatorOrigins: [origin],
-          urlPattern: typeof draft.urlPattern === 'string'
-            ? draft.urlPattern.trim().slice(0, 2_048)
-            : '',
-          methods: Array.isArray(draft.methods)
-            ? draft.methods.slice(0, 16).map((value: unknown) => String(value).toUpperCase())
-            : undefined,
-          resourceTypes: Array.isArray(draft.resourceTypes)
-            ? draft.resourceTypes.slice(0, 16).map(String)
-            : undefined,
-        },
-        actions: Array.isArray(draft.actions) ? draft.actions : [],
+    case 'disableCors': {
+      await corsRule();
+      return authorize({ title: 'Disable CORS?', button: 'Allow change', name: 'CORS repair', actions: [] }, async () => {
+        await corsRule();
+        const state = await performProxyStateOperation({ kind: 'legacyPatch', intent: 'upsert', sdkOrigin: origin,
+          rule: { origin, disabled: true } });
+        await reconcileSavedRuleRuntime(state);
+        return corsStatus();
       });
-      const workspaceOpened = data?.openWorkspace !== false;
-      if (workspaceOpened) await browser.runtime.openOptionsPage();
-      return { id: rule.id, enabled: false, workspaceOpened };
+    }
+    case 'requestRule':
+    case 'createRuleDraft': {
+      const rule = normalizeSdkRule(data, origin);
+      if (data?.id !== undefined) await ownedSdkRule(data.id, origin);
+      const draft = method === 'createRuleDraft';
+      if (draft && data?.id !== undefined) throw new Error('A rule draft cannot update an existing rule.');
+      return authorize({ title: draft ? 'Create this rule draft?' : 'Enable this rule?',
+        button: draft ? 'Create draft' : 'Enable rule', name: rule.name, pattern: rule.match.urlPattern, actions: rule.actions }, async () => {
+        const result = await applySdkRule(data, sender.tab!.id!, origin, !draft);
+        if (!draft) return result;
+        const workspaceOpened = data?.openWorkspace !== false;
+        if (workspaceOpened) await browser.runtime.openOptionsPage();
+        return { ...result, enabled: false, workspaceOpened };
+      }, !draft && sensitiveRule(rule.actions));
+    }
+    case 'enableRule':
+    case 'disableRule':
+    case 'deleteRule': {
+      const rule = await ownedSdkRule(data?.id, origin);
+      const enabled = method === 'enableRule';
+      return authorize({ title: enabled ? 'Enable this rule?' : method === 'deleteRule' ? 'Delete this rule?' : 'Disable this rule?',
+        button: 'Allow change', name: rule.name, pattern: rule.match.urlPattern, actions: rule.actions }, async () => {
+        const current = await ownedSdkRule(data?.id, origin);
+        // Do not apply an approval to a rule that changed while its details were displayed.
+        if (JSON.stringify(current) !== JSON.stringify(rule)) throw new Error('The rule changed. Request approval again.');
+        if (method === 'deleteRule') {
+          await performProxyStateOperation({ kind: 'remove', id: current.id, sdkOrigin: origin, expectedRule: rule });
+          await reconcileSavedRuleRuntime(await ensureProxyAppState());
+          return { id: current.id, deleted: true };
+        }
+        const state = await performProxyStateOperation({ kind: 'update', id: current.id, update: { enabled }, sdkOrigin: origin, expectedRule: rule });
+        const saved = state.rules.find(rule => rule.id === current.id)!;
+        return sdkRuleResult(saved, sender.tab!.id!, origin);
+      }, enabled && sensitiveRule(rule.actions));
     }
     case 'openWorkspace':
       await browser.runtime.openOptionsPage();
@@ -348,12 +386,21 @@ export async function onRuntimeMessage(
 
     switch (message.type) {
       case 'sdkRequest':
-        return handleSdkRequest(message, sender);
+        return await handleSdkRequest(message, sender);
 
+      case 'setSdkSiteTrust': {
+        if (sender.url?.split('?')[0] !== browser.runtime.getURL('src/popup/index.html')) throw new Error('Site trust can only be changed in the Wireflip popup.');
+        const { tabId, origin, trusted } = message.payload || {};
+        if (!Number.isInteger(tabId) || typeof trusted !== 'boolean') throw new Error('Invalid trust request.');
+        const tab = await browser.tabs.get(tabId);
+        if (!tab.url || new URL(tab.url).origin !== origin) throw new Error('The active site changed. Reopen the popup.');
+        await updateSiteAccess(origin, { trusted });
+        return getSiteAccess(origin);
+      }
       case 'getRuleApproval':
-        return approvalInfo(message.payload?.id);
+        return sdkApprovalInfo(message.payload?.id);
       case 'resolveRuleApproval':
-        await resolveRuleApproval(message.payload?.id, message.payload?.accepted === true);
+        await resolveSdkApproval(message.payload?.id, message.payload?.accepted === true);
         return { success: true };
 
       case 'proxyStateOperation':
@@ -501,7 +548,8 @@ export async function onRuntimeMessage(
     }
   } catch (error) {
     logger.error('Error handling runtime message:', error);
-    return { error: error instanceof Error ? error.message : 'Unknown error' };
+    const messageText = error instanceof Error ? error.message : 'Unknown error';
+    return message?.type === 'sdkRequest' ? { error: { type: 'invalid-request', message: messageText } } : { error: messageText };
   }
 }
 

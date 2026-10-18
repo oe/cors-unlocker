@@ -1,3 +1,4 @@
+import { SiteTrustControls } from './site-trust-controls';
 import { t, translateError, initializeLocale, useLocale } from '@/common/i18n';
 import { StrictMode, useState } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -65,6 +66,8 @@ function App() {
         {vm.connected && !recording ? <p className="mt-1 text-xs text-muted-foreground">{t('Not recording requests')}</p> : null}
         <Button className="mt-1 w-full" size="sm" disabled={disabled} aria-label={t('Open Inspector')} onClick={vm.openInspector}><Activity />{t('Inspect and modify requests')}<ArrowUpRight /></Button>
       </section>
+
+      <SiteTrustControls origin={vm.origin} access={vm.siteAccess} disabled={disabled} onTrustChange={vm.setSiteTrust} />
 
       <RuleGroupControls profiles={vm.profiles} rules={vm.siteRules} busy={disabled} toggle={(profile, enabled) => void vm.toggleGroup(profile, enabled)} />
       <section aria-labelledby="quick-heading">

@@ -39,6 +39,8 @@ export interface IProxyRule {
   enabled: boolean;
   source: 'legacy-cors' | 'user';
   legacyRuleId?: number;
+  /** Only the extension assigns ownership; matching a site alone grants no SDK access. */
+  sdkOrigin?: string;
   match: {
     initiatorOrigins: string[];
     urlPattern: string;
@@ -266,6 +268,8 @@ export function isProxyRule(value: unknown): value is IProxyRule {
     && typeof rule.enabled === 'boolean'
     && (rule.source === 'legacy-cors' || rule.source === 'user')
     && (rule.legacyRuleId === undefined || isFiniteNumber(rule.legacyRuleId))
+    && (rule.sdkOrigin === undefined || (isHttpOrigin(rule.sdkOrigin)
+      && rule.match?.initiatorOrigins?.length === 1 && rule.match.initiatorOrigins[0] === rule.sdkOrigin))
     && !!rule.match
     && typeof rule.match === 'object'
     && isStringArray(rule.match.initiatorOrigins)
@@ -312,7 +316,8 @@ export function withLegacyRules(
   const existingIds = new Map(state.rules.filter((rule) => rule.source === 'legacy-cors')
     .map((rule) => [rule.legacyRuleId, rule.id]));
   const migratedRules = legacyRules.map((rule) => ({ ...legacyRuleToProxyRule(rule),
-    id: existingIds.get(rule.id) ?? `legacy-cors-${rule.id}` }));
+    id: existingIds.get(rule.id) ?? `legacy-cors-${rule.id}`,
+    ...(state.rules.find(existing => existing.legacyRuleId === rule.id && existing.sdkOrigin === rule.origin)?.sdkOrigin ? { sdkOrigin: rule.origin } : {}) }));
   const userRules = state.rules.filter((rule) => rule.source !== 'legacy-cors');
   const rules = [...userRules, ...migratedRules];
   const ids = new Set(rules.map((rule) => rule.id));
@@ -374,15 +379,15 @@ export type ProxyStateOperation =
   | { kind: 'get' }
   | { kind: 'recover'; state: IProxyAppState }
   | { kind: 'add'; input: Omit<IProxyRule, 'id' | 'createdAt' | 'updatedAt'>; groupId?: string | null }
-  | { kind: 'update'; id: string; update: Partial<Omit<IProxyRule, 'id'>>; groupId?: string | null }
+  | { kind: 'update'; id: string; update: Partial<Omit<IProxyRule, 'id'>>; groupId?: string | null; sdkOrigin?: string; expectedRule?: IProxyRule }
   | { kind: 'createGroup'; name: string }
   | { kind: 'updateGroup'; id: string; name?: string; enabled?: boolean }
   | { kind: 'removeGroup'; id: string }
-  | { kind: 'remove'; id: string }
+  | { kind: 'remove'; id: string; sdkOrigin?: string; expectedRule?: IProxyRule }
   | { kind: 'replace'; state: IProxyAppState }
   | { kind: 'import'; state: IProxyAppState; merge: boolean; expectedState?: IProxyAppState }
   | { kind: 'legacyRules'; rules: IRuleItem[] }
-  | { kind: 'legacyPatch'; intent: 'add' | 'update' | 'upsert' | 'remove'; rule: Partial<IRuleItem> }
+  | { kind: 'legacyPatch'; intent: 'add' | 'update' | 'upsert' | 'remove'; rule: Partial<IRuleItem>; sdkOrigin?: string }
   | { kind: 'config'; config: Record<string, unknown> }
   | { kind: 'cleanup' };
 
@@ -456,6 +461,12 @@ async function applyStateOperation(operation: ProxyStateOperation): Promise<IPro
   }
   const current = await ensureProxyAppState();
   let next = current;
+  if ((operation.kind === 'update' || operation.kind === 'remove') && operation.sdkOrigin !== undefined) {
+    const rule = current.rules.find(rule => rule.id === operation.id);
+    if (!rule || rule.sdkOrigin !== operation.sdkOrigin || rule.match.initiatorOrigins.length !== 1
+      || rule.match.initiatorOrigins[0] !== operation.sdkOrigin) throw new Error('This page cannot change that rule.');
+    if (operation.expectedRule && JSON.stringify(rule) !== JSON.stringify(operation.expectedRule)) throw new Error('The rule changed. Request approval again.');
+  }
   switch (operation?.kind) {
     case 'get': return current;
     case 'add': {
@@ -467,8 +478,14 @@ async function applyStateOperation(operation: ProxyStateOperation): Promise<IPro
     }
     case 'update': {
       if (!current.rules.some((rule) => rule.id === operation.id)) throw new Error(`Proxy rule not found: ${operation.id}`);
-      next = { ...current, rules: current.rules.map((rule) => rule.id === operation.id
-        ? { ...rule, ...operation.update, id: rule.id, updatedAt: Date.now() } : rule) };
+      next = { ...current, rules: current.rules.map((rule) => {
+        if (rule.id !== operation.id) return rule;
+        const updated = { ...rule, ...operation.update, id: rule.id, updatedAt: Date.now() };
+        // Moving a rule to another origin in the extension revokes its old website ownership.
+        if (updated.sdkOrigin && (updated.match.initiatorOrigins.length !== 1 || updated.match.initiatorOrigins[0] !== updated.sdkOrigin))
+          updated.sdkOrigin = undefined;
+        return updated;
+      }) };
       if (operation.groupId !== undefined) next = assignGroup(next, operation.id, operation.groupId);
       break;
     }
@@ -510,6 +527,12 @@ async function applyStateOperation(operation: ProxyStateOperation): Promise<IPro
       const patch = operation.rule;
       const existing = rules.find((rule) => operation.intent === 'upsert'
         ? rule.origin === patch.origin : rule.id === patch.id);
+      if (operation.sdkOrigin !== undefined) {
+        if (!isHttpOrigin(operation.sdkOrigin) || operation.intent !== 'upsert' || patch.origin !== operation.sdkOrigin)
+          throw new Error('Invalid SDK CORS scope.');
+        const owned = current.rules.find(rule => rule.legacyRuleId === existing?.id && rule.source === 'legacy-cors');
+        if (owned && owned.sdkOrigin !== operation.sdkOrigin) throw new Error('This CORS rule is managed in Wireflip. Change it in the extension.');
+      }
       if (operation.intent === 'remove') {
         next = withLegacyRules(current, rules.filter((rule) => rule.id !== patch.id));
         break;
@@ -528,6 +551,8 @@ async function applyStateOperation(operation: ProxyStateOperation): Promise<IPro
           id: nextLegacyId, createdAt: patch.createdAt ?? now,
           updatedAt: now, domain: new URL(patch.origin!).hostname } as IRuleItem;
       next = withLegacyRules(current, existing ? rules.map((item) => item.id === existing.id ? rule : item) : [...rules, rule]);
+      if (operation.sdkOrigin) next = { ...next, rules: next.rules.map(value => value.source === 'legacy-cors' && value.legacyRuleId === rule.id
+        ? { ...value, sdkOrigin: operation.sdkOrigin } : value) };
       break;
     }
     case 'config': next = withLegacyConfig(current, operation.config); break;

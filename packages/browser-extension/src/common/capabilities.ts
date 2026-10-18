@@ -11,6 +11,8 @@ export function capabilitiesFor(target: BrowserTarget) {
     cors: true as const,
     draftRules: true as const,
     ruleActivation: true as const,
+    ruleManagement: true as const,
+    siteTrust: true as const,
     ruleExecution: 'automatic' as const,
     workspace: true as const,
     advancedMode: 'user-initiated' as const,

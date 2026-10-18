@@ -118,16 +118,26 @@ class SdkPackageTests(native.FirefoxTests):
         return self.async_js('return ' + expression + ';')
 
     def consent(self, expression, accept):
-        # Keep the real modal and respond with native WebDriver alert commands.
-        self.js('window.sdkResult=null;(' + expression + ').then(data=>window.sdkResult={data:data??null},error=>window.sdkResult={error:{type:error.type,message:error.message}});')
-        def alert():
-            try:
-                return self.command('GET', '/alert/text')
-            except AssertionError:
-                return None
-        self.wait(alert)
-        self.command('POST', '/alert/accept' if accept else '/alert/dismiss', {})
-        return self.wait(lambda: self.js('return window.sdkResult;'))
+        # A genuine user click is required for untrusted SDK mutations.
+        before = set(self.command('GET', '/window/handles'))
+        self.js("""window.sdkResult=null;const b=document.createElement('button');b.id='sdk-consent';
+          b.textContent='Request SDK change';b.onclick=()=>{(0,eval)(arguments[0]).then(data=>window.sdkResult={data:data??null},error=>window.sdkResult={error:{type:error.type,message:error.message}});};document.body.prepend(b);""", expression)
+        element = self.command('POST', '/element', {'using': 'css selector', 'value': '#sdk-consent'})
+        self.command('POST', '/element/' + element['element-6066-11e4-a52e-4f735466cecf'] + '/click', {})
+        approval = self.wait(lambda: set(self.command('GET', '/window/handles')) - before)
+        self.switch(next(iter(approval)))
+        self.wait(lambda: self.js('return !!document.querySelector("main button:not([disabled])");'))
+        selector = '(//button)[last()]' if accept else '//button[normalize-space(.)="Cancel"]'
+        button = self.command('POST', '/element', {'using': 'xpath', 'value': selector})
+        try:
+            self.command('POST', '/element/' + button['element-6066-11e4-a52e-4f735466cecf'] + '/click', {})
+        except AssertionError as error:
+            if not any(value in str(error) for value in ['no such window', 'Browsing context has been discarded']):
+                raise
+        self.switch(self.target)
+        result = self.wait(lambda: self.js('return window.sdkResult;'))
+        self.js('document.querySelector("#sdk-consent").remove();')
+        return result
 
     def open_workspace(self, expression):
         self.assertIsNone(self.call(expression))
@@ -154,7 +164,7 @@ class SdkPackageTests(native.FirefoxTests):
         self.load(label, 'index.es.js')
         self.assertFalse(self.call('sdk.default.isEnabled()')['enabled'])
         self.switch(self.target)
-        self.assertIsNone(self.call('sdk.default.disable()'))
+        self.assertIsNone(self.consent('sdk.default.disable()', True)['data'])
         self.assertFalse(self.call('sdk.default.isEnabled()')['enabled'])
         self.open_workspace('sdk.default.openExtOptions()')
         frame = self.js('return document.querySelector("iframe.cors-unlocker-frame").src;')
@@ -180,8 +190,8 @@ class SdkPackageTests(native.FirefoxTests):
         self.assertEqual(self.consent('session.requestCors({reason:"Archive acceptance"})', False)['error']['type'], 'user-cancel')
         self.assertFalse(self.call('session.getStatus()')['cors']['enabled'])
         self.assertTrue(self.consent('session.requestCors({credentials:false})', True)['data']['cors']['enabled'])
-        self.assertFalse(self.call('session.disableCors()')['cors']['enabled'])
-        draft = self.call('session.createRuleDraft({name:"Exact archive",urlPattern:"https://api.example.com/*",actions:[{type:"delay",milliseconds:800}]},{openWorkspace:false})')
+        self.assertFalse(self.consent('session.disableCors()', True)['data']['cors']['enabled'])
+        draft = self.consent('session.createRuleDraft({name:"Exact archive",urlPattern:"https://api.example.com/*",actions:[{type:"delay",milliseconds:800}]},{openWorkspace:false})', True)['data']
         self.assertFalse(draft['enabled'])
         state = self.message('getProxyState')
         stored = next(rule for rule in state['rules'] if rule['id'] == draft['id'])

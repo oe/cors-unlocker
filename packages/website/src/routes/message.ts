@@ -83,6 +83,9 @@ const messageCallbacks = {
     }
   },
   enable: async (options: IEnableOptions = {}) => {
+    const bridge: any = await sendMessage2ext('ping');
+    // Current extensions enforce consent in their own window, including legacy calls.
+    if (bridge?.capabilities?.siteTrust) return sendMessage2ext('enable', options);
     const rule: any = await sendMessage2ext('getRule');
     if (rule && !rule.disabled) {
       // already enabled, nothing to do

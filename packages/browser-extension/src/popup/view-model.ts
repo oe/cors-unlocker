@@ -1,4 +1,5 @@
 import browser from 'webextension-polyfill';
+import { SDK_ACCESS_KEY, getSiteAccess, type SiteAccess } from '@/common/sdk-access';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { isSupportedProtocol } from '@/common/utils';
 import { inspectorPathForTab, parseInspectorTabId } from '@/common/inspector-target';
@@ -11,6 +12,7 @@ import type { IAdvancedProxyStatus } from '@/background/advanced-proxy';
 
 export function useViewModel() {
   const [origin, setOrigin] = useState('');
+  const [siteAccess, setSiteAccess] = useState<SiteAccess>({ origin: '', trusted: false });
   const [rules, setRules] = useState<IProxyRule[]>([]);
   const [persistentCount, setPersistentCount] = useState(0);
   const [profiles, setProfiles] = useState<IProxyProfile[]>([]);
@@ -36,7 +38,11 @@ export function useViewModel() {
     ]);
     if (!mounted.current || current !== version.current) return;
     const url = tab.url ? new URL(tab.url) : null;
-    setOrigin(url && isSupportedProtocol(url.protocol) ? url.origin : '');
+    const nextOrigin = url && isSupportedProtocol(url.protocol) ? url.origin : '';
+    const access = await getSiteAccess(nextOrigin);
+    if (!mounted.current || current !== version.current) return;
+    setOrigin(nextOrigin);
+    setSiteAccess(access);
     if (!state?.rules) throw new Error(state?.error || 'Failed to load rule data');
     setRules(state.rules);
     setProfiles(state.profiles || []);
@@ -54,7 +60,7 @@ export function useViewModel() {
       if (message?.type === 'advancedProxyStatusChange' && message.payload?.tabId === tabId.current) refresh();
     };
     const onStorage = (changes: Record<string, browser.Storage.StorageChange>, area: string) => {
-      if (area === 'local' && (changes[APP_STATE_KEY] || changes[PINNED_RULES_KEY])) refresh();
+      if (area === 'local' && (changes[APP_STATE_KEY] || changes[PINNED_RULES_KEY] || changes[SDK_ACCESS_KEY])) refresh();
     };
     const onUpdated = (id: number, change: browser.Tabs.OnUpdatedChangeInfoType) => {
       if (id === tabId.current && change.url) refresh();
@@ -146,9 +152,14 @@ export function useViewModel() {
     window.close();
   });
 
+  const setSiteTrust = (trusted: boolean) => run(async () => {
+    const result = await browser.runtime.sendMessage({ type: 'setSdkSiteTrust', payload: { tabId: tabId.current, origin, trusted } });
+    if (result?.error || typeof result?.trusted !== 'boolean') throw new Error(result?.error || 'Unable to update site trust.');
+  });
+
   const siteRules = rules.filter((rule) => ruleAppliesToOrigin(rule, origin));
   return {
-    origin, ready, busy, error, connected, phase, quickControls, status, profiles, toggleGroup, persistentCount,
+    siteAccess, setSiteTrust, origin, ready, busy, error, connected, phase, quickControls, status, profiles, toggleGroup, persistentCount,
     summary: summarizeTabRules({ rules, profiles }, origin),
     isSupported: ready && !!origin,
     siteRules,

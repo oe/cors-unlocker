@@ -111,3 +111,24 @@ it('does not ask an older extension to activate a rule', async () => {
   await expect(session.requestRule({ name: 'Block', urlPattern: '*', actions: [{ type: 'block' }] })).rejects.toThrow('Update Wireflip');
   expect(bridge.mock.calls).toHaveLength(1);
 });
+
+it('manages owned rules through capability-checked bridge methods', async () => {
+  const calls: unknown[] = [];
+  mockBridge(request => {
+    calls.push({ method: request.method, payload: request.payload });
+    return request.method === 'connect'
+      ? { data: { origin: 'https://app.example', capabilities: { ruleManagement: true } } }
+      : { data: { id: request.payload.id, enabled: request.method === 'enableRule', deleted: request.method === 'deleteRule' } };
+  });
+  const session = await intercept.connect();
+  expect(await session.disableRule('owned')).toMatchObject({ id: 'owned', enabled: false });
+  expect(await session.enableRule('owned')).toMatchObject({ enabled: true });
+  expect(await session.deleteRule('owned')).toMatchObject({ deleted: true });
+  expect(calls).toContainEqual({ method: 'disableRule', payload: { id: 'owned' } });
+});
+it('does not send management requests to older extensions', async () => {
+  const bridge = mockBridge(() => ({ data: { origin: 'https://app.example', capabilities: {} } }));
+  const session = await intercept.connect();
+  await expect(session.disableRule('owned')).rejects.toThrow('Update Wireflip');
+  expect(bridge.mock.calls).toHaveLength(1);
+});
