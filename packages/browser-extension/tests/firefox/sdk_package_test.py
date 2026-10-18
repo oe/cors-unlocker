@@ -260,7 +260,8 @@ if __name__ == '__main__':
     result = unittest.TextTestRunner(verbosity=2).run(unittest.TestSuite(SdkPackageTests(name) for name in tests))
     if result.wasSuccessful():
         (PACKAGES / 'firefox-results.json').write_text(json.dumps({
-            'tests': tests, 'passed': result.testsRun,
+            'tests': tests, 'passed': result.testsRun - len(result.skipped),
+            'skipped': [{'test': str(test), 'reason': reason} for test, reason in result.skipped],
             'browser': json.loads((native.ARTIFACTS / 'browser.json').read_text())['browserVersion'],
             'transport': 'isolated HTTPS CONNECT fixture; original SDK URLs and production APIs',
         }, indent=2) + '\n')
