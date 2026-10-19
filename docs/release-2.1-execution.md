@@ -31,11 +31,34 @@ verified independently. The original successful job logs were retained locally.
 
 ## Publication follow-through
 
-The SDK README is being corrected before publishing so it reports the actual
-Firefox-public / Chrome-pending rollout instead of the earlier source-candidate
-state. SDK runtime files remain unchanged; use the new successful CI archive and
-verify it before publication. Public Firefox CI now retains the pinned 2.0.0
-compatibility check and adds signed 2.1.0 SDK and automatic Playground checks.
+The SDK README was corrected in `a29dcaf353b4016b0988e0b9e93c622b1f22f88e`
+before publication. The [public Firefox SDK workflow](https://github.com/oe/cors-unlocker/actions/runs/39285971607)
+passed on both pinned public versions. Signed 2.1.0 passed all four exact SDK
+consumers plus the automatic one-approval Playground journey on official Firefox
+157.0.1. The 2.0.0 check retains its explicit skip for the 2.1-only contract.
+
+The new SDK archive SHA-256 is
+`0a353abba2a2b3ae243b205ebdfa5870aa063e63b143c800e447c3911248dc12`.
+Only its README differs from the `28f4c30` SDK archive; all runtime, type and
+package metadata files are identical. All seven files also match the locally
+clean-consumer-verified archive. The exact CI archive passed publish dry-run.
+The initial publish request was cancelled before authorization so the earlier
+candidate README was not published. npm publication is waiting for the user's
+fresh browser verification; no version is claimed published on that basis.
+
+A [combined draft Release](https://github.com/oe/cors-unlocker/releases/tag/untagged-3e5b0741bdd13268d8dd)
+holds the submitted extension ZIPs, signed Firefox XPI, matching Firefox source,
+new SDK tarball and SHA256SUMS. All six uploaded asset digests match local bytes.
+It is not a general-availability announcement.
+
+The original public `cors.forth.ink` bridge was also exercised from a disposable
+Chromium profile with exact published `cors-unlocker@0.1.0` runtime files and the
+2.1.0 candidate. Detection, status, explicit cancellation, page plus native
+extension approval, credential confirmation, independent-origin isolation and
+final disable all passed. The frame stayed on `https://cors.forth.ink/message/`;
+no network routes or extension APIs were stubbed. `0.1.1` runtime equivalence
+remains separately verified by the archive checks. The temporary profile was
+closed after returning its test origin to disabled / no credentials.
 
 Local signed-Firefox WebDriver attempts with the installed Firefox 155.0.1 failed
 before tests started (`Could not find profile folder`). These attempts are not

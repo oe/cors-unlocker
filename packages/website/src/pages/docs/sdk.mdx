@@ -100,7 +100,7 @@ enableCorsButton.addEventListener('click', async () => {
 
 A connected SDK session means the website can communicate with the extension. Approved enabled rules run automatically on matching pages without starting request recording. Saved changes persist across refreshes and revisits and may affect other tabs from the same origin.
 
-The `requestRule` and rule management APIs belong to the unreleased 2.1 extension / 0.3 SDK candidate. Check capabilities before using them. `enableRule` and `disableRule` return `{ id, enabled, ready, error? }`; a paused group or browser execution error can leave an enabled rule unready. Show progress, cancellation and errors in your application. SDK calls do not create a website toast automatically.
+The `requestRule` and rule management APIs require extension 2.1 and SDK 2.1.0. Firefox 2.1.0 is public; Chrome 2.1.0 is awaiting review. SDK 2.1.0 publication is in progress. Check capabilities before using them. `enableRule` and `disableRule` return `{ id, enabled, ready, error? }`; a paused group or browser execution error can leave an enabled rule unready. Show progress, cancellation and errors in your application. SDK calls do not create a website toast automatically.
 
 ```ts
 // Connect before the click. An untrusted site needs a fresh gesture for each mutation.
@@ -123,7 +123,7 @@ The old `cors-unlocker` package and `cors.forth.ink/message/` bridge remain supp
 For interactive rule examples, visit [Playground](/playground/). For direct browser use without application code, start with the [extension guide](/docs/guide/).
 
 
-## Upgrading website control to Wireflip 2.1 (candidate)
+## Upgrading website control to Wireflip 2.1
 
 Wireflip 2.1 asks for approval in an extension window unless the user has manually trusted this exact site in **Popup → Website control**. Trust does not authorize sensitive credential access or transfer ownership of existing rules. Revoking trust restores prompts; saved rules remain in their current state.
 
@@ -131,4 +131,4 @@ Website developers should update to `wireflip@2.1.0` once it is published. Publi
 
 If an existing CORS rule has no website ownership, open **Wireflip → Rules** to manage it. To let the website create a new owned rule, delete the old CORS rule there, return to the website, and retry. This deliberately does not grant websites control of manual or older unowned rules.
 
-Coordinated release: the Chrome extension, Firefox extension and npm SDK share version 2.1.0 and one release announcement. Submit both store updates and coordinate npm publication in the same release window; store review and propagation can finish at different times. Announce general availability once all three channels are available. Basic SDK CORS/draft APIs remain compatible with extension 2.0; capability-check newer APIs during rollout. Until publication is verified, the published SDK remains 0.2.0 and store extensions remain 2.0.0.
+Coordinated release: the Chrome extension, Firefox extension and npm SDK share version 2.1.0 and one release announcement. Submit both store updates and coordinate npm publication in the same release window; store review and propagation can finish at different times. Announce general availability once all three channels are available. Basic SDK CORS/draft APIs remain compatible with extension 2.0; capability-check newer APIs during rollout. Firefox 2.1.0 is available; Chrome 2.1.0 is awaiting review. Check the migration guide for current channel availability.

@@ -20,11 +20,11 @@ Yes. The first v2 startup performs a one-time migration, keeps a local recovery 
 
 ## Why does Chrome show a debugging banner?
 
-A tab session uses Chrome's `debugger` API and the DevTools Protocol to pause requests before browser CORS enforcement. Chrome always discloses this attachment. Persistent header, redirect and blocking rules do not use CDP and do not show the banner.
+Chrome's `debugger` API supports saved Mock, delay and CORS rules, optional recording and temporary tab controls. In 2.1, enabled saved rules automatically prepare matching tabs, so the browser may show its native debugging indicator without recording. Browser-managed header, redirect and blocking actions do not themselves need CDP.
 
 ## When does a tab session stop?
 
-When you stop it, close the tab or navigate to another origin. Chrome also stops its session when another debugger takes over.
+Stopping recording clears temporary changes but keeps enabled saved rules running. Disable the rule or its group to stop those changes. Closing a tab releases its attachment, and navigation reconciles rules for the new origin. Chrome’s native Stop pauses execution until Retry; Retry does not start recording. An actual debugger takeover ends the attachment, while DevTools can coexist on browser versions that support it.
 
 ## Does Wireflip upload my traffic?
 
@@ -36,11 +36,11 @@ Not arbitrary JavaScript. Wireflip accepts validated JSON action scripts. This k
 
 ## What can a website do through the npm SDK?
 
-It can detect the installed extension, read status for its own origin, ask the user to enable CORS, disable its own CORS rule, open the workspace, or create a disabled rule draft. It cannot silently enable arbitrary interception, start a tab session, or affect another origin.
+It can detect the extension, read its own origin’s status, create disabled drafts and open the workspace. Wireflip 2.1 also supports approved creation and management of a site’s own rules. Website changes need extension-owned approval unless the user manually trusts that exact origin in the popup; credential access still needs confirmation. A site cannot manage manual, unowned or other-origin rules or start recording through the SDK. Capability-check new APIs during rollout.
 
 ## Which npm package should I install?
 
-`wireflip@0.2.0` is available on npm; import `{ intercept }` from it. It requires the Wireflip 2.0 extension for Chrome or Firefox. The old hostname and SDK bridge are retained, and migration is optional. See the [migration guide](/migration/) for upgrade steps.
+Use `wireflip` and import `{ intercept }`. SDK 2.1.0 is being published for the new website-authorization flow; check npm availability before upgrading. Basic CORS and draft APIs support extension 2.0, while new rule-control APIs require extension 2.1 and capability checks. Firefox 2.1.0 is public; Chrome 2.1.0 is awaiting review. The old hostname and SDK bridge are retained, and migration is optional. See the [migration guide](/migration/) for upgrade steps.
 
 ## Is Firefox supported?
 
