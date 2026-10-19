@@ -1,0 +1,23 @@
+Wireflip — Patch the request · Keep your flow
+
+Wireflip is a local browser request lab for frontend developers and QA engineers. Repair CORS, mock APIs, inspect changes and reproduce loading or failure states without changing your backend. Previously CORS Unlocker, it preserves the original extension ID and legacy SDK bridge.
+
+Saved rules run automatically
+Enabled rules apply on matching supported pages, including new matching tabs. Organize rules into groups, pause a group or disable a rule to stop its changes. Recording is separate: stopping recording does not stop saved rules. Previously enabled 2.0 Mock, delay and CORS rules can begin running on matching pages after updating, without starting a tab session.
+
+Quick controls and inspection
+Use the popup for temporary CORS repair, credential controls, HTTP cache bypass, Fetch/XHR delay and simulated failures on the current tab. Open Inspector to record requests, check matched rules and review applied changes. Create local JSON responses, edit request or response headers, redirect requests and block selected endpoints. Choose page origins, request URLs and methods explicitly; export and import local backups.
+
+Website changes need your approval
+Websites using the optional SDK must ask in a Wireflip-owned window before changing rules. Only the popup can explicitly trust an exact site origin for future changes to its own rules. Credential access still requires confirmation. Revoke trust in the popup; saved rules remain under your control. Manually created and older unowned rules can only be managed in Wireflip.
+
+Chrome limits
+Chrome may display its native debugging indicator while saved rules, recording or temporary controls require debugger access. Matching pages are prepared asynchronously, so requests sent before readiness may pass through. Stopping recording keeps enabled saved rules running; disable their rule or group to stop them. HTTP cache bypass does not clear browser data or bypass service workers. Wireflip does not hide your IP or route other applications.
+
+Private by design
+No account, native client or cloud sync. Rules stay in local extension storage. Captured activity stays in memory and is cleared when the background worker stops. Sensitive headers are masked by default. Wireflip does not upload traffic, rules or logs.
+
+English, Simplified Chinese, Japanese, Korean, French and Spanish, with light, dark and system themes. SDK integration is optional. Existing cors-unlocker integrations retain their hosted bridge; check the migration guide before upgrading to wireflip@2.1.0.
+
+Documentation, privacy and migration: https://wireflip.forth.ink
+Source and support: https://github.com/oe/cors-unlocker

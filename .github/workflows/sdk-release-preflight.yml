@@ -18,6 +18,16 @@ permissions:
 jobs:
   sdk:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - version: '2.0.0'
+            file: '5122149'
+            sha256: '37828cb7a9695964b79e4b583ddb31d7c61c15bb8701f82668bb8cd633831301'
+          - version: '2.1.0'
+            file: '5140102'
+            sha256: 'd22d8c00c227ae884ed7f174042bb560feaf91aa061fdcc0b087648b0928416e'
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -38,25 +48,33 @@ jobs:
         run: |
           bash packages/browser-extension/scripts/install-firefox-test-browser.sh "$RUNNER_TEMP/firefox"
           curl --fail --location --retry 3 --retry-all-errors \
-            https://addons.mozilla.org/firefox/downloads/file/5122149/cors_unlocker-2.0.0.xpi \
-            --output "$RUNNER_TEMP/public-firefox-2.0.0.xpi"
-      - name: Verify SDKs against public Firefox 2.0.0
+            https://addons.mozilla.org/firefox/downloads/file/${{ matrix.file }}/cors_unlocker-${{ matrix.version }}.xpi \
+            --output "$RUNNER_TEMP/public-firefox-${{ matrix.version }}.xpi"
+      - name: Verify SDKs against public Firefox ${{ matrix.version }}
         env:
           FIREFOX_BINARY: ${{ runner.temp }}/firefox/firefox/firefox
           GECKODRIVER: ${{ runner.temp }}/firefox/geckodriver
-          FIREFOX_TEST_XPI: ${{ runner.temp }}/public-firefox-2.0.0.xpi
-          FIREFOX_TEST_XPI_SHA256: 37828cb7a9695964b79e4b583ddb31d7c61c15bb8701f82668bb8cd633831301
+          FIREFOX_TEST_XPI: ${{ runner.temp }}/public-firefox-${{ matrix.version }}.xpi
+          FIREFOX_TEST_XPI_SHA256: ${{ matrix.sha256 }}
         run: python3 packages/browser-extension/tests/firefox/sdk_package_test.py
+      - name: Verify one-approval Playground against signed Firefox 2.1.0
+        if: matrix.version == '2.1.0'
+        env:
+          FIREFOX_BINARY: ${{ runner.temp }}/firefox/firefox/firefox
+          GECKODRIVER: ${{ runner.temp }}/firefox/geckodriver
+          FIREFOX_TEST_XPI: ${{ runner.temp }}/public-firefox-${{ matrix.version }}.xpi
+          FIREFOX_TEST_XPI_SHA256: ${{ matrix.sha256 }}
+        run: python3 packages/browser-extension/tests/firefox/automatic_playground_test.py
       - uses: actions/upload-artifact@v4
         with:
-          name: public-firefox-sdk-release-${{ github.sha }}
+          name: public-firefox-sdk-release-${{ matrix.version }}-${{ github.sha }}
           path: artifacts/sdk-preflight
           if-no-files-found: error
           retention-days: 14
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: public-firefox-sdk-diagnostics-${{ github.sha }}
+          name: public-firefox-sdk-diagnostics-${{ matrix.version }}-${{ github.sha }}
           path: packages/browser-extension/test-results/firefox
           if-no-files-found: ignore
           retention-days: 7

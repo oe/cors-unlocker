@@ -80,9 +80,9 @@ Test both CORS enabled and disabled, user cancellation, an unavailable extension
 Keep the existing package and hosted-bridge address. Do not redirect the iframe to another origin or change its extension ID. No application changes are required solely for the rename. If the bridge cannot load, report it through [GitHub issues](https://github.com/oe/cors-unlocker/issues) with the browser and extension version, without including credentials or private request data.
 
 
-## Website authorization in 2.1 (source candidate)
+## Website authorization in 2.1
 
-Wireflip 2.1 is a source candidate; store versions remain 2.0.0. It adds extension-owned confirmation for website changes. Users can manually trust the exact site in **Popup → Website control** to skip ordinary prompts; access to login credentials still requires confirmation. Revoking trust restores prompts without disabling saved rules.
+Firefox 2.1.0 is available. Chrome 2.1.0 has been submitted for review; the public Chrome version remains 2.0.0. SDK 2.1.0 is rolling out in the same release window. Capability-check new APIs because package availability does not mean an installed extension has updated. It adds extension-owned confirmation for website changes. Users can manually trust the exact site in **Popup → Website control** to skip ordinary prompts; access to login credentials still requires confirmation. Revoking trust restores prompts without disabling saved rules.
 
 Applications using `wireflip@0.2.0` should update to 2.1.0 when available. The old local SDK waits only 5 seconds for some changes, so the new extension returns an immediate upgrade error when a change needs confirmation. It never leaves an approval window that can apply a change after the application reports a timeout. Read-only calls remain available; manually trusted sites can continue ordinary changes. The older `cors-unlocker` hosted bridge retains its separate confirmation flow.
 

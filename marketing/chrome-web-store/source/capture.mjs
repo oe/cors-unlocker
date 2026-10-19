@@ -152,6 +152,7 @@ try {
       phase: "connected",
       tabId: 17,
       captureEnabled: true,
+      recording: true,
       quickControls: {
         cors: !slow,
         credentials: false,
@@ -339,7 +340,7 @@ try {
       (locale) => localStorage.setItem("marketing-locale", locale),
       locale,
     );
-    await page.setViewportSize({ width: 360, height: 550 });
+    await page.setViewportSize({ width: 360, height: 900 });
     await page.goto(`${base}/src/popup/index.html?tabId=17`);
     await page
       .getByRole("switch", {
@@ -349,11 +350,10 @@ try {
       .waitFor();
     await page.waitForFunction(() => document.querySelector('[title="https://app.example.com"]') || document.querySelector('[role="alert"]'));
     if (await page.getByRole("alert").count()) throw new Error(await page.getByRole("alert").innerText());
-    await page.getByText("https://app.example.com", { exact: true }).waitFor();
-    await page.screenshot({
+    await page.getByTitle("https://app.example.com", { exact: true }).waitFor();
+    await page.locator('main').screenshot({
       animations: "disabled",
       path: `${folder}/popup-${locale}.png`,
-      fullPage: true,
     });
     await page.goto(`${base}/src/popup/index.html?tabId=17&scenario=delay`);
     await page
@@ -364,11 +364,10 @@ try {
       .waitFor();
     await page.waitForFunction(() => document.querySelector('[title="https://app.example.com"]') || document.querySelector('[role="alert"]'));
     if (await page.getByRole("alert").count()) throw new Error(await page.getByRole("alert").innerText());
-    await page.getByText("https://app.example.com", { exact: true }).waitFor();
-    await page.screenshot({
+    await page.getByTitle("https://app.example.com", { exact: true }).waitFor();
+    await page.locator('main').screenshot({
       animations: "disabled",
       path: `${folder}/popup-delay-${locale}.png`,
-      fullPage: true,
     });
     await page.setViewportSize({ width: 520, height: 780 });
     await page.goto(`${base}/src/sidepanel/index.html?tabId=17`);

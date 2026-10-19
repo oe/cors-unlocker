@@ -1,0 +1,103 @@
+{
+  "extensionId": "knhlkjdfmgkmelcjfnbbhpphkmjjacng",
+  "version": "2.1.0",
+  "sourceCommit": "28f4c306b7f4d183290bcd2ded4af6ec7461aa38",
+  "buildRun": "https://github.com/oe/cors-unlocker/actions/runs/39280521099",
+  "submittedZipSha256": "be79cc7b0af3ad7881032a18e23c5a03d366d3dfdf48ca9a6383e96b7fffba14",
+  "runtimeHashes": {
+    "_locales/en/messages.json": "0dd63aff6c9541662c541e9567f1f41c091934ac31e1bbadca7621fae8f810f8",
+    "_locales/zh_CN/messages.json": "407c74f3ed7128ebbf51087fc4880bfbc189ae5753135ec40388c84eecb39618",
+    "action-fields.js": "9417be7a7feb638779d29e90e996916a883a08527be04bb9a8d41352c66cef23",
+    "appearance-settings.js": "789484d0aeaa86423d2758b109309466feaee3d85fe6d516c141f5a1a4b59440",
+    "field.js": "629e0fe612a70f77f6eef75bc5f0734d0b3f7e21478a04a2c3f7dc073d7885ac",
+    "icon/128.png": "427b3ed4dc4270b7f84da8529b68aff5e9269228d0148fa560d476640b890c90",
+    "icon/16.png": "cc37d0ccc5b0ff78aba0f0b17caba92882c6b28f6f6fef6e8114cb279c23c515",
+    "icon/32.png": "559fc4954a631e3e4b801a413e6080d8f6ebe228aea7c7ce6b26d476a0a904a4",
+    "icon/48.png": "35bfebdc171ad159fd38d51c47b79e6101b11ee65104b6043adae4a6f407d401",
+    "icon/legacy-128.png": "2c8cdca8d2447e6102a8b38c027ccf77642ab24d1c6ef65f629e17bd6b193549",
+    "index.css": "e6936e2d94ad80b2fedef0dd402eab35dd35271d26af8614758e651aa8777fc2",
+    "index2.css": "1b7e9549466cd6eaea589ebd689fdbd01afa77abde93c2b9ccf123603d0693c0",
+    "index3.css": "162a3a05526055a0dd889ed3b3f2d8ff6ee2915631f6031c926a2f8e1749da68",
+    "inspector-target.js": "d920a1c8d4334f1ef00fc7920109aeee1a1d7d23e403f8a94e9c48ddc31cabb4",
+    "popover.js": "f039e8f85c142502b01a1fd840859e63b168c5f34dad8432eb74367e89df6710",
+    "proxy-state.js": "3d1a353ba89b28d42ed65f545038bd606a56e4bb209a3c10fce156a96566d8d1",
+    "rule-explanation.js": "9c745b171057c25d0b2c4754bfe2ed0c8175fa564f28fd41934818ec7b8f7318",
+    "src/approve/index.html": "9528d5720ee973e7abcbb81f16edcee7448eab3de7bad8e5f9d29425dbd7f4e6",
+    "src/approve/index.js": "28cf0bbe1cd088aee48e3125f02a0f64b2b02403fad841477dc8e947930cc1fb",
+    "src/background/index.js": "612694d942219b8c4efc27b5ae20bcd8937dce67008cd2dc6559acb3ba6f1725",
+    "src/content/page-bridge.js": "1fc0da2e4dd4e4e239017bfad175c9225c75c1877d0fe6da5c848efa58ce486d",
+    "src/options/index.html": "3f94ec5bac85086ff1fdb735279078a9e1f13716c13c08a5fd1a220bc4c3269a",
+    "src/options/index.js": "e4218bf5b67bc7aeb5e497159ebff36e5ec9c70a107f948931748b3bc4d491ff",
+    "src/popup/index.html": "63779fa4fab543d05d643f48c1a2094988f9dc06b9b45af8e2249672deaa418e",
+    "src/popup/index.js": "b02c7059fbbe28a2c9c24ea0981c9bf7371e0804c222e84a25e4ef36d9ed4d14",
+    "src/sidepanel/index.html": "0285444562f6676b12b07ec78e98984c5e3d842e8185c51c3761ba7445d78cf4",
+    "src/sidepanel/index.js": "10426f62af27204526ff120eba646e19f59b4064c35768615046476fd193f79a",
+    "src/upgrade/index.html": "08550d5ef9c408bfa524631d799b5a04735cb9e37f5936c2f3df7e649204048c",
+    "src/upgrade/index.js": "667ea5a09d41d01ac17136c9f21c74beb2383cccd32425053f058fd768b69967",
+    "switch.js": "fdbf0e11d7e957d96122c24579045befabff6409253dcdc46938e5dbfd563909",
+    "tabs.js": "a72ffd87d8587df3477452ddd95f19164372c64345f0f2ff62ab412c4b40c1a4",
+    "tailwind.css": "85660dc32dd98c162deece0f656f395aba9f9bdd0a611dafa889a2ef3d3c1ff4",
+    "tailwind.js": "303b7c03a5b1af9e02e48f530340709eed8bcd4a75a7a23401037f31145d6661",
+    "upgrade-notice.js": "933aa73959320a8d4d0cd7f180459377ceba09d5cfca94cd4310170958c139ff"
+  },
+  "manifest": {
+    "name": "__MSG_extName__",
+    "description": "__MSG_extDescription__",
+    "version": "2.1.0",
+    "manifest_version": 3,
+    "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3AFld2MMvgmzzV1BKbE5gAYR5zJup89WLE0Em0oQcGxRoAn6Ul45unRJq/+AqmCnwvZGt2hPyRDvX9DdWW8e1DvvhfKHGbaGvdA0NzhKsoWjKAW/zqje92kQcvRj+Pv/ER0JkmMYocjTBGIsvX19dDOf54BikCrMbfkiD13oqRk3iv0NqffoNratj1Rvz0CTb75IZYE/rx2dbBbTC9PK2RhNCrgbpU0Y9y2NV++prUq5eh7ysfzT36M/fi8eMWRwxyRIRp3U87K/ftJlEHAOKIr9+B4KoDWI01DXkQQaBeTMHNnC89Zkbq42OE+iIS+1iNXZy2VnF1gpyUuvovUFcQIDAQAB",
+    "icons": {
+      "16": "icon/16.png",
+      "32": "icon/32.png",
+      "48": "icon/48.png",
+      "128": "icon/128.png"
+    },
+    "options_page": "src/options/index.html",
+    "action": {
+      "default_icon": {
+        "16": "icon/16.png",
+        "32": "icon/32.png",
+        "128": "icon/128.png"
+      },
+      "default_popup": "src/popup/index.html"
+    },
+    "side_panel": {
+      "default_path": "src/sidepanel/index.html"
+    },
+    "content_scripts": [
+      {
+        "matches": [
+          "<all_urls>"
+        ],
+        "js": [
+          "src/content/page-bridge.js"
+        ],
+        "run_at": "document_start",
+        "all_frames": false
+      }
+    ],
+    "externally_connectable": {
+      "matches": [
+        "https://*.forth.ink/*"
+      ]
+    },
+    "default_locale": "en",
+    "background": {
+      "service_worker": "src/background/index.js"
+    },
+    "permissions": [
+      "declarativeNetRequest",
+      "declarativeNetRequestWithHostAccess",
+      "tabs",
+      "storage",
+      "debugger",
+      "sidePanel"
+    ],
+    "host_permissions": [
+      "<all_urls>"
+    ]
+  },
+  "status": "pending_review",
+  "automaticPublication": true,
+  "publicVersionAtSubmission": "2.0.0"
+}

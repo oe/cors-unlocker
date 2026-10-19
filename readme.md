@@ -4,7 +4,7 @@
 
 Wireflip is a browser-native request lab for Chrome and Firefox: CORS repair, response mocking, latency and failure simulation, redirects, blocking, header rewriting, and optional request recording.
 
-The current source prepares **extension 2.1.0 and SDK 2.1.0**. Enabled saved rules run automatically on all matching supported pages; recording and temporary tab controls are separate. Stores remain 2.0.0 and npm remains 0.2.0 until a separate release. See the [execution model](docs/rule-execution.md) and [candidate checklist](docs/release-2.1.md).
+The current release is **extension 2.1.0 and SDK 2.1.0**. Enabled saved rules run automatically on all matching supported pages; recording and temporary tab controls are separate. Firefox 2.1.0 is public. Chrome 2.1.0 has been submitted for review, while its public version remains 2.0.0; SDK 2.1.0 publication is in progress. See the [execution model](docs/rule-execution.md) and [release checklist](docs/release-2.1.md).
 
 No native client is required. Chrome uses Chrome DevTools Protocol through `chrome.debugger`, so Chrome displays its standard debugging disclosure while a tab is attached. Firefox uses blocking WebRequest APIs and does not show a debugger banner.
 

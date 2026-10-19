@@ -1,10 +1,10 @@
 # wireflip
 
-> Source candidate: SDK 2.1.0 for the unreleased Wireflip 2.1 extension. The published SDK remains 0.2.0 and stores remain 2.0.0. Existing method names are retained, but mutations now require authorization. The new APIs must be capability-checked until the extension update is public.
+> SDK 2.1.0 targets Wireflip 2.1 website authorization and rule control. Firefox 2.1.0 is available; Chrome 2.1.0 has been submitted for review and the public Chrome version is still 2.0.0. Capability-check newer APIs during rollout. Basic CORS and draft APIs remain compatible with extension 2.0; installed extensions update separately from this package.
 
 An origin-scoped browser SDK for connecting a web app to the locally installed Wireflip extension.
 
-Requires the Wireflip 2.0 extension. Wireflip 2.0.0 is available on the [Chrome Web Store](https://chromewebstore.google.com/detail/knhlkjdfmgkmelcjfnbbhpphkmjjacng) and [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/cors-unlocker/). Update the extension, then install and import `wireflip` directly. Existing `cors-unlocker` integrations remain supported; migration is optional.
+Requires Wireflip 2.0 or later. Install from the [Chrome Web Store](https://chromewebstore.google.com/detail/knhlkjdfmgkmelcjfnbbhpphkmjjacng) and [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/cors-unlocker/). Update the extension and check its capabilities, then install and import `wireflip` directly. Existing `cors-unlocker` integrations remain supported; migration is optional.
 
 ```bash
 pnpm add wireflip
@@ -34,7 +34,7 @@ createDraftButton.addEventListener('click', async () => {
 });
 ```
 
-## One confirmation to enable an example (2.1 candidate)
+## One confirmation to enable an example (Wireflip 2.1)
 
 ```ts
 // Connect before the click, so the click's user activation is retained
@@ -99,12 +99,12 @@ Existing `cors-unlocker@0.1.0` applications can keep using the retained `cors.fo
 Migration is optional. Confirm that Wireflip 2.0 is installed in your browser before changing dependencies. See the [migration guide](https://wireflip.forth.ink/migration/) for current browser availability, upgrade steps and the old-to-new API mapping.
 
 
-## Upgrading website control to Wireflip 2.1 (candidate)
+## Upgrading website control to Wireflip 2.1
 
 Wireflip 2.1 asks for approval in an extension window unless the user has manually trusted this exact site in **Popup → Website control**. Trust does not authorize sensitive credential access or transfer ownership of existing rules. Revoking trust restores prompts; saved rules remain in their current state.
 
-Website developers should update to `wireflip@2.1.0` once it is published. Published `wireflip@0.2.0` stops waiting after 5 seconds for some operations, so Wireflip 2.1 rejects requests that need approval immediately with an `invalid-request` upgrade message. It does not leave a pending window that could change rules after the website reports failure. Read-only methods still work; manually trusted sites can continue ordinary operations. Sensitive requests still need the updated SDK. Show the returned message in your website instead of reporting success.
+Website developers should use `wireflip@2.1.0` for the new authorization flow. Published `wireflip@0.2.0` stops waiting after 5 seconds for some operations, so Wireflip 2.1 rejects requests that need approval immediately with an `invalid-request` upgrade message. It does not leave a pending window that could change rules after the website reports failure. Read-only methods still work; manually trusted sites can continue ordinary operations. Sensitive requests still need the updated SDK. Show the returned message in your website instead of reporting success.
 
 If an existing CORS rule has no website ownership, open **Wireflip → Rules** to manage it. To let the website create a new owned rule, delete the old CORS rule there, return to the website, and retry. This deliberately does not grant websites control of manual or older unowned rules.
 
-Coordinated release: the Chrome extension, Firefox extension and npm SDK share version 2.1.0 and one release announcement. Submit both store updates and coordinate npm publication in the same release window; store review and propagation can finish at different times. Announce general availability once all three channels are available. Basic SDK CORS/draft APIs remain compatible with extension 2.0; capability-check newer APIs during rollout. Until publication is verified, the published SDK remains 0.2.0 and store extensions remain 2.0.0.
+Coordinated release: the Chrome extension, Firefox extension and npm SDK share version 2.1.0 and one release announcement. Submit both store updates and coordinate npm publication in the same release window; store review and propagation can finish at different times. Announce general availability once all three channels are available. Basic SDK CORS/draft APIs remain compatible with extension 2.0; capability-check newer APIs during rollout. Firefox 2.1.0 is public; Chrome 2.1.0 is awaiting review. Check the migration guide for current channel availability.
