@@ -10,7 +10,7 @@ Install extension
 <li>Sensitive header values—including Authorization, Cookie, Proxy-Authorization, and Set-Cookie—are redacted in the inspector by default.</li>
 <li>The website does not need an account to use the extension or SDK.</li>
 </ul>
-<p>Local processing includes the active tab’s URL and origin, request URLs, methods,
+<p>Local processing includes matching tabs’ URLs and origins, request URLs, methods,
 resource types, status codes, timing, request/response headers and rule matches.
 The inspector uses these details to show the traffic in a session you explicitly
 start. Authentication headers may be handled while applying your rules; their
@@ -25,13 +25,14 @@ creditworthiness. The developer does not receive or read your traffic or rules.
 Wireflip’s use of data follows the Chrome Web Store User Data Policy, including
 its Limited Use requirements.</p>
 <h2 id="permissions">Permissions</h2>
-<p><code>&lt;all_urls&gt;</code> allows rules to target developer-selected endpoints and lets the local SDK bridge identify the real calling page. <code>declarativeNetRequest</code> applies fast rules. <code>debugger</code> enables opt-in Advanced mode. <code>tabs</code>, <code>storage</code>, and <code>sidePanel</code> provide tab scope, persistence, and the inspector.</p>
-<p>These permissions are powerful. Install Wireflip only from a source you trust, keep rules narrowly scoped, and disable Advanced mode when the debugging session is finished.</p>
-<h2 id="advanced-mode">Advanced mode</h2>
-<p>Advanced mode attaches only after an explicit action for an HTTP or HTTPS tab. Chrome shows its standard debugging disclosure while attached. Wireflip detaches on disable, tab close, debugger takeover, or cross-origin top-level navigation.</p>
+<p><code>&lt;all_urls&gt;</code> allows rules to target developer-selected endpoints and lets the local SDK bridge identify the real calling page. <code>declarativeNetRequest</code> applies browser-managed rules. Chrome’s <code>debugger</code> permission supports enabled saved Mock, delay and CORS rules, optional request recording and temporary tab controls. <code>tabs</code>, <code>storage</code>, and <code>sidePanel</code> provide tab scope, persistence, and the inspector.</p>
+<p>Keep rules narrowly scoped. Disable a saved rule or its group to stop its changes; stopping request recording does not stop enabled saved rules. Rules, exact-origin website trust choices and recent completed website operations remain in local extension storage.</p>
+<h2 id="saved-rules-and-recording">Saved rules and recording</h2>
+<p>In Wireflip 2.1, enabling a saved rule or approving a website-owned rule lets it run automatically on matching supported pages, including new matching tabs. Previously enabled 2.0 Mock, delay and CORS rules may therefore start running after the update without starting a tab recording session. Chrome may show its native debugging indicator while a rule, recording or temporary control requires debugger access. Page preparation is asynchronous; requests sent before readiness may pass through.</p>
+<p>Recording is separate and starts explicitly. Stopping recording clears temporary changes but keeps enabled saved rules running. Disable the rule or its group to stop its changes. Chrome’s native Stop pauses execution until an explicit Retry; retrying rules does not start recording. Closing a tab releases its attachment, and navigation reconciles rules for the new page origin. An actual debugger takeover ends that attachment; opening DevTools can coexist on browser versions that support it.</p>
 <h2 id="sdk-boundary">SDK boundary</h2>
 <p>The new <code>wireflip</code> SDK communicates through a packaged content-script bridge. The retained <code>cors-unlocker</code> SDK uses its original iframe on <code>cors.forth.ink</code>; that bridge exchanges messages locally between the calling page and extension and does not upload request logs. The extension derives scope from the actual calling page instead of trusting an arbitrary origin supplied by page JavaScript.</p>
-<p>Enabling CORS requires confirmation. Rule drafts created by an app are always disabled and bound to that app’s origin so the user can inspect them before activation. SDK calls are size- and rate-limited.</p>
+<p>Website changes require approval in a Wireflip-owned window unless the user has manually trusted that exact origin in the popup. Credential access still requires confirmation. Trust applies only to the site’s own rules; websites cannot manage manual, older unowned or other-origin rules. Revoking trust restores prompts without changing saved rules. Drafts are disabled for review; a website may request an enabled rule after approval. SDK calls are size- and rate-limited. The legacy hosted bridge retains its existing page confirmation in addition to the extension’s authorization boundary.</p>
 <h2 id="v1-migration">v1 migration</h2>
 <p>The first v2 startup creates a local snapshot of v1 settings before writing the validated v2 state. The snapshot is retained for recovery; it is not used as live configuration after migration.</p>
 <h2 id="reporting-an-issue">Reporting an issue</h2>
