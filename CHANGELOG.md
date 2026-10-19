@@ -1,10 +1,12 @@
 # Changelog
 
-## Unreleased
+## 2.1.0 — release candidate
+
+Chrome, Firefox and the npm SDK share version 2.1.0 in this coordinated release. See [release notes](release/2.1.0-notes.md) for rollout and upgrade details. Publication is verified separately for each channel.
 
 - Require extension-owned approval for website rule changes; sites can only be trusted manually in the popup, and access to credentials still requires confirmation.
 - Add SDK rule enable, disable and delete APIs, plus a compact Website control menu with trust revocation and recent operations.
-- Prevent late mutations after older wireflip SDKs stop waiting: untrusted website changes need SDK 0.3.0; older clients receive an immediate upgrade error instead of opening an approval window. Read-only access remains available, and manually trusted sites can continue ordinary operations.
+- Prevent late mutations after older wireflip SDKs stop waiting: untrusted website changes need SDK 2.1.0; older clients receive an immediate upgrade error instead of opening an approval window. Read-only access remains available, and manually trusted sites can continue ordinary operations.
 - Keep manually created and older unowned rules under extension control. Manage them in Wireflip → Rules; deleting an old CORS rule lets the website create a newly owned rule after approval. Trust does not transfer existing rule ownership.
 - Clearly label rule updates and deletion, and localize credential notices.
 

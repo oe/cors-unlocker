@@ -1,6 +1,6 @@
 {
   "name": "wireflip",
-  "version": "0.3.0",
+  "version": "2.1.0",
   "description": "Origin-scoped SDK for connecting web apps to the Wireflip Chrome and Firefox request lab.",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",

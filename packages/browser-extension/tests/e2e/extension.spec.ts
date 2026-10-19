@@ -2048,7 +2048,7 @@ test('runs exact new and legacy SDK archives through production HTTPS bridges', 
       'session.requestCors({credentials:false})',
     ]) {
       const result = await call(target, '(' + expression + ').then(()=>({unexpectedSuccess:true}),e=>({type:e.type,message:e.message}))');
-      expect(result).toMatchObject({ type: 'invalid-request', message: expect.stringContaining('SDK 0.3.0') });
+      expect(result).toMatchObject({ type: 'invalid-request', message: expect.stringContaining('SDK 2.1.0') });
     }
     // Wait beyond the exact published client's 5s timeout: no pending operation survives.
     await new Promise(resolve => setTimeout(resolve, 6_000));

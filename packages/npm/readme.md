@@ -1,6 +1,6 @@
 # wireflip
 
-> Source candidate: SDK 0.3.0 for the unreleased Wireflip 2.1 extension. The published SDK remains 0.2.0 and stores remain 2.0.0. Existing method names are retained, but mutations now require authorization. The new APIs must be capability-checked until the extension update is public.
+> Source candidate: SDK 2.1.0 for the unreleased Wireflip 2.1 extension. The published SDK remains 0.2.0 and stores remain 2.0.0. Existing method names are retained, but mutations now require authorization. The new APIs must be capability-checked until the extension update is public.
 
 An origin-scoped browser SDK for connecting a web app to the locally installed Wireflip extension.
 
@@ -103,8 +103,8 @@ Migration is optional. Confirm that Wireflip 2.0 is installed in your browser be
 
 Wireflip 2.1 asks for approval in an extension window unless the user has manually trusted this exact site in **Popup → Website control**. Trust does not authorize sensitive credential access or transfer ownership of existing rules. Revoking trust restores prompts; saved rules remain in their current state.
 
-Website developers should update to `wireflip@0.3.0` once it is published. Published `wireflip@0.2.0` stops waiting after 5 seconds for some operations, so Wireflip 2.1 rejects requests that need approval immediately with an `invalid-request` upgrade message. It does not leave a pending window that could change rules after the website reports failure. Read-only methods still work; manually trusted sites can continue ordinary operations. Sensitive requests still need the updated SDK. Show the returned message in your website instead of reporting success.
+Website developers should update to `wireflip@2.1.0` once it is published. Published `wireflip@0.2.0` stops waiting after 5 seconds for some operations, so Wireflip 2.1 rejects requests that need approval immediately with an `invalid-request` upgrade message. It does not leave a pending window that could change rules after the website reports failure. Read-only methods still work; manually trusted sites can continue ordinary operations. Sensitive requests still need the updated SDK. Show the returned message in your website instead of reporting success.
 
 If an existing CORS rule has no website ownership, open **Wireflip → Rules** to manage it. To let the website create a new owned rule, delete the old CORS rule there, return to the website, and retry. This deliberately does not grant websites control of manual or older unowned rules.
 
-Release order: first verify SDK 0.3.0 against the public 2.0 extension and publish the SDK, so websites can upgrade before extension rollout. Basic CORS/draft APIs remain compatible with 2.0; gate newer APIs on capabilities. Then publish extension 2.1 to both stores and announce the new features once both store versions are available. Until then, these features are a source candidate; the published SDK remains 0.2.0 and store extensions remain 2.0.0.
+Coordinated release: the Chrome extension, Firefox extension and npm SDK share version 2.1.0 and one release announcement. Submit both store updates and coordinate npm publication in the same release window; store review and propagation can finish at different times. Announce general availability once all three channels are available. Basic SDK CORS/draft APIs remain compatible with extension 2.0; capability-check newer APIs during rollout. Until publication is verified, the published SDK remains 0.2.0 and store extensions remain 2.0.0.

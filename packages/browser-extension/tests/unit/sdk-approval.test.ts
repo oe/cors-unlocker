@@ -110,7 +110,7 @@ it('fails fast for published SDKs instead of leaving an approval executable afte
   vi.useFakeTimers();
   const execute = vi.fn();
   expect(await approveSdkOperation({ ...options, supportsApproval: false }, execute)).toMatchObject({
-    error: { type: 'invalid-request', message: expect.stringContaining('SDK 0.3.0') },
+    error: { type: 'invalid-request', message: expect.stringContaining('SDK 2.1.0') },
   });
   await vi.advanceTimersByTimeAsync(10_000);
   expect(browser.windows.create).not.toHaveBeenCalled();

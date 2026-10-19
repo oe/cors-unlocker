@@ -54,7 +54,7 @@ export async function approveSdkOperation(options: {
   if (access.trusted && !options.sensitive && !options.forceConfirmation) return run();
   // Older wireflip SDKs stop listening after 5s (CORS: 60s). Never leave
   // an approval executable after that client has already reported a timeout.
-  if (options.supportsApproval === false) return { error: { type: 'invalid-request', message: 'This website needs wireflip SDK 0.3.0 or newer to request approval. Ask the website developer to update it, or manage rules in Wireflip.' } };
+  if (options.supportsApproval === false) return { error: { type: 'invalid-request', message: 'This website needs wireflip SDK 2.1.0 or newer to request approval. Ask the website developer to update it, or manage rules in Wireflip.' } };
   if (!options.userActivated) return { error: { type: 'invalid-request', message: 'Request a change from a click or keyboard action on this page.' } };
   if ([...pending.values()].some(request => request.tabId === tabId)) throw new Error('An approval is already open for this tab.');
   const id = crypto.randomUUID();

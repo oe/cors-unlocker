@@ -216,7 +216,7 @@ class SdkPackageTests(native.FirefoxTests):
         for expression in expressions:
             result = self.call('(' + expression + ').then(()=>({unexpectedSuccess:true}),e=>({type:e.type,message:e.message}))')
             self.assertEqual(result.get('type'), 'invalid-request', result)
-            self.assertIn('SDK 0.3.0', result['message'])
+            self.assertIn('SDK 2.1.0', result['message'])
         # No executable consent can survive the old client's timeout.
         time.sleep(6)
         self.assertEqual(set(self.command('GET', '/window/handles')), before)

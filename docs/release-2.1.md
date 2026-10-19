@@ -1,4 +1,4 @@
-# Wireflip 2.1 candidate — not published
+# Wireflip 2.1.0 coordinated release candidate
 
 Supersedes the unreleased 2.0.1 UI-only candidate. Published stores remain 2.0.0 and npm remains wireflip@0.2.0.
 
@@ -11,7 +11,7 @@ Supersedes the unreleased 2.0.1 UI-only candidate. Published stores remain 2.0.0
 - [ ] Update store screenshots and release notes to the accepted candidate UI; explicitly explain that previously enabled 2.0 Mock / delay / CORS rules now run on all matching pages without starting a tab session
 - [ ] Only when separately requested, submit Chrome / Firefox 2.1.0 through their original listings
 - [ ] Verify signed public packages and record new immutable fingerprints
-- [ ] Only after extension availability, publish the reviewed wireflip@0.3.0 SDK archive and verify registry contents
+- [ ] Coordinate npm wireflip@2.1.0 publication with both extension 2.1.0 store submissions in one release window; verify registry contents, then announce once all channels are available
 - [ ] Update published-version records, website rollout copy and store acceptance baselines
 
 Do not overwrite 2.0.0 fingerprints or discontinue the original cors.forth.ink SDK bridge. See [the full release checklist](release-checklist.md).
@@ -37,3 +37,12 @@ Chrome additionally checks that an execution error clears when its group is paus
 Native screenshots for approval, Playground, Popup and desktop / narrow workspaces are included in the successful build diagnostics. Store screenshots and release sign-off remain unchecked. The Chrome v1 fixture and signed Firefox v1 migration tests do not replace an actual Chrome Web Store in-place update on a real existing profile.
 
 Chrome prepares new matching pages asynchronously. Requests sent before readiness may pass through; Playground waits for the exact rule before enabling its test. Chrome's native debugging indicator remains visible. Firefox response-body replacement still contacts the upstream server and preserves its status. These limits must remain accurate in the release notes.
+
+
+## Coordinated version and release notes — 2026-10-19
+
+Chrome, Firefox and the npm SDK now share **2.1.0**. The SDK intentionally jumps from published 0.2.0 to 2.1.0 to align the product version; no intermediate 0.3.0 release is planned. See [the release notes](../release/2.1.0-notes.md) for user-facing changes, migration guidance and rollout limits.
+
+The authorization runtime in PR #30 passed [full native acceptance](https://github.com/oe/cors-unlocker/actions/runs/39145364873): Chrome 30 tests, Firefox 17 tests and 4 exact SDK archive tests, plus 238 extension tests and 8 SDK tests. [Public Firefox 2.0 compatibility](https://github.com/oe/cors-unlocker/actions/runs/39145378752) passed; its 2.1-only contract check was explicitly skipped. The version-alignment commit requires its own checks before merge.
+
+Merging prepares source and deploys the documented candidate website through the existing workflow. It does not publish npm or submit store packages. Keep public-version fingerprints unchanged until each channel is independently verified. Store assets and manual store/profile checks above remain release tasks; CI does not certify them.

@@ -239,13 +239,13 @@ export const sdkMessages: Record<string, Record<string, string>> = {
     "fr": "Désactiver la règle",
     "es": "Desactivar regla"
   },
-  "This website needs wireflip SDK 0.3.0 or newer to request approval. Ask the website developer to update it, or manage rules in Wireflip.": {
-    "en": "This website needs wireflip SDK 0.3.0 or newer to request approval. Ask the website developer to update it, or manage rules in Wireflip.",
-    "zh-CN": "此网站需要 wireflip SDK 0.3.0 或更新版本才能请求授权。请联系网站开发者升级，或直接在 Wireflip 中管理规则。",
-    "ko": "이 웹사이트가 승인을 요청하려면 wireflip SDK 0.3.0 이상이 필요합니다. 웹사이트 개발자에게 업데이트를 요청하거나 Wireflip에서 규칙을 관리하세요.",
-    "ja": "このサイトの承認要求には wireflip SDK 0.3.0 以降が必要です。サイトの開発者に更新を依頼するか、Wireflip でルールを管理してください。",
-    "fr": "Ce site nécessite wireflip SDK 0.3.0 ou ultérieur pour demander une approbation. Demandez une mise à jour au développeur du site ou gérez les règles dans Wireflip.",
-    "es": "Este sitio necesita wireflip SDK 0.3.0 o posterior para solicitar aprobación. Pide al desarrollador que lo actualice o gestiona las reglas en Wireflip."
+  "This website needs wireflip SDK 2.1.0 or newer to request approval. Ask the website developer to update it, or manage rules in Wireflip.": {
+    "en": "This website needs wireflip SDK 2.1.0 or newer to request approval. Ask the website developer to update it, or manage rules in Wireflip.",
+    "zh-CN": "此网站需要 wireflip SDK 2.1.0 或更新版本才能请求授权。请联系网站开发者升级，或直接在 Wireflip 中管理规则。",
+    "ko": "이 웹사이트가 승인을 요청하려면 wireflip SDK 2.1.0 이상이 필요합니다. 웹사이트 개발자에게 업데이트를 요청하거나 Wireflip에서 규칙을 관리하세요.",
+    "ja": "このサイトの承認要求には wireflip SDK 2.1.0 以降が必要です。サイトの開発者に更新を依頼するか、Wireflip でルールを管理してください。",
+    "fr": "Ce site nécessite wireflip SDK 2.1.0 ou ultérieur pour demander une approbation. Demandez une mise à jour au développeur du site ou gérez les règles dans Wireflip.",
+    "es": "Este sitio necesita wireflip SDK 2.1.0 o posterior para solicitar aprobación. Pide al desarrollador que lo actualice o gestiona las reglas en Wireflip."
   },
   "This saved CORS rule predates website ownership or was created manually. Open Wireflip → Rules to change it. To let this website create a new rule, delete the old CORS rule there and retry; trusting the site does not transfer ownership.": {
     "en": "This saved CORS rule predates website ownership or was created manually. Open Wireflip → Rules to change it. To let this website create a new rule, delete the old CORS rule there and retry; trusting the site does not transfer ownership.",
