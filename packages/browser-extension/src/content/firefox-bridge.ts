@@ -1,3 +1,5 @@
+import { legacyBridgeError } from '@/common/legacy-bridge-error';
+
 /**
  * Firefox Content Script Bridge
  * Bridges communication between web pages and extension background script
@@ -86,26 +88,7 @@ window.addEventListener('message', async (event) => {
   } catch (error: any) {
     logError('Error forwarding message to background:', error);
     
-    // Handle Firefox specific error format
-    let errorObj = error;
-    if (error && typeof error === 'object' && error.__mozWebExtensionPolyfillReject__) {
-      try {
-        errorObj = JSON.parse(error.message);
-      } catch {
-        errorObj = { message: error.message, type: 'communication-error' };
-      }
-    } else if (typeof error === 'string') {
-      try {
-        errorObj = JSON.parse(error);
-      } catch {
-        errorObj = { message: error, type: 'communication-error' };
-      }
-    } else if (error instanceof Error) {
-      errorObj = { message: error.message, type: 'communication-error' };
-    } else {
-      // Fallback for unknown error types
-      errorObj = { message: 'Unknown error occurred', type: 'communication-error' };
-    }
+    const errorObj = legacyBridgeError(error);
 
     // Send error response back to page
     window.postMessage({

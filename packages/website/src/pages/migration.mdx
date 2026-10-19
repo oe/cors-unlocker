@@ -42,10 +42,16 @@ if (await intercept.isAvailable()) {
   const status = await session.getStatus();
   console.log(status.cors);
 
-  // Call from an explicit user action, such as an Enable CORS button
-  await session.requestCors({
-    credentials: false,
-    reason: 'Preview staging API data',
+  // Connect before the click; request the change directly from the handler
+  enableCorsButton.addEventListener('click', async () => {
+    try {
+      await session.requestCors({
+        credentials: false,
+        reason: 'Preview staging API data',
+      });
+    } catch (error) {
+      console.error(error); // Show cancellation or upgrade guidance in your UI
+    }
   });
 }
 ```
@@ -72,3 +78,12 @@ Test both CORS enabled and disabled, user cancellation, an unavailable extension
 ## Staying on the old SDK
 
 Keep the existing package and hosted-bridge address. Do not redirect the iframe to another origin or change its extension ID. No application changes are required solely for the rename. If the bridge cannot load, report it through [GitHub issues](https://github.com/oe/cors-unlocker/issues) with the browser and extension version, without including credentials or private request data.
+
+
+## Website authorization in 2.1 (source candidate)
+
+Wireflip 2.1 is a source candidate; store versions remain 2.0.0. It adds extension-owned confirmation for website changes. Users can manually trust the exact site in **Popup → Website control** to skip ordinary prompts; access to login credentials still requires confirmation. Revoking trust restores prompts without disabling saved rules.
+
+Applications using `wireflip@0.2.0` should update to 2.1.0 when available. The old local SDK waits only 5 seconds for some changes, so the new extension returns an immediate upgrade error when a change needs confirmation. It never leaves an approval window that can apply a change after the application reports a timeout. Read-only calls remain available; manually trusted sites can continue ordinary changes. The older `cors-unlocker` hosted bridge retains its separate confirmation flow.
+
+Existing manual or older unowned CORS rules remain under your control in **Wireflip → Rules**. To let a website create a new owned rule, delete its old CORS rule there, return to the website and retry. Trusting a website does not give it control over these existing rules.

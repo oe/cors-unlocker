@@ -6,6 +6,7 @@ import ssl
 import subprocess
 import tempfile
 import threading
+import time
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlsplit
@@ -113,21 +114,51 @@ class SdkPackageTests(native.FirefoxTests):
     def load(self, label, entry):
         result = self.async_js('window.sdk=await import(arguments[0]);return Object.keys(window.sdk);', f'/sdk/{label}/package/dist/{entry}')
         self.assertIn('default', result, result)
+        # Public 2.0 uses page confirmation; candidates advertise native site-trust consent.
+        self.native_consent = self.async_js("""return new Promise(resolve=>{
+          const id=crypto.randomUUID();const timer=setTimeout(()=>{window.removeEventListener('message',receive);resolve(false);},2000);
+          function receive(event){if(event.source===window && event.data?.type==='wireflip:sdk-response' && event.data.id===id){clearTimeout(timer);window.removeEventListener('message',receive);resolve(event.data.data?.capabilities?.siteTrust===true);}}
+          window.addEventListener('message',receive);window.postMessage({type:'wireflip:sdk-request',id,clientId:'firefox-consent-capabilities',method:'connect'},location.origin);
+        });""")
 
     def call(self, expression):
         return self.async_js('return ' + expression + ';')
 
-    def consent(self, expression, accept):
-        # Keep the real modal and respond with native WebDriver alert commands.
-        self.js('window.sdkResult=null;(' + expression + ').then(data=>window.sdkResult={data:data??null},error=>window.sdkResult={error:{type:error.type,message:error.message}});')
-        def alert():
-            try:
-                return self.command('GET', '/alert/text')
-            except AssertionError:
-                return None
-        self.wait(alert)
-        self.command('POST', '/alert/accept' if accept else '/alert/dismiss', {})
-        return self.wait(lambda: self.js('return window.sdkResult;'))
+    def consent(self, expression, accept, delay=0):
+        if not self.native_consent:
+            if any(method in expression for method in ['.disable(', '.disableCors(', '.createRuleDraft(']):
+                return {'data': self.call(expression)}
+            self.js('window.sdkResult=null;(' + expression + ').then(data=>window.sdkResult={data:data??null},error=>window.sdkResult={error:{type:error.type,message:error.message}});')
+            def alert():
+                try:
+                    return self.command('GET', '/alert/text')
+                except AssertionError:
+                    return None
+            self.wait(alert)
+            self.command('POST', '/alert/accept' if accept else '/alert/dismiss', {})
+            return self.wait(lambda: self.js('return window.sdkResult;'))
+        # A genuine user click is required for untrusted SDK mutations.
+        before = set(self.command('GET', '/window/handles'))
+        self.js("""window.sdkResult=null;const b=document.createElement('button');b.id='sdk-consent';
+          b.textContent='Request SDK change';b.onclick=()=>{(0,eval)(arguments[0]).then(data=>window.sdkResult={data:data??null},error=>window.sdkResult={error:{type:error.type,message:error.message}});};document.body.prepend(b);""", expression)
+        element = self.command('POST', '/element', {'using': 'css selector', 'value': '#sdk-consent'})
+        self.command('POST', '/element/' + element['element-6066-11e4-a52e-4f735466cecf'] + '/click', {})
+        approval = self.wait(lambda: set(self.command('GET', '/window/handles')) - before)
+        self.switch(next(iter(approval)))
+        self.wait(lambda: self.js('return [...document.querySelectorAll("main button")].at(-1)?.disabled === false;'))
+        if delay:
+            time.sleep(delay)
+        selector = '(//button)[last()]' if accept else '//button[normalize-space(.)="Cancel"]'
+        button = self.command('POST', '/element', {'using': 'xpath', 'value': selector})
+        try:
+            self.command('POST', '/element/' + button['element-6066-11e4-a52e-4f735466cecf'] + '/click', {})
+        except AssertionError as error:
+            if not any(value in str(error) for value in ['no such window', 'Browsing context has been discarded']):
+                raise
+        self.switch(self.target)
+        result = self.wait(lambda: self.js('return window.sdkResult;'))
+        self.js('document.querySelector("#sdk-consent").remove();')
+        return result
 
     def open_workspace(self, expression):
         self.assertIsNone(self.call(expression))
@@ -154,7 +185,7 @@ class SdkPackageTests(native.FirefoxTests):
         self.load(label, 'index.es.js')
         self.assertFalse(self.call('sdk.default.isEnabled()')['enabled'])
         self.switch(self.target)
-        self.assertIsNone(self.call('sdk.default.disable()'))
+        self.assertIsNone(self.consent('sdk.default.disable()', True)['data'])
         self.assertFalse(self.call('sdk.default.isEnabled()')['enabled'])
         self.open_workspace('sdk.default.openExtOptions()')
         frame = self.js('return document.querySelector("iframe.cors-unlocker-frame").src;')
@@ -170,6 +201,29 @@ class SdkPackageTests(native.FirefoxTests):
     def test_documentation_patch_archive(self):
         self.verify_legacy('legacy-0.1.1')
 
+    def test_published_wireflip_timeout_contract(self):
+        self.load('published-0.2.0', 'index.mjs')
+        if not self.native_consent:
+            self.skipTest('Native approval contract is introduced in Wireflip 2.1')
+        self.call('(async()=>{window.session=await sdk.intercept.connect();})()')
+        before = set(self.command('GET', '/window/handles'))
+        # These are the exact published client methods, including the original 5s timers.
+        expressions = [
+            'session.disableCors()',
+            'session.createRuleDraft({name:"Old client",urlPattern:"*",actions:[{type:"block"}]},{openWorkspace:false})',
+            'session.requestCors({credentials:false})',
+        ]
+        for expression in expressions:
+            result = self.call('(' + expression + ').then(()=>({unexpectedSuccess:true}),e=>({type:e.type,message:e.message}))')
+            self.assertEqual(result.get('type'), 'invalid-request', result)
+            self.assertIn('SDK 2.1.0', result['message'])
+        # No executable consent can survive the old client's timeout.
+        time.sleep(6)
+        self.assertEqual(set(self.command('GET', '/window/handles')), before)
+        self.assertFalse(self.call('session.getStatus()')['cors']['enabled'])
+        rules = self.message('getProxyState')['rules']
+        self.assertFalse(any(rule['name'] == 'Old client' for rule in rules))
+
     def test_new_archive(self):
         self.load('new', 'index.mjs')
         status = self.call('(async()=>{window.session=await sdk.intercept.connect();return {origin:session.origin,capabilities:session.capabilities,status:await session.getStatus()};})()')
@@ -180,8 +234,8 @@ class SdkPackageTests(native.FirefoxTests):
         self.assertEqual(self.consent('session.requestCors({reason:"Archive acceptance"})', False)['error']['type'], 'user-cancel')
         self.assertFalse(self.call('session.getStatus()')['cors']['enabled'])
         self.assertTrue(self.consent('session.requestCors({credentials:false})', True)['data']['cors']['enabled'])
-        self.assertFalse(self.call('session.disableCors()')['cors']['enabled'])
-        draft = self.call('session.createRuleDraft({name:"Exact archive",urlPattern:"https://api.example.com/*",actions:[{type:"delay",milliseconds:800}]},{openWorkspace:false})')
+        self.assertFalse(self.consent('session.disableCors()', True, delay=6 if self.native_consent else 0)['data']['cors']['enabled'])
+        draft = self.consent('session.createRuleDraft({name:"Exact archive",urlPattern:"https://api.example.com/*",actions:[{type:"delay",milliseconds:800}]},{openWorkspace:false})', True)['data']
         self.assertFalse(draft['enabled'])
         state = self.message('getProxyState')
         stored = next(rule for rule in state['rules'] if rule['id'] == draft['id'])
@@ -202,11 +256,12 @@ class SdkPackageTests(native.FirefoxTests):
 
 
 if __name__ == '__main__':
-    tests = ['test_published_legacy_archive', 'test_documentation_patch_archive', 'test_new_archive']
+    tests = ['test_published_legacy_archive', 'test_documentation_patch_archive', 'test_published_wireflip_timeout_contract', 'test_new_archive']
     result = unittest.TextTestRunner(verbosity=2).run(unittest.TestSuite(SdkPackageTests(name) for name in tests))
     if result.wasSuccessful():
         (PACKAGES / 'firefox-results.json').write_text(json.dumps({
-            'tests': tests, 'passed': result.testsRun,
+            'tests': tests, 'passed': result.testsRun - len(result.skipped),
+            'skipped': [{'test': str(test), 'reason': reason} for test, reason in result.skipped],
             'browser': json.loads((native.ARTIFACTS / 'browser.json').read_text())['browserVersion'],
             'transport': 'isolated HTTPS CONNECT fixture; original SDK URLs and production APIs',
         }, indent=2) + '\n')

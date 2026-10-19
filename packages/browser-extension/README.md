@@ -2,7 +2,7 @@
 
 Wireflip is a browser-native request lab for Chrome and Firefox, built on Manifest V3.
 
-The source prepares extension 2.1.0 and SDK 0.3.0; stores remain 2.0.0 until a separately requested release. See [the execution model](../../docs/rule-execution.md) and [candidate checklist](../../docs/release-2.1.md).
+The source prepares extension 2.1.0 and SDK 2.1.0; stores remain 2.0.0 until a separately requested release. See [the execution model](../../docs/rule-execution.md) and [candidate checklist](../../docs/release-2.1.md).
 
 ## Execution model
 

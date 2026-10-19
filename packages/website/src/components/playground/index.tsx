@@ -272,6 +272,20 @@ export default function Playground() {
     }
   };
 
+  const disableExample = async () => {
+    if (!session || !ruleId || !session.capabilities.ruleManagement) return;
+    setPending('draft'); setOperationError('');
+    setMessage('Waiting for Wireflip authorization…');
+    try {
+      const result = await session.disableRule(ruleId);
+      setStatus(await session.getStatus({ ruleId }));
+      setMessage(result.error || 'Example disabled. Original requests are restored unless other rules apply.');
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : 'Unable to disable the example.');
+      setMessage('The example was not disabled. Check its status in Wireflip.');
+    } finally { setPending(null); }
+  };
+
   const sendRequest = async () => {
     if (!session || !draftCreated) return;
     setPending('request');
@@ -318,7 +332,7 @@ export default function Playground() {
   const capabilities = session?.capabilities.interception;
   const sessionRunning = status?.advancedMode === 'connected';
   const stepTitle = directActivation ? (readyToTest ? 'Example enabled' : draftCreated ? 'Enable this example' : 'Try this example') : !session ? 'Connect Wireflip to try this example' : !draftCreated ? 'Add and enable the rule' : requiresSession && !sessionRunning ? 'Start this tab’s session' : requiresSession ? 'Session running' : 'Test the rule';
-  const stepHelp = directActivation ? (readyToTest ? 'Runs automatically on matching pages from this site' : 'Confirm once in Wireflip, then test the response here') : !session ? 'Install the extension and reconnect first' : !draftCreated ? 'First add and enable the recipe rule in Wireflip, then return to this tab' : requiresSession && !sessionRunning ? 'Enable the rule in Wireflip. Return here, click the Wireflip toolbar icon → Start tab session for this Playground tab' : 'The saved rule and its group must be enabled in Wireflip';
+  const stepHelp = directActivation ? (readyToTest ? 'Runs automatically on matching pages from this site' : 'Approve in Wireflip unless this site is trusted, then test the response here') : !session ? 'Install the extension and reconnect first' : !draftCreated ? 'First add and enable the recipe rule in Wireflip, then return to this tab' : requiresSession && !sessionRunning ? 'Enable the rule in Wireflip. Return here, click the Wireflip toolbar icon → Start tab session for this Playground tab' : 'The saved rule and its group must be enabled in Wireflip';
   const displayBody = (body: string) => { try { return JSON.stringify(JSON.parse(body), null, 2); } catch { return body; } };
 
 
@@ -371,6 +385,7 @@ export default function Playground() {
               </button>}
             </div>
           </section>
+          {session?.capabilities.ruleManagement && draftCreated && status?.rule?.enabled ? <button className="button-secondary focus-ring mt-3" disabled={pending !== null} onClick={() => void disableExample()}>Disable example</button> : null}
           {status?.rule?.error && directActivation ? <p role="alert" className="mt-3 text-sm text-red-700">{status.rule.error}</p> : null}
           {operationError ? <p role="alert" className="mt-3 text-sm text-red-700">{operationError}</p> : null}
           <section className="mt-5" aria-label="Request">

@@ -10,6 +10,9 @@ const ALLOWED_METHODS = new Set([
   'createRuleDraft',
   'requestRule',
   'openWorkspace',
+  'enableRule',
+  'disableRule',
+  'deleteRule',
 ]);
 
 // Page JavaScript can ask for approval, but cannot fabricate a trusted input event.
@@ -25,6 +28,7 @@ interface PageRequest {
   id: string;
   method: string;
   payload?: unknown;
+  approvalProtocol?: number;
 }
 
 function isPageRequest(value: unknown): value is PageRequest {
@@ -58,41 +62,12 @@ window.addEventListener('message', async (event) => {
     if (JSON.stringify(request.payload ?? null).length > 65_536) {
       throw new Error('SDK request exceeds the 64 KB limit.');
     }
-    if (request.method === 'requestCors') {
-      const options = request.payload && typeof request.payload === 'object'
-        ? request.payload as { credentials?: unknown; reason?: unknown }
-        : {};
-      const reason = typeof options.reason === 'string'
-        ? options.reason.trim().slice(0, 160)
-        : '';
-      const credentials = options.credentials === true;
-      const details = [
-        `${location.origin} is asking Wireflip to repair CORS for this origin.`,
-        credentials ? 'Credentialed requests will be allowed.' : 'Credentials will not be enabled.',
-        reason ? `Reason: ${reason}` : '',
-        'Continue?',
-      ].filter(Boolean).join('\n\n');
-      if (!window.confirm(details)) {
-        window.postMessage({
-          type: RESPONSE_TYPE,
-          clientId: request.clientId,
-          id: request.id,
-          error: { type: 'user-cancel', message: 'The user declined the CORS request.' },
-        }, location.origin);
-        return;
-      }
-    }
-    if (request.method === 'requestRule' && performance.now() > activationDeadline) {
-      window.postMessage({
-        type: RESPONSE_TYPE, clientId: request.clientId, id: request.id,
-        error: { type: 'invalid-request', message: 'Enable a rule from a click or keyboard action on this page.' },
-      }, location.origin);
-      return;
-    }
-    if (request.method === 'requestRule') activationDeadline = 0;
+    const mutation = ['requestCors', 'disableCors', 'createRuleDraft', 'requestRule', 'enableRule', 'disableRule', 'deleteRule'].includes(request.method);
+    const userActivated = activationDeadline > 0 && performance.now() <= activationDeadline;
+    if (mutation) activationDeadline = 0;
     const response = await browser.runtime.sendMessage({
       type: 'sdkRequest',
-      payload: { method: request.method, data: request.payload },
+      payload: { method: request.method, data: request.payload, userActivated, supportsApproval: request.approvalProtocol === 1 },
     });
     sendResponse(request, response);
   } catch (cause) {

@@ -32,6 +32,8 @@ export interface InterceptCapabilities {
   cors: true;
   draftRules: true;
   ruleActivation?: true;
+  ruleManagement?: true;
+  siteTrust?: true;
   ruleExecution?: 'automatic';
   workspace: true;
   advancedMode: 'user-initiated';
@@ -77,6 +79,14 @@ export interface DraftRuleInput {
   methods?: string[];
   resourceTypes?: string[];
   actions: DraftAction[];
+}
+
+export interface RuleStateResult {
+  id: string;
+  enabled: boolean;
+  ready: boolean;
+  error?: string;
+  workspaceOpened: false;
 }
 
 export interface ActivatedRuleResult {
@@ -160,6 +170,7 @@ class LocalBridge {
       window.addEventListener('message', onMessage);
       window.postMessage({
         type: REQUEST_TYPE,
+        approvalProtocol: 1,
         clientId: this.clientId,
         id,
         method,
@@ -185,18 +196,18 @@ export class InterceptSession {
   }
 
   requestCors(options: RequestCorsOptions = {}): Promise<InterceptStatus> {
-    return this.bridge.request('requestCors', options, 60_000);
+    return this.bridge.request('requestCors', options, 125_000);
   }
 
   disableCors(): Promise<InterceptStatus> {
-    return this.bridge.request('disableCors');
+    return this.bridge.request('disableCors', undefined, 125_000);
   }
 
   createRuleDraft(rule: DraftRuleInput, options: { openWorkspace?: boolean } = {}): Promise<DraftRuleResult> {
     return this.bridge.request('createRuleDraft', {
       rule,
       openWorkspace: options.openWorkspace ?? true,
-    });
+    }, 125_000);
   }
 
   /** User approves once in Wireflip; execution is automatic on matching pages. */
@@ -205,6 +216,25 @@ export class InterceptSession {
       type: 'invalid-request', message: 'Update Wireflip to enable a rule directly from this page.',
     }));
     return this.bridge.request('requestRule', { rule, id: options.id }, 125_000);
+  }
+
+  private manageRule<T>(method: string, id: string): Promise<T> {
+    if (!this.capabilities.ruleManagement) return Promise.reject(new InterceptError({
+      type: 'invalid-request', message: 'Update Wireflip to manage rules from this page.',
+    }));
+    return this.bridge.request(method, { id }, 125_000);
+  }
+
+  enableRule(id: string): Promise<RuleStateResult> {
+    return this.manageRule('enableRule', id);
+  }
+
+  disableRule(id: string): Promise<RuleStateResult> {
+    return this.manageRule('disableRule', id);
+  }
+
+  deleteRule(id: string): Promise<{ id: string; deleted: true }> {
+    return this.manageRule('deleteRule', id);
   }
 
   openWorkspace(): Promise<void> {

@@ -24,39 +24,53 @@ if (session.capabilities.interception.responseMock === 'body-replacement') {
 
 const status = await session.getStatus();
 
-await session.requestCors({
-  credentials: false,
-  reason: 'Preview staging API data',
+enableCorsButton.addEventListener('click', async () => {
+  try {
+    await session.requestCors({ credentials: false, reason: 'Preview staging API data' });
+  } catch (error) {
+    // Show cancellation or errors in your application's interface
+    console.error(error);
+  }
 });
 ```
 
-`requestCors()` always shows an extension-controlled confirmation and applies only to the real top-level page origin. A page cannot request changes for another origin.
+Website mutations require approval in a Wireflip-owned window by default, including CORS enable/disable and draft creation. Start these requests from a real click or keyboard action. The real top-level page origin determines their scope.
+
+Only the user can turn on **Trust this site to control rules** in the extension popup. Trust is stored for that exact origin (scheme, hostname and port), persists until revoked, and allows the site to manage its SDK-owned rules without repeated prompts. Credentialed CORS and explicit Authorization/Cookie request headers still require separate approval. Revoking trust restores prompts without changing existing rules.
+
+A matching URL does not grant ownership. Rules created manually or by older extension versions remain managed inside Wireflip; sites cannot take them over. The retained legacy hosted bridge always requires explicit confirmation and never inherits site trust.
 
 `session.capabilities.interception` reports whether the browser supports synthetic responses or body replacement, synthetic preflights or header-only repair, reasoned network failures or cancellation, and distinct or combined Fetch/XHR resource types. Applications should use these values instead of inferring behavior from the user agent.
 
 ## Create a disabled rule draft
 
 ```ts
-await session.createRuleDraft({
-  name: 'Simulate slow projects API',
-  urlPattern: 'https://api.example.com/projects/*',
-  methods: ['GET'],
-  resourceTypes: ['XHR', 'Fetch'],
-  actions: [{ type: 'delay', milliseconds: 800 }],
+createDraftButton.addEventListener('click', async () => {
+  try {
+    await session.createRuleDraft({
+      name: 'Simulate slow projects API',
+      urlPattern: 'https://api.example.com/projects/*',
+      methods: ['GET'],
+      resourceTypes: ['XHR', 'Fetch'],
+      actions: [{ type: 'delay', milliseconds: 800 }],
+    });
+  } catch (error) { console.error(error); } // Show feedback in your UI
 });
 ```
 
-SDK-created rules are always disabled and scoped to the calling page. By default, the workspace opens so the user can review and enable the draft.
+`createRuleDraft` creates a disabled rule scoped to the calling origin after authorization. By default, the workspace opens so the user can review and enable the draft. It does not grant future permission to the site.
 
 ## API reference
 
 - `intercept.connect({ timeout? })` → `InterceptSession`
 - `intercept.isAvailable()` → `boolean`
 - `intercept.openStorePage()`
-- `session.getStatus()`
+- `session.getStatus({ ruleId? })`
 - `session.requestCors({ credentials?, reason? })`
 - `session.disableCors()`
 - `session.createRuleDraft(rule, { openWorkspace? })`
+- `session.requestRule(rule, { id? })` — capability-check `ruleActivation`
+- `session.enableRule(id)` / `session.disableRule(id)` / `session.deleteRule(id)` — capability-check `ruleManagement`
 - `session.openWorkspace()`
 
 The legacy `isExtInstalled`, `isEnabled`, `enable`, `disable`, `openExtOptions`, and `openStorePage` exports continue to call the new local bridge.
@@ -69,22 +83,52 @@ Install and enable the extension before connecting. Handle errors in your own in
 ```ts
 import { intercept, InterceptError } from 'wireflip';
 
-try {
-  const session = await intercept.connect();
-  await session.requestCors({ reason: 'Preview staging data' });
-} catch (error) {
-  if (error instanceof InterceptError && error.type === 'user-cancel') {
-    // The user declined; leave normal application behavior in place
-  } else {
-    // Offer installation or a retry without blocking the rest of the application
+// Connect first and handle installation errors in your application's UI.
+const session = await intercept.connect();
+enableCorsButton.addEventListener('click', async () => {
+  try {
+    await session.requestCors({ reason: 'Preview staging data' });
+  } catch (error) {
+    if (error instanceof InterceptError && error.type === 'user-cancel') {
+      // The user declined; leave normal application behavior in place
+    } else {
+      // Offer installation or a retry without blocking the rest of the application
+    }
   }
-}
+});
 ```
 
-A connected SDK session means the website can communicate with the extension. It does not start request interception. Users start tab sessions and enable saved rules inside the extension.
+A connected SDK session means the website can communicate with the extension. Approved enabled rules run automatically on matching pages without starting request recording. Saved changes persist across refreshes and revisits and may affect other tabs from the same origin.
+
+The `requestRule` and rule management APIs belong to the unreleased 2.1 extension / 0.3 SDK candidate. Check capabilities before using them. `enableRule` and `disableRule` return `{ id, enabled, ready, error? }`; a paused group or browser execution error can leave an enabled rule unready. Show progress, cancellation and errors in your application. SDK calls do not create a website toast automatically.
+
+```ts
+// Connect before the click. An untrusted site needs a fresh gesture for each mutation.
+const session = await intercept.connect();
+disableButton.addEventListener('click', async () => {
+  if (!session.capabilities.ruleManagement) return; // Offer to open Wireflip
+  try {
+    const result = await session.disableRule(savedRuleId);
+    showMessage(result.error || 'Example disabled. Original requests are restored unless other rules apply.');
+  } catch (error) {
+    showMessage(error instanceof Error ? error.message : 'Unable to change the rule.');
+  }
+});
+```
 
 ## Existing integrations
 
 The old `cors-unlocker` package and `cors.forth.ink/message/` bridge remain supported. Migration is optional. Follow the [migration guide](/migration/) when you are ready.
 
 For interactive rule examples, visit [Playground](/playground/). For direct browser use without application code, start with the [extension guide](/docs/guide/).
+
+
+## Upgrading website control to Wireflip 2.1 (candidate)
+
+Wireflip 2.1 asks for approval in an extension window unless the user has manually trusted this exact site in **Popup → Website control**. Trust does not authorize sensitive credential access or transfer ownership of existing rules. Revoking trust restores prompts; saved rules remain in their current state.
+
+Website developers should update to `wireflip@2.1.0` once it is published. Published `wireflip@0.2.0` stops waiting after 5 seconds for some operations, so Wireflip 2.1 rejects requests that need approval immediately with an `invalid-request` upgrade message. It does not leave a pending window that could change rules after the website reports failure. Read-only methods still work; manually trusted sites can continue ordinary operations. Sensitive requests still need the updated SDK. Show the returned message in your website instead of reporting success.
+
+If an existing CORS rule has no website ownership, open **Wireflip → Rules** to manage it. To let the website create a new owned rule, delete the old CORS rule there, return to the website, and retry. This deliberately does not grant websites control of manual or older unowned rules.
+
+Coordinated release: the Chrome extension, Firefox extension and npm SDK share version 2.1.0 and one release announcement. Submit both store updates and coordinate npm publication in the same release window; store review and propagation can finish at different times. Announce general availability once all three channels are available. Basic SDK CORS/draft APIs remain compatible with extension 2.0; capability-check newer APIs during rollout. Until publication is verified, the published SDK remains 0.2.0 and store extensions remain 2.0.0.

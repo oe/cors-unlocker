@@ -235,3 +235,27 @@ describe('rule groups', () => {
     await expect(createGroup(' staging ')).rejects.toThrow('already exists');
   });
 });
+
+it('assigns SDK CORS ownership atomically and retains it across unrelated legacy writes', async () => {
+  const origin = 'https://app.example';
+  await performProxyStateOperation({ kind: 'legacyPatch', intent: 'upsert', sdkOrigin: origin, rule: { origin, disabled: false } });
+  expect((await ensureProxyAppState()).rules[0].sdkOrigin).toBe(origin);
+  await performProxyStateOperation({ kind: 'legacyPatch', intent: 'upsert', rule: { origin: 'https://other.example' } });
+  await performProxyStateOperation({ kind: 'legacyPatch', intent: 'upsert', sdkOrigin: origin, rule: { origin, disabled: true } });
+  expect((await ensureProxyAppState()).rules.find(rule => rule.sdkOrigin === origin)?.enabled).toBe(false);
+});
+it('does not let SDK CORS writes claim a manual rule or another origin', async () => {
+  const origin = 'https://app.example';
+  await performProxyStateOperation({ kind: 'legacyPatch', intent: 'upsert', rule: { origin } });
+  await expect(performProxyStateOperation({ kind: 'legacyPatch', intent: 'upsert', sdkOrigin: origin, rule: { origin, disabled: true } })).rejects.toThrow('managed in Wireflip');
+  await expect(performProxyStateOperation({ kind: 'legacyPatch', intent: 'upsert', sdkOrigin: origin, rule: { origin: 'https://other.example' } })).rejects.toThrow('Invalid SDK CORS scope');
+  expect((await ensureProxyAppState()).rules[0].enabled).toBe(true);
+});
+it('rechecks SDK ownership inside queued writes and revokes it when a user widens the origin', async () => {
+  const rule = await addProxyRule({ ...input('Website rule'), sdkOrigin: 'https://app.example' });
+  await updateProxyRule(rule.id, { match: { initiatorOrigins: ['*'], urlPattern: '*' } });
+  expect((await ensureProxyAppState()).rules[0].sdkOrigin).toBeUndefined();
+  await expect(performProxyStateOperation({ kind: 'update', id: rule.id, sdkOrigin: 'https://app.example', update: { enabled: false } })).rejects.toThrow('cannot change');
+  await expect(performProxyStateOperation({ kind: 'remove', id: rule.id, sdkOrigin: 'https://app.example' })).rejects.toThrow('cannot change');
+  expect((await ensureProxyAppState()).rules).toHaveLength(1);
+});
