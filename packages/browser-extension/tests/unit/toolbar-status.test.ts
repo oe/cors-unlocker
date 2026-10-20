@@ -111,4 +111,25 @@ describe('event-driven toolbar updates', () => {
     expect(action.setBadgeBackgroundColor).toHaveBeenLastCalledWith({ tabId: 1, color: '#2563eb' });
   });
 
+  it('repaints unchanged presentation after native tab state resets on reload', async () => {
+    await toolbar.refreshToolbarTab(1);
+    expect(action.setTitle).not.toHaveBeenCalled();
+    await toolbar.invalidateToolbarTab(1);
+    await toolbar.refreshToolbarTab(1);
+    expect(action.setTitle).toHaveBeenCalledTimes(1);
+    expect(action.setTitle.mock.calls[0][0].title).toContain('Not recording requests');
+  });
+  it('invalidates after an in-flight paint so reload cannot retain a stale cache entry', async () => {
+    let finish!: () => void;
+    action.setIcon.mockImplementationOnce(() => new Promise<void>(resolve => { finish = resolve; }));
+    statuses.set(1, { tabId: 1, phase: 'connected' });
+    const first = toolbar.refreshToolbarTab(1);
+    await vi.waitFor(() => expect(finish).toBeDefined());
+    const invalidation = toolbar.invalidateToolbarTab(1);
+    const refreshed = toolbar.refreshToolbarTab(1);
+    finish(); await Promise.all([first, invalidation, refreshed]);
+    expect(action.setIcon).toHaveBeenCalledTimes(2);
+    expect(action.setBadgeText.mock.calls.map(([details]) => details.text)).toEqual(['ON', 'ON']);
+  });
+
 });

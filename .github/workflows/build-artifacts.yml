@@ -2,174 +2,236 @@ name: Build v2 artifacts
 
 on:
   push:
-    branches:
-      - codex/ci-build-artifacts
-      - main
+    branches: [main]
+    paths: &source-paths
+      - 'packages/**'
+      - 'scripts/**'
+      - 'release/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'turbo.json'
+      - '.github/workflows/build-artifacts.yml'
+      - '.github/workflows/pages.yml'
   pull_request:
-    branches:
-      - main
+    branches: [main]
+    paths: *source-paths
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # Superseded PR checks are disposable; main acceptance/deployments must finish.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   build:
+    name: Build and unit checks
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
         with:
           version: 9.6.0
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '20'
           cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Verify and build npm SDK
-        run: |
-          pnpm --filter wireflip test
-          pnpm --filter wireflip build
-          mkdir -p artifacts/npm
-          pnpm --dir packages/npm pack --pack-destination ../../artifacts/npm
-          node scripts/verify-sdk-packages.mjs
-
-      - name: Verify and package Chrome extension
+      - run: pnpm install --frozen-lockfile
+      - name: Type, lint and unit checks (once for both browsers)
         run: |
           pnpm --filter browser-wireflip exec tsc -p tsconfig.json --noEmit
           pnpm --filter browser-wireflip exec eslint src tests
           pnpm --filter browser-wireflip test:run
+          pnpm --filter wireflip test
+          python3 -m unittest discover -s packages/browser-extension/tests/firefox -p '*_unit_test.py'
+      - name: Build SDK and verify exact archives
+        run: |
+          pnpm --filter wireflip build
+          node scripts/verify-sdk-packages.mjs
+          mkdir -p artifacts/npm
+          node --input-type=module -e "import fs from 'node:fs'; const p=JSON.parse(fs.readFileSync('packages/npm/package.json')); fs.copyFileSync('artifacts/sdk-preflight/wireflip-'+p.version+'.tgz','artifacts/npm/wireflip-'+p.version+'.tgz');"
+      - name: Build and package both extensions
+        run: |
           pnpm --filter browser-wireflip build:chrome
           pnpm --filter browser-wireflip package:chrome
-
-      - name: Build product website and legacy bridge
+          pnpm --filter browser-wireflip build:firefox
+          pnpm --filter browser-wireflip exec web-ext lint --source-dir dist/firefox
+          pnpm --filter browser-wireflip package:firefox
+          unzip -t packages/browser-extension/dist/wireflip-chrome-*.zip
+          unzip -t packages/browser-extension/dist/wireflip-firefox-*.zip
+          cp packages/browser-extension/CI-ARTIFACT-INSTALL.md packages/browser-extension/dist/chrome/INSTALL.md
+          cp packages/browser-extension/CI-ARTIFACT-INSTALL.md packages/browser-extension/dist/firefox/INSTALL.md
+      - name: Build website and retained bridge
         run: pnpm --filter website build
+      - name: Share the exact built candidate with browser jobs
+        uses: actions/upload-artifact@v4
+        with:
+          name: candidate-workspace-${{ github.sha }}
+          path: |
+            packages/browser-extension/dist
+            packages/website/dist
+            packages/npm/dist
+            artifacts/sdk-preflight
+            artifacts/npm
+          if-no-files-found: error
+          retention-days: 7
 
-      - name: Run Chrome extension end-to-end tests
-        id: chrome_e2e
-        continue-on-error: true
+  browser:
+    name: Native ${{ matrix.browser }} acceptance
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chrome, firefox]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: candidate-workspace-${{ github.sha }}
+          path: .
+      - uses: pnpm/action-setup@v4
+        if: matrix.browser == 'chrome'
+        with:
+          version: 9.6.0
+      - uses: actions/setup-node@v4
+        if: matrix.browser == 'chrome'
+        with:
+          node-version: '20'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+        if: matrix.browser == 'chrome'
+      - name: Cache pinned Playwright browser
+        if: matrix.browser == 'chrome'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - name: Install Chrome and OS dependencies
+        id: install_chrome
+        if: matrix.browser == 'chrome'
+        run: pnpm --filter browser-wireflip exec playwright install --with-deps chromium
+      - name: Chrome full suite (includes authorization and compact popup)
+        id: chrome
+        if: matrix.browser == 'chrome'
+        run: xvfb-run -a pnpm --filter browser-wireflip exec playwright test --retries=0
+      - name: Cache pinned native Firefox fixtures
+        if: matrix.browser == 'firefox'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/wireflip-firefox
+          key: firefox-${{ runner.os }}-${{ hashFiles('packages/browser-extension/scripts/install-firefox-test-browser.sh') }}
+      - name: Install native Firefox
+        id: install_firefox
+        if: matrix.browser == 'firefox'
+        run: bash packages/browser-extension/scripts/install-firefox-test-browser.sh "$HOME/.cache/wireflip-firefox"
+      - name: Firefox one-approval Playground
+        id: activation
+        if: ${{ !cancelled() && matrix.browser == 'firefox' && steps.install_firefox.outcome == 'success' }}
         env:
-          WIREFLIP_INLINE_EVIDENCE: '1'
+          FIREFOX_BINARY: /home/runner/.cache/wireflip-firefox/firefox/firefox
+          GECKODRIVER: /home/runner/.cache/wireflip-firefox/geckodriver
+        run: python3 packages/browser-extension/tests/firefox/automatic_playground_test.py
+      - name: Firefox full suite and repeated race regressions
+        id: extension
+        if: ${{ !cancelled() && matrix.browser == 'firefox' && steps.install_firefox.outcome == 'success' }}
+        env:
+          FIREFOX_BINARY: /home/runner/.cache/wireflip-firefox/firefox/firefox
+          GECKODRIVER: /home/runner/.cache/wireflip-firefox/geckodriver
+          FIREFOX_LEGACY_XPI: /home/runner/.cache/wireflip-firefox/legacy-v1.xpi
+          # Every repetition must pass; this never retries away a failed assertion.
+          FIREFOX_STABILITY_REPEATS: '3'
+        run: python3 packages/browser-extension/tests/firefox/extension_test.py
+      - name: Firefox exact SDK archives
+        id: sdk
+        if: ${{ !cancelled() && matrix.browser == 'firefox' && steps.install_firefox.outcome == 'success' }}
+        env:
+          FIREFOX_BINARY: /home/runner/.cache/wireflip-firefox/firefox/firefox
+          GECKODRIVER: /home/runner/.cache/wireflip-firefox/geckodriver
+        run: python3 packages/browser-extension/tests/firefox/sdk_package_test.py
+      - name: Native acceptance summary
+        if: always()
+        env:
+          BROWSER: ${{ matrix.browser }}
+          CHROME: ${{ steps.chrome.outcome }}
+          ACTIVATION: ${{ steps.activation.outcome }}
+          EXTENSION: ${{ steps.extension.outcome }}
+          SDK: ${{ steps.sdk.outcome }}
         run: |
-          pnpm --filter browser-wireflip exec playwright install --with-deps chromium
-          xvfb-run -a pnpm --filter browser-wireflip test:e2e
-
-      - name: Upload E2E diagnostics
+          {
+            echo "### Native $BROWSER acceptance"
+            echo '| Suite | Result |'
+            echo '| --- | --- |'
+            echo "| Chrome full suite | $CHROME |"
+            echo "| Firefox Playground | $ACTIVATION |"
+            echo "| Firefox full suite + race regressions | $EXTENSION |"
+            echo "| Firefox SDK archives | $SDK |"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload native failure evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: extension-e2e-diagnostics-${{ github.sha }}
+          name: native-${{ matrix.browser }}-diagnostics-${{ github.sha }}
           path: packages/browser-extension/test-results
           if-no-files-found: ignore
           retention-days: 7
 
-      - name: Verify and package Firefox extension
-        run: pnpm --filter browser-wireflip check:firefox
-
-      - name: Install native Firefox test browser
-        run: bash packages/browser-extension/scripts/install-firefox-test-browser.sh "$RUNNER_TEMP/wireflip-firefox"
-
-      - name: Verify one-approval Playground in candidate Firefox
-        id: firefox_activation
-        continue-on-error: true
+  accepted:
+    name: Accepted release artifacts
+    needs: [build, browser]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require build and both native browsers
         env:
-          FIREFOX_BINARY: ${{ runner.temp }}/wireflip-firefox/firefox/firefox
-          GECKODRIVER: ${{ runner.temp }}/wireflip-firefox/geckodriver
-        run: python3 packages/browser-extension/tests/firefox/automatic_playground_test.py
-
-      - name: Run Firefox extension end-to-end tests
-        id: firefox_e2e
-        continue-on-error: true
-        env:
-          FIREFOX_BINARY: ${{ runner.temp }}/wireflip-firefox/firefox/firefox
-          GECKODRIVER: ${{ runner.temp }}/wireflip-firefox/geckodriver
-          FIREFOX_LEGACY_XPI: ${{ runner.temp }}/wireflip-firefox/legacy-v1.xpi
-        run: pnpm --filter browser-wireflip test:e2e:firefox
-
-      - name: Verify packaged SDKs in native Firefox
-        id: firefox_sdk
-        continue-on-error: true
-        env:
-          FIREFOX_BINARY: ${{ runner.temp }}/wireflip-firefox/firefox/firefox
-          GECKODRIVER: ${{ runner.temp }}/wireflip-firefox/geckodriver
-        run: python3 packages/browser-extension/tests/firefox/sdk_package_test.py
-
-      - name: Upload Firefox diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: extension-firefox-diagnostics-${{ github.sha }}
-          path: packages/browser-extension/test-results/firefox
-          if-no-files-found: ignore
-          retention-days: 7
-
-      # Collect independent browser failures in one run without allowing a green gate.
-      - name: Require all native browser acceptance checks
-        if: always()
-        env:
-          CHROME_RESULT: ${{ steps.chrome_e2e.outcome }}
-          FIREFOX_ACTIVATION_RESULT: ${{ steps.firefox_activation.outcome }}
-          FIREFOX_RESULT: ${{ steps.firefox_e2e.outcome }}
-          SDK_RESULT: ${{ steps.firefox_sdk.outcome }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          BROWSER_RESULT: ${{ needs.browser.result }}
         run: |
-          test "$CHROME_RESULT" = success
-          test "$FIREFOX_ACTIVATION_RESULT" = success
-          test "$FIREFOX_RESULT" = success
-          test "$SDK_RESULT" = success
-
-      - name: Upload SDK acceptance archives and checksums
-        uses: actions/upload-artifact@v4
+          echo "Build: $BUILD_RESULT; native browsers: $BROWSER_RESULT" >> "$GITHUB_STEP_SUMMARY"
+          test "$BUILD_RESULT" = success
+          test "$BROWSER_RESULT" = success
+      - uses: actions/download-artifact@v4
         with:
-          name: wireflip-sdk-preflight-${{ github.sha }}
-          path: artifacts/sdk-preflight
-          if-no-files-found: error
-          retention-days: 14
-
-      - name: Validate extension packages
-        run: |
-          unzip -t packages/browser-extension/dist/wireflip-chrome-*.zip
-          unzip -t packages/browser-extension/dist/wireflip-firefox-*.zip
-          test -f packages/browser-extension/dist/chrome/manifest.json
-          test -f packages/browser-extension/dist/firefox/manifest.json
-          cp packages/browser-extension/CI-ARTIFACT-INSTALL.md packages/browser-extension/dist/chrome/INSTALL.md
-          cp packages/browser-extension/CI-ARTIFACT-INSTALL.md packages/browser-extension/dist/firefox/INSTALL.md
-
-      - name: Upload Chrome extension
-        uses: actions/upload-artifact@v4
+          name: candidate-workspace-${{ github.sha }}
+          path: .
+      # Installable artifacts are promoted only after both native browser jobs pass.
+      - uses: actions/upload-artifact@v4
         with:
           name: wireflip-chrome-${{ github.sha }}
-          # GitHub artifacts are ZIP files already. Uploading the packaged ZIP
-          # produced a nested archive that looked corrupt when installed directly.
           path: packages/browser-extension/dist/chrome
           if-no-files-found: error
           retention-days: 14
-
-      - name: Upload npm package
-        uses: actions/upload-artifact@v4
-        with:
-          name: wireflip-npm-${{ github.sha }}
-          path: artifacts/npm/*.tgz
-          if-no-files-found: error
-          retention-days: 14
-
-      - name: Upload Firefox extension
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: wireflip-firefox-${{ github.sha }}
           path: packages/browser-extension/dist/firefox
           if-no-files-found: error
           retention-days: 14
-
-      - name: Upload website build
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: extension-release-archives
+          path: packages/browser-extension/dist/wireflip-*.zip
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wireflip-npm-${{ github.sha }}
+          path: artifacts/npm/*.tgz
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wireflip-sdk-preflight-${{ github.sha }}
+          path: artifacts/sdk-preflight
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
         with:
           name: wireflip-site-${{ github.sha }}
           path: packages/website/dist

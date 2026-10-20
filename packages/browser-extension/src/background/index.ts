@@ -14,7 +14,7 @@ import { effectiveRules, ensureProxyAppState, initializeProxyStateWriter, isProx
 import { getAdvancedProxyStatus } from '@/background/advanced-proxy';
 import { reconcileProxyDnrRules } from './proxy-dnr';
 import { createFirefoxMessageRouter } from './message-routing';
-import { forgetToolbarTab, initializeToolbarStatus, refreshAllToolbar, refreshToolbarTab } from './toolbar-status';
+import { forgetToolbarTab, invalidateToolbarTab, initializeToolbarStatus, refreshAllToolbar, refreshToolbarTab } from './toolbar-status';
 import { LANGUAGE_KEY } from '@/common/locale';
 import type { IProxyRule } from '@/common/proxy-state';
 import { openPendingUpgradeNotice } from '@/common/upgrade-notice-state';
@@ -123,7 +123,11 @@ browser.tabs.onActivated.addListener(async (activeInfo) => {
 });
 
 browser.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  if (changeInfo.url || changeInfo.status === 'complete') void refreshToolbarTab(tabId);
+  if (changeInfo.url || changeInfo.status === 'loading' || changeInfo.status === 'complete') {
+    // Firefox clears native tab action state on navigation; force a fresh paint.
+    void invalidateToolbarTab(tabId);
+    void refreshToolbarTab(tabId);
+  }
   try {
     await onTabActiveChange(tab);
     if (changeInfo.url) await refreshTabRules();
