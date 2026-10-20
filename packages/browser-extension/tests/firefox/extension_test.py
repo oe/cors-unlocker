@@ -50,6 +50,12 @@ class Fixture(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
 
+class WebDriverError(AssertionError):
+    def __init__(self, detail):
+        self.code = detail.get('value', {}).get('error')
+        super().__init__(json.dumps(detail))
+
+
 class FirefoxTests(unittest.TestCase):
     @classmethod
     def request(cls, method, path, data=None):
@@ -60,7 +66,7 @@ class FirefoxTests(unittest.TestCase):
             with urllib.request.urlopen(request, timeout=90 if path == '/session' else 35) as response:
                 value = json.load(response)['value']
         except urllib.error.HTTPError as error:
-            raise AssertionError(error.read().decode()) from error
+            raise WebDriverError(json.loads(error.read().decode())) from error
         return value
 
     @classmethod
@@ -88,6 +94,31 @@ class FirefoxTests(unittest.TestCase):
                 return last
             time.sleep(0.05)
         raise AssertionError(f'Condition timed out: {last!r}')
+
+    @classmethod
+    def fill(cls, selector, text):
+        # React may replace a saved draft's DOM between find/clear/type. Only
+        # reacquire stale elements; do not retry failed saves or other errors.
+        def attempt():
+            if not cls.js('const n=document.querySelector(arguments[0]);return !!n && !n.disabled && n.getClientRects().length>0;', selector):
+                return False
+            try:
+                element = cls.command('POST', '/element', {'using': 'css selector', 'value': selector})
+                element_id = element['element-6066-11e4-a52e-4f735466cecf']
+                cls.command('POST', f'/element/{element_id}/clear', {})
+                cls.command('POST', f'/element/{element_id}/value', {'text': text})
+                return cls.js('return document.querySelector(arguments[0])?.value===arguments[1];', selector, text)
+            except WebDriverError as error:
+                if error.code != 'stale element reference':
+                    raise
+                return False
+        cls.wait(attempt)
+
+    def wait_editor_saved(self, name):
+        self.wait(lambda: self.js('''const input=document.querySelector('#rule-name');
+          const save=[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Save rule');
+          return input?.value===arguments[0] && save && !save.disabled
+            && [...document.querySelectorAll('[role=status]')].some(n=>n.textContent.includes('Rule saved.'));''', name))
 
     @classmethod
     def switch(cls, handle):
@@ -217,6 +248,8 @@ class FirefoxTests(unittest.TestCase):
         state = self.message('getProxyState')
         for rule in state['rules']:
             self.message('deleteProxyRule', id=rule['id'])
+        for group in state['profiles']:
+            self.message('proxyStateOperation', kind='removeGroup', id=group['id'])
         self.extension_js('await browser.storage.local.remove("sdkSiteAccess");await browser.storage.local.set({uiLanguage:"en"});')
         self.switch(self.target)
         self.navigate(self.origin + '/')
@@ -225,9 +258,25 @@ class FirefoxTests(unittest.TestCase):
         self.message('clearAdvancedProxyLog', tabId=self.tab_id)
 
     def tearDown(self):
-        self.switch(self.control)
-        screenshot = self.command('GET', '/screenshot')
-        (ARTIFACTS / f'{self._testMethodName}.png').write_bytes(base64.b64decode(screenshot))
+        failed = any(test is self for test, _ in self._outcome.result.failures + self._outcome.result.errors)
+        try:
+            self.switch(self.control)
+            screenshot = self.command('GET', '/screenshot')
+            (ARTIFACTS / f'{self._testMethodName}.png').write_bytes(base64.b64decode(screenshot))
+            if failed:
+                evidence = {'test': self.id(), 'pages': {}}
+                for label, handle in [('control', self.control), ('target', self.target)]:
+                    self.switch(handle)
+                    evidence['pages'][label] = self.js('return {url:location.href,ready:document.readyState,text:document.body.innerText.slice(0,6000)};')
+                evidence['toolbar'] = self.toolbar()
+                evidence['runtime'] = self.message('getAdvancedProxyStatus', tabId=self.tab_id)
+                # Keep the first failure even if a later stability repetition passes.
+                output = ARTIFACTS / (self._testMethodName + '-failure-' + str(time.monotonic_ns()) + '.json')
+                output.write_text(json.dumps(evidence, indent=2))
+        except Exception as error:
+            (ARTIFACTS / (self._testMethodName + '-capture-error.txt')).write_text(str(error))
+            if not failed:
+                raise
 
     def save(self, actions, path='*', **match):
         response = self.message('saveProxyRule', rule={'name': self._testMethodName, 'enabled': True,
@@ -370,12 +419,7 @@ class FirefoxTests(unittest.TestCase):
         self.navigate(EXTENSION + '/src/options/index.html')
         self.wait(lambda: self.js('return !!Array.from(document.querySelectorAll("button")).find(b=>b.textContent.trim()==="New group");'))
         self.js('Array.from(document.querySelectorAll("button")).find(b=>b.textContent.trim()==="New group").click();')
-        def fill(selector, text):
-            self.wait(lambda: self.js('const node=document.querySelector(arguments[0]);return !!node && node.getClientRects().length>0;', selector))
-            element = self.command('POST', '/element', {'using': 'css selector', 'value': selector})
-            element_id = next(iter(element.values()))
-            self.command('POST', f'/element/{element_id}/clear', {})
-            self.command('POST', f'/element/{element_id}/value', {'text': text})
+        fill = self.fill
         fill('#group-name', 'UI scenario')
         self.js('Array.from(document.querySelectorAll("button")).find(b=>b.textContent.trim()==="Create group").click();')
         self.wait(lambda: self.js('return !!document.querySelector(\'[aria-label="Create rule in UI scenario"]\');'))
@@ -385,6 +429,8 @@ class FirefoxTests(unittest.TestCase):
         fill('#rule-pattern', '*')
         self.js('Array.from(document.querySelectorAll("button")).find(b=>b.textContent.trim()==="Save rule").click();')
         self.wait(lambda: self.message('getProxyState')['rules'], lambda rules: any(rule['name'] == 'Group editor example' for rule in rules))
+        self.switch(self.control)
+        self.wait_editor_saved('Group editor example')
         state = self.message('getProxyState')
         profile = next(group for group in state['profiles'] if group['name'] == 'UI scenario')
         rule = next(rule for rule in state['rules'] if rule['name'] == 'Group editor example')
@@ -479,7 +525,11 @@ class FirefoxTests(unittest.TestCase):
         self.switch(self.control)
         self.wait(lambda: self.js('return !!document.querySelector(\'[role="switch"][aria-label="Enable group Firefox staging"]\');'))
         self.js('document.querySelector(\'[role="switch"][aria-label="Enable group Firefox staging"]\').click();')
-        self.wait(lambda: self.message('getProxyState')['profiles'][-1]['enabled'], lambda value: value is False)
+        # The storage event precedes native DNR installation. The switch becomes
+        # interactive again only after its awaited mutation has installed rules.
+        self.wait(lambda: self.js('''const n=document.querySelector('[role="switch"][aria-label="Enable group Firefox staging"]');
+          return n?.getAttribute('aria-checked')==='false' && !n.matches(':disabled,[aria-disabled=true],[data-disabled]');'''))
+        self.assertFalse(self.message('getProxyState')['profiles'][-1]['enabled'])
         self.assertNotIn('X-Group', json.loads(self.fetch('/echo')['body'])['headers'])
         self.assertNotEqual(self.fetch('/mock')['body'], 'group-body')
         state = self.message('getProxyState')
@@ -664,9 +714,12 @@ class FirefoxTests(unittest.TestCase):
         self.assertEqual(self.message('getAdvancedProxyStatus', tabId=self.tab_id)['phase'], 'disabled')
 
     def test_popup_and_inspector_render_in_six_languages(self):
+        self.switch(self.target)
+        self.navigate(self.origin + '/')
+        self.wait(lambda: self.extension_js('return browser.tabs.get(arguments[0]);', self.tab_id), lambda tab: tab.get('url') == self.origin + '/' and tab.get('status') == 'complete')
         popup = self.new_page(EXTENSION + f'/src/popup/index.html?tabId={self.tab_id}')
         try:
-            self.wait(lambda: self.js('return [...document.querySelectorAll("[role=switch]")].some(e=>e.getAttribute("aria-label")==="CORS repair" && !e.disabled);'))
+            self.wait(lambda: self.js('''return [...document.querySelectorAll("[role=switch]")].some(e=>e.getAttribute("aria-label")==="CORS repair" && !e.matches(':disabled,[aria-disabled=true],[data-disabled]'));'''))
             switch = self.command('POST', '/element', {'using': 'css selector', 'value': '[role=switch][aria-label="CORS repair"]'})
             self.command('POST', '/element/' + switch['element-6066-11e4-a52e-4f735466cecf'] + '/click', {})
             self.wait(self.toolbar, lambda t: t['badge'] == 'ON' and 'CORS repair' in t['title'])
@@ -764,4 +817,13 @@ class FirefoxTests(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main(verbosity=2)
+    repeat = int(os.environ.get('FIREFOX_STABILITY_REPEATS', '1'))
+    names = ['test_workspace_group_editor_and_narrow_layout',
+             'test_popup_and_inspector_render_in_six_languages',
+             'test_group_switch_pauses_persistent_headers_and_connected_body_replacement']
+    tests = list(unittest.defaultTestLoader.getTestCaseNames(FirefoxTests))
+    migration = [name for name in tests if name.startswith('test_z_')]
+    ordered = [name for name in tests if name not in migration] + names * (repeat - 1) + migration
+    suite = unittest.TestSuite(FirefoxTests(name) for name in ordered)
+    result = unittest.TextTestRunner(verbosity=2).run(suite)
+    raise SystemExit(not result.wasSuccessful())

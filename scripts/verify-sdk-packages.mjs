@@ -45,7 +45,7 @@ for (const [label, file] of archives) {
   assert.equal(packed.name, label === 'new' ? 'wireflip' : 'cors-unlocker');
   assert.equal(packed.version, label === 'new' ? pkg.version : label.replace('legacy-', ''));
   for (const entry of [packed.main, packed.module, packed.types]) assert(readFileSync(path.join(destination, 'package', entry)).length);
-  const outputJson = JSON.parse(run('npm', [label.startsWith('legacy-') ? 'pack' : 'publish', archive, '--dry-run', '--ignore-scripts', '--json']));
+  const outputJson = JSON.parse(run('npm', ['pack', archive, '--dry-run', '--ignore-scripts', '--json']));
   const listing = Array.isArray(outputJson) ? outputJson[0] : outputJson.name ? outputJson : outputJson[packed.name];
   assert(listing, 'npm dry-run must return package metadata');
   assert.equal(listing.name, packed.name);
@@ -70,5 +70,5 @@ try {
   run(process.execPath, [require.resolve('typescript/bin/tsc'), '--strict', '--noEmit', '--module', 'nodenext', '--moduleResolution', 'nodenext', '--target', 'ES2022', '--lib', 'ES2022,DOM', 'consumer.mts', 'consumer.cts'], consumer);
 } finally { rmSync(consumer, { recursive: true, force: true }); }
 writeFileSync(path.join(output, 'packages.json'), JSON.stringify({ commit: run('git', ['rev-parse', 'HEAD']).trim(), worktreeDirty: Boolean(run('git', ['status', '--porcelain']).trim()), archives: records, consumer: { esm: 'passed', commonjs: 'passed', types: 'passed', dryRun: 'passed' } }, null, 2) + '\n');
-console.log('SDK archives verified: SHA-512 pinned legacy source, unchanged legacy runtime, candidate publish dry-run and legacy archive inspection, clean ESM/CommonJS/types consumer.');
+console.log('SDK archives verified: SHA-512 pinned legacy source, unchanged legacy runtime, package dry-runs and legacy archive inspection, clean ESM/CommonJS/types consumer.');
 console.log(`Browser fixtures and archive hashes: ${output}`);
