@@ -8,7 +8,7 @@ Release requested on 2026-10-19; execution continued on 2026-10-20 (Asia/Shangha
 | --- | --- |
 | Chrome | 2.1.0 submitted through original ID `knhlkjdfmgkmelcjfnbbhpphkmjjacng`; dashboard shows **Pending review**; automatic publication checked; safe-static-rules review bypass unchecked. Public version remains 2.0.0. |
 | Firefox | 2.1.0 public; AMO version `6595977`, file `5140102`; release notes, reviewer build instructions and source archive attached. |
-| npm | 2.1.0 publication in progress; do not call it published until registry and exact consumer checks finish. |
+| npm | `wireflip@2.1.0` public; `latest` is 2.1.0; registry SHA-256/SHA-512, seven installed files and clean ESM/CommonJS/NodeNext consumers verified. |
 
 Store runtime source: `28f4c306b7f4d183290bcd2ded4af6ec7461aa38`.
 [Build and native acceptance](https://github.com/oe/cors-unlocker/actions/runs/39280521099)
@@ -43,8 +43,12 @@ Only its README differs from the `28f4c30` SDK archive; all runtime, type and
 package metadata files are identical. All seven files also match the locally
 clean-consumer-verified archive. The exact CI archive passed publish dry-run.
 The initial publish request was cancelled before authorization so the earlier
-candidate README was not published. npm publication is waiting for the user's
-fresh browser verification; no version is claimed published on that basis.
+candidate README was not published. After browser verification, npm accepted
+publication on 2026-10-20. The public registry then exposed version 2.1.0 and
+`latest: 2.1.0`; the downloaded archive has the exact SHA-256 above and matching
+SHA-512 integrity. A fresh-cache registry install matched all seven files and
+passed ESM, CommonJS and NodeNext `.mts` / `.cts` consumers. See
+[the npm fingerprint](../release/npm-2.1.0.json).
 
 A [combined draft Release](https://github.com/oe/cors-unlocker/releases/tag/untagged-3e5b0741bdd13268d8dd)
 holds the submitted extension ZIPs, signed Firefox XPI, matching Firefox source,
@@ -65,13 +69,23 @@ before tests started (`Could not find profile folder`). These attempts are not
 passes. The signed 2.1.0 CI job provides the required native installation and
 protocol verification instead.
 
-Local ignored evidence is in `artifacts/release-2026-10-19/28f4c30/`, including
+Local evidence (not committed) is in `artifacts/release-2026-10-19/28f4c30/`, including
 public metadata/XPI, submitted ZIPs, exact SDK archives, source ZIP, original CI
 logs, marketing QA previews and browser submission/manual screenshots.
 
+## Follow-up validation
+
+The website acceptance check incorrectly rejected any mention of pending store
+review. That assertion was removed so accurate channel-specific rollout copy is
+allowed; navigation, metadata, links, responsive layout and performance budgets
+remain checked. Local built-site acceptance passed across all nine public routes.
+The 700ed5a Firefox activation job had an intermittent toolbar-selection timeout
+in its six-language fixture; Chrome activation and the full native build passed.
+The next release-documentation commit runs those checks again without changing
+the extension runtime.
+
 ## Remaining gates
 
-- Verify the final SDK registry archive, latest tag and clean consumer installation.
 - Wait for Chrome 2.1.0 approval, then verify the public signed CRX and an actual existing-profile store update.
 - Keep the 2.0.0 fingerprint records intact; do not mark Chrome 2.1.0 public based on submission alone.
 - Complete the additional manual localized approval-window review and real existing v1-profile upgrade evidence where available.

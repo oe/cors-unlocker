@@ -1,0 +1,17 @@
+{
+  "version": "2.1.0",
+  "latest": "2.1.0",
+  "sha256": "0a353abba2a2b3ae243b205ebdfa5870aa063e63b143c800e447c3911248dc12",
+  "integrity": "sha512-/gHDhylClJfX1gxmbyxpg0smxnAPyreg8MtJQVPzPUWAz2X/CBdWad9Y5joFQ9tZgE4NQ//XFwKoL/YVrTZAPw==",
+  "filesCompared": 7,
+  "esm": "passed",
+  "commonjs": "passed",
+  "nodeNextTypes": "passed",
+  "name": "wireflip",
+  "status": "public",
+  "sourceCommit": "a29dcaf353b4016b0988e0b9e93c622b1f22f88e",
+  "buildRun": "https://github.com/oe/cors-unlocker/actions/runs/39285971607",
+  "tarball": "https://registry.npmjs.org/wireflip/-/wireflip-2.1.0.tgz",
+  "shasum": "7d87d1de42fcf26c6332056532ba8bae2b85d35b",
+  "verifiedAt": "2026-10-20"
+}

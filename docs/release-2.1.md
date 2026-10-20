@@ -1,6 +1,6 @@
 # Wireflip 2.1.0 coordinated rollout
 
-Supersedes the unreleased 2.0.1 UI-only candidate. Firefox 2.1.0 is public and its signed XPI matches the tested candidate. Chrome 2.1.0 is submitted with automatic publication after review; public Chrome remains 2.0.0. SDK publication is in progress. See [execution evidence](release-2.1-execution.md).
+Supersedes the unreleased 2.0.1 UI-only candidate. Firefox 2.1.0 is public and its signed XPI matches the tested candidate. Chrome 2.1.0 is submitted with automatic publication after review; public Chrome remains 2.0.0. SDK 2.1.0 is public on npm and its exact registry archive and clean consumers are verified. See [execution evidence](release-2.1-execution.md).
 
 - [x] Review automatic saved-rule execution and optional recording: [product model](rule-execution.md)
 - [x] Review the exact successful candidate commit and Chrome / Firefox archives — source `7df1ccc0fbfd53f5f519e0cca553686b0aa5b952`, successful [build and artifacts](https://github.com/oe/cors-unlocker/actions/runs/38857618679)
@@ -11,7 +11,8 @@ Supersedes the unreleased 2.0.1 UI-only candidate. Firefox 2.1.0 is public and i
 - [x] Update store screenshots and release notes to the accepted candidate UI; explicitly explain that previously enabled 2.0 Mock / delay / CORS rules now run on all matching pages without starting a tab session
 - [x] User requested this release; submit Chrome / Firefox 2.1.0 through their original listings — Chrome pending review, Firefox public
 - [ ] Verify both signed public packages and record immutable fingerprints — Firefox complete, Chrome awaits review
-- [ ] Coordinate npm wireflip@2.1.0 publication with both extension 2.1.0 store submissions in one release window; verify registry contents, then announce once all channels are available
+- [x] Publish npm wireflip@2.1.0 in the coordinated store-submission window; verify registry contents, latest tag and clean consumers
+- [ ] Announce general availability once all channels are available
 - [ ] Update published-version records, website rollout copy and store acceptance baselines
 
 Do not overwrite 2.0.0 fingerprints or discontinue the original cors.forth.ink SDK bridge. See [the full release checklist](release-checklist.md).
