@@ -50,7 +50,7 @@ SHA-512 integrity. A fresh-cache registry install matched all seven files and
 passed ESM, CommonJS and NodeNext `.mts` / `.cts` consumers. See
 [the npm fingerprint](../release/npm-2.1.0.json).
 
-A [combined draft Release](https://github.com/oe/cors-unlocker/releases/tag/untagged-3e5b0741bdd13268d8dd)
+A [combined draft Release](https://github.com/oe/cors-unlocker/releases)
 holds the submitted extension ZIPs, signed Firefox XPI, matching Firefox source,
 new SDK tarball and SHA256SUMS. All six uploaded asset digests match local bytes.
 It is not a general-availability announcement.
@@ -81,8 +81,12 @@ allowed; navigation, metadata, links, responsive layout and performance budgets
 remain checked. Local built-site acceptance passed across all nine public routes.
 The 700ed5a Firefox activation job had an intermittent toolbar-selection timeout
 in its six-language fixture; Chrome activation and the full native build passed.
-The next release-documentation commit runs those checks again without changing
-the extension runtime.
+[Chrome / Firefox activation acceptance](https://github.com/oe/cors-unlocker/actions/runs/39348849328)
+and [website quality including Lighthouse](https://github.com/oe/cors-unlocker/actions/runs/39348849094)
+both passed on `d462dc94fd0ead7039c20b51eef7acc5625940ff`.
+[Website deployment](https://github.com/oe/cors-unlocker/actions/runs/39348849114)
+also passed; live SDK, FAQ and migration pages report npm 2.1.0 available and
+Chrome awaiting review. No extension runtime changed during this follow-up.
 
 ## Remaining gates
 
