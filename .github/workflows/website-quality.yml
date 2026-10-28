@@ -20,7 +20,8 @@ permissions:
 
 jobs:
   website-quality:
-    runs-on: ubuntu-latest
+    # Playwright 1.53 supports Ubuntu 24.04, not the rolling 26.04 image.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
