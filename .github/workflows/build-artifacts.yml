@@ -6,7 +6,7 @@ on:
     paths: &source-paths
       - 'packages/**'
       - 'scripts/**'
-      - 'release/**'
+      - 'release/legacy-sdk/**'
       - 'package.json'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
@@ -17,6 +17,11 @@ on:
     branches: [main]
     paths: *source-paths
   workflow_dispatch:
+    inputs:
+      stability:
+        description: 'Run each historical Firefox race regression three times'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -29,7 +34,7 @@ concurrency:
 jobs:
   build:
     name: Build and unit checks
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -78,7 +83,7 @@ jobs:
             artifacts/sdk-preflight
             artifacts/npm
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 1
 
   browser:
     name: Native ${{ matrix.browser }} acceptance
@@ -87,7 +92,7 @@ jobs:
       fail-fast: false
       matrix:
         browser: [chrome, firefox]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -144,8 +149,8 @@ jobs:
           FIREFOX_BINARY: /home/runner/.cache/wireflip-firefox/firefox/firefox
           GECKODRIVER: /home/runner/.cache/wireflip-firefox/geckodriver
           FIREFOX_LEGACY_XPI: /home/runner/.cache/wireflip-firefox/legacy-v1.xpi
-          # Every repetition must pass; this never retries away a failed assertion.
-          FIREFOX_STABILITY_REPEATS: '3'
+          # Repetition is a diagnostic option, not the cost of every PR.
+          FIREFOX_STABILITY_REPEATS: ${{ github.event_name == 'workflow_dispatch' && inputs.stability && '3' || '1' }}
         run: python3 packages/browser-extension/tests/firefox/extension_test.py
       - name: Firefox exact SDK archives
         id: sdk
@@ -173,19 +178,20 @@ jobs:
             echo "| Firefox SDK archives | $SDK |"
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Upload native failure evidence
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: native-${{ matrix.browser }}-diagnostics-${{ github.sha }}
           path: packages/browser-extension/test-results
           if-no-files-found: ignore
-          retention-days: 7
+          retention-days: 3
 
   accepted:
     name: Accepted release artifacts
     needs: [build, browser]
-    if: always()
-    runs-on: ubuntu-latest
+    # PRs require both native jobs, but do not publish duplicate release bundles.
+    if: always() && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - name: Require build and both native browsers
@@ -202,38 +208,43 @@ jobs:
           path: .
       # Installable artifacts are promoted only after both native browser jobs pass.
       - uses: actions/upload-artifact@v4
+        if: github.event_name == 'workflow_dispatch'
         with:
           name: wireflip-chrome-${{ github.sha }}
           path: packages/browser-extension/dist/chrome
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 7
       - uses: actions/upload-artifact@v4
+        if: github.event_name == 'workflow_dispatch'
         with:
           name: wireflip-firefox-${{ github.sha }}
           path: packages/browser-extension/dist/firefox
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 7
       - uses: actions/upload-artifact@v4
+        if: github.event_name == 'workflow_dispatch'
         with:
           name: extension-release-archives
           path: packages/browser-extension/dist/wireflip-*.zip
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 7
       - uses: actions/upload-artifact@v4
+        if: github.event_name == 'workflow_dispatch'
         with:
           name: wireflip-npm-${{ github.sha }}
           path: artifacts/npm/*.tgz
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 7
       - uses: actions/upload-artifact@v4
+        if: github.event_name == 'workflow_dispatch'
         with:
           name: wireflip-sdk-preflight-${{ github.sha }}
           path: artifacts/sdk-preflight
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 7
       - uses: actions/upload-artifact@v4
         with:
           name: wireflip-site-${{ github.sha }}
           path: packages/website/dist
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 7

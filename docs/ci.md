@@ -2,9 +2,9 @@
 
 `Build v2 artifacts` owns candidate validation. It builds the SDK, Chrome, Firefox and website once, runs type/lint/unit checks once, and shares an immutable artifact with two parallel native browser jobs. Firefox requires only stdlib Python and the pinned browser/driver; it does not reinstall Node dependencies or rebuild the product. The duplicated automatic-activation workflow is retired; its Chrome flows and all three Firefox suites remain in full acceptance.
 
-The browser jobs fail at the actual failing step. Subsequent independent Firefox suites still run to collect evidence; there is no `continue-on-error` that makes a failed suite appear green. `Accepted release artifacts` requires both browser jobs and the build before promoting installable archives and the website. Diagnostic artifacts are retained separately, with concise step summaries instead of inline base64 screenshots.
+The browser jobs fail at the actual failing step. Subsequent independent Firefox suites still run to collect evidence; there is no `continue-on-error` that makes a failed suite appear green. `Accepted release artifacts` runs only on main pushes and manual builds, after both browsers pass. PRs finish with the two browser results; they do not start a separate artifact-promotion runner. Main uploads the accepted site for deployment; manual builds additionally publish installable/SDK archives. Diagnostic artifacts are retained separately, with concise step summaries instead of inline base64 screenshots.
 
-The three historically unstable Firefox cases (editor remount, popup/toolbar and group pause) run three times per native job. Every iteration must pass. The signed-v1 migration remains last so it cannot change the environment of the ordinary acceptance tests. Chrome does not retry its serial suite: a failure produces a trace rather than rerunning all earlier tests and hiding instability.
+Ordinary PR/main runs execute the Firefox suite once. For a race investigation, manually dispatch `Build v2 artifacts` with `stability: true` to run the three historical cases (editor remount, popup/toolbar and group pause) three times. Every iteration must pass. The signed-v1 migration remains last so it cannot change the environment of the ordinary acceptance tests. Chrome does not retry its serial suite: a failure produces a trace rather than rerunning all earlier tests and hiding instability.
 
 ## Readiness boundaries
 
@@ -15,9 +15,11 @@ The three historically unstable Firefox cases (editor remount, popup/toolbar and
 
 ## Efficiency and deployment
 
-Source changes trigger candidate validation; root documentation/marketing-only changes do not rebuild every package. Superseded PR runs are cancelled per workflow/ref. Main runs finish normally. Native Firefox fixtures and Playwright downloads use version-specific caches; the pinned installer verifies cached browser/driver versions. SDK package inspection uses `npm pack --dry-run`, which is valid before and after publication.
+Source changes trigger candidate validation; root documentation/marketing-only changes do not rebuild every package. Superseded PR runs are cancelled per workflow/ref. Running main checks are not cancelled; GitHub concurrency retains only the latest pending run. Native Firefox fixtures and Playwright downloads use version-specific caches; the pinned installer verifies cached browser/driver versions. SDK package inspection uses `npm pack --dry-run`, which is valid before and after publication.
 
-Public-store compatibility and website quality are separate checks because they exercise published packages and performance budgets. They also cancel superseded PR runs. Keep their assertions about actual behavior and metadata; legitimate per-channel rollout text is not a failure.
+Public Chrome, public Firefox Playground and the SDK/public-Firefox compatibility matrix run only via manual dispatch after release changes or when diagnosing compatibility. They do not rebuild and install public browsers on every PR or main website edit. Candidate Chrome/Firefox acceptance remains automatic. Website navigation/metadata checks run for website PRs; Lighthouse runs on main/manual requests, rather than on every PR update. Legitimate per-channel rollout text is not a failure.
+
+Intermediate shared build artifacts expire after one day; diagnostics are uploaded only on failure and retained for three days. Release bundles are produced on manual request and retained for seven days. Passing website PRs do not upload screenshots or inline base64 evidence. A typical source PR uses three runners (build + Chrome + Firefox), or four if website quality also applies, instead of the earlier seven-job combination.
 
 Main website deployment consumes the already accepted `wireflip-site-<sha>` artifact from a successful **push-to-main** run in this repository. Fork/PR workflow completions cannot deploy. A newer main SHA suppresses stale deployment. Tag-triggered draft-release packaging remains separate and does not publish npm or stores.
 
