@@ -1,8 +1,9 @@
 import browser from 'webextension-polyfill';
+import manifest from '@/manifest.json';
 import { LANGUAGES, LANGUAGE_KEY, resolveLocale, type Locale } from '@/common/locale';
 import { logger } from '@/common/logger';
 import type { IAdvancedProxyStatus } from './advanced-proxy';
-import { countTabBrowserRules, TOOLBAR_COLORS, toolbarIcon, toolbarPresentation, type ToolbarPresentation } from './toolbar-state';
+import { countTabBrowserRules, TOOLBAR_COLORS, toolbarPresentation, type ToolbarPresentation } from './toolbar-state';
 import { APP_STATE_KEY, isProxyAppState } from '@/common/proxy-state';
 import { summarizeTabRules } from '@/common/tab-rule-summary';
 
@@ -29,7 +30,7 @@ async function paint(presentation: ToolbarPresentation, tabId?: number): Promise
   if (tabId !== undefined && (removedTabs.has(tabId) || rendered.get(tabId) === signature)) return;
   const scope = tabId === undefined ? {} : { tabId };
   await Promise.all([
-    browser.action.setIcon({ ...scope, imageData: toolbarIcon(presentation.state) }),
+    browser.action.setIcon({ ...scope, path: manifest.action.default_icon }),
     browser.action.setBadgeText({ ...scope, text: presentation.badge }),
     browser.action.setBadgeBackgroundColor({ ...scope, color: TOOLBAR_COLORS[presentation.state] }),
     browser.action.setTitle({ ...scope, title: presentation.title }),

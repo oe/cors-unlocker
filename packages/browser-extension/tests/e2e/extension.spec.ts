@@ -286,24 +286,17 @@ test('opens upgrade explanation only for a real v1 update and preserves acknowle
   } finally { await updating.close(); rmSync(profile, { recursive: true, force: true }); rmSync(fixture, { recursive: true, force: true }); }
 });
 
-test('keeps native toolbar colors, badges and tooltips in sync with each tab', async () => {
+test('keeps the application icon consistent while native badges and tooltips reflect each tab', async () => {
   const worker = await currentWorker();
   const ids: string[] = [];
   await worker.evaluate(() => {
     const native = chrome.action.setIcon.bind(chrome.action);
     (self as any).__restoreToolbarIcon = () => { chrome.action.setIcon = native; };
-    (self as any).__toolbarPixels = {};
-    (self as any).__toolbarMarkPixels = {};
+    (self as any).__toolbarIcons = {};
     chrome.action.setIcon = ((...args: any[]) => {
       const details = args[0];
-      const bitmap = details.imageData?.[32];
-      if (bitmap && details.tabId !== undefined) {
-        const index = (16 * 32 + 2) * 4;
-        (self as any).__toolbarPixels[details.tabId] = Array.from(bitmap.data.slice(index, index + 4));
-        (self as any).__toolbarMarkPixels[details.tabId] = [[10, 10], [23, 23], [18, 13]].map(([x, y]) => {
-          const offset = (y * 32 + x) * 4;
-          return Array.from(bitmap.data.slice(offset, offset + 4));
-        });
+      if (details.tabId !== undefined) {
+        (self as any).__toolbarIcons[details.tabId] = { path: details.path, usesImageData: !!details.imageData };
       }
       return (native as any)(...args);
     }) as typeof chrome.action.setIcon;
@@ -318,10 +311,9 @@ test('keeps native toolbar colors, badges and tooltips in sync with each tab', a
     await expect.poll(badge).toBe(text);
     await expect.poll(color).toEqual([...rgb, 255]);
     await expect.poll(title).toContain(heading);
-    await expect.poll(() => worker.evaluate((id) => (self as any).__toolbarPixels[id], tabId)).toEqual([...rgb, 255]);
-    // Both lobes are visible, with the curved route exposing the status background.
-    await expect.poll(() => worker.evaluate((id) => (self as any).__toolbarMarkPixels[id], tabId))
-      .toEqual([[255, 255, 255, 255], [255, 255, 255, 255], [...rgb, 255]]);
+    const expected = await control.evaluate(() => chrome.runtime.getManifest().action!.default_icon);
+    await expect.poll(() => worker.evaluate((id) => (self as any).__toolbarIcons[id], tabId))
+      .toEqual({ path: expected, usesImageData: false });
   };
   try {
     await expectState('', [100, 116, 139], 'Not recording requests');

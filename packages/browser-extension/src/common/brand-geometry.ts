@@ -1,4 +1,4 @@
-// Traced from the approved Wireflip mark; shared by exports and native toolbar icons.
+// Traced from the approved Wireflip mark; shared by vector exports.
 export const BRAND_VIEWBOX = [60, 88, 1140, 1140] as const;
 export const BRAND_COLORS = ['#6b80cc', '#435d91'] as const;
 export const BRAND_PATHS = [
