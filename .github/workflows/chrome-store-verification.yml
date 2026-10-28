@@ -1,28 +1,20 @@
 name: Verify public Chrome Web Store release
 
+# Published-store compatibility is release verification, not a per-PR gate.
 on:
-  push:
-    branches: [main]
-    paths:
-      - scripts/verify-public-chrome.mjs
-      - release/chrome-store-2.0.0.json
-      - packages/website/**
-      - .github/workflows/chrome-store-verification.yml
-  pull_request:
-    paths:
-      - scripts/verify-public-chrome.mjs
-      - release/chrome-store-2.0.0.json
-      - packages/website/**
-      - .github/workflows/chrome-store-verification.yml
   workflow_dispatch:
 
 permissions:
   contents: read
   actions: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   public-chrome:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -77,7 +69,7 @@ jobs:
   sync-sdk-release-notice:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: public-chrome
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:

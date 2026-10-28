@@ -1,23 +1,19 @@
 name: SDK release against public Firefox
 
+# Published-store compatibility is release verification, not a per-PR gate.
 on:
-  push:
-    branches: [main]
-    paths:
-      - packages/npm/**
-      - packages/browser-extension/tests/firefox/**
-      - scripts/verify-sdk-packages.mjs
-      - scripts/prepare-legacy-sdk-patch.py
-      - release/legacy-sdk/**
-      - .github/workflows/sdk-release-preflight.yml
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   sdk:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:

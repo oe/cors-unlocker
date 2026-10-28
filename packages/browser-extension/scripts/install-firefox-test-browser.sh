@@ -6,6 +6,12 @@ firefox_version=157.0.1
 geckodriver_version=0.37.1
 test_browser_dir=${1:?Usage: install-firefox-test-browser.sh /absolute/install/directory}
 mkdir -p "$test_browser_dir"
+if [ -x "$test_browser_dir/firefox/firefox" ] && [ -x "$test_browser_dir/geckodriver" ] && [ -s "$test_browser_dir/legacy-v1.xpi" ]; then
+  if "$test_browser_dir/firefox/firefox" --version | grep -Fq "$firefox_version" && "$test_browser_dir/geckodriver" --version | grep -Fq "$geckodriver_version"; then
+    echo "Using pinned Firefox $firefox_version and geckodriver $geckodriver_version from cache"
+    exit 0
+  fi
+fi
 curl --fail --location --retry 3 \
   "https://download.mozilla.org/?product=firefox-${firefox_version}-ssl&os=linux64&lang=en-US" \
   --output "$test_browser_dir/firefox.tar.xz"

@@ -76,6 +76,12 @@ export function refreshAllToolbar(): Promise<void> {
   });
 }
 
+/** Native tab-scoped action state can reset on navigation, even at the same URL. */
+export function invalidateToolbarTab(tabId: number): Promise<void> {
+  // Queue invalidation after any in-flight paint so it cannot repopulate stale cache.
+  return enqueue(async () => { rendered.delete(tabId); });
+}
+
 export function forgetToolbarTab(tabId: number) {
   rendered.delete(tabId);
   removedTabs.add(tabId);
