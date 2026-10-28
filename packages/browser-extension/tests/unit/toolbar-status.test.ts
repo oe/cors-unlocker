@@ -1,13 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import browser from 'webextension-polyfill';
+import manifest from '../../src/manifest.json';
 import type { IAdvancedProxyStatus } from '../../src/background/advanced-proxy';
 import { migrateLegacyState } from '../../src/common/proxy-state';
 import { EMPTY_QUICK_CONTROLS } from '../../src/common/quick-controls';
 
-vi.mock('../../src/background/toolbar-state', async (importOriginal) => ({
-  ...await importOriginal<typeof import('../../src/background/toolbar-state')>(),
-  toolbarIcon: vi.fn(() => ({ '16': {}, '32': {} })),
-}));
 const action = { setIcon: vi.fn(), setTitle: vi.fn(), setBadgeText: vi.fn(), setBadgeBackgroundColor: vi.fn() };
 const tab = { id: 1, url: 'https://app.example.test/' } as browser.Tabs.Tab;
 let statuses: Map<number, IAdvancedProxyStatus>;
@@ -28,6 +25,19 @@ beforeEach(async () => {
 });
 
 describe('event-driven toolbar updates', () => {
+  it('uses the installed application icon in every state while badges still indicate status', async () => {
+    for (const phase of ['connecting', 'connected', 'error', 'disabled'] as const) {
+      statuses.set(1, { tabId: 1, phase });
+      await toolbar.refreshToolbarTab(1);
+      expect(action.setIcon).toHaveBeenLastCalledWith({ tabId: 1, path: manifest.action.default_icon });
+      expect(action.setIcon.mock.calls.at(-1)?.[0]).not.toHaveProperty('imageData');
+    }
+    vi.mocked(browser.declarativeNetRequest.getSessionRules).mockResolvedValue([{ id: 1, condition: { tabIds: [1] }, action: { type: 'block' } }]);
+    statuses.set(1, { tabId: 1, phase: 'disabled' });
+    await toolbar.refreshToolbarTab(1);
+    expect(action.setIcon).toHaveBeenLastCalledWith({ tabId: 1, path: manifest.action.default_icon });
+    expect(action.setBadgeText).toHaveBeenLastCalledWith({ tabId: 1, text: '1' });
+  });
   it('updates the tooltip when controls change while the green ON state stays the same', async () => {
     const status: IAdvancedProxyStatus = { tabId: 1, phase: 'connected', captureEnabled: false, quickControls: { ...EMPTY_QUICK_CONTROLS, disableCache: true } };
     statuses.set(1, status); await toolbar.refreshToolbarTab(1);

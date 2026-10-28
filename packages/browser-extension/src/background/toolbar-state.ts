@@ -5,7 +5,6 @@ import type { IAdvancedProxyStatus } from './advanced-proxy';
 import { toolbarMessages } from '@/common/toolbar-messages';
 import type { Locale } from '@/common/locale';
 import { TEMPORARY_CORS_RULE_ID_BASE } from '@/common/session-dnr';
-import { BRAND_PATHS, BRAND_VIEWBOX } from '@/common/brand-geometry';
 import type { TabRuleSummary } from '@/common/tab-rule-summary';
 
 export const TOOLBAR_COLORS = { idle: '#64748b', rules: '#2563eb', connected: '#15803d', connecting: '#b45309', error: '#dc2626' } as const;
@@ -63,28 +62,4 @@ export function toolbarPresentation(url: string | undefined, status: IAdvancedPr
 export function countTabBrowserRules(rules: browser.DeclarativeNetRequest.Rule[], tabId: number): number {
   return rules.filter(({ id, condition }) => !(id >= TEMPORARY_CORS_RULE_ID_BASE) && (!condition.tabIds || condition.tabIds.includes(tabId))
     && !condition.excludedTabIds?.includes(tabId)).length;
-}
-
-const icons = new Map<ToolbarState, Record<string, browser.Action.ImageDataType>>();
-export function toolbarIcon(state: ToolbarState): Record<string, browser.Action.ImageDataType> {
-  const cached = icons.get(state);
-  if (cached) return cached;
-  const result: Record<string, browser.Action.ImageDataType> = {};
-  for (const size of [16, 32]) {
-    const canvas = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(size, size) : Object.assign(document.createElement('canvas'), { width: size, height: size });
-    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
-    if (!ctx) throw new Error('Toolbar icon canvas unavailable.');
-    ctx.scale(size / 32, size / 32);
-    ctx.fillStyle = TOOLBAR_COLORS[state];
-    ctx.beginPath(); ctx.roundRect(1, 1, 30, 30, 10); ctx.fill();
-    // A white version of the approved mark stays readable on every status color.
-    const [left, top, width, height] = BRAND_VIEWBOX;
-    ctx.scale(32 / width, 32 / height);
-    ctx.translate(-left, -top);
-    ctx.fillStyle = '#ffffff';
-    for (const d of BRAND_PATHS) ctx.fill(new Path2D(d));
-    result[size] = ctx.getImageData(0, 0, size, size) as browser.Action.ImageDataType;
-  }
-  icons.set(state, result);
-  return result;
 }
