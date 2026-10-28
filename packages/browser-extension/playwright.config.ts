@@ -4,7 +4,8 @@ export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  // Fail once with a trace; retries previously reran the entire serial suite.
+  retries: 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: 'list',
   
